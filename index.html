@@ -520,6 +520,16 @@ INFORMACIÓN ACTUAL DEL CENTRO (extraída en tiempo real de Supabase):
 ${ctx}`;
 
   try {
+    // Formato nativo Gemini: system prompt como primer turno + historial
+    const geminiContents = [];
+    geminiContents.push({ role:"user", parts:[{ text:"[INSTRUCCIONES]\n"+sys }] });
+    geminiContents.push({ role:"model", parts:[{ text:"Entendido, seguiré estas instrucciones." }] });
+    for (const msg of history) {
+      geminiContents.push({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }]
+      });
+    }
     const res = await fetch(API, {
       method:"POST",
       headers:{
@@ -527,10 +537,10 @@ ${ctx}`;
         "Authorization": `Bearer ${ANON_KEY}`,
         "apikey": ANON_KEY
       },
-      body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:sys, messages:history })
+      body: JSON.stringify({ contents: geminiContents })
     });
     const d = await res.json();
-    const reply = d.content?.[0]?.text || "Lo siento, no pude procesar tu consulta.";
+    const reply = d.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude procesar tu consulta.";
     history.push({ role:"assistant", content:reply });
     document.getElementById("typing").classList.remove("show");
     addMsg("bot", reply);
