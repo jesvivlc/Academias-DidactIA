@@ -520,15 +520,28 @@ INFORMACIÓN ACTUAL DEL CENTRO (extraída en tiempo real de Supabase):
 ${ctx}`;
 
   try {
-    // Formato nativo Gemini: system prompt como primer turno + historial
+    // Formato Gemini: historial completo con system prompt en el primer mensaje
     const geminiContents = [];
-    geminiContents.push({ role:"user", parts:[{ text:"[INSTRUCCIONES]\n"+sys }] });
-    geminiContents.push({ role:"model", parts:[{ text:"Entendido, seguiré estas instrucciones." }] });
-    for (const msg of history) {
-      geminiContents.push({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }]
-      });
+    // Construir historial: todos los turnos anteriores excepto el último
+    const prevMsgs = history.slice(0, -1);
+    const lastMsg = history[history.length - 1];
+    // Primer mensaje lleva el system prompt pegado
+    if (prevMsgs.length === 0) {
+      // Primera pregunta: system + pregunta juntos
+      geminiContents.push({ role:"user", parts:[{ text: sys + "\n\nPregunta: " + lastMsg.content }] });
+    } else {
+      // Historial previo
+      for (let i = 0; i < prevMsgs.length; i++) {
+        const msg = prevMsgs[i];
+        const isFirst = i === 0;
+        const txt = isFirst && msg.role === "user" ? sys + "\n\nPregunta: " + msg.content : msg.content;
+        geminiContents.push({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: txt }]
+        });
+      }
+      // Último mensaje (la pregunta actual)
+      geminiContents.push({ role:"user", parts:[{ text: lastMsg.content }] });
     }
     const res = await fetch(API, {
       method:"POST",
@@ -540,7 +553,7 @@ ${ctx}`;
       body: JSON.stringify({ contents: geminiContents })
     });
     const d = await res.json();
-    const reply = d.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude procesar tu consulta.";
+    const reply = d.candidates?.[0]?.content?.parts?.[0]?.text || d.text || "Lo siento, no pude procesar tu consulta.";
     history.push({ role:"assistant", content:reply });
     document.getElementById("typing").classList.remove("show");
     addMsg("bot", reply);
