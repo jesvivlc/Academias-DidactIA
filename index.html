@@ -174,28 +174,90 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
 .unan-meta { font-size:11px;font-weight:600;color:var(--amb);margin-bottom:4px; }
 .unan-q { font-size:13px;color:var(--txt);margin-bottom:8px; }
 @media(max-width:768px){.sidebar{display:none}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+
+/* AUTH EXTRAS */
+#form-register select.setup-input { cursor:pointer; }
+#logout-btn { cursor:pointer; }
+.alumno-card { display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--srf2);border:1.5px solid var(--bdr);border-radius:var(--r-sm);cursor:pointer;transition:all .15s;font-size:13px; }
+.alumno-card:hover { border-color:var(--ink); }
+.alumno-card.selected { border-color:var(--ink);background:var(--ink-ll); }
+.alumno-card .chk { width:18px;height:18px;border-radius:4px;border:1.5px solid var(--bdr);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s; }
+.alumno-card.selected .chk { background:var(--ink);border-color:var(--ink);color:#fff; }
+.alumno-info { flex:1; }
+.alumno-nombre { font-weight:500;color:var(--txt); }
+.alumno-curso { font-size:11px;color:var(--txt3); }
 </style>
 </head>
 <body>
 
-<!-- SETUP -->
+<!-- LOGIN -->
 <div id="setup">
   <div class="setup-card">
     <div class="setup-logo">D</div>
-    <div class="setup-title">Conectar con Supabase</div>
-    <div class="setup-sub">Introduce las credenciales de tu proyecto Supabase para conectar DidactIA con tu base de datos real.</div>
-    <div class="setup-field">
-      <label class="setup-label">Project URL</label>
-      <input class="setup-input" id="sb-url" placeholder="https://xxxx.supabase.co" />
+    <div class="setup-title" id="auth-title">Bienvenido a DidactIA</div>
+    <div class="setup-sub" id="auth-sub">Accede con tu cuenta para continuar.</div>
+
+    <!-- LOGIN FORM -->
+    <div id="form-login">
+      <div class="setup-field">
+        <label class="setup-label">Email</label>
+        <input class="setup-input" id="login-email" type="email" placeholder="tu@email.com" />
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Contraseña</label>
+        <input class="setup-input" id="login-pass" type="password" placeholder="••••••••" />
+      </div>
+      <button class="setup-btn" onclick="doLogin()">Entrar →</button>
+      <div class="setup-err" id="login-err"></div>
+      <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
     </div>
-    <div class="setup-field">
-      <label class="setup-label">Anon Public Key</label>
-      <input class="setup-input" id="sb-key" placeholder="eyJ..." />
-      <div class="setup-hint">Settings → API en tu proyecto Supabase</div>
+
+    <!-- REGISTER FORM: STEP 1 — datos básicos -->
+    <div id="form-register" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:18px;">
+        <div style="flex:1;height:3px;background:var(--ink);border-radius:2px;"></div>
+        <div style="flex:1;height:3px;background:var(--bdr);border-radius:2px;" id="step2-bar"></div>
+      </div>
+      <div id="reg-step1">
+        <div class="setup-field">
+          <label class="setup-label">Nombre completo</label>
+          <input class="setup-input" id="reg-name" type="text" placeholder="Tu nombre y apellidos" />
+        </div>
+        <div class="setup-field">
+          <label class="setup-label">Email</label>
+          <input class="setup-input" id="reg-email" type="email" placeholder="tu@email.com" />
+        </div>
+        <div class="setup-field">
+          <label class="setup-label">Contraseña</label>
+          <input class="setup-input" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div class="setup-field">
+          <label class="setup-label">Código de acceso</label>
+          <input class="setup-input" id="reg-codigo" type="text" placeholder="El código que te dio el centro" style="text-transform:uppercase;" />
+          <div class="setup-hint">El administrador del centro te lo proporciona. Hay un código para familias y otro para profesionales.</div>
+        </div>
+        <button class="setup-btn" onclick="doRegisterStep1()">Siguiente →</button>
+        <div class="setup-err" id="reg-err"></div>
+        <span class="setup-link" onclick="showLogin()">¿Ya tienes cuenta? Inicia sesión</span>
+      </div>
+
+      <!-- STEP 2 — vinculación alumno (solo familias) -->
+      <div id="reg-step2" style="display:none">
+        <div style="background:var(--ink-ll);border:1px solid var(--ink-l);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--ink);">
+          ✅ Centro verificado: <strong id="centro-verificado">—</strong>
+        </div>
+        <div class="setup-sub" style="margin-bottom:16px;">¿Tienes hijos matriculados en este centro? Vincúlalos a tu cuenta para acceder a su información.</div>
+        <div id="alumnos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
+        <div id="alumnos-seleccionados" style="font-size:12px;color:var(--ink);margin-bottom:8px;display:none;">
+          ✓ <span id="sel-count">0</span> alumno(s) seleccionado(s)
+        </div>
+        <button class="setup-btn" onclick="doRegisterStep2()">Crear cuenta →</button>
+        <div class="setup-err" id="reg-err2"></div>
+        <div style="text-align:center;margin-top:10px;">
+          <span class="setup-link" onclick="doRegisterStep2(true)">Saltar — no tengo hijos matriculados</span>
+        </div>
+      </div>
     </div>
-    <button class="setup-btn" onclick="initApp()">Conectar →</button>
-    <div class="setup-err" id="setup-err"></div>
-    <span class="setup-link" onclick="prefill()">Usar credenciales del proyecto DidactIA</span>
   </div>
 </div>
 
@@ -208,9 +270,10 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
   <div class="hdr-r">
     <div class="ctr-pill">
       <div class="ctr-dot"></div>
-      <select class="ctr-sel" id="ctr-sel" onchange="onCtrChange()"><option>Cargando…</option></select>
+      <span id="ctr-name-hdr" style="font-size:13px;font-weight:500;color:var(--txt2);">—</span>
     </div>
-    <div class="role-pill fam" id="role-pill" onclick="toggleRole()">👨‍👩‍👧 Familia</div>
+    <div class="role-pill fam" id="role-pill">👨‍👩‍👧 Familia</div>
+    <div class="role-pill fam" id="logout-btn" onclick="doLogout()" style="background:var(--srf2);color:var(--txt3);border-color:var(--bdr);margin-left:4px;">Salir</div>
   </div>
 </header>
 
@@ -326,45 +389,246 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
 </div>
 
 <script>
-// La llamada a Claude va a través de la Edge Function de Supabase (evita CORS)
-// Asegúrate de haber desplegado: supabase functions deploy chat
-// Y añadido el secret: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-let API = ""; // Se construye dinámicamente con la URL de Supabase tras el login
-let ANON_KEY = ""; // Se guarda al hacer login para usarla como cabecera
-let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
+// ── CONFIG ──
+const SB_URL = "https://rflfsbrdmgaidhvbuvwb.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbGZzYnJkbWdhaWRodmJ1dndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTAxNDgsImV4cCI6MjA4Nzc2NjE0OH0.tJuFxAZCSxdukUvL9BbhdxtCbudCmmv2HLZr6qp7LPs";
+const API = `${SB_URL}/functions/v1/chat`;
+const ANON_KEY = SB_KEY;
 
-function prefill() {
-  document.getElementById("sb-url").value = "https://rflfsbrdmgaidhvbuvwb.supabase.co";
-  document.getElementById("sb-key").value = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbGZzYnJkbWdhaWRodmJ1dndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTAxNDgsImV4cCI6MjA4Nzc2NjE0OH0.tJuFxAZCSxdukUvL9BbhdxtCbudCmmv2HLZr6qp7LPs";
+let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
+let currentUser = null;
+
+// ── BOOT ──
+window.addEventListener("DOMContentLoaded", async () => {
+  sb = supabase.createClient(SB_URL, SB_KEY);
+  // Preload centros in register form
+  const { data: centros } = await sb.from("centros").select("id,nombre").order("nombre");
+  if (centros?.length) {
+    document.getElementById("reg-centro").innerHTML =
+      centros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+  }
+  // Check existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await loadUserProfile(session.user);
+});
+
+// ── AUTH UI ──
+function showRegister() {
+  document.getElementById("form-login").style.display = "none";
+  document.getElementById("form-register").style.display = "block";
+  document.getElementById("auth-title").textContent = "Crear cuenta";
+  document.getElementById("auth-sub").textContent = "Regístrate para acceder a tu centro educativo.";
+}
+function showLogin() {
+  document.getElementById("form-register").style.display = "none";
+  document.getElementById("form-login").style.display = "block";
+  document.getElementById("auth-title").textContent = "Bienvenido a DidactIA";
+  document.getElementById("auth-sub").textContent = "Accede con tu cuenta para continuar.";
 }
 
-async function initApp() {
-  const url = document.getElementById("sb-url").value.trim();
-  const key = document.getElementById("sb-key").value.trim();
-  const errEl = document.getElementById("setup-err");
+// ── LOGIN ──
+async function doLogin() {
+  const email = document.getElementById("login-email").value.trim();
+  const pass  = document.getElementById("login-pass").value;
+  const errEl = document.getElementById("login-err");
   errEl.style.display = "none";
-  if (!url || !key) { errEl.textContent = "Rellena ambos campos."; errEl.style.display = "block"; return; }
-  try {
-    sb = supabase.createClient(url, key);
-    // Guardar para usarlos en las cabeceras de la Edge Function
-    API = `${url}/functions/v1/chat`;
-    ANON_KEY = key;
-    const { data, error } = await sb.from("centros").select("id,nombre,slug").order("nombre");
-    if (error) throw error;
-    if (!data?.length) throw new Error("No se encontraron centros en la tabla 'centros'.");
-    const sel = document.getElementById("ctr-sel");
-    sel.innerHTML = data.map(c => `<option value="${c.id}" data-n="${c.nombre}">${c.nombre}</option>`).join("");
-    ctrId = data[0].id; ctrName = data[0].nombre;
-    document.getElementById("setup").style.display = "none";
-    ["app-hdr","app-tabs","app-main"].forEach(id => document.getElementById(id).style.display = id === "app-main" ? "flex" : id === "app-hdr" ? "flex" : "flex");
-    updateUI(); loadAdmin();
-  } catch(e) { errEl.textContent = "Error: " + e.message; errEl.style.display = "block"; }
+  if (!email || !pass) { errEl.textContent = "Rellena email y contraseña."; errEl.style.display = "block"; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { errEl.textContent = error.message; errEl.style.display = "block"; return; }
+  await loadUserProfile(data.user);
+}
+
+// ── REGISTER ──
+let regCentroId = null; // centro verified in step 1
+let regRol = "familia";
+let selectedAlumnos = new Set();
+
+function onRolChange() {
+  regRol = document.getElementById("reg-rol").value;
+}
+
+async function doRegisterStep1() {
+  const name   = document.getElementById("reg-name").value.trim();
+  const email  = document.getElementById("reg-email").value.trim();
+  const pass   = document.getElementById("reg-pass").value;
+  const codigo = document.getElementById("reg-codigo").value.trim().toUpperCase();
+  regRol       = document.getElementById("reg-rol").value;
+  const errEl  = document.getElementById("reg-err");
+  errEl.style.display = "none";
+
+  if (!name || !email || !pass || !codigo) {
+    errEl.textContent = "Rellena todos los campos."; errEl.style.display = "block"; return;
+  }
+  if (pass.length < 6) {
+    errEl.textContent = "La contraseña debe tener al menos 6 caracteres."; errEl.style.display = "block"; return;
+  }
+
+  // Validate access code
+  const { data: centros, error: cErr } = await sb
+    .from("centros").select("id,nombre,codigo_acceso")
+    .ilike("codigo_acceso", codigo);
+
+  if (cErr || !centros?.length) {
+    errEl.textContent = "Código de acceso incorrecto. Contacta con tu centro.";
+    errEl.style.display = "block"; return;
+  }
+
+  regCentroId = centros[0].id;
+  const centroNombre = centros[0].nombre;
+
+  // If profesional, skip step 2
+  if (regRol === "profesional") {
+    await finishRegister(name, email, pass, []);
+    return;
+  }
+
+  // Show step 2 — load alumnos of this centro
+  document.getElementById("centro-verificado").textContent = centroNombre;
+  document.getElementById("step2-bar").style.background = "var(--ink)";
+  document.getElementById("reg-step1").style.display = "none";
+  document.getElementById("reg-step2").style.display = "block";
+  document.getElementById("auth-title").textContent = "Vincular alumno/s";
+  document.getElementById("auth-sub").textContent = "Selecciona el alumno o alumnos que tienes en este centro.";
+
+  // Load alumnos
+  const { data: alumnos } = await sb
+    .from("alumnos").select("id,nombre,curso")
+    .eq("centro_id", regCentroId)
+    .order("curso").order("nombre");
+
+  const lista = document.getElementById("alumnos-lista");
+  if (!alumnos?.length) {
+    lista.innerHTML = '<div style="font-size:13px;color:var(--txt3);text-align:center;padding:12px;">No hay alumnos registrados aún. El administrador debe añadirlos.</div>';
+  } else {
+    lista.innerHTML = alumnos.map(a => `
+      <div class="alumno-card" id="ac-${a.id}" onclick="toggleAlumno('${a.id}')">
+        <div class="chk" id="chk-${a.id}">✓</div>
+        <div class="alumno-info">
+          <div class="alumno-nombre">${a.nombre}</div>
+          <div class="alumno-curso">${a.curso || ""}</div>
+        </div>
+      </div>`).join("");
+  }
+
+  // Store name/email/pass for step 2
+  window._regData = { name, email, pass };
+}
+
+function toggleAlumno(id) {
+  if (selectedAlumnos.has(id)) {
+    selectedAlumnos.delete(id);
+    document.getElementById("ac-"+id)?.classList.remove("selected");
+  } else {
+    selectedAlumnos.add(id);
+    document.getElementById("ac-"+id)?.classList.add("selected");
+  }
+  const count = selectedAlumnos.size;
+  const selDiv = document.getElementById("alumnos-seleccionados");
+  selDiv.style.display = count > 0 ? "block" : "none";
+  document.getElementById("sel-count").textContent = count;
+}
+
+async function doRegisterStep2(skip = false) {
+  const { name, email, pass } = window._regData || {};
+  const alumnosIds = skip ? [] : [...selectedAlumnos];
+  await finishRegister(name, email, pass, alumnosIds);
+}
+
+async function finishRegister(name, email, pass, alumnosIds) {
+  const errEl = document.getElementById("reg-err2") || document.getElementById("reg-err");
+  errEl.style.display = "none";
+
+  const { data, error } = await sb.auth.signUp({
+    email, password: pass,
+    options: { data: { full_name: name } }
+  });
+  if (error) { errEl.textContent = error.message; errEl.style.display = "block"; return; }
+
+  if (data.user) {
+    // Create profile
+    await sb.from("profiles").upsert({
+      id: data.user.id,
+      user_id: data.user.id,
+      full_name: name,
+      email: email,
+      centro_id: regCentroId,
+      rol: regRol
+    }, { onConflict: "user_id" });
+
+    // Link alumnos if familia
+    if (alumnosIds.length > 0) {
+      const links = alumnosIds.map(aid => ({
+        profile_id: data.user.id,
+        alumno_id: aid,
+        relacion: "familiar"
+      }));
+      await sb.from("familia_alumno").insert(links);
+    }
+
+    await loadUserProfile(data.user);
+  } else {
+    errEl.textContent = "Revisa tu email para confirmar la cuenta antes de entrar.";
+    errEl.style.color = "var(--ink)";
+    errEl.style.display = "block";
+  }
+}
+
+// ── LOGOUT ──
+async function doLogout() {
+  await sb.auth.signOut();
+  currentUser = null; ctrId = null; ctrName = ""; history = [];
+  document.getElementById("setup").style.display = "flex";
+  document.getElementById("app-hdr").style.display = "none";
+  document.getElementById("app-tabs").style.display = "none";
+  document.getElementById("app-main").style.display = "none";
+  showLogin();
+}
+
+// ── LOAD PROFILE AFTER LOGIN ──
+async function loadUserProfile(user) {
+  currentUser = user;
+  // Get profile with centro info
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("centro_id, rol, centros(nombre)")
+    .eq("user_id", user.id)
+    .single();
+
+  if (error || !profile) {
+    // Profile not found — show error
+    document.getElementById("login-err").textContent = "No se encontró tu perfil. Contacta con el administrador.";
+    document.getElementById("login-err").style.display = "block";
+    await sb.auth.signOut();
+    return;
+  }
+
+  ctrId = profile.centro_id;
+  ctrName = profile.centros?.nombre || "Mi centro";
+  role = profile.rol || "familia";
+
+  // Update UI
+  document.getElementById("ctr-name-hdr").textContent = ctrName;
+  const pill = document.getElementById("role-pill");
+  const roleLabels = { familia:"👨‍👩‍👧 Familia", profesional:"👩‍🏫 Profesional", admin:"⚙️ Admin", superadmin:"🔑 Superadmin" };
+  pill.textContent = roleLabels[role] || role;
+  pill.className = "role-pill " + (role === "familia" ? "fam" : "pro");
+
+  // Show/hide admin tab based on role
+  const adminTab = document.getElementById("tab-admin");
+  adminTab.style.display = (role === "admin" || role === "superadmin") ? "block" : "none";
+
+  // Show app
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("app-hdr").style.display = "flex";
+  document.getElementById("app-tabs").style.display = "flex";
+  document.getElementById("app-main").style.display = "flex";
+
+  updateUI();
+  loadAdmin();
 }
 
 function onCtrChange() {
-  const sel = document.getElementById("ctr-sel");
-  ctrId = sel.value; ctrName = sel.options[sel.selectedIndex].dataset.n;
-  history = []; resetChat(); updateUI(); loadAdmin();
+  // No longer used — center comes from profile
 }
 function updateUI() {
   const n = ctrName;
