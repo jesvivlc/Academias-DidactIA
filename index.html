@@ -396,7 +396,7 @@ const API = `${SB_URL}/functions/v1/chat`;
 const ANON_KEY = SB_KEY;
 
 let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
-let currentUser = null;
+let currentUser = null, currentUserName = "", currentUserAlumnos = [];
 
 // ── BOOT ──
 window.addEventListener("DOMContentLoaded", async () => {
@@ -607,7 +607,7 @@ async function loadUserProfile(user) {
   // Get profile with centro info
   const { data: profile, error } = await sb
     .from("profiles")
-    .select("centro_id, rol, centros(nombre)")
+    .select("id, centro_id, rol, full_name, centros(nombre)")
     .eq("user_id", user.id)
     .single();
 
@@ -622,6 +622,16 @@ async function loadUserProfile(user) {
   ctrId = profile.centro_id;
   ctrName = profile.centros?.nombre || "Mi centro";
   role = profile.rol || "familia";
+  currentUserName = profile.full_name || user.email;
+
+  // Load linked alumnos if familia
+  if (role === "familia") {
+    const { data: vinculos } = await sb
+      .from("familia_alumno")
+      .select("alumnos(nombre, curso)")
+      .eq("profile_id", profile.id);
+    currentUserAlumnos = vinculos?.map(v => v.alumnos).filter(Boolean) || [];
+  }
 
   // Update UI
   document.getElementById("ctr-name-hdr").textContent = ctrName;
@@ -747,6 +757,17 @@ async function loadHorarios() {
 async function buildContext() {
   if (!sb || !ctrId) return "Sin información disponible.";
   let ctx = `Centro: ${ctrName}\n\n`;
+
+  // Personal user context
+  ctx += `USUARIO ACTUAL:\n`;
+  ctx += `- Nombre: ${currentUserName}\n`;
+  ctx += `- Rol: ${role}\n`;
+  if (role === "familia" && currentUserAlumnos.length > 0) {
+    ctx += `- Hijos matriculados en este centro:\n`;
+    currentUserAlumnos.forEach(a => { ctx += `  · ${a.nombre} (${a.curso || "sin curso"})\n`; });
+  }
+  ctx += "\n";
+
   try {
     const { data } = await sb.from("info_centro").select("nombre_config,datos").eq("centro_id", ctrId);
     if (data?.length) {
@@ -755,11 +776,18 @@ async function buildContext() {
       ctx += "\n";
     }
   } catch(e) {}
+
   try {
-    const { data } = await sb.from("horarios").select("dia,hora,profesor,actividad").eq("centro_id", ctrId).order("dia").order("hora");
+    // If profesional, load only their own schedule
+    // If familia, load general schedule
+    let horariosQuery = sb.from("horarios").select("dia,hora,profesor,actividad").eq("centro_id", ctrId).order("dia").order("hora");
+    if (role === "profesional" && currentUserName) {
+      horariosQuery = horariosQuery.ilike("profesor", `%${currentUserName.split(" ")[0]}%`);
+    }
+    const { data } = await horariosQuery;
     if (data?.length) {
-      ctx += "HORARIOS:\n";
-      data.forEach(h => { ctx += `- ${h.dia} ${h.hora}: ${h.actividad}${h.profesor?" (Prof. "+h.profesor+")":""}\n`; });
+      ctx += role === "profesional" ? "MI HORARIO DE CLASES:\n" : "HORARIOS DEL CENTRO:\n";
+      data.forEach(h => { ctx += `- ${h.dia} ${h.hora}: ${h.actividad}${h.profesor?" ("+h.profesor+")":""}\n`; });
     }
   } catch(e) {}
   return ctx;
@@ -792,12 +820,21 @@ async function sendMsg() {
   document.getElementById("chat-msgs").scrollTop = 9999;
 
   const ctx = await buildContext();
+  const rolDesc = {
+    familia: `familiar de alumnos del centro. Sus hijos son: ${currentUserAlumnos.map(a=>a.nombre+" ("+a.curso+")").join(", ") || "no vinculados aún"}`,
+    profesional: `profesional del centro educativo llamado ${currentUserName}`,
+    admin: `administrador del centro`,
+    superadmin: `superadministrador de la plataforma`
+  };
   const sys = `Eres DidactIA, el asistente virtual exclusivo de ${ctrName}.
-Solo respondes con información de ESTE centro. Si no tienes información sobre algo, dilo claramente y sugiere contactar con secretaría.
-El usuario es: ${role === "familia" ? "una familia del centro" : "un profesional del equipo educativo"}.
-Responde en español, de forma amable, clara y concisa. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.
+Conoces perfectamente al usuario con el que hablas: se llama ${currentUserName} y es ${rolDesc[role] || role}.
+NO le pidas que se identifique — ya sabes quién es. Dirígete a él por su nombre cuando sea natural.
+Si pregunta por su horario, el de su hijo, o información personal, responde directamente con los datos que tienes.
+Solo respondes con información de ESTE centro. Si no tienes algo, sugiere contactar con secretaría.
+Responde en español, de forma amable y concisa. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.
+No reveles información confidencial de otros alumnos o profesores a usuarios que no deban verla.
 
-INFORMACIÓN ACTUAL DEL CENTRO (extraída en tiempo real de Supabase):
+CONTEXTO EN TIEMPO REAL:
 ${ctx}`;
 
   try {
