@@ -452,7 +452,7 @@ async function doRegisterStep1() {
   const email  = document.getElementById("reg-email").value.trim();
   const pass   = document.getElementById("reg-pass").value;
   const codigo = document.getElementById("reg-codigo").value.trim().toUpperCase();
-  regRol       = document.getElementById("reg-rol").value;
+  // rol determined by access code
   const errEl  = document.getElementById("reg-err");
   errEl.style.display = "none";
 
@@ -463,18 +463,35 @@ async function doRegisterStep1() {
     errEl.textContent = "La contraseña debe tener al menos 6 caracteres."; errEl.style.display = "block"; return;
   }
 
-  // Validate access code
+  // Check code against both codigo_familia and codigo_profesional
   const { data: centros, error: cErr } = await sb
-    .from("centros").select("id,nombre,codigo_acceso")
-    .ilike("codigo_acceso", codigo);
+    .from("centros")
+    .select("id,nombre,codigo_familia,codigo_profesional");
 
   if (cErr || !centros?.length) {
-    errEl.textContent = "Código de acceso incorrecto. Contacta con tu centro.";
+    errEl.textContent = "Error al verificar el código. Inténtalo de nuevo.";
     errEl.style.display = "block"; return;
   }
 
-  regCentroId = centros[0].id;
-  const centroNombre = centros[0].nombre;
+  let matchedCentro = null;
+  regRol = null;
+
+  for (const c of centros) {
+    if (c.codigo_familia?.toUpperCase() === codigo) {
+      matchedCentro = c; regRol = "familia"; break;
+    }
+    if (c.codigo_profesional?.toUpperCase() === codigo) {
+      matchedCentro = c; regRol = "profesional"; break;
+    }
+  }
+
+  if (!matchedCentro) {
+    errEl.textContent = "Código incorrecto. Comprueba que lo has escrito bien.";
+    errEl.style.display = "block"; return;
+  }
+
+  regCentroId = matchedCentro.id;
+  const centroNombre = matchedCentro.nombre;
 
   // If profesional, skip step 2
   if (regRol === "profesional") {
