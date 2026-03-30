@@ -778,16 +778,18 @@ async function buildContext() {
   } catch(e) {}
 
   try {
-    // If profesional, load only their own schedule
-    // If familia, load general schedule
     let horariosQuery = sb.from("horarios").select("dia,hora,profesor,actividad").eq("centro_id", ctrId).order("dia").order("hora");
     if (role === "profesional" && currentUserName) {
-      horariosQuery = horariosQuery.ilike("profesor", `%${currentUserName.split(" ")[0]}%`);
+      // Names in DB are stored as "Apellido Apellido, Nombre" — search by any part
+      const nameParts = currentUserName.split(" ").filter(p => p.length > 2);
+      if (nameParts.length > 0) {
+        horariosQuery = horariosQuery.ilike("profesor", `%${nameParts[0]}%`);
+      }
     }
     const { data } = await horariosQuery;
     if (data?.length) {
       ctx += role === "profesional" ? "MI HORARIO DE CLASES:\n" : "HORARIOS DEL CENTRO:\n";
-      data.forEach(h => { ctx += `- ${h.dia} ${h.hora}: ${h.actividad}${h.profesor?" ("+h.profesor+")":""}\n`; });
+      data.forEach(h => { ctx += `- ${h.dia} a las ${h.hora}: ${h.actividad} (${h.profesor})\n`; });
     }
   } catch(e) {}
   return ctx;
@@ -820,6 +822,13 @@ async function sendMsg() {
   document.getElementById("chat-msgs").scrollTop = 9999;
 
   const ctx = await buildContext();
+  // Current date info for the chatbot
+  const now = new Date();
+  const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const fechaHoy = `${dias[now.getDay()]} ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
+  const diaManana = dias[(now.getDay() + 1) % 7];
+
   const rolDesc = {
     familia: `familiar de alumnos del centro. Sus hijos son: ${currentUserAlumnos.map(a=>a.nombre+" ("+a.curso+")").join(", ") || "no vinculados aún"}`,
     profesional: `profesional del centro educativo llamado ${currentUserName}`,
@@ -827,6 +836,7 @@ async function sendMsg() {
     superadmin: `superadministrador de la plataforma`
   };
   const sys = `Eres DidactIA, el asistente virtual exclusivo de ${ctrName}.
+Hoy es ${fechaHoy}. Mañana es ${diaManana}. Usa esta información para responder preguntas sobre fechas sin pedirle al usuario que las especifique.
 Conoces perfectamente al usuario con el que hablas: se llama ${currentUserName} y es ${rolDesc[role] || role}.
 NO le pidas que se identifique — ya sabes quién es. Dirígete a él por su nombre cuando sea natural.
 Si pregunta por su horario, el de su hijo, o información personal, responde directamente con los datos que tienes.
