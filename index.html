@@ -700,18 +700,35 @@ async function loadInfoCentro() {
     cache = {}; data.forEach(r => { cache[r.nombre_config] = r; });
     document.getElementById("s-info").textContent = data.length;
     const fields = [
-      { k:"horario_comedor",  l:"Horario del comedor" },
-      { k:"proxima_reunion",  l:"Próxima reunión de familias" },
-      { k:"telefono",         l:"Teléfono y horario de secretaría" },
-      { k:"aviso_activo",     l:"Aviso importante activo", ta:true },
-      { k:"extraescolares",   l:"Actividades extraescolares", ta:true },
-      { k:"menu_semanal",     l:"Menú semanal", ta:true },
+      { k:"horario_comedor",   l:"Horario del comedor",              def:"todos" },
+      { k:"proxima_reunion",   l:"Próxima reunión de familias",      def:"todos" },
+      { k:"telefono",          l:"Teléfono y horario de secretaría", def:"todos" },
+      { k:"aviso_activo",      l:"Aviso importante activo",          def:"todos",         ta:true },
+      { k:"extraescolares",    l:"Actividades extraescolares",       def:"todos",         ta:true },
+      { k:"menu_semanal",      l:"Menú semanal",                     def:"todos",         ta:true },
+      { k:"claustro",          l:"Próximo claustro",                 def:"profesional" },
+      { k:"solicitud_materiales", l:"Solicitud de materiales",       def:"profesional",   ta:true },
+      { k:"incidencias_info",  l:"Info sobre incidencias",           def:"profesional",   ta:true },
     ];
+    const visOpts = `<option value="todos">👥 Todos</option><option value="familia">👨‍👩‍👧 Solo familias</option><option value="profesional">👩‍🏫 Solo profesionales</option>`;
     c.innerHTML = fields.map(f => {
       const v = cache[f.k]?.datos?.valor || "";
-      return f.ta
-        ? `<div><label class="lbl">${f.l}</label><textarea class="fa" id="f-${f.k}" placeholder="Sin datos aún…">${v}</textarea></div>`
-        : `<div><label class="lbl">${f.l}</label><input class="fi" id="f-${f.k}" value="${v.replace(/"/g,'&quot;')}" placeholder="Sin datos aún…" /></div>`;
+      const vis = cache[f.k]?.visible_para || f.def;
+      const visSelect = `<select class="fi" id="vis-${f.k}" style="width:auto;font-size:11px;padding:4px 8px;">${visOpts}</select>`;
+      const input = f.ta
+        ? `<textarea class="fa" id="f-${f.k}" placeholder="Sin datos aún…">${v}</textarea>`
+        : `<input class="fi" id="f-${f.k}" value="${v.replace(/"/g,"&quot;")}" placeholder="Sin datos aún…" />`;
+      return `<div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <label class="lbl" style="margin:0;">${f.l}</label>
+          <select class="fi" id="vis-${f.k}" style="width:auto;font-size:11px;padding:4px 8px;height:auto;">
+            <option value="todos" ${vis==="todos"?"selected":""}>👥 Todos</option>
+            <option value="familia" ${vis==="familia"?"selected":""}>👨‍👩‍👧 Solo familias</option>
+            <option value="profesional" ${vis==="profesional"?"selected":""}>👩‍🏫 Solo profesionales</option>
+          </select>
+        </div>
+        ${input}
+      </div>`;
     }).join("");
   } catch(e) { c.innerHTML = `<div style="color:var(--red);font-size:13px;">Error: ${e.message}</div>`; }
 }
@@ -719,17 +736,19 @@ async function loadInfoCentro() {
 async function saveInfo() {
   const msg = document.getElementById("save-msg");
   msg.textContent = "⟳ Guardando…"; msg.style.display = "block"; msg.style.color = "var(--txt2)";
-  const keys = ["horario_comedor","proxima_reunion","telefono","aviso_activo","extraescolares","menu_semanal"];
+  const keys = ["horario_comedor","proxima_reunion","telefono","aviso_activo","extraescolares","menu_semanal","claustro","solicitud_materiales","incidencias_info"];
   let ok = 0, err = 0;
   for (const k of keys) {
     const el = document.getElementById("f-"+k); if (!el) continue;
     const v = el.value.trim(); if (!v) continue;
     try {
       if (cache[k]) {
-        const { error } = await sb.from("info_centro").update({ datos:{valor:v}, actualizado_el:new Date().toISOString() }).eq("id", cache[k].id);
+        const vp = document.getElementById("vis-"+k)?.value || "todos";
+        const { error } = await sb.from("info_centro").update({ datos:{valor:v}, visible_para:vp, actualizado_el:new Date().toISOString() }).eq("id", cache[k].id);
         if (error) throw error;
       } else {
-        const { error } = await sb.from("info_centro").insert({ centro_id:ctrId, nombre_config:k, datos:{valor:v}, actualizado_el:new Date().toISOString() });
+        const vp = document.getElementById("vis-"+k)?.value || "todos";
+        const { error } = await sb.from("info_centro").insert({ centro_id:ctrId, nombre_config:k, datos:{valor:v}, visible_para:vp, actualizado_el:new Date().toISOString() });
         if (error) throw error;
       }
       ok++;
@@ -769,11 +788,21 @@ async function buildContext() {
   ctx += "\n";
 
   try {
-    const { data } = await sb.from("info_centro").select("nombre_config,datos").eq("centro_id", ctrId);
+    const { data } = await sb.from("info_centro").select("nombre_config,datos,visible_para").eq("centro_id", ctrId);
     if (data?.length) {
-      ctx += "INFORMACIÓN DEL CENTRO:\n";
-      data.forEach(r => { ctx += `- ${r.nombre_config.replace(/_/g," ")}: ${r.datos?.valor || JSON.stringify(r.datos)}\n`; });
-      ctx += "\n";
+      // Filter by role — show 'todos' to everyone, role-specific only to that role
+      const filtered = data.filter(r => {
+        const vp = r.visible_para || "todos";
+        if (vp === "todos") return true;
+        if (vp === role) return true;
+        if (role === "admin" || role === "superadmin") return true;
+        return false;
+      });
+      if (filtered.length) {
+        ctx += "INFORMACIÓN DEL CENTRO:\n";
+        filtered.forEach(r => { ctx += `- ${r.nombre_config.replace(/_/g," ")}: ${r.datos?.valor || JSON.stringify(r.datos)}\n`; });
+        ctx += "\n";
+      }
     }
   } catch(e) {}
 
