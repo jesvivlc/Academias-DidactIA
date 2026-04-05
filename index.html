@@ -1399,7 +1399,7 @@ async function loadComedor() {
   const { data: alumnos } = await sb.from("alumnos").select("id,nombre,curso")
     .eq("centro_id", ctrId).order("curso").order("nombre");
 
-  // Load today's asistencia
+  // Load asistencia de hoy
   const { data: asistencia } = await sb.from("asistencia_comedor")
     .select("*").eq("centro_id", ctrId).eq("fecha", fechaStr);
 
