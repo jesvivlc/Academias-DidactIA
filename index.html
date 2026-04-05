@@ -927,15 +927,9 @@ async function loadUserProfile(user) {
   const hasComedor = modulosActivos.includes("comedor");
   if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
-  // Show comedor tab only if module is active for this centro AND user has right role
-  const comedorTab = document.getElementById("tab-comedor");
-  const hasComedor = modulosActivos.includes("comedor");
-  if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
-  // Show comedor tab only if module is active for this centro AND user has right role
-  const comedorTab = document.getElementById("tab-comedor");
-  const hasComedor = modulosActivos.includes("comedor");
-  if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
+
+
 
     // Superadmin: also show users management tab
   const usersTab = document.getElementById("tab-users");
