@@ -722,7 +722,8 @@ async function loadUserProfile(user) {
   }
 
   // Update UI
-  document.getElementById("ctr-name-hdr").textContent = ctrName;
+  const ctrHdr = document.getElementById("ctr-name-hdr");
+  if (ctrHdr) ctrHdr.textContent = ctrName;
   const pill = document.getElementById("role-pill");
   const roleLabels = { familia:"👨‍👩‍👧 Familia", profesional:"👩‍🏫 Profesional", admin:"⚙️ Admin", superadmin:"🔑 Superadmin" };
   pill.textContent = roleLabels[role] || role;
