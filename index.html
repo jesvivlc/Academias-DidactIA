@@ -1019,7 +1019,7 @@ async function loadUsersPanel() {
       const togglesHtml = MODULOS.map(function(m) {
         const on = activos.includes(m.key);
         const onClass = on ? "toggle-track on" : "toggle-track";
-        return "<div class='toggle-wrap' onclick="toggleModulo('" + c.id + "','" + m.key + "'," + (!on) + ",this)">" +
+        return "<div class='toggle-wrap' onclick='toggleModulo(\"" + c.id + "\",\"" + m.key + "\"," + (!on) + ",this)'>" +
           "<div class='" + onClass + "'><div class='toggle-thumb'></div></div>" +
           "<span style='font-size:13px;color:var(--txt2);'>" + m.label + "</span></div>";
       }).join("");
