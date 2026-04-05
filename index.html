@@ -212,6 +212,20 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
       <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
     </div>
 
+    <!-- RECOVERY FORM -->
+    <div id="form-recovery" style="display:none">
+      <div class="setup-field">
+        <label class="setup-label">Nueva contraseña</label>
+        <input class="setup-input" id="recovery-pass" type="password" placeholder="Mínimo 6 caracteres" />
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Confirmar contraseña</label>
+        <input class="setup-input" id="recovery-pass2" type="password" placeholder="Repite la contraseña" />
+      </div>
+      <button class="setup-btn" onclick="doRecovery()">Guardar contraseña →</button>
+      <div class="setup-err" id="recovery-err"></div>
+    </div>
+
     <!-- REGISTER FORM: STEP 1 — datos básicos -->
     <div id="form-register" style="display:none">
       <div style="display:flex;gap:8px;margin-bottom:18px;">
@@ -401,6 +415,21 @@ let currentUser = null, currentUserName = "", currentUserAlumnos = [];
 // ── BOOT ──
 window.addEventListener("DOMContentLoaded", async () => {
   sb = supabase.createClient(SB_URL, SB_KEY);
+
+  // Check if this is a password recovery redirect
+  const hash = window.location.hash;
+  if (hash.includes("type=recovery") || hash.includes("access_token")) {
+    const params = new URLSearchParams(hash.replace("#", "?"));
+    const accessToken = params.get("access_token");
+    const type = params.get("type");
+    if (type === "recovery" && accessToken) {
+      // Set the session from the recovery token
+      await sb.auth.setSession({ access_token: accessToken, refresh_token: params.get("refresh_token") || "" });
+      showRecovery();
+      return;
+    }
+  }
+
   // Preload centros in register form
   const { data: centros } = await sb.from("centros").select("id,nombre").order("nombre");
   if (centros?.length) {
@@ -422,8 +451,38 @@ function showRegister() {
 function showLogin() {
   document.getElementById("form-register").style.display = "none";
   document.getElementById("form-login").style.display = "block";
+  document.getElementById("form-recovery").style.display = "none";
   document.getElementById("auth-title").textContent = "Bienvenido a DidactIA";
   document.getElementById("auth-sub").textContent = "Accede con tu cuenta para continuar.";
+}
+
+function showRecovery() {
+  document.getElementById("form-login").style.display = "none";
+  document.getElementById("form-register").style.display = "none";
+  document.getElementById("form-recovery").style.display = "block";
+  document.getElementById("auth-title").textContent = "Nueva contraseña";
+  document.getElementById("auth-sub").textContent = "Introduce tu nueva contraseña para acceder a DidactIA.";
+}
+
+async function doRecovery() {
+  const pass = document.getElementById("recovery-pass").value;
+  const pass2 = document.getElementById("recovery-pass2").value;
+  const errEl = document.getElementById("recovery-err");
+  errEl.style.display = "none";
+
+  if (!pass || !pass2) { errEl.textContent = "Rellena ambos campos."; errEl.style.display = "block"; return; }
+  if (pass.length < 6) { errEl.textContent = "La contraseña debe tener al menos 6 caracteres."; errEl.style.display = "block"; return; }
+  if (pass !== pass2) { errEl.textContent = "Las contraseñas no coinciden."; errEl.style.display = "block"; return; }
+
+  const { error } = await sb.auth.updateUser({ password: pass });
+  if (error) { errEl.textContent = error.message; errEl.style.display = "block"; return; }
+
+  // Password updated — load profile and enter app
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) {
+    window.location.hash = "";
+    await loadUserProfile(user);
+  }
 }
 
 // ── LOGIN ──
