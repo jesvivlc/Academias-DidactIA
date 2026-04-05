@@ -666,7 +666,7 @@ async function loadUserProfile(user) {
   // Get profile with centro info
   const { data: profile, error } = await sb
     .from("profiles")
-    .select("id, centro_id, rol, full_name, centros(nombre)")
+    .select("id, centro_id, rol, full_name")
     .eq("user_id", user.id)
     .single();
 
@@ -678,10 +678,39 @@ async function loadUserProfile(user) {
     return;
   }
 
-  ctrId = profile.centro_id;
-  ctrName = profile.centros?.nombre || "Mi centro";
   role = profile.rol || "familia";
   currentUserName = profile.full_name || user.email;
+
+  // Superadmin: load all centros and let them pick
+  if (role === "superadmin") {
+    const { data: allCentros } = await sb.from("centros").select("id,nombre").order("nombre");
+    ctrId = allCentros?.[0]?.id || null;
+    ctrName = allCentros?.[0]?.nombre || "Todos los centros";
+    // Build centro selector for superadmin
+    const hdrRight = document.getElementById("ctr-name-hdr");
+    if (allCentros?.length > 1) {
+      const sel = document.createElement("select");
+      sel.className = "ctr-sel";
+      sel.id = "super-ctr-sel";
+      sel.innerHTML = allCentros.map(c => `<option value="${c.id}" data-n="${c.nombre}">${c.nombre}</option>`).join("");
+      sel.onchange = function() {
+        ctrId = this.value;
+        ctrName = this.options[this.selectedIndex].dataset.n;
+        history = []; resetChat(); updateUI(); loadAdmin();
+      };
+      hdrRight.replaceWith(sel);
+    } else {
+      hdrRight.textContent = ctrName;
+    }
+  } else {
+    ctrId = profile.centro_id;
+    // Load centro name
+    if (ctrId) {
+      const { data: ctr } = await sb.from("centros").select("nombre").eq("id", ctrId).single();
+      ctrName = ctr?.nombre || "Mi centro";
+    }
+    document.getElementById("ctr-name-hdr").textContent = ctrName;
+  }
 
   // Load linked alumnos if familia
   if (role === "familia") {
@@ -703,6 +732,10 @@ async function loadUserProfile(user) {
   const adminTab = document.getElementById("tab-admin");
   adminTab.style.display = (role === "admin" || role === "superadmin") ? "block" : "none";
 
+  // Superadmin: also show users management tab
+  const usersTab = document.getElementById("tab-users");
+  if (usersTab) usersTab.style.display = role === "superadmin" ? "block" : "none";
+
   // Show app
   document.getElementById("setup").style.display = "none";
   document.getElementById("app-hdr").style.display = "flex";
@@ -718,9 +751,16 @@ function onCtrChange() {
 }
 function updateUI() {
   const n = ctrName;
-  document.getElementById("wlc-ctr").textContent = n;
-  document.getElementById("adm-ctr").textContent = n;
-  document.getElementById("bnr-ctr").textContent = n;
+  // Update welcome center name
+  const wlcEl = document.getElementById("wlc-ctr");
+  if (wlcEl) wlcEl.textContent = n;
+  const admEl = document.getElementById("adm-ctr");
+  if (admEl) admEl.textContent = n;
+  const bnrEl = document.getElementById("bnr-ctr");
+  if (bnrEl) bnrEl.textContent = n;
+  // Update header center name only if not superadmin selector
+  const hdrEl = document.getElementById("ctr-name-hdr");
+  if (hdrEl) hdrEl.textContent = n;
 }
 function resetChat() {
   const msgs = document.getElementById("chat-msgs");
