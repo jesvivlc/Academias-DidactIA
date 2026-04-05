@@ -1001,35 +1001,31 @@ function showTab(t) {
 
 // ── USERS PANEL ──
 async function loadUsersPanel() {
-  // Load centros into invite selector, filter and modules list
   const { data: centros } = await sb.from("centros").select("id,nombre,modulos_activos").order("nombre");
   if (centros?.length) {
     const invSel = document.getElementById("inv-centro");
     const filterSel = document.getElementById("filter-centro");
-    invSel.innerHTML = centros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
-    filterSel.innerHTML = `<option value="">Todos los centros</option>` +
-      centros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+    invSel.innerHTML = centros.map(c => "<option value=" + JSON.stringify(c.id) + ">" + c.nombre + "</option>").join("");
+    filterSel.innerHTML = "<option value=''>Todos los centros</option>" +
+      centros.map(c => "<option value=" + JSON.stringify(c.id) + ">" + c.nombre + "</option>").join("");
 
-    // Render centros modules toggles
     const MODULOS = [
       { key: "comedor", label: "🍽️ Módulo comedor" },
       { key: "espacios", label: "🏫 Módulo espacios" },
     ];
     const container = document.getElementById("centros-modulos-list");
-    container.innerHTML = centros.map(c => {
+    container.innerHTML = centros.map(function(c) {
       const activos = c.modulos_activos || [];
-      return `<div style="padding:14px 0;border-bottom:1px solid var(--bdr);">
-        <div style="font-size:14px;font-weight:600;color:var(--txt);margin-bottom:10px;">${c.nombre}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:16px;">
-          ${MODULOS.map(m => {
-            const on = activos.includes(m.key);
-            return `<div class="toggle-wrap" onclick="toggleModulo('${c.id}', '${m.key}', ${!on}, this)">
-              <div class="toggle-track ${on?"on":""}"><div class="toggle-thumb"></div></div>
-              <span style="font-size:13px;color:var(--txt2);">${m.label}</span>
-            </div>`;
-          }).join("")}
-        </div>
-      </div>`;
+      const togglesHtml = MODULOS.map(function(m) {
+        const on = activos.includes(m.key);
+        const onClass = on ? "toggle-track on" : "toggle-track";
+        return "<div class='toggle-wrap' onclick="toggleModulo('" + c.id + "','" + m.key + "'," + (!on) + ",this)">" +
+          "<div class='" + onClass + "'><div class='toggle-thumb'></div></div>" +
+          "<span style='font-size:13px;color:var(--txt2);'>" + m.label + "</span></div>";
+      }).join("");
+      return "<div style='padding:14px 0;border-bottom:1px solid var(--bdr);'>" +
+        "<div style='font-size:14px;font-weight:600;color:var(--txt);margin-bottom:10px;'>" + c.nombre + "</div>" +
+        "<div style='display:flex;flex-wrap:wrap;gap:16px;'>" + togglesHtml + "</div></div>";
     }).join("");
   }
   await loadUsers();
