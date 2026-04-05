@@ -1389,37 +1389,57 @@ let comedorFilter = 'todos';
 
 async function loadComedor() {
   const today = new Date();
-  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const diasSinTilde = ["Domingo","Lunes","Martes","Miercoles","Jueves","Viernes","Sabado"];
+  const diasConTilde = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
   const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   const fechaStr = today.toISOString().split("T")[0];
-  document.getElementById("comedor-fecha").textContent =
-    `${dias[today.getDay()]} ${today.getDate()} de ${meses[today.getMonth()]} de ${today.getFullYear()}`;
+  const horaActual = today.getHours() * 100 + today.getMinutes();
+  const diaActual = diasSinTilde[today.getDay()];
 
-  // Load all alumnos of centro
-  const { data: alumnos } = await sb.from("alumnos").select("id,nombre,curso")
+  document.getElementById("comedor-fecha").textContent =
+    diasConTilde[today.getDay()] + " " + today.getDate() + " de " + meses[today.getMonth()] + " de " + today.getFullYear();
+
+  // Profesional: detect current class from horarios
+  let grupoActual = null;
+  if (role === "profesional" && currentUserName) {
+    const apellido = currentUserName.split(" ")[0];
+    const { data: horariosHoy } = await sb.from("horarios")
+      .select("actividad,hora")
+      .eq("centro_id", ctrId)
+      .ilike("dia", "%" + diaActual + "%")
+      .ilike("profesor", "%" + apellido + "%");
+
+    if (horariosHoy && horariosHoy.length) {
+      let mejorHorario = null;
+      let mejorDiff = Infinity;
+      for (const h of horariosHoy) {
+        const partes = h.hora.replace(/ /g,"").split("-");
+        if (!partes[0]) continue;
+        const hm = partes[0].split(":");
+        const horaInicio = parseInt(hm[0]) * 100 + parseInt(hm[1] || 0);
+        const diff = Math.abs(horaActual - horaInicio);
+        if (diff < mejorDiff) { mejorDiff = diff; mejorHorario = h; }
+      }
+      if (mejorHorario) {
+        const palabras = mejorHorario.actividad.trim().split(" ");
+        const ultima = palabras[palabras.length - 1];
+        if (/ESO|BAT|CF|PDC|FP/i.test(ultima)) grupoActual = ultima;
+      }
+    }
+  }
+
+  // Load alumnos filtered by grupo if detected
+  let alumnosQuery = sb.from("alumnos").select("id,nombre,curso,grupo_horario")
     .eq("centro_id", ctrId).order("curso").order("nombre");
+  if (grupoActual && role === "profesional") {
+    alumnosQuery = alumnosQuery.eq("grupo_horario", grupoActual);
+    document.getElementById("comedor-fecha").textContent += " · Clase: " + grupoActual;
+  }
+  const { data: alumnos } = await alumnosQuery;
 
   // Load asistencia de hoy
   const { data: asistencia } = await sb.from("asistencia_comedor")
     .select("*").eq("centro_id", ctrId).eq("fecha", fechaStr);
-
-  const asistMap = {};
-  (asistencia || []).forEach(a => { asistMap[a.alumno_id] = a; });
-
-  // Merge: for alumnos not in asistencia, create default entry
-  comedorData = (alumnos || []).map(a => ({
-    alumno_id: a.id,
-    nombre: a.nombre,
-    curso: a.curso,
-    se_queda: asistMap[a.id]?.se_queda ?? false,
-    plaza_fija: asistMap[a.id]?.plaza_fija ?? false,
-    db_id: asistMap[a.id]?.id ?? null
-  }));
-
-  updateComedorStats();
-  renderComedorList();
-}
-
 function updateComedorStats() {
   const seQuedan = comedorData.filter(a => a.se_queda);
   const fijos = seQuedan.filter(a => a.plaza_fija);
