@@ -294,6 +294,7 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
 <nav class="tabs" id="app-tabs" style="display:none">
   <div class="tab active" id="tab-chat" onclick="showTab('chat')">💬 Chatbot</div>
   <div class="tab" id="tab-admin" onclick="showTab('admin')">⚙️ Administración</div>
+  <div class="tab" id="tab-users" onclick="showTab('users')" style="display:none">👥 Usuarios</div>
 </nav>
 
 <div class="main" id="app-main" style="display:none">
@@ -400,6 +401,54 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
 
     </div>
   </div>
+
+  <!-- USERS PANEL (superadmin only) -->
+  <div class="panel" id="panel-users">
+    <div class="pg-hdr">
+      <div><div class="pg-title">Gestión de usuarios</div><div class="pg-sub">Invita administradores y gestiona roles por centro</div></div>
+    </div>
+
+    <!-- Invite new admin -->
+    <div class="card" style="max-width:560px;">
+      <div class="card-hdr"><div class="card-ico o">✉️</div><div><div class="card-title">Invitar administrador de centro</div></div></div>
+      <div class="card-desc">El usuario recibirá un email con un enlace para establecer su contraseña y acceder como administrador del centro seleccionado.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label class="lbl">Nombre completo</label>
+          <input class="fi" id="inv-name" placeholder="Nombre del administrador" />
+        </div>
+        <div>
+          <label class="lbl">Email</label>
+          <input class="fi" id="inv-email" type="email" placeholder="admin@centro.es" />
+        </div>
+        <div>
+          <label class="lbl">Centro educativo</label>
+          <select class="fi" id="inv-centro"><option value="">Cargando centros…</option></select>
+        </div>
+        <div>
+          <label class="lbl">Rol</label>
+          <select class="fi" id="inv-rol">
+            <option value="admin">⚙️ Administrador del centro</option>
+            <option value="profesional">👩‍🏫 Profesional</option>
+          </select>
+        </div>
+        <button class="btn btn-p" onclick="inviteUser()">📨 Enviar invitación</button>
+        <div id="inv-status" style="font-size:13px;display:none;padding:8px 12px;border-radius:var(--r-sm);"></div>
+      </div>
+    </div>
+
+    <!-- Users list -->
+    <div class="card">
+      <div class="card-hdr"><div class="card-ico b">👥</div><div><div class="card-title">Usuarios registrados</div></div></div>
+      <div class="card-desc">Lista de todos los usuarios de la plataforma. Puedes cambiar su rol directamente.</div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
+        <select class="fi" id="filter-centro" style="width:auto;" onchange="loadUsers()"><option value="">Todos los centros</option></select>
+        <button class="btn btn-s" onclick="loadUsers()">↺ Actualizar</button>
+      </div>
+      <div id="users-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando usuarios…</div></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -737,6 +786,16 @@ async function loadUserProfile(user) {
   const usersTab = document.getElementById("tab-users");
   if (usersTab) usersTab.style.display = role === "superadmin" ? "block" : "none";
 
+  // Apply admin panel styling to users panel
+  const usersPanel = document.getElementById("panel-users");
+  if (usersPanel) {
+    usersPanel.style.flexDirection = "column";
+    usersPanel.style.overflowY = "auto";
+    usersPanel.style.padding = "28px";
+    usersPanel.style.gap = "22px";
+    usersPanel.style.background = "var(--bg)";
+  }
+
   // Show app
   document.getElementById("setup").style.display = "none";
   document.getElementById("app-hdr").style.display = "flex";
@@ -787,6 +846,114 @@ function showTab(t) {
   document.getElementById("tab-"+t).classList.add("active");
   document.getElementById("panel-"+t).classList.add("active");
   if (t === "admin") loadAdmin();
+  if (t === "users") loadUsersPanel();
+}
+
+// ── USERS PANEL ──
+async function loadUsersPanel() {
+  // Load centros into invite selector and filter
+  const { data: centros } = await sb.from("centros").select("id,nombre").order("nombre");
+  if (centros?.length) {
+    const invSel = document.getElementById("inv-centro");
+    const filterSel = document.getElementById("filter-centro");
+    invSel.innerHTML = centros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+    filterSel.innerHTML = `<option value="">Todos los centros</option>` +
+      centros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+  }
+  await loadUsers();
+}
+
+async function loadUsers() {
+  const container = document.getElementById("users-list");
+  container.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando…</div>';
+
+  const filterCentro = document.getElementById("filter-centro")?.value;
+  let query = sb.from("profiles").select("id,user_id,full_name,email,rol,centro_id,centros(nombre)").order("rol").order("full_name");
+  if (filterCentro) query = query.eq("centro_id", filterCentro);
+
+  const { data: users, error } = await query;
+  if (error || !users?.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">No hay usuarios registrados.</div>';
+    return;
+  }
+
+  const roleLabels = { familia:"👨‍👩‍👧 Familia", profesional:"👩‍🏫 Profesional", admin:"⚙️ Admin", superadmin:"🔑 Superadmin" };
+  container.innerHTML = `<table class="tbl">
+    <thead><tr><th>Nombre</th><th>Email</th><th>Centro</th><th>Rol</th><th>Acción</th></tr></thead>
+    <tbody>${users.map(u => `
+      <tr>
+        <td style="font-weight:500;">${u.full_name || "—"}</td>
+        <td style="color:var(--txt3);">${u.email || "—"}</td>
+        <td>${u.centros?.nombre || "—"}</td>
+        <td>
+          <select style="font-size:12px;padding:3px 6px;border:1px solid var(--bdr);border-radius:4px;background:var(--srf2);" 
+            onchange="changeRole('${u.id}', this.value)">
+            ${["familia","profesional","admin","superadmin"].map(r =>
+              `<option value="${r}" ${u.rol===r?"selected":""}>${roleLabels[r]}</option>`
+            ).join("")}
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-s" style="font-size:11px;padding:4px 10px;" onclick="deleteUser('${u.id}','${u.full_name||u.email}')">🗑️</button>
+        </td>
+      </tr>`).join("")}
+    </tbody>
+  </table>`;
+}
+
+async function changeRole(profileId, newRol) {
+  const { error } = await sb.from("profiles").update({ rol: newRol }).eq("id", profileId);
+  if (error) alert("Error al cambiar el rol: " + error.message);
+  else await loadUsers();
+}
+
+async function deleteUser(profileId, name) {
+  if (!confirm(`¿Eliminar al usuario "${name}"? Esta acción no se puede deshacer.`)) return;
+  const { error } = await sb.from("profiles").delete().eq("id", profileId);
+  if (error) alert("Error: " + error.message);
+  else await loadUsers();
+}
+
+async function inviteUser() {
+  const name = document.getElementById("inv-name").value.trim();
+  const email = document.getElementById("inv-email").value.trim();
+  const centroId = document.getElementById("inv-centro").value;
+  const rol = document.getElementById("inv-rol").value;
+  const status = document.getElementById("inv-status");
+
+  if (!name || !email || !centroId) {
+    status.textContent = "Rellena todos los campos.";
+    status.style.background = "var(--red-l)"; status.style.color = "var(--red)";
+    status.style.display = "block"; return;
+  }
+
+  status.textContent = "⟳ Enviando invitación…";
+  status.style.background = "var(--srf2)"; status.style.color = "var(--txt2)";
+  status.style.display = "block";
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SB_URL}/functions/v1/invite-user`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+        "apikey": ANON_KEY
+      },
+      body: JSON.stringify({ email, full_name: name, centro_id: centroId, rol })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    status.textContent = `✅ Invitación enviada a ${email}`;
+    status.style.background = "var(--ink-ll)"; status.style.color = "var(--ink)";
+    document.getElementById("inv-name").value = "";
+    document.getElementById("inv-email").value = "";
+    await loadUsers();
+  } catch(e) {
+    status.textContent = "Error: " + e.message;
+    status.style.background = "#fde8e8"; status.style.color = "var(--red)";
+  }
 }
 
 async function loadAdmin() { if (!sb || !ctrId) return; await Promise.all([loadInfoCentro(), loadHorarios()]); }
