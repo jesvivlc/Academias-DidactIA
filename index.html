@@ -175,6 +175,20 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
 .unan-q { font-size:13px;color:var(--txt);margin-bottom:8px; }
 @media(max-width:768px){.sidebar{display:none}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
 
+/* TOGGLE SWITCH */
+.toggle-wrap { display:flex;align-items:center;gap:8px;cursor:pointer; }
+.toggle-track { position:relative;width:36px;height:20px;background:var(--bdr);border-radius:10px;transition:background .2s;flex-shrink:0; }
+.toggle-track.on { background:var(--ink); }
+.toggle-thumb { position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+.toggle-track.on .toggle-thumb { transform:translateX(16px); }
+
+/* TOGGLE SWITCH */
+.toggle-wrap { display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none; }
+.toggle-track { position:relative;width:36px;height:20px;background:var(--bdr);border-radius:10px;transition:background .2s;flex-shrink:0; }
+.toggle-track.on { background:var(--ink); }
+.toggle-thumb { position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+.toggle-track.on .toggle-thumb { transform:translateX(16px); }
+
 /* AUTH EXTRAS */
 #form-register select.setup-input { cursor:pointer; }
 #logout-btn { cursor:pointer; }
@@ -512,7 +526,21 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
       <div><div class="pg-title">Gestión de usuarios</div><div class="pg-sub">Invita administradores y gestiona roles por centro</div></div>
     </div>
 
-    <!-- Invite new admin -->
+    <!-- Centros y módulos -->
+    <div class="card">
+      <div class="card-hdr"><div class="card-ico g">🏫</div><div><div class="card-title">Centros y módulos activos</div></div></div>
+      <div class="card-desc">Activa o desactiva módulos para cada centro educativo.</div>
+      <div id="centros-modulos-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
+    </div>
+
+    <!-- Centros y módulos -->
+    <div class="card">
+      <div class="card-hdr"><div class="card-ico g">🏫</div><div><div class="card-title">Centros y módulos activos</div></div></div>
+      <div class="card-desc">Activa o desactiva módulos para cada centro educativo. Los cambios son inmediatos.</div>
+      <div id="centros-modulos-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
+    </div>
+
+        <!-- Invite new admin -->
     <div class="card" style="max-width:560px;">
       <div class="card-hdr"><div class="card-ico o">✉️</div><div><div class="card-title">Invitar administrador de centro</div></div></div>
       <div class="card-desc">El usuario recibirá un email con un enlace para establecer su contraseña y acceder como administrador del centro seleccionado.</div>
@@ -563,7 +591,7 @@ const API = `${SB_URL}/functions/v1/chat`;
 const ANON_KEY = SB_KEY;
 
 let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
-let currentUser = null, currentUserName = "", currentUserAlumnos = [];
+let currentUser = null, currentUserName = "", currentUserAlumnos = [], modulosActivos = [];
 
 // ── BOOT ──
 window.addEventListener("DOMContentLoaded", async () => {
@@ -836,9 +864,10 @@ async function loadUserProfile(user) {
 
   // Superadmin: load all centros and let them pick
   if (role === "superadmin") {
-    const { data: allCentros } = await sb.from("centros").select("id,nombre").order("nombre");
+    const { data: allCentros } = await sb.from("centros").select("id,nombre,modulos_activos").order("nombre");
     ctrId = allCentros?.[0]?.id || null;
     ctrName = allCentros?.[0]?.nombre || "Todos los centros";
+    modulosActivos = allCentros?.[0]?.modulos_activos || [];
     // Build centro selector for superadmin
     const hdrRight = document.getElementById("ctr-name-hdr");
     if (allCentros?.length > 1) {
@@ -846,9 +875,15 @@ async function loadUserProfile(user) {
       sel.className = "ctr-sel";
       sel.id = "super-ctr-sel";
       sel.innerHTML = allCentros.map(c => `<option value="${c.id}" data-n="${c.nombre}">${c.nombre}</option>`).join("");
-      sel.onchange = function() {
+      sel.onchange = async function() {
         ctrId = this.value;
         ctrName = this.options[this.selectedIndex].dataset.n;
+        // Reload modulos for selected centro
+        const { data: ctr } = await sb.from("centros").select("modulos_activos").eq("id", ctrId).single();
+        modulosActivos = ctr?.modulos_activos || [];
+        // Update comedor tab visibility
+        const cTab = document.getElementById("tab-comedor");
+        if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
         history = []; resetChat(); updateUI(); loadAdmin();
       };
       hdrRight.replaceWith(sel);
@@ -857,10 +892,11 @@ async function loadUserProfile(user) {
     }
   } else {
     ctrId = profile.centro_id;
-    // Load centro name
+    // Load centro name and modulos
     if (ctrId) {
-      const { data: ctr } = await sb.from("centros").select("nombre").eq("id", ctrId).single();
+      const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos").eq("id", ctrId).single();
       ctrName = ctr?.nombre || "Mi centro";
+      modulosActivos = ctr?.modulos_activos || [];
     }
     document.getElementById("ctr-name-hdr").textContent = ctrName;
   }
@@ -886,17 +922,20 @@ async function loadUserProfile(user) {
   const adminTab = document.getElementById("tab-admin");
   adminTab.style.display = (role === "admin" || role === "superadmin") ? "block" : "none";
 
-  // Show comedor tab for profesional, admin, superadmin
+  // Show comedor tab only if module is active for this centro AND user has right role
   const comedorTab = document.getElementById("tab-comedor");
-  if (comedorTab) comedorTab.style.display = ["profesional","admin","superadmin"].includes(role) ? "block" : "none";
+  const hasComedor = modulosActivos.includes("comedor");
+  if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
-  // Show comedor tab for profesional, admin, superadmin
+  // Show comedor tab only if module is active for this centro AND user has right role
   const comedorTab = document.getElementById("tab-comedor");
-  if (comedorTab) comedorTab.style.display = ["profesional","admin","superadmin"].includes(role) ? "block" : "none";
+  const hasComedor = modulosActivos.includes("comedor");
+  if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
-  // Show comedor tab for profesional, admin, superadmin
+  // Show comedor tab only if module is active for this centro AND user has right role
   const comedorTab = document.getElementById("tab-comedor");
-  if (comedorTab) comedorTab.style.display = ["profesional","admin","superadmin"].includes(role) ? "block" : "none";
+  const hasComedor = modulosActivos.includes("comedor");
+  if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
     // Superadmin: also show users management tab
   const usersTab = document.getElementById("tab-users");
@@ -968,16 +1007,63 @@ function showTab(t) {
 
 // ── USERS PANEL ──
 async function loadUsersPanel() {
-  // Load centros into invite selector and filter
-  const { data: centros } = await sb.from("centros").select("id,nombre").order("nombre");
+  // Load centros into invite selector, filter and modules list
+  const { data: centros } = await sb.from("centros").select("id,nombre,modulos_activos").order("nombre");
   if (centros?.length) {
     const invSel = document.getElementById("inv-centro");
     const filterSel = document.getElementById("filter-centro");
     invSel.innerHTML = centros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
     filterSel.innerHTML = `<option value="">Todos los centros</option>` +
       centros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+
+    // Render centros modules toggles
+    const MODULOS = [
+      { key: "comedor", label: "🍽️ Módulo comedor" },
+      { key: "espacios", label: "🏫 Módulo espacios" },
+    ];
+    const container = document.getElementById("centros-modulos-list");
+    container.innerHTML = centros.map(c => {
+      const activos = c.modulos_activos || [];
+      return `<div style="padding:14px 0;border-bottom:1px solid var(--bdr);">
+        <div style="font-size:14px;font-weight:600;color:var(--txt);margin-bottom:10px;">${c.nombre}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;">
+          ${MODULOS.map(m => {
+            const on = activos.includes(m.key);
+            return `<div class="toggle-wrap" onclick="toggleModulo('${c.id}', '${m.key}', ${!on}, this)">
+              <div class="toggle-track ${on?"on":""}"><div class="toggle-thumb"></div></div>
+              <span style="font-size:13px;color:var(--txt2);">${m.label}</span>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>`;
+    }).join("");
   }
   await loadUsers();
+}
+
+async function toggleModulo(centroId, modulo, activate, el) {
+  // Update local UI immediately
+  const track = el.querySelector(".toggle-track");
+  track.classList.toggle("on", activate);
+
+  // Update in Supabase
+  const { data: centro } = await sb.from("centros").select("modulos_activos").eq("id", centroId).single();
+  let modulos = centro?.modulos_activos || [];
+
+  if (activate && !modulos.includes(modulo)) {
+    modulos = [...modulos, modulo];
+  } else if (!activate) {
+    modulos = modulos.filter(m => m !== modulo);
+  }
+
+  await sb.from("centros").update({ modulos_activos: modulos }).eq("id", centroId);
+
+  // If this is the current centro, update local state and tab visibility
+  if (centroId === ctrId) {
+    modulosActivos = modulos;
+    const cTab = document.getElementById("tab-comedor");
+    if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
+  }
 }
 
 async function loadUsers() {
