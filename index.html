@@ -1309,7 +1309,7 @@ async function sendMsg() {
 
   // ── Detectar consulta de horario de alumno ──
   let horarioGrupoCtx = "";
-  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia/i.test(txt);
+  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene/i.test(txt);
   if (esConsultaHorario) {
     let grupoTarget = null;
     let alumnoTarget = null;
@@ -1325,14 +1325,22 @@ async function sendMsg() {
       }
     }
 
-    // 2. Buscar nombre en el mensaje
+    // 2. Buscar nombre en el mensaje — acepta mayúsculas y minúsculas
     if (!grupoTarget) {
-      const candidatos = txt.match(/[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,})*/g) || [];
-      for (const cand of candidatos) {
-        const resultados = await buscarGrupoAlumno(cand);
-        if (resultados && resultados.length === 1 && resultados[0].grupo_horario) {
-          grupoTarget = resultados[0].grupo_horario; alumnoTarget = resultados[0].nombre; break;
+      // Extraer palabras de 3+ letras, ignorar palabras comunes
+      const STOPWORDS = new Set(["que","tiene","hay","clase","horario","cual","cuando","donde","como","para","lunes","martes","miercoles","jueves","viernes","mañana","hoy","las","los","del","este","esta","sus","qué","cuál","cuándo","dónde","cómo"]);
+      const palabras = txt.split(/\s+/).filter(p => p.length >= 3 && !STOPWORDS.has(p.toLowerCase().replace(/[^a-záéíóúñ]/gi,"")));
+      // Intentar con combinaciones de 1, 2 y 3 palabras consecutivas
+      for (let len = 3; len >= 1; len--) {
+        for (let i = 0; i <= palabras.length - len; i++) {
+          const cand = palabras.slice(i, i + len).join(" ").replace(/[¿?¡!.,;:]/g, "");
+          if (cand.length < 3) continue;
+          const resultados = await buscarGrupoAlumno(cand);
+          if (resultados && resultados.length >= 1 && resultados[0].grupo_horario) {
+            grupoTarget = resultados[0].grupo_horario; alumnoTarget = resultados[0].nombre; break;
+          }
         }
+        if (grupoTarget) break;
       }
     }
 
