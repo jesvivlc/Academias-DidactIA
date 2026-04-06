@@ -1440,6 +1440,23 @@ async function loadComedor() {
   // Load asistencia de hoy
   const { data: asistencia } = await sb.from("asistencia_comedor")
     .select("*").eq("centro_id", ctrId).eq("fecha", fechaStr);
+
+  const asistMap = {};
+  (asistencia || []).forEach(a => { asistMap[a.alumno_id] = a; });
+
+  comedorData = (alumnos || []).map(a => ({
+    alumno_id: a.id,
+    nombre: a.nombre,
+    curso: a.curso,
+    se_queda: asistMap[a.id]?.se_queda ?? false,
+    plaza_fija: asistMap[a.id]?.plaza_fija ?? false,
+    db_id: asistMap[a.id]?.id ?? null
+  }));
+
+  updateComedorStats();
+  renderComedorList();
+}
+
 function updateComedorStats() {
   const seQuedan = comedorData.filter(a => a.se_queda);
   const fijos = seQuedan.filter(a => a.plaza_fija);
