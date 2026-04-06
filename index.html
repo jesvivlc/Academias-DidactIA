@@ -1182,6 +1182,54 @@ async function loadHorarios() {
   } catch(e) { c.innerHTML = `<div style="color:var(--red);font-size:13px;">Error: ${e.message}</div>`; }
 }
 
+// ── HORARIOS POR GRUPO ──
+async function getHorarioGrupo(grupoHorario) {
+  if (!sb || !ctrId) return null;
+  const { data, error } = await sb.from("horarios_grupo")
+    .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
+    .eq("centro_id", ctrId)
+    .eq("grupo_horario", grupoHorario)
+    .order("dia").order("tramo");
+  if (error) return null;
+  return data;
+}
+
+function formatHorarioGrupo(rows) {
+  if (!rows || !rows.length) return "Sin datos de horario.";
+  const diasOrden = ["lunes","martes","miercoles","jueves","viernes"];
+  const tramosHoras = {1:"08:00-08:55",2:"08:55-09:50",3:"09:50-10:45",5:"11:15-12:10",6:"12:10-13:05",8:"13:25-14:20",9:"14:20-15:15"};
+  const porDia = {};
+  for (const r of rows) {
+    if (!porDia[r.dia]) porDia[r.dia] = {};
+    if (!porDia[r.dia][r.tramo]) porDia[r.dia][r.tramo] = [];
+    porDia[r.dia][r.tramo].push(r);
+  }
+  let txt = "";
+  for (const dia of diasOrden) {
+    if (!porDia[dia]) continue;
+    txt += `\n${dia.toUpperCase()}:\n`;
+    for (const tramo of Object.keys(porDia[dia]).sort((a,b)=>a-b)) {
+      const horas = tramosHoras[tramo] || `Tramo ${tramo}`;
+      for (const c of porDia[dia][tramo]) {
+        const aula = c.aula ? ` (${c.aula})` : "";
+        txt += `  ${horas}: ${c.actividad_nombre} — ${c.profesor_nombre}${aula}\n`;
+      }
+    }
+  }
+  return txt || "Sin datos.";
+}
+
+async function buscarGrupoAlumno(nombreBuscado) {
+  if (!sb || !ctrId) return null;
+  const { data, error } = await sb.from("alumnos")
+    .select("nombre,grupo_horario,curso")
+    .eq("centro_id", ctrId)
+    .ilike("nombre", `%${nombreBuscado}%`)
+    .limit(5);
+  if (error || !data || !data.length) return null;
+  return data;
+}
+
 async function buildContext() {
   if (!sb || !ctrId) return "Sin información disponible.";
   let ctx = `Centro: ${ctrName}\n\n`;
@@ -1259,6 +1307,45 @@ async function sendMsg() {
   document.getElementById("typing").classList.add("show");
   document.getElementById("chat-msgs").scrollTop = 9999;
 
+  // ── Detectar consulta de horario de alumno ──
+  let horarioGrupoCtx = "";
+  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia/i.test(txt);
+  if (esConsultaHorario) {
+    let grupoTarget = null;
+    let alumnoTarget = null;
+
+    // 1. Si es familia, priorizar hijos vinculados
+    if (role === "familia" && currentUserAlumnos.length > 0) {
+      for (const alumno of currentUserAlumnos) {
+        const partes = alumno.nombre.split(/[\s,]+/).filter(p => p.length > 3);
+        const menciona = partes.some(p => txt.toLowerCase().includes(p.toLowerCase()));
+        if (menciona || currentUserAlumnos.length === 1) {
+          if (alumno.grupo_horario) { grupoTarget = alumno.grupo_horario; alumnoTarget = alumno.nombre; break; }
+        }
+      }
+    }
+
+    // 2. Buscar nombre en el mensaje
+    if (!grupoTarget) {
+      const candidatos = txt.match(/[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,})*/g) || [];
+      for (const cand of candidatos) {
+        const resultados = await buscarGrupoAlumno(cand);
+        if (resultados && resultados.length === 1 && resultados[0].grupo_horario) {
+          grupoTarget = resultados[0].grupo_horario; alumnoTarget = resultados[0].nombre; break;
+        }
+      }
+    }
+
+    // 3. Cargar horario del grupo
+    if (grupoTarget) {
+      const filas = await getHorarioGrupo(grupoTarget);
+      if (filas && filas.length) {
+        horarioGrupoCtx = `\n\nHORARIO DEL GRUPO ${grupoTarget}${alumnoTarget ? " (alumno: " + alumnoTarget + ")" : ""}:\n` + formatHorarioGrupo(filas);
+        horarioGrupoCtx += `\nUsa estos datos para responder con precisión sobre qué clase tiene el alumno en un día y hora concretos.`;
+      }
+    }
+  }
+
   const ctx = await buildContext();
   // Current date info for the chatbot
   const now = new Date();
@@ -1283,7 +1370,7 @@ Responde en español, de forma amable y concisa. Usa HTML simple (<p>,<ul><li>,<
 No reveles información confidencial de otros alumnos o profesores a usuarios que no deban verla.
 
 CONTEXTO EN TIEMPO REAL:
-${ctx}`;
+${ctx}${horarioGrupoCtx}`;
 
   try {
     // Formato Gemini: historial completo con system prompt en el primer mensaje
