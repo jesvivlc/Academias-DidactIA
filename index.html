@@ -1190,19 +1190,34 @@ function normalizeText(s = "") {
 
 function extractDiaHora(txt) {
   const q = normalizeText(txt);
+
+  // Detectar "ahora", "en este momento", "actualmente"
+  if (/\bahora\b|\ben este momento\b|\bactualmente\b/.test(q)) {
+    const now = new Date();
+    const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+    const diaHoy = diasNombre[now.getDay()];
+    const horaHoy = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+    return { dia: diaHoy, hora: horaHoy };
+  }
+
   let dia = null;
   if (/\blunes\b/.test(q)) dia = "lunes";
   else if (/\bmartes\b/.test(q)) dia = "martes";
   else if (/\bmiercoles\b/.test(q)) dia = "miercoles";
   else if (/\bjueves\b/.test(q)) dia = "jueves";
   else if (/\bviernes\b/.test(q)) dia = "viernes";
+  // Detectar "hoy"
+  else if (/\bhoy\b/.test(q)) {
+    const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+    dia = diasNombre[new Date().getDay()];
+  }
 
   let hora = null;
   let m = q.match(/\b(\d{1,2})\s*am\b/);
   if (m) { hora = String(parseInt(m[1],10)).padStart(2,"0") + ":00"; }
   if (!hora) { m = q.match(/\b(\d{1,2})\s*pm\b/); if (m) { let hh=parseInt(m[1],10); if(hh<12)hh+=12; hora=String(hh).padStart(2,"0")+":00"; } }
-  if (!hora) { m = q.match(/\ba\s+las\s+(\d{1,2})(?::(\d{2}))?\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+(m[2]||"00"); } }
-  if (!hora) { m = q.match(/\b(\d{1,2}):(\d{2})\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+m[2]; } }
+  if (!hora) { m = q.match(/\ba\s+las\s+(\d{1,2})[:.h]?(\d{2})?h?\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+(m[2]||"00"); } }
+  if (!hora) { m = q.match(/\b(\d{1,2})[:.](\d{2})h?\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+m[2]; } }
   return { dia, hora };
 }
 
