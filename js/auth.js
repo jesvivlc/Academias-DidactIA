@@ -382,3 +382,26 @@ function showTab(t) {
   if (t === "users") loadUsersPanel();
   if (t === "comedor") loadComedor();
 }
+// ── NAVEGACIÓN: IR AL INICIO ──
+function goHome() {
+  showTab("chat");
+  var msgs = document.getElementById("chat-msgs");
+  if (msgs) {
+    msgs.innerHTML = '<div class="welcome" id="welcome">' +
+      '<div class="wlc-ico">D</div>' +
+      '<div class="wlc-title">Hola, soy DidactIA</div>' +
+      '<div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">' + ctrName + '</strong>. Puedo responder preguntas sobre horarios, menús, reuniones y mucho más.</div>' +
+      '<div class="quick-qs">' +
+      '<div class="quick-q" onclick="askQ(\'¿Cuándo es la próxima reunión de familias?\')">¿Cuándo es la próxima reunión?</div>' +
+      '<div class="quick-q" onclick="askQ(\'¿Cuál es el teléfono de secretaría?\')">¿Cuál es el teléfono de secretaría?</div>' +
+      '<div class="quick-q" onclick="askQ(\'¿Qué actividades extraescolares hay?\')">¿Qué actividades extraescolares hay?</div>' +
+      '</div>' +
+      '<div id="role-cards-container" style="display:none;"><div class="role-cards" id="role-cards"></div></div>' +
+      '<div id="ficha-centro-container" style="display:none;"><div id="ficha-centro-data" style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;"></div></div>' +
+      '<div id="comedor-hijos-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Comedor hoy</div><div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div></div>' +
+      '<div id="mis-hijos-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Mis hijos</div><div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div></div>' +
+      '<div id="busqueda-alumno-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Búsqueda rápida de alumno</div><input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" /><div id="busqueda-alumno-res"></div></div>' +
+      '</div>';
+    setTimeout(initWelcomeExtras, 300);
+  }
+}
