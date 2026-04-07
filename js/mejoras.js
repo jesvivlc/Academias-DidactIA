@@ -33,23 +33,26 @@ function loadRoleCards() {
   };
 
   var rolCards = defs[role] || defs["familia"];
-  var html = "";
+  cards.innerHTML = "";
   for (var i = 0; i < rolCards.length; i++) {
     var c = rolCards[i];
-    var onclick = "";
-    if (c.q) {
-      onclick = "askQ(" + JSON.stringify(c.q) + ")";
-    } else if (c.info) {
-      onclick = "showTab(" + JSON.stringify(c.tab) + "); setTimeout(function(){ jumpToInfo(" + JSON.stringify(c.info) + "); }, 500);";
-    } else if (c.tab) {
-      onclick = "showTab(" + JSON.stringify(c.tab) + ")";
-    }
-    html += "<div class=\"role-card\" onclick=\"" + onclick + "\">";
-    html += "<div class=\"rc-ico\">" + c.ico + "</div>";
-    html += "<div><div class=\"rc-lbl\">" + c.lbl + "</div><div class=\"rc-sub\">" + c.sub + "</div></div>";
-    html += "</div>";
+    var div = document.createElement("div");
+    div.className = "role-card";
+    div.innerHTML = "<div class=\"rc-ico\">" + c.ico + "</div><div><div class=\"rc-lbl\">" + c.lbl + "</div><div class=\"rc-sub\">" + c.sub + "</div></div>";
+    (function(card) {
+      div.addEventListener("click", function() {
+        if (card.q) {
+          askQ(card.q);
+        } else if (card.info) {
+          showTab(card.tab);
+          setTimeout(function() { jumpToInfo(card.info); }, 500);
+        } else if (card.tab) {
+          showTab(card.tab);
+        }
+      });
+    })(c);
+    cards.appendChild(div);
   }
-  cards.innerHTML = html;
   container.style.display = "block";
 }
 
