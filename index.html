@@ -854,7 +854,7 @@ async function loadUserProfile(user) {
   if (role === "familia") {
     const { data: vinculos } = await sb
       .from("familia_alumno")
-      .select("alumnos(nombre, curso)")
+      .select("alumnos(id,nombre,curso,grupo_horario)")
       .eq("profile_id", profile.id);
     currentUserAlumnos = vinculos?.map(v => v.alumnos).filter(Boolean) || [];
   }
@@ -1220,14 +1220,109 @@ function formatHorarioGrupo(rows) {
 }
 
 async function buscarGrupoAlumno(nombreBuscado) {
-  if (!sb || !ctrId) return null;
+  if (!sb || !ctrId) {
+    console.log("[buscarGrupoAlumno] sin sb o ctrId", { sb: !!sb, ctrId });
+    return null;
+  }
+  const patron = `%${nombreBuscado}%`;
+  console.log("[buscarGrupoAlumno] buscando", { nombreBuscado, patron, ctrId });
   const { data, error } = await sb.from("alumnos")
     .select("nombre,grupo_horario,curso")
     .eq("centro_id", ctrId)
-    .ilike("nombre", `%${nombreBuscado}%`)
+    .ilike("nombre", patron)
     .limit(5);
-  if (error || !data || !data.length) return null;
+  if (error) {
+    console.error("[buscarGrupoAlumno] error", error);
+    return null;
+  }
+  console.log("[buscarGrupoAlumno] resultados", data);
+  if (!data || !data.length) return null;
   return data;
+}
+
+function normalizeText(s = "") {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[¿?¡!]/g, "")
+    .trim();
+}
+
+function extractDiaHora(txt) {
+  const q = normalizeText(txt);
+
+  let dia = null;
+  if (/lunes/.test(q)) dia = "lunes";
+  else if (/martes/.test(q)) dia = "martes";
+  else if (/miercoles/.test(q)) dia = "miercoles";
+  else if (/jueves/.test(q)) dia = "jueves";
+  else if (/viernes/.test(q)) dia = "viernes";
+
+  let hora = null;
+  let m = q.match(/(\d{1,2})\s*am/);
+  if (m) {
+    const hh = String(parseInt(m[1], 10)).padStart(2, "0");
+    hora = `${hh}:00`;
+  }
+
+  if (!hora) {
+    m = q.match(/(\d{1,2})\s*pm/);
+    if (m) {
+      let hh = parseInt(m[1], 10);
+      if (hh < 12) hh += 12;
+      hora = `${String(hh).padStart(2, "0")}:00`;
+    }
+  }
+
+  if (!hora) {
+    m = q.match(/a\s+las\s+(\d{1,2})(?::(\d{2}))?/);
+    if (m) {
+      const hh = String(parseInt(m[1], 10)).padStart(2, "0");
+      const mm = m[2] || "00";
+      hora = `${hh}:${mm}`;
+    }
+  }
+
+  if (!hora) {
+    m = q.match(/(\d{1,2}):(\d{2})/);
+    if (m) {
+      const hh = String(parseInt(m[1], 10)).padStart(2, "0");
+      hora = `${hh}:${m[2]}`;
+    }
+  }
+
+  return { dia, hora };
+}
+
+function horaMatchesSlot(horaUsuario, horaInicio, horaFin) {
+  if (!horaUsuario || !horaInicio) return false;
+  const hu = String(horaUsuario).slice(0, 5);
+  const hi = String(horaInicio).slice(0, 5);
+  const hf = String(horaFin || "").slice(0, 5);
+
+  if (hu === hi) return true;
+  if (hf) return hu >= hi && hu < hf;
+  return false;
+}
+
+async function getClaseExactaGrupo(grupoHorario, dia, hora) {
+  if (!sb || !ctrId || !grupoHorario || !dia || !hora) return null;
+
+  const { data, error } = await sb
+    .from("horarios_grupo")
+    .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
+    .eq("centro_id", ctrId)
+    .eq("grupo_horario", grupoHorario)
+    .eq("dia", dia);
+
+  if (error || !data || !data.length) {
+    if (error) console.error("[getClaseExactaGrupo] error", error);
+    return null;
+  }
+
+  const fila = data.find(f => horaMatchesSlot(hora, f.hora_inicio, f.hora_fin));
+  return fila || null;
 }
 
 async function buildContext() {
@@ -1307,55 +1402,135 @@ async function sendMsg() {
   document.getElementById("typing").classList.add("show");
   document.getElementById("chat-msgs").scrollTop = 9999;
 
-  // ── Detectar consulta de horario de alumno ──
   let horarioGrupoCtx = "";
+  let respuestaHorarioDirecta = null;
+
   const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene/i.test(txt);
+
   if (esConsultaHorario) {
+    console.log("[horario] consulta detectada:", txt);
+
     let grupoTarget = null;
     let alumnoTarget = null;
 
-    // 1. Si es familia, priorizar hijos vinculados
     if (role === "familia" && currentUserAlumnos.length > 0) {
+      console.log("[horario] probando hijos vinculados", currentUserAlumnos);
       for (const alumno of currentUserAlumnos) {
-        const partes = alumno.nombre.split(/[\s,]+/).filter(p => p.length > 3);
+        const partes = (alumno.nombre || "").split(/[\s,]+/).filter(p => p.length > 3);
         const menciona = partes.some(p => txt.toLowerCase().includes(p.toLowerCase()));
         if (menciona || currentUserAlumnos.length === 1) {
-          if (alumno.grupo_horario) { grupoTarget = alumno.grupo_horario; alumnoTarget = alumno.nombre; break; }
+          if (alumno.grupo_horario) {
+            grupoTarget = alumno.grupo_horario;
+            alumnoTarget = alumno.nombre;
+            console.log("[horario] alumno detectado por vínculo familiar", { alumnoTarget, grupoTarget });
+            break;
+          }
         }
       }
     }
 
-    // 2. Buscar nombre en el mensaje — acepta mayúsculas y minúsculas
     if (!grupoTarget) {
-      // Extraer palabras de 3+ letras, ignorar palabras comunes
-      const STOPWORDS = new Set(["que","tiene","hay","clase","horario","cual","cuando","donde","como","para","lunes","martes","miercoles","jueves","viernes","mañana","hoy","las","los","del","este","esta","sus","qué","cuál","cuándo","dónde","cómo"]);
-      const palabras = txt.split(/\s+/).filter(p => p.length >= 3 && !STOPWORDS.has(p.toLowerCase().replace(/[^a-záéíóúñ]/gi,"")));
-      // Intentar con combinaciones de 1, 2 y 3 palabras consecutivas
+      const STOPWORDS = new Set([
+        "que","tiene","hay","clase","horario","cual","cuando","donde","como","para",
+        "lunes","martes","miercoles","jueves","viernes","manana","mañana","hoy","las","los",
+        "del","este","esta","sus","el","la","de","a","en","am","pm",
+        "qué","cuál","cuándo","dónde","cómo"
+      ]);
+
+      const palabras = txt
+        .split(/\s+/)
+        .map(p => p.replace(/[¿?¡!.,;:]/g, ""))
+        .filter(p => {
+          const limpio = normalizeText(p).replace(/[^a-z0-9ñ]/gi, "");
+          return limpio.length >= 3 && !STOPWORDS.has(limpio);
+        });
+
+      console.log("[horario] palabras candidatas", palabras);
+
       for (let len = 3; len >= 1; len--) {
         for (let i = 0; i <= palabras.length - len; i++) {
-          const cand = palabras.slice(i, i + len).join(" ").replace(/[¿?¡!.,;:]/g, "");
+          const cand = palabras.slice(i, i + len).join(" ").trim();
           if (cand.length < 3) continue;
+
           const resultados = await buscarGrupoAlumno(cand);
           if (resultados && resultados.length >= 1 && resultados[0].grupo_horario) {
-            grupoTarget = resultados[0].grupo_horario; alumnoTarget = resultados[0].nombre; break;
+            grupoTarget = resultados[0].grupo_horario;
+            alumnoTarget = resultados[0].nombre;
+            console.log("[horario] alumno detectado por búsqueda libre", { cand, alumnoTarget, grupoTarget });
+            break;
           }
         }
         if (grupoTarget) break;
       }
     }
 
-    // 3. Cargar horario del grupo
-    if (grupoTarget) {
-      const filas = await getHorarioGrupo(grupoTarget);
-      if (filas && filas.length) {
-        horarioGrupoCtx = `\n\nHORARIO DEL GRUPO ${grupoTarget}${alumnoTarget ? " (alumno: " + alumnoTarget + ")" : ""}:\n` + formatHorarioGrupo(filas);
-        horarioGrupoCtx += `\nUsa estos datos para responder con precisión sobre qué clase tiene el alumno en un día y hora concretos.`;
+    const { dia, hora } = extractDiaHora(txt);
+    console.log("[horario] día/hora extraídos", { dia, hora });
+
+    if (grupoTarget && dia && hora) {
+      const claseExacta = await getClaseExactaGrupo(grupoTarget, dia, hora);
+      console.log("[horario] claseExacta", claseExacta);
+
+      if (claseExacta) {
+        respuestaHorarioDirecta =
+          `${alumnoTarget ? alumnoTarget : "El alumno"} está en el grupo ${grupoTarget}. ` +
+          `El ${dia} a las ${hora} tiene ${claseExacta.actividad_nombre || "clase"}` +
+          `${claseExacta.profesor_nombre ? ` con ${claseExacta.profesor_nombre}` : ""}` +
+          `${claseExacta.aula ? ` en ${claseExacta.aula}` : ""}.`;
+
+        horarioGrupoCtx =
+          `
+
+CONSULTA DE HORARIO RESUELTA POR DATOS:
+` +
+          `- Alumno: ${alumnoTarget || "No identificado"}
+` +
+          `- Grupo: ${grupoTarget}
+` +
+          `- Día: ${dia}
+` +
+          `- Hora consultada: ${hora}
+` +
+          `- Resultado exacto: ${respuestaHorarioDirecta}
+`;
       }
     }
+
+    if (!respuestaHorarioDirecta && grupoTarget) {
+      const filas = await getHorarioGrupo(grupoTarget);
+      console.log("[horario] filas completas grupo", { grupoTarget, total: filas?.length || 0 });
+      if (filas && filas.length) {
+        horarioGrupoCtx =
+          `
+
+HORARIO DEL GRUPO ${grupoTarget}${alumnoTarget ? " (alumno: " + alumnoTarget + ")" : ""}:
+` +
+          formatHorarioGrupo(filas) +
+          `
+Si la pregunta pide un día y una hora concretos, responde solo con la clase correspondiente si aparece en estos datos.`;
+      }
+    }
+
+    console.log("[horario] resumen final", {
+      alumnoTarget,
+      grupoTarget,
+      tieneRespuestaDirecta: !!respuestaHorarioDirecta,
+      horarioGrupoCtxLength: horarioGrupoCtx.length
+    });
+  }
+
+  if (respuestaHorarioDirecta) {
+    document.getElementById("typing").classList.remove("show");
+    addMsg("bot", `<p>${respuestaHorarioDirecta.replace(/</g,"&lt;")}</p>`);
+    history.push({ role:"assistant", content:respuestaHorarioDirecta });
+    busy = false;
+    document.getElementById("send-btn").disabled = false;
+    document.getElementById("load-bar").classList.remove("show");
+    document.getElementById("chat-inp").focus();
+    return;
   }
 
   const ctx = await buildContext();
-  // Current date info for the chatbot
   const now = new Date();
   const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
   const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1381,27 +1556,25 @@ CONTEXTO EN TIEMPO REAL:
 ${ctx}${horarioGrupoCtx}`;
 
   try {
-    // Formato Gemini: historial completo con system prompt en el primer mensaje
     const geminiContents = [];
-    // Construir historial: todos los turnos anteriores excepto el último
     const prevMsgs = history.slice(0, -1);
     const lastMsg = history[history.length - 1];
-    // Primer mensaje lleva el system prompt pegado
     if (prevMsgs.length === 0) {
-      // Primera pregunta: system + pregunta juntos
-      geminiContents.push({ role:"user", parts:[{ text: sys + "\n\nPregunta: " + lastMsg.content }] });
+      geminiContents.push({ role:"user", parts:[{ text: sys + "
+
+Pregunta: " + lastMsg.content }] });
     } else {
-      // Historial previo
       for (let i = 0; i < prevMsgs.length; i++) {
         const msg = prevMsgs[i];
         const isFirst = i === 0;
-        const txt = isFirst && msg.role === "user" ? sys + "\n\nPregunta: " + msg.content : msg.content;
+        const txtHist = isFirst && msg.role === "user" ? sys + "
+
+Pregunta: " + msg.content : msg.content;
         geminiContents.push({
           role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: txt }]
+          parts: [{ text: txtHist }]
         });
       }
-      // Último mensaje (la pregunta actual)
       geminiContents.push({ role:"user", parts:[{ text: lastMsg.content }] });
     }
     const res = await fetch(API, {
