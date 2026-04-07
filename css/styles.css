@@ -205,3 +205,80 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
 .rc-ico { font-size:20px; flex-shrink:0; }
 .rc-lbl { font-size:13px; font-weight:500; color:var(--txt); }
 .rc-sub { font-size:11px; color:var(--txt3); margin-top:1px; }
+/* ── OPTIMIZACIÓN MÓVIL ── */
+@media (max-width: 768px) {
+
+  /* Header compacto */
+  .hdr { padding:0 12px; height:52px; }
+  .brand-name { font-size:16px; }
+  .brand-sub { display:none; }
+  .ctr-pill { padding:4px 8px 4px 6px; font-size:12px; }
+  #logout-btn { font-size:11px; padding:3px 8px; }
+  .role-pill { font-size:11px; padding:3px 8px; }
+
+  /* Tabs scrollables */
+  .tabs { overflow-x:auto; padding:0 12px; gap:0; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { padding:10px 14px; font-size:12px; white-space:nowrap; flex-shrink:0; }
+
+  /* Main sin sidebar */
+  .main { height:calc(100vh - 52px - 40px); }
+  .sidebar { display:none !important; }
+  .chat-main { width:100%; }
+
+  /* Chat msgs más cómodas */
+  .chat-msgs { padding:14px 12px; gap:10px; }
+  .msg { max-width:90%; }
+  .msg-bbl { font-size:13px; padding:10px 13px; }
+
+  /* Input area móvil */
+  .input-area { padding:10px 12px; gap:7px; }
+  .chat-inp { font-size:15px; } /* 15px evita zoom en iOS */
+  .send-btn { width:42px; height:42px; }
+  .mic-btn { width:42px; height:42px; }
+
+  /* Welcome centrado y compacto */
+  .welcome { padding:24px 16px; }
+  .wlc-ico { width:48px; height:48px; font-size:22px; }
+  .wlc-title { font-size:18px; }
+  .wlc-sub { font-size:13px; }
+  .quick-q { font-size:12px; padding:9px 12px; }
+
+  /* Tarjetas rol en móvil: 1 columna */
+  .role-cards { grid-template-columns:1fr; }
+  .role-card { padding:10px 12px; }
+
+  /* Admin panel */
+  #panel-admin { padding:16px 14px; gap:14px; }
+  .grid2 { grid-template-columns:1fr; }
+  .stats { grid-template-columns:1fr 1fr; gap:10px; }
+  .stat { padding:14px 16px; }
+  .stat-n { font-size:24px; }
+  .pg-title { font-size:20px; }
+  .card { padding:16px; }
+
+  /* Comedor panel */
+  #panel-comedor > div { padding:16px 14px !important; }
+
+  /* Users panel */
+  #panel-users { padding:16px 14px !important; }
+  .tbl { font-size:11px; }
+  .tbl th, .tbl td { padding:7px 8px; }
+
+  /* Setup (login) */
+  .setup-card { padding:28px 20px; }
+}
+
+/* Móvil pequeño (iPhone SE, etc.) */
+@media (max-width: 375px) {
+  .brand-logo { width:28px; height:28px; font-size:14px; }
+  .hdr { height:48px; }
+  .tab { padding:9px 11px; font-size:11px; }
+}
+
+/* PWA: quitar bounce scroll en iOS */
+html { height:100%; }
+body { height:100%; overflow:hidden; }
+.main { overflow:hidden; }
+.chat-msgs { -webkit-overflow-scrolling:touch; }
+#panel-admin, #panel-comedor > div, #panel-users { -webkit-overflow-scrolling:touch; }
