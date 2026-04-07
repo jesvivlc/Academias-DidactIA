@@ -1118,6 +1118,7 @@ async function loadInfoCentro() {
       { k:"claustro",          l:"Próximo claustro",                 def:"profesional" },
       { k:"solicitud_materiales", l:"Solicitud de materiales",       def:"profesional",   ta:true },
       { k:"incidencias_info",  l:"Info sobre incidencias",           def:"profesional",   ta:true },
+      { k:"informacion_general", l:"Información general del centro (contexto para el chatbot)", def:"todos", ta:true },
     ];
     const visOpts = `<option value="todos">👥 Todos</option><option value="familia">👨‍👩‍👧 Solo familias</option><option value="profesional">👩‍🏫 Solo profesionales</option>`;
     c.innerHTML = fields.map(f => {
@@ -1145,7 +1146,7 @@ async function loadInfoCentro() {
 async function saveInfo() {
   const msg = document.getElementById("save-msg");
   msg.textContent = "⟳ Guardando…"; msg.style.display = "block"; msg.style.color = "var(--txt2)";
-  const keys = ["horario_comedor","proxima_reunion","telefono","aviso_activo","extraescolares","menu_semanal","claustro","solicitud_materiales","incidencias_info"];
+  const keys = ["horario_comedor","proxima_reunion","telefono","aviso_activo","extraescolares","menu_semanal","claustro","solicitud_materiales","incidencias_info","informacion_general"];
   let ok = 0, err = 0;
   for (const k of keys) {
     const el = document.getElementById("f-"+k); if (!el) continue;
@@ -1288,6 +1289,15 @@ async function buscarGrupoAlumno(nombreBuscado) {
   if (!sb || !ctrId) return null;
   const palabras = nombreBuscado.trim().split(/\s+/).filter(p => p.length >= 3);
   if (!palabras.length) return null;
+
+  // Verificar que no es un profesor (evita confundir Elisa Tarín profesora con alumna)
+  const { data: profCheck } = await sb.from("horarios")
+    .select("profesor").eq("centro_id", ctrId)
+    .ilike("profesor", `%${palabras[0]}%`).limit(5);
+  if (profCheck && profCheck.length > 0) {
+    const esProfesor = profCheck.some(p => _tokenMatch(p.profesor || "", palabras));
+    if (esProfesor) return null;
+  }
 
   // Traer candidatos con ilike para cada palabra (búsqueda amplia en BD)
   let query = sb.from("alumnos")
