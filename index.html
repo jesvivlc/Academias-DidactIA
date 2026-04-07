@@ -1278,22 +1278,31 @@ function formatHorarioGrupo(rows) {
   return txt || "Sin datos.";
 }
 
+function _tokenMatch(nombre, palabras) {
+  // Divide el nombre en tokens exactos y comprueba que cada palabra buscada coincide con algún token
+  const tokens = nombre.toLowerCase().split(/[\s,]+/).filter(t => t.length > 0);
+  return palabras.every(p => tokens.some(t => t === p.toLowerCase()));
+}
+
 async function buscarGrupoAlumno(nombreBuscado) {
   if (!sb || !ctrId) return null;
-  // Buscar cada palabra del candidato por separado (AND implícito via múltiples ilike)
   const palabras = nombreBuscado.trim().split(/\s+/).filter(p => p.length >= 3);
   if (!palabras.length) return null;
 
-  // Construir query con todas las palabras
+  // Traer candidatos con ilike para cada palabra (búsqueda amplia en BD)
   let query = sb.from("alumnos")
     .select("nombre,grupo_horario,curso")
     .eq("centro_id", ctrId);
   for (const p of palabras) {
     query = query.ilike("nombre", `%${p}%`);
   }
-  const { data, error } = await query.limit(5);
+  const { data, error } = await query.limit(20);
   if (error || !data || !data.length) return null;
-  return data;
+
+  // Filtrar en JS exigiendo coincidencia exacta de tokens (evita elisa→elisabet)
+  const filtrados = data.filter(a => _tokenMatch(a.nombre, palabras));
+  if (!filtrados.length) return null;
+  return filtrados;
 }
 
 async function buildContext() {
