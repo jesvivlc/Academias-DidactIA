@@ -1560,16 +1560,12 @@ ${ctx}${horarioGrupoCtx}`;
     const prevMsgs = history.slice(0, -1);
     const lastMsg = history[history.length - 1];
     if (prevMsgs.length === 0) {
-      geminiContents.push({ role:"user", parts:[{ text: sys + "
-
-Pregunta: " + lastMsg.content }] });
+      geminiContents.push({ role:"user", parts:[{ text: sys + "\n\nPregunta: " + lastMsg.content }] });
     } else {
       for (let i = 0; i < prevMsgs.length; i++) {
         const msg = prevMsgs[i];
         const isFirst = i === 0;
-        const txtHist = isFirst && msg.role === "user" ? sys + "
-
-Pregunta: " + msg.content : msg.content;
+        const txtHist = isFirst && msg.role === "user" ? sys + "\n\nPregunta: " + msg.content : msg.content;
         geminiContents.push({
           role: msg.role === "assistant" ? "model" : "user",
           parts: [{ text: txtHist }]
