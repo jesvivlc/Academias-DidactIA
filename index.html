@@ -1383,10 +1383,13 @@ async function sendMsg() {
       const palabras = txt.replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS.has(normalizeText(p)));
 
-      // Buscar primero pares de palabras (más precisos), luego palabras sueltas únicas
-      // Paso 1: pares consecutivos
+      // Paso 1: pares consecutivos (normal e invertido)
+      const pares = [];
       for (let i = 0; i < palabras.length - 1; i++) {
-        const cand = palabras[i] + " " + palabras[i+1];
+        pares.push(palabras[i] + " " + palabras[i+1]);
+        pares.push(palabras[i+1] + " " + palabras[i]); // invertido
+      }
+      for (const cand of pares) {
         const resultados = await buscarGrupoAlumno(cand);
         if (resultados && resultados.length === 1 && resultados[0].grupo_horario) {
           grupoTarget = resultados[0].grupo_horario;
