@@ -1377,7 +1377,12 @@ async function sendMsg() {
   let horarioGrupoCtx = "";
   let respuestaHorarioDirecta = null;
 
-  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene/i.test(txt);
+  // Contexto conversacional: recordar último día/hora preguntado
+  if (!window._ultimoDiaHora) window._ultimoDiaHora = { dia: null, hora: null };
+
+  // Detectar consulta de horario: keywords explícitas O mensaje con día+hora
+  const tieneDiaHora = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|ahora)\b/i.test(txt) && /\b(\d{1,2}[:.h]\d{2}|\d{1,2}\s*[ap]m|ahora)\b/i.test(txt);
+  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene/i.test(txt) || tieneDiaHora;
 
   if (esConsultaHorario) {
     let grupoTarget = null;
@@ -1394,58 +1399,65 @@ async function sendMsg() {
       }
     }
 
-    // 2. Búsqueda libre: probar cada palabra del mensaje directamente contra la BD
+    // 2. Búsqueda libre
     if (!grupoTarget) {
       const STOPWORDS = new Set([
         "que","tiene","hay","clase","horario","cual","cuando","donde","como","para",
-        "lunes","martes","miercoles","jueves","viernes","manana","hoy","las","los",
-        "del","este","esta","sus","el","la","de","a","en","am","pm",
+        "lunes","martes","miercoles","jueves","viernes","manana","hoy","ahora","las","los",
+        "del","este","esta","sus","el","la","de","a","en","am","pm","y","o",
         "8am","8","qué","cuál","cuándo","dónde","cómo","quien","quién"
       ]);
       const palabras = txt.replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS.has(normalizeText(p)));
 
-      // Paso 1: pares consecutivos (normal e invertido)
+      // Paso 1: pares (normal e invertido)
       const pares = [];
       for (let i = 0; i < palabras.length - 1; i++) {
         pares.push(palabras[i] + " " + palabras[i+1]);
-        pares.push(palabras[i+1] + " " + palabras[i]); // invertido
+        pares.push(palabras[i+1] + " " + palabras[i]);
       }
       for (const cand of pares) {
         const resultados = await buscarGrupoAlumno(cand);
         if (resultados && resultados.length === 1 && resultados[0].grupo_horario) {
-          grupoTarget = resultados[0].grupo_horario;
-          alumnoTarget = resultados[0].nombre;
-          break;
+          grupoTarget = resultados[0].grupo_horario; alumnoTarget = resultados[0].nombre; break;
         }
       }
 
-      // Paso 2: palabras sueltas que den resultado único
+      // Paso 2: palabras sueltas únicas
       if (!grupoTarget) {
         for (const palabra of palabras) {
           const resultados = await buscarGrupoAlumno(palabra);
           if (resultados && resultados.length === 1 && resultados[0].grupo_horario) {
-            grupoTarget = resultados[0].grupo_horario;
-            alumnoTarget = resultados[0].nombre;
-            break;
+            grupoTarget = resultados[0].grupo_horario; alumnoTarget = resultados[0].nombre; break;
           }
         }
       }
     }
 
-    // 3. Extraer día y hora de la pregunta
-    const { dia, hora } = extractDiaHora(txt);
+    // 3. Extraer día y hora — usar contexto conversacional si no hay en el mensaje
+    let { dia, hora } = extractDiaHora(txt);
+    if (!dia && window._ultimoDiaHora.dia) dia = window._ultimoDiaHora.dia;
+    if (!hora && window._ultimoDiaHora.hora) hora = window._ultimoDiaHora.hora;
+    // Guardar para próxima pregunta
+    if (dia) window._ultimoDiaHora.dia = dia;
+    if (hora) window._ultimoDiaHora.hora = hora;
 
-    // 4. Resolver clase exacta por código (sin Gemini)
+    // 4. Resolver clase exacta (sin Gemini)
     if (grupoTarget && dia && hora) {
-      const claseExacta = await getClaseExactaGrupo(grupoTarget, dia, hora);
+      const filasDia = await (async () => {
+        const { data } = await sb.from("horarios_grupo")
+          .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
+          .eq("centro_id", ctrId).eq("grupo_horario", grupoTarget).eq("dia", dia);
+        return data || [];
+      })();
+      // Filtrar por hora y tomar solo la primera coincidencia (evitar optativas duplicadas)
+      const claseExacta = filasDia.find(f => horaMatchesSlot(hora, f.hora_inicio, f.hora_fin)) || null;
       if (claseExacta) {
         respuestaHorarioDirecta =
           `<p><strong>${alumnoTarget || "El alumno"}</strong> (grupo ${grupoTarget}) el ${dia} a las ${hora} tiene:</p>` +
           `<p><strong>${claseExacta.actividad_nombre || "clase"}</strong>` +
           `${claseExacta.profesor_nombre ? ` con <strong>${claseExacta.profesor_nombre}</strong>` : ""}` +
           `${claseExacta.aula ? ` en el aula <strong>${claseExacta.aula}</strong>` : ""}.</p>`;
-
         horarioGrupoCtx =
           `\n\nCONSULTA RESUELTA:\n- Alumno: ${alumnoTarget}\n- Grupo: ${grupoTarget}\n` +
           `- ${dia} a las ${hora}: ${claseExacta.actividad_nombre}` +
