@@ -1280,11 +1280,18 @@ function formatHorarioGrupo(rows) {
 
 async function buscarGrupoAlumno(nombreBuscado) {
   if (!sb || !ctrId) return null;
-  const { data, error } = await sb.from("alumnos")
+  // Buscar cada palabra del candidato por separado (AND implícito via múltiples ilike)
+  const palabras = nombreBuscado.trim().split(/\s+/).filter(p => p.length >= 3);
+  if (!palabras.length) return null;
+
+  // Construir query con todas las palabras
+  let query = sb.from("alumnos")
     .select("nombre,grupo_horario,curso")
-    .eq("centro_id", ctrId)
-    .ilike("nombre", `%${nombreBuscado}%`)
-    .limit(5);
+    .eq("centro_id", ctrId);
+  for (const p of palabras) {
+    query = query.ilike("nombre", `%${p}%`);
+  }
+  const { data, error } = await query.limit(5);
   if (error || !data || !data.length) return null;
   return data;
 }
