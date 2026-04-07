@@ -1383,22 +1383,23 @@ async function sendMsg() {
       const palabras = txt.replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS.has(normalizeText(p)));
 
-      // Buscar cada palabra individualmente contra la BD
-      for (const palabra of palabras) {
-        const resultados = await buscarGrupoAlumno(palabra);
-        if (resultados && resultados.length >= 1 && resultados[0].grupo_horario) {
+      // Buscar primero pares de palabras (más precisos), luego palabras sueltas únicas
+      // Paso 1: pares consecutivos
+      for (let i = 0; i < palabras.length - 1; i++) {
+        const cand = palabras[i] + " " + palabras[i+1];
+        const resultados = await buscarGrupoAlumno(cand);
+        if (resultados && resultados.length === 1 && resultados[0].grupo_horario) {
           grupoTarget = resultados[0].grupo_horario;
           alumnoTarget = resultados[0].nombre;
           break;
         }
       }
 
-      // Si no encontró con palabras sueltas, probar pares consecutivos
+      // Paso 2: palabras sueltas que den resultado único
       if (!grupoTarget) {
-        for (let i = 0; i < palabras.length - 1; i++) {
-          const cand = palabras[i] + " " + palabras[i+1];
-          const resultados = await buscarGrupoAlumno(cand);
-          if (resultados && resultados.length >= 1 && resultados[0].grupo_horario) {
+        for (const palabra of palabras) {
+          const resultados = await buscarGrupoAlumno(palabra);
+          if (resultados && resultados.length === 1 && resultados[0].grupo_horario) {
             grupoTarget = resultados[0].grupo_horario;
             alumnoTarget = resultados[0].nombre;
             break;
