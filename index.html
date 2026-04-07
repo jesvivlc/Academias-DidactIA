@@ -201,6 +201,45 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
 .alumno-info { flex:1; }
 .alumno-nombre { font-weight:500;color:var(--txt); }
 .alumno-curso { font-size:11px;color:var(--txt3); }
+
+/* VOZ */
+.mic-btn { width:46px;height:46px;background:var(--srf2);border:1.5px solid var(--bdr);border-radius:var(--r-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;font-size:18px; }
+.mic-btn:hover { border-color:var(--ink); }
+.mic-btn.listening { background:var(--red-l);border-color:var(--red);animation:pulse-mic .8s ease-in-out infinite; }
+@keyframes pulse-mic { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+/* BANNER AVISO */
+#banner-aviso { display:none;background:var(--amb-l);border-bottom:1px solid #f5d9a8;padding:10px 24px;font-size:13px;color:var(--amb);display:flex;align-items:center;gap:8px;font-weight:500; }
+#banner-aviso.hidden { display:none!important; }
+
+/* PANEL MIS HIJOS / MI CENTRO */
+.ficha-centro { background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--txt2); }
+.ficha-centro strong { color:var(--txt);font-size:15px;font-weight:600; }
+.ficha-row { display:flex;gap:6px;align-items:baseline; }
+.ficha-label { font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);min-width:80px; }
+
+/* CARDS RÁPIDAS POR ROL */
+.role-cards { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;text-align:left; }
+.role-card { padding:12px 14px;background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r-sm);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--txt2); }
+.role-card:hover { border-color:var(--ink);color:var(--ink);background:var(--ink-ll); }
+.role-card .rc-ico { font-size:18px;flex-shrink:0; }
+.role-card .rc-lbl { font-weight:500;font-size:13px; }
+.role-card .rc-sub { font-size:11px;color:var(--txt3);margin-top:1px; }
+
+/* HISTORIAL RECIENTE */
+.hist-item { padding:7px 10px;background:var(--srf2);border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:12px;color:var(--txt2);cursor:pointer;transition:all .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.hist-item:hover { border-color:var(--ink);color:var(--ink); }
+
+/* BÚSQUEDA RÁPIDA */
+#busqueda-alumno-res { display:flex;flex-direction:column;gap:6px;margin-top:8px; }
+.alumno-res-item { padding:9px 12px;background:var(--srf2);border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;display:flex;align-items:center;gap:10px; }
+.alumno-res-nombre { font-weight:500;flex:1; }
+.alumno-res-meta { font-size:11px;color:var(--txt3); }
+
+/* ESTADO COMEDOR FAMILIA */
+.comedor-hijo { padding:10px 14px;background:var(--srf2);border:1.5px solid var(--bdr);border-radius:var(--r-sm);display:flex;align-items:center;gap:10px;font-size:13px; }
+.comedor-hijo.se-queda { background:var(--ink-ll);border-color:var(--ink-l); }
+
 </style>
 </head>
 <body>
@@ -306,6 +345,7 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
   </div>
 </header>
 
+<div id="banner-aviso" style="display:none;background:var(--amb-l);border-bottom:1px solid #f5d9a8;padding:10px 24px;font-size:13px;color:var(--amb);align-items:center;gap:8px;font-weight:500;">⚠️ <span id="banner-aviso-txt"></span></div>
 <nav class="tabs" id="app-tabs" style="display:none">
   <div class="tab active" id="tab-chat" onclick="showTab('chat')">💬 Chatbot</div>
   <div class="tab" id="tab-comedor" onclick="showTab('comedor')" style="display:none">🍽️ Comedor</div>
@@ -331,6 +371,10 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
       <div class="sb-item" onclick="askQ('¿Cómo registro una incidencia de convivencia?')">📋 Registrar incidencia</div>
       <div class="sb-sec">Horarios</div>
       <div class="sb-item" onclick="askQ('¿Cuál es el horario de clases de esta semana?')">📆 Ver horario de clases</div>
+      <div class="sb-sec" id="sb-sec-recientes" style="display:none;">Recientes</div>
+      <div id="sb-historial"></div>
+      <div class="sb-sec" id="sb-sec-acciones" style="display:none;">Acciones rápidas</div>
+      <div id="sb-acciones-rol"></div>
     </aside>
     <div class="chat-main">
       <div class="load-bar" id="load-bar"></div>
@@ -344,6 +388,30 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
             <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
             <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
           </div>
+          <!-- Tarjetas rápidas por rol (mejora 1) -->
+          <div id="role-cards-container" style="display:none;margin-top:16px;">
+            <div class="role-cards" id="role-cards"></div>
+          </div>
+          <!-- Ficha Mi Centro (mejora 2) -->
+          <div id="ficha-centro-container" style="display:none;margin-top:14px;">
+            <div class="ficha-centro" id="ficha-centro-data"></div>
+          </div>
+          <!-- Estado comedor hijos (mejora 5) -->
+          <div id="comedor-hijos-container" style="display:none;margin-top:14px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;">Comedor hoy</div>
+            <div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <!-- Mis hijos (mejora 7) -->
+          <div id="mis-hijos-container" style="display:none;margin-top:14px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;">Mis hijos</div>
+            <div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <!-- Búsqueda rápida alumno (mejora 6) -->
+          <div id="busqueda-alumno-container" style="display:none;margin-top:14px;text-align:left;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;">Búsqueda rápida</div>
+            <input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar alumno por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" />
+            <div id="busqueda-alumno-res"></div>
+          </div>
         </div>
       </div>
       <div class="typing" id="typing">
@@ -355,6 +423,7 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
           <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
             onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         </div>
+        <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
         <button class="send-btn" id="send-btn" onclick="sendMsg()">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
@@ -436,10 +505,13 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
             <div class="card-desc" style="margin-top:2px;">Marca quién se queda hoy al comedor</div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
           <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('todos')">Todos</button>
           <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('se_queda')">✅ Se quedan</button>
           <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('no_se_queda')">❌ No se quedan</button>
+          <select class="fi" id="comedor-filtro-grupo" style="width:auto;font-size:12px;padding:4px 8px;" onchange="filterComedor(comedorFilter)">
+            <option value="">Todos los grupos</option>
+          </select>
         </div>
         <div id="comedor-list" style="display:flex;flex-direction:column;gap:8px;">
           <div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;"><span class="spin">⟳</span> Cargando lista…</div>
@@ -885,6 +957,7 @@ async function loadUserProfile(user) {
 
   updateUI();
   loadAdmin();
+  setTimeout(initWelcomeExtras, 300);
 }
 
 function onCtrChange() {
@@ -904,6 +977,10 @@ function updateUI() {
   if (hdrEl) hdrEl.textContent = n;
 }
 function resetChat() {
+  // Ocultar extras del welcome al resetear
+  ["role-cards-container","ficha-centro-container","comedor-hijos-container","mis-hijos-container","busqueda-alumno-container"].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display = "none";
+  });
   const msgs = document.getElementById("chat-msgs");
   msgs.innerHTML = `<div class="welcome" id="welcome">
     <div class="wlc-ico">D</div>
@@ -1128,7 +1205,7 @@ async function loadInfoCentro() {
 
 async function saveInfo() {
   const msg = document.getElementById("save-msg");
-  msg.textContent = "⟳ Guardando…"; msg.style.display = "block"; msg.style.color = "var(--txt2)";
+  msg.textContent = "⟳ Guardando en Supabase…"; msg.style.display = "block"; msg.style.color = "var(--txt2)"; msg.style.background="var(--srf2)"; msg.style.padding="8px 12px"; msg.style.borderRadius="var(--r-sm)";
   const keys = ["horario_comedor","proxima_reunion","telefono","aviso_activo","extraescolares","menu_semanal","claustro","solicitud_materiales","incidencias_info","informacion_general"];
   let ok = 0, err = 0;
   for (const k of keys) {
@@ -1147,7 +1224,7 @@ async function saveInfo() {
       ok++;
     } catch(e) { err++; }
   }
-  msg.textContent = err === 0 ? `✅ ${ok} campos guardados en Supabase` : `⚠️ ${ok} guardados, ${err} errores`;
+  msg.textContent = err === 0 ? `✅ ${ok} campo${ok!==1?"s":""} guardado${ok!==1?"s":""} correctamente` : `⚠️ ${ok} guardados, ${err} con error`;
   msg.style.color = err === 0 ? "var(--ink)" : "var(--amb)";
   await loadInfoCentro();
 }
@@ -1372,6 +1449,7 @@ async function sendMsg() {
   document.getElementById("load-bar").classList.add("show");
   addMsg("user", `<p>${txt.replace(/</g,"&lt;")}</p>`);
   history.push({ role:"user", content:txt });
+  addToHistorial(txt);
   document.getElementById("typing").classList.add("show");
   document.getElementById("chat-msgs").scrollTop = 9999;
 
@@ -1655,15 +1733,18 @@ function filterComedor(f) {
 
 function renderComedorList() {
   const container = document.getElementById("comedor-list");
+  const grupoFiltro = document.getElementById("comedor-filtro-grupo")?.value || "";
   let filtered = comedorData;
   if (comedorFilter === "se_queda") filtered = comedorData.filter(a => a.se_queda);
   if (comedorFilter === "no_se_queda") filtered = comedorData.filter(a => !a.se_queda);
+  if (grupoFiltro) filtered = filtered.filter(a => (a.grupo_horario || a.curso || "") === grupoFiltro);
 
   if (!filtered.length) {
     container.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;">No hay alumnos en esta categoría.</div>';
     return;
   }
 
+  populateGruposComedor();
   container.innerHTML = filtered.map(a => `
     <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${a.se_queda?"var(--ink-ll)":"var(--srf2)"};border:1.5px solid ${a.se_queda?"var(--ink-l)":"var(--bdr)"};border-radius:var(--r-sm);transition:all .15s;">
       <div style="flex:1;">
@@ -1700,6 +1781,12 @@ async function toggleAsistencia(alumnoId, seQueda) {
   alumno.se_queda = seQueda;
   updateComedorStats();
   renderComedorList();
+  // Feedback visual breve
+  const toast = document.createElement("div");
+  toast.style.cssText = "position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:10px 18px;border-radius:var(--r-sm);font-size:13px;z-index:9999;animation:fu .2s ease;box-shadow:var(--sh-lg);";
+  toast.textContent = seQueda ? "✅ Marcado como asistente" : "❌ Marcado como no asistente";
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2200);
 }
 
 function printComedor() {
@@ -1726,6 +1813,296 @@ function jumpToInfo(k) {
   showTab("admin");
   setTimeout(() => { const el = document.getElementById("f-"+k); if(el){el.focus();el.scrollIntoView({behavior:"smooth",block:"center"});} }, 400);
 }
+// ── MEJORA 2+3+4: FICHA CENTRO + BANNER + EVENTOS ──
+async function loadFichaCentro() {
+  const container = document.getElementById("ficha-centro-container");
+  const dataEl = document.getElementById("ficha-centro-data");
+  if (!container || !dataEl || !sb || !ctrId) return;
+
+  const { data } = await sb.from("info_centro").select("nombre_config,datos").eq("centro_id", ctrId);
+  if (!data?.length) return;
+
+  const cfg = {};
+  data.forEach(r => { cfg[r.nombre_config] = r.datos?.valor || ""; });
+
+  // Banner aviso (mejora 3)
+  const bannerEl = document.getElementById("banner-aviso");
+  const bannerTxt = document.getElementById("banner-aviso-txt");
+  if (cfg.aviso_activo && bannerEl && bannerTxt) {
+    bannerTxt.textContent = cfg.aviso_activo;
+    bannerEl.classList.remove("hidden");
+    bannerEl.style.display = "flex";
+  }
+
+  // Ficha centro (mejora 2)
+  const rows = [];
+  if (ctrName) rows.push(`<strong>${ctrName}</strong>`);
+  if (cfg.telefono) rows.push(`<div class="ficha-row"><span class="ficha-label">📞 Tel</span><span>${cfg.telefono}</span></div>`);
+  if (cfg.informacion_general) {
+    // Extraer email si aparece en informacion_general
+    const emailMatch = cfg.informacion_general.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+    if (emailMatch) rows.push(`<div class="ficha-row"><span class="ficha-label">✉️ Email</span><span>${emailMatch[0]}</span></div>`);
+  }
+
+  // Próximos eventos (mejora 4) — usando proxima_reunion de info_centro
+  if (cfg.proxima_reunion) rows.push(`<div class="ficha-row"><span class="ficha-label">📅 Reunión</span><span>${cfg.proxima_reunion}</span></div>`);
+  if (cfg.claustro && (role === "profesional" || role === "admin" || role === "superadmin")) {
+    rows.push(`<div class="ficha-row"><span class="ficha-label">🏫 Claustro</span><span>${cfg.claustro}</span></div>`);
+  }
+
+  if (rows.length > 1) {
+    dataEl.innerHTML = rows.join("");
+    container.style.display = "block";
+  }
+}
+
+// ── MEJORA 5: ESTADO COMEDOR HIJOS ──
+async function loadComedorHijos() {
+  if (role !== "familia" || !currentUserAlumnos.length) return;
+  const container = document.getElementById("comedor-hijos-container");
+  const list = document.getElementById("comedor-hijos-list");
+  if (!container || !list) return;
+
+  const today = new Date().toISOString().split("T")[0];
+  const alumnosIds = currentUserAlumnos.map(a => a.id).filter(Boolean);
+  
+  // Necesitamos los IDs — recargar desde alumnos con IDs
+  const { data: alumnosData } = await sb.from("familia_alumno")
+    .select("alumnos(id,nombre,curso,grupo_horario)")
+    .eq("profile_id", (await sb.from("profiles").select("id").eq("user_id", currentUser.id).single()).data?.id);
+  
+  const alumnos = alumnosData?.map(v => v.alumnos).filter(Boolean) || [];
+  if (!alumnos.length) return;
+
+  const ids = alumnos.map(a => a.id);
+  const { data: asistencia } = await sb.from("asistencia_comedor")
+    .select("alumno_id,se_queda").eq("centro_id", ctrId).eq("fecha", today)
+    .in("alumno_id", ids);
+
+  const asistMap = {};
+  (asistencia || []).forEach(a => { asistMap[a.alumno_id] = a.se_queda; });
+
+  list.innerHTML = alumnos.map(a => {
+    const seQueda = asistMap[a.id];
+    const estado = seQueda === true ? "✅ Se queda" : seQueda === false ? "❌ No se queda" : "⏳ Sin confirmar";
+    const cls = seQueda === true ? "comedor-hijo se-queda" : "comedor-hijo";
+    return `<div class="${cls}"><span style="flex:1;font-weight:500;">${a.nombre}</span><span style="font-size:12px;color:var(--txt3);">${a.curso || ""}</span><span style="font-size:12px;">${estado}</span></div>`;
+  }).join("");
+
+  container.style.display = "block";
+}
+
+// ── MEJORA 7: MIS HIJOS ──
+function loadMisHijos() {
+  if (role !== "familia" || !currentUserAlumnos.length) return;
+  const container = document.getElementById("mis-hijos-container");
+  const list = document.getElementById("mis-hijos-list");
+  if (!container || !list) return;
+
+  list.innerHTML = currentUserAlumnos.map(a => `
+    <div style="padding:9px 12px;background:var(--srf2);border:1.5px solid var(--bdr);border-radius:var(--r-sm);display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;">${a.nombre}</div>
+        <div style="font-size:11px;color:var(--txt3);">${a.curso || ""}${a.grupo_horario ? " · " + a.grupo_horario : ""}</div>
+      </div>
+      <button class="btn btn-s" style="font-size:11px;padding:4px 10px;" onclick="askQ('¿Qué clase tiene ${a.nombre.split(',')[0].trim()} ahora?')">📅 Horario</button>
+    </div>`).join("");
+
+  container.style.display = "block";
+}
+
+// ── MEJORA 1: TARJETAS RÁPIDAS POR ROL ──
+function loadRoleCards() {
+  const container = document.getElementById("role-cards-container");
+  const cards = document.getElementById("role-cards");
+  if (!container || !cards) return;
+
+  const defs = {
+    familia: [
+      { ico:"📅", lbl:"Próxima reunión", sub:"Cuándo es", fn: () => askQ("¿Cuándo es la próxima reunión de familias?") },
+      { ico:"📞", lbl:"Contactar", sub:"Teléfono del centro", fn: () => askQ("¿Cuál es el teléfono de secretaría?") },
+      { ico:"🥗", lbl:"Menú semanal", sub:"Ver esta semana", fn: () => askQ("¿Cuál es el menú de esta semana?") },
+      { ico:"📝", lbl:"Justificantes", sub:"Cómo justificar", fn: () => askQ("¿Cómo funciona el protocolo de ausencias y justificantes?") },
+    ],
+    profesional: [
+      { ico:"📋", lbl:"Mi horario", sub:"Ver mis clases", fn: () => askQ("¿Cuál es mi horario de clases?") },
+      { ico:"🍽️", lbl:"Comedor", sub:"Lista de hoy", fn: () => showTab("comedor") },
+      { ico:"🏫", lbl:"Próximo claustro", sub:"Fecha y hora", fn: () => askQ("¿Cuándo es el próximo claustro?") },
+      { ico:"📚", lbl:"Materiales", sub:"Solicitar recursos", fn: () => askQ("¿Cómo solicito material didáctico?") },
+    ],
+    admin: [
+      { ico:"✏️", lbl:"Editar centro", sub:"Información pública", fn: () => showTab("admin") },
+      { ico:"🍽️", lbl:"Comedor", sub:"Asistencia hoy", fn: () => showTab("comedor") },
+      { ico:"👥", lbl:"Usuarios", sub:"Gestión de cuentas", fn: () => showTab("users") },
+      { ico:"📅", lbl:"Reunión familias", sub:"Actualizar fecha", fn: () => { showTab("admin"); setTimeout(() => jumpToInfo("proxima_reunion"), 500); } },
+    ],
+    superadmin: [
+      { ico:"🏫", lbl:"Centros", sub:"Módulos activos", fn: () => showTab("users") },
+      { ico:"👥", lbl:"Usuarios", sub:"Gestión global", fn: () => showTab("users") },
+      { ico:"✏️", lbl:"Administrar", sub:"Información del centro", fn: () => showTab("admin") },
+      { ico:"🍽️", lbl:"Comedor", sub:"Ver asistencia", fn: () => showTab("comedor") },
+    ]
+  };
+
+  const rolCards = defs[role] || defs.familia;
+  cards.innerHTML = rolCards.map((c, i) =>
+    `<div class="role-card" onclick="(${c.fn.toString()})()">
+      <div class="rc-ico">${c.ico}</div>
+      <div><div class="rc-lbl">${c.lbl}</div><div class="rc-sub">${c.sub}</div></div>
+    </div>`
+  ).join("");
+  container.style.display = "block";
+}
+
+// ── MEJORA 8: HISTORIAL RECIENTE ──
+function addToHistorial(txt) {
+  try {
+    const key = "didactia_hist_" + (currentUser?.id || "anon");
+    let hist = JSON.parse(localStorage.getItem(key) || "[]");
+    hist = [txt, ...hist.filter(h => h !== txt)].slice(0, 5);
+    localStorage.setItem(key, JSON.stringify(hist));
+    renderHistorial();
+  } catch(e) {}
+}
+
+function renderHistorial() {
+  const sec = document.getElementById("sb-sec-recientes");
+  const container = document.getElementById("sb-historial");
+  if (!container) return;
+  try {
+    const key = "didactia_hist_" + (currentUser?.id || "anon");
+    const hist = JSON.parse(localStorage.getItem(key) || "[]");
+    if (!hist.length) { if(sec) sec.style.display = "none"; container.innerHTML = ""; return; }
+    if(sec) sec.style.display = "block";
+    container.innerHTML = hist.map(h =>
+      `<div class="sb-item" onclick="askQ(${JSON.stringify(h)})" title="${h}">💬 ${h.length > 32 ? h.slice(0,32)+"…" : h}</div>`
+    ).join("");
+  } catch(e) {}
+}
+
+// ── MEJORA 6: BÚSQUEDA RÁPIDA ALUMNO ──
+let _busqTimer = null;
+async function buscarAlumnoRapido(q) {
+  const res = document.getElementById("busqueda-alumno-res");
+  if (!res) return;
+  clearTimeout(_busqTimer);
+  if (!q || q.length < 2) { res.innerHTML = ""; return; }
+  _busqTimer = setTimeout(async () => {
+    const today = new Date().toISOString().split("T")[0];
+    const { data: alumnos } = await sb.from("alumnos")
+      .select("id,nombre,curso,grupo_horario")
+      .eq("centro_id", ctrId)
+      .ilike("nombre", `%${q}%`)
+      .limit(8);
+
+    if (!alumnos?.length) { res.innerHTML = '<div style="font-size:12px;color:var(--txt3);padding:6px;">Sin resultados.</div>'; return; }
+
+    // Cargar estado comedor si módulo activo
+    let asistMap = {};
+    if (modulosActivos.includes("comedor")) {
+      const ids = alumnos.map(a => a.id);
+      const { data: asist } = await sb.from("asistencia_comedor")
+        .select("alumno_id,se_queda").eq("centro_id", ctrId).eq("fecha", today).in("alumno_id", ids);
+      (asist || []).forEach(a => { asistMap[a.alumno_id] = a.se_queda; });
+    }
+
+    res.innerHTML = alumnos.map(a => {
+      const comedor = modulosActivos.includes("comedor")
+        ? (asistMap[a.id] === true ? " · ✅" : asistMap[a.id] === false ? " · ❌" : "")
+        : "";
+      return `<div class="alumno-res-item">
+        <span class="alumno-res-nombre">${a.nombre}</span>
+        <span class="alumno-res-meta">${a.curso || ""}${a.grupo_horario ? " · " + a.grupo_horario : ""}${comedor}</span>
+        <button class="btn btn-s" style="font-size:11px;padding:3px 8px;" onclick="askQ('¿Qué clase tiene ${a.nombre.split(',')[0].trim()} ahora?')">Horario</button>
+      </div>`;
+    }).join("");
+  }, 280);
+}
+
+// ── MEJORA 11: VOZ ──
+let _recognition = null;
+let _listening = false;
+
+function toggleVoice() {
+  const btn = document.getElementById("mic-btn");
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    btn.title = "Tu navegador no soporta reconocimiento de voz";
+    btn.textContent = "🚫";
+    setTimeout(() => { btn.textContent = "🎤"; btn.title = "Dictado por voz"; }, 2000);
+    return;
+  }
+
+  if (_listening) {
+    _recognition?.stop();
+    return;
+  }
+
+  _recognition = new SpeechRecognition();
+  _recognition.lang = "es-ES";
+  _recognition.continuous = false;
+  _recognition.interimResults = false;
+
+  _recognition.onstart = () => {
+    _listening = true;
+    btn.classList.add("listening");
+    btn.textContent = "🔴";
+  };
+  _recognition.onresult = (e) => {
+    const txt = e.results[0][0].transcript;
+    const inp = document.getElementById("chat-inp");
+    inp.value = (inp.value + " " + txt).trim();
+    autoResize(inp);
+    inp.focus();
+  };
+  _recognition.onerror = (e) => {
+    if (e.error === "not-allowed") {
+      btn.textContent = "🔇";
+      setTimeout(() => { btn.textContent = "🎤"; }, 2000);
+    }
+  };
+  _recognition.onend = () => {
+    _listening = false;
+    btn.classList.remove("listening");
+    btn.textContent = "🎤";
+    _recognition = null;
+  };
+
+  _recognition.start();
+}
+
+// ── MEJORA 10: FILTRO GRUPO COMEDOR ──
+function populateGruposComedor() {
+  const sel = document.getElementById("comedor-filtro-grupo");
+  if (!sel) return;
+  const grupos = [...new Set(comedorData.map(a => a.grupo_horario || a.curso).filter(Boolean))].sort();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todos los grupos</option>' +
+    grupos.map(g => `<option value="${g}" ${current===g?"selected":""}>${g}</option>`).join("");
+}
+
+// Sobrescribir renderComedorList para incluir filtro de grupo
+const _origRenderComedor = window.renderComedorList;
+
+// ── INIT WELCOME: llamar a todas las mejoras tras login ──
+function initWelcomeExtras() {
+  loadRoleCards();
+  loadFichaCentro();
+  loadMisHijos();
+  if (role === "familia" && modulosActivos.includes("comedor")) loadComedorHijos();
+  if (["admin","profesional","superadmin"].includes(role)) {
+    const busqEl = document.getElementById("busqueda-alumno-container");
+    const accionesSec = document.getElementById("sb-sec-acciones");
+    const accionesEl = document.getElementById("sb-acciones-rol");
+    if (busqEl) busqEl.style.display = "block";
+    if (accionesSec) accionesSec.style.display = "block";
+    if (accionesEl) {
+      accionesEl.innerHTML = `<div class="sb-item" onclick="showTab('comedor')">🍽️ Ir a comedor</div><div class="sb-item" onclick="showTab('admin')">✏️ Administración</div>`;
+    }
+  }
+  renderHistorial();
+}
+
 </script>
 </body>
 </html>
