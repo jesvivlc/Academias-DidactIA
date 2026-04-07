@@ -392,27 +392,9 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--txt);
         <button class="btn btn-s" onclick="loadHorarios()">↺ Actualizar</button>
       </div>
 
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico g">📄</div><div><div class="card-title">Documentos (RAG)</div></div></div>
-        <div class="card-desc">Sube PDFs para indexarlos como base de conocimiento. Requiere pipeline RAG con LangChain + pgvector en el backend.</div>
-        <div class="upload-zone" onclick="simUpload()">
-          <div style="font-size:26px;margin-bottom:6px;">⬆️</div>
-          <div style="font-size:13px;color:var(--txt2);">Haz clic o arrastra archivos aquí</div>
-          <div style="font-size:11px;color:var(--txt3);margin-top:3px;">PDF, DOCX — máx. 20 MB</div>
-        </div>
-        <div class="doc-list" id="doc-list">
-          <div class="doc-item"><span>📄</span><div><div class="doc-nm">Reglamento_interno.pdf</div><div class="doc-mt">Indexado hace 2 días</div></div><span class="bdg ok">Indexado</span></div>
-          <div class="doc-item"><span>📄</span><div><div class="doc-nm">Plan_accion_tutorial.docx</div><div class="doc-mt">Indexado hace 1 semana</div></div><span class="bdg ok">Indexado</span></div>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico p">❓</div><div><div class="card-title">Sin resolver</div></div></div>
-        <div class="card-desc">Consultas que el bot no pudo responder. Añádelas a <code>info_centro</code> para mejorar el asistente.</div>
-        <div>
-          <div class="unan"><div class="unan-meta">Hace 2 días · 3 consultas</div><div class="unan-q">"¿Cuándo empieza el periodo de matriculación?"</div><button class="btn btn-s" style="font-size:12px;padding:5px 11px" onclick="jumpToInfo('matriculacion')">+ Añadir a info_centro</button></div>
-          <div class="unan"><div class="unan-meta">Ayer · 1 consulta</div><div class="unan-q">"¿Hay servicio de madrugadores antes de las 8h?"</div><button class="btn btn-s" style="font-size:12px;padding:5px 11px" onclick="jumpToInfo('madrugadores')">+ Añadir a info_centro</button></div>
-        </div>
+
+
       </div>
 
     </div>
@@ -802,8 +784,9 @@ async function loadUserProfile(user) {
 
   if (error || !profile) {
     // Profile not found — show error
-    document.getElementById("login-err").textContent = "No se encontró tu perfil. Contacta con el administrador.";
-    document.getElementById("login-err").style.display = "block";
+    const errMsg = document.getElementById("login-err");
+    errMsg.textContent = "Tu cuenta existe pero no tiene perfil asignado. Contacta con el administrador del centro o escribe a soporte@didactia.eu.";
+    errMsg.style.display = "block";
     await sb.auth.signOut();
     return;
   }
@@ -854,7 +837,7 @@ async function loadUserProfile(user) {
   if (role === "familia") {
     const { data: vinculos } = await sb
       .from("familia_alumno")
-      .select("alumnos(nombre, curso)")
+      .select("alumnos(nombre, curso, grupo_horario)")
       .eq("profile_id", profile.id);
     currentUserAlumnos = vinculos?.map(v => v.alumnos).filter(Boolean) || [];
   }
@@ -927,8 +910,8 @@ function resetChat() {
     <div class="wlc-title">Hola, soy DidactIA</div>
     <div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">${ctrName}</strong>. Respondo preguntas sobre horarios, menús, reuniones y más.</div>
     <div class="quick-qs">
-      <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
       <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
+      <div class="quick-q" onclick="askQ('¿Cuál es el teléfono de secretaría?')">¿Cuál es el teléfono de secretaría?</div>
       <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
     </div></div>`;
 }
@@ -960,7 +943,7 @@ async function loadUsersPanel() {
 
     const MODULOS = [
       { key: "comedor", label: "🍽️ Módulo comedor" },
-      { key: "espacios", label: "🏫 Módulo espacios" },
+      // { key: "espacios", label: "🏫 Módulo espacios" }, // Pendiente de implementar
     ];
     const container = document.getElementById("centros-modulos-list");
     container.innerHTML = centros.map(function(c) {
@@ -1539,7 +1522,7 @@ ${ctx}${horarioGrupoCtx}`;
     // Formato Gemini: historial completo con system prompt en el primer mensaje
     const geminiContents = [];
     // Construir historial: todos los turnos anteriores excepto el último
-    const prevMsgs = history.slice(0, -1);
+    const prevMsgs = history.slice(0, -1).slice(-10); // Limitar a últimos 10 mensajes para evitar contextos gigantes
     const lastMsg = history[history.length - 1];
     // Primer mensaje lleva el system prompt pegado
     if (prevMsgs.length === 0) {
@@ -1738,13 +1721,6 @@ function printComedor() {
   w.print();
 }
 
-function simUpload() {
-  const l = document.getElementById("doc-list");
-  const i = document.createElement("div"); i.className = "doc-item";
-  i.innerHTML = `<span>📄</span><div><div class="doc-nm">Documento_nuevo.pdf</div><div class="doc-mt">Procesando…</div></div><span class="bdg pend">Indexando…</span>`;
-  l.appendChild(i);
-  setTimeout(() => { i.querySelector(".bdg").textContent = "Indexado"; i.querySelector(".bdg").className = "bdg ok"; i.querySelector(".doc-mt").textContent = "Hace un momento"; }, 2500);
-}
 
 function jumpToInfo(k) {
   showTab("admin");
