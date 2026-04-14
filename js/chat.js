@@ -306,17 +306,34 @@ async function sendMsg() {
       }
     }
 
-    // 5. Fallback: inyectar horario del grupo filtrado por día si aplica
+    // 5. Fallback: si hay día concreto → respuesta directa sin Gemini; si no → contexto para Gemini
     if (!respuestaHorarioDirecta && grupoTarget) {
       const filas = await getHorarioGrupo(grupoTarget);
       if (filas && filas.length) {
         const diaFiltro = dia || null;
-        const textoHorario = formatHorarioGrupo(filas, diaFiltro);
-        const titulodia = diaFiltro ? ` el ${diaFiltro}` : "";
-        horarioGrupoCtx =
-          `\n\nHORARIO DEL GRUPO ${grupoTarget}${alumnoTarget ? " (alumno: " + alumnoTarget + ")" : ""}${titulodia}:\n`
-          + textoHorario
-          + `\nIMPORTANTE: Muestra TODAS las clases de la lista anterior en orden. No omitas ninguna. Lista cada clase con su hora y asignatura.`;
+        if (diaFiltro) {
+          // Respuesta directa con todas las clases del día
+          const clasDia = filas.filter(f => f.dia === diaFiltro).sort((a,b) => a.tramo - b.tramo);
+          if (clasDia.length) {
+            const nombreAlumno = alumnoTarget || `Grupo ${grupoTarget}`;
+            let html = `<p><strong>${nombreAlumno}</strong> — horario del ${diaFiltro}:</p><ul>`;
+            for (const c of clasDia) {
+              const hi = String(c.hora_inicio || "").slice(0,5);
+              const hf = String(c.hora_fin || "").slice(0,5);
+              const prof = c.profesor_nombre ? ` <em>(${c.profesor_nombre})</em>` : "";
+              const aula = c.aula ? ` · aula ${c.aula}` : "";
+              html += `<li><strong>${hi}–${hf}:</strong> ${c.actividad_nombre}${prof}${aula}</li>`;
+            }
+            html += "</ul>";
+            respuestaHorarioDirecta = html;
+          }
+        } else {
+          // Sin día → inyectar contexto para Gemini (horario semanal)
+          horarioGrupoCtx =
+            `\n\nHORARIO DEL GRUPO ${grupoTarget}${alumnoTarget ? " (alumno: " + alumnoTarget + ")" : ""}:\n`
+            + formatHorarioGrupo(filas)
+            + `\nMuestra TODAS las clases de la lista anterior. No omitas ninguna.`;
+        }
       }
     }
   }
@@ -347,13 +364,17 @@ async function sendMsg() {
     admin: `administrador del centro`,
     superadmin: `superadministrador de la plataforma`
   };
+  const instruccionHorario = horarioGrupoCtx
+    ? `\nCUANDO HAY UN HORARIO EN EL CONTEXTO: Debes listar TODAS las clases que aparecen, una por línea, con su hora y asignatura. No resumas, no omitas ninguna, no digas "entre otras". Si el contexto tiene 4 clases, muestra las 4.`
+    : "";
+
   const sys = `Eres DidactIA, el asistente virtual exclusivo de ${ctrName}.
 Hoy es ${fechaHoy}. Mañana es ${diaManana}. Usa esta información para responder preguntas sobre fechas sin pedirle al usuario que las especifique.
 Conoces perfectamente al usuario con el que hablas: se llama ${currentUserName} y es ${rolDesc[role] || role}.
 NO le pidas que se identifique — ya sabes quién es. Dirígete a él por su nombre cuando sea natural.
 Si pregunta por su horario, el de su hijo, o información personal, responde directamente con los datos que tienes.
 Solo respondes con información de ESTE centro. Si no tienes algo, sugiere contactar con secretaría.
-Responde en español, de forma amable y concisa. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.
+Responde en español, de forma amable. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.${instruccionHorario}
 No reveles información confidencial de otros alumnos o profesores a usuarios que no deban verla.
 
 CONTEXTO EN TIEMPO REAL:
