@@ -95,8 +95,23 @@ async function loadUsers() {
 
 async function changeRole(profileId, newRol) {
   const { error } = await sb.from("profiles").update({ rol: newRol }).eq("id", profileId);
-  if (error) alert("Error al cambiar el rol: " + error.message);
-  else await loadUsers();
+  if (error) { alert("Error al cambiar el rol: " + error.message); return; }
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    await fetch("https://rflfsbrdmgaidhvbuvwb.supabase.co/functions/v1/notify-role", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ profileId, newRol })
+    });
+  } catch (e) {
+    console.warn("notify-role falló:", e);
+  }
+
+  await loadUsers();
 }
 
 async function deleteUser(profileId, name) {
