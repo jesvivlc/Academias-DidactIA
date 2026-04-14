@@ -69,25 +69,30 @@ async function getClaseExactaGrupo(grupoHorario, dia, hora) {
   return data.find(f => horaMatchesSlot(hora, f.hora_inicio, f.hora_fin)) || null;
 }
 
-function formatHorarioGrupo(rows) {
+function formatHorarioGrupo(rows, solodia) {
   if (!rows || !rows.length) return "Sin datos de horario.";
   const diasOrden = ["lunes","martes","miercoles","jueves","viernes"];
-  const tramosHoras = {1:"08:00-08:55",2:"08:55-09:50",3:"09:50-10:45",5:"11:15-12:10",6:"12:10-13:05",8:"13:25-14:20",9:"14:20-15:15"};
   const porDia = {};
   for (const r of rows) {
+    if (solodia && r.dia !== solodia) continue;
     if (!porDia[r.dia]) porDia[r.dia] = {};
     if (!porDia[r.dia][r.tramo]) porDia[r.dia][r.tramo] = [];
     porDia[r.dia][r.tramo].push(r);
   }
   let txt = "";
-  for (const dia of diasOrden) {
+  const diasMostrar = solodia ? [solodia] : diasOrden;
+  for (const dia of diasMostrar) {
     if (!porDia[dia]) continue;
     txt += `\n${dia.toUpperCase()}:\n`;
-    for (const tramo of Object.keys(porDia[dia]).sort((a,b)=>a-b)) {
-      const horas = tramosHoras[tramo] || `Tramo ${tramo}`;
+    for (const tramo of Object.keys(porDia[dia]).sort((a,b)=>Number(a)-Number(b))) {
+      const fila = porDia[dia][tramo][0];
+      const hi = String(fila.hora_inicio || "").slice(0,5);
+      const hf = String(fila.hora_fin || "").slice(0,5);
+      const horasStr = hi && hf ? `${hi}-${hf}` : `Tramo ${tramo}`;
       for (const c of porDia[dia][tramo]) {
         const aula = c.aula ? ` (${c.aula})` : "";
-        txt += `  ${horas}: ${c.actividad_nombre} — ${c.profesor_nombre}${aula}\n`;
+        const prof = c.profesor_nombre ? ` — ${c.profesor_nombre}` : "";
+        txt += `  ${horasStr}: ${c.actividad_nombre}${prof}${aula}\n`;
       }
     }
   }
@@ -301,14 +306,17 @@ async function sendMsg() {
       }
     }
 
-    // 5. Fallback: inyectar horario completo del grupo si no hay respuesta exacta
+    // 5. Fallback: inyectar horario del grupo filtrado por día si aplica
     if (!respuestaHorarioDirecta && grupoTarget) {
       const filas = await getHorarioGrupo(grupoTarget);
       if (filas && filas.length) {
+        const diaFiltro = dia || null;
+        const textoHorario = formatHorarioGrupo(filas, diaFiltro);
+        const titulodia = diaFiltro ? ` el ${diaFiltro}` : "";
         horarioGrupoCtx =
-          `\n\nHORARIO DEL GRUPO ${grupoTarget}${alumnoTarget ? " (alumno: " + alumnoTarget + ")" : ""}:\n`
-          + formatHorarioGrupo(filas)
-          + `\nSi la pregunta pide un día y hora concretos, responde solo con la clase correspondiente.`;
+          `\n\nHORARIO DEL GRUPO ${grupoTarget}${alumnoTarget ? " (alumno: " + alumnoTarget + ")" : ""}${titulodia}:\n`
+          + textoHorario
+          + `\nIMPORTANTE: Muestra TODAS las clases de la lista anterior en orden. No omitas ninguna. Lista cada clase con su hora y asignatura.`;
       }
     }
   }
