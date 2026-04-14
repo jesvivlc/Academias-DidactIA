@@ -239,7 +239,41 @@ async function sendMsg() {
       }
     }
 
-    // 2. Búsqueda libre
+    // 1b. Detección directa de grupo en el texto (ej: "1ºESO A", "2ESOB", "1 BAC A")
+    if (!grupoTarget) {
+      const GRUPOS_VALIDOS_MAP = {
+        "1esoa":["1ºeso a","1 eso a","1esoa","1º eso a","1°eso a","1° eso a"],
+        "1esob":["1ºeso b","1 eso b","1esob","1º eso b","1°eso b"],
+        "1esoc":["1ºeso c","1 eso c","1esoc","1º eso c","1°eso c"],
+        "2esoa":["2ºeso a","2 eso a","2esoa","2º eso a","2°eso a"],
+        "2esob":["2ºeso b","2 eso b","2esob","2º eso b","2°eso b"],
+        "2esoc":["2ºeso c","2 eso c","2esoc","2º eso c","2°eso c"],
+        "3esoa":["3ºeso a","3 eso a","3esoa","3º eso a","3°eso a"],
+        "3esob":["3ºeso b","3 eso b","3esob","3º eso b","3°eso b"],
+        "3esoc":["3ºeso c","3 eso c","3esoc","3º eso c","3°eso c"],
+        "4esoa":["4ºeso a","4 eso a","4esoa","4º eso a","4°eso a"],
+        "4esob":["4ºeso b","4 eso b","4esob","4º eso b","4°eso b"],
+        "4esoc":["4ºeso c","4 eso c","4esoc","4º eso c","4°eso c"],
+        "1baca":["1ºbac a","1 bac a","1baca","1º bac a","1°bac a","1bach a","1º bach a"],
+        "1bacb":["1ºbac b","1 bac b","1bacb","1º bac b","1°bac b","1bach b"],
+        "2baca":["2ºbac a","2 bac a","2baca","2º bac a","2°bac a","2bach a"],
+        "2bacb":["2ºbac b","2 bac b","2bacb","2º bac b","2°bac b","2bach b"],
+        "1ib":["1ºib","1 ib","1ib","1º ib","1°ib"],
+        "2ib":["2ºib","2 ib","2ib","2º ib","2°ib"],
+      };
+      const txtNorm = normalizeText(txt);
+      for (const [grupo, variantes] of Object.entries(GRUPOS_VALIDOS_MAP)) {
+        if (variantes.some(v => txtNorm.includes(normalizeText(v)))) {
+          grupoTarget = grupo.toUpperCase().replace("ESO","ESO").replace("BAC","BAC");
+          // Normalizar: 1esoa → 1ESOA
+          grupoTarget = grupo.replace(/([0-9]+)(eso|bac|ib)([abc]?)/i,
+            (_, n, nivel, letra) => n + nivel.toUpperCase() + letra.toUpperCase());
+          break;
+        }
+      }
+    }
+
+    // 2. Búsqueda libre por nombre de alumno
     if (!grupoTarget) {
       const STOPWORDS = new Set([
         "que","tiene","hay","clase","horario","cual","cuando","donde","como","para",
