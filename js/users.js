@@ -139,15 +139,14 @@ async function inviteUser() {
   status.style.display = "block";
 
   try {
-    const { data: { session } } = await sb.auth.getSession();
     const res = await fetch(`${SB_URL}/functions/v1/invite-user`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`,
+        "Authorization": `Bearer ${ANON_KEY}`,
         "apikey": ANON_KEY
       },
-      body: JSON.stringify({ email, full_name: name, centro_id: centroId, rol })
+      body: JSON.stringify({ email, full_name: name, centro_id: centroId, rol, caller_user_id: currentUser.id })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
