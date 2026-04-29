@@ -112,7 +112,7 @@ async function loadSustituciones(filtro) {
     c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">No hay sustituciones registradas.</div>';
     return;
   }
-  c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Obs.</th><th>Estado</th></tr></thead><tbody>
+  c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Obs.</th><th>Estado</th><th></th></tr></thead><tbody>
     ${data.map(s => {
       const cubierta = s.cubierta
         ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">Cubierta</span>'
@@ -125,6 +125,7 @@ async function loadSustituciones(filtro) {
         <td>${s.profesor_sustituto || "—"}</td>
         <td>${s.observaciones || "—"}</td>
         <td>${cubierta}</td>
+        <td><button onclick="eliminarSustitucion('${s.id}')" style="background:none;border:none;cursor:pointer;color:#a50e0e;font-size:12px;padding:4px 8px;border-radius:8px;" title="Eliminar">✕</button></td>
       </tr>`;
     }).join("")}
   </tbody></table>`;
@@ -237,6 +238,16 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
   if (selAus) {
     selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>'
       + ocupadosList.map(p => '<option value="' + p + '">' + p + '</option>').join("");
+  }
+}
+
+async function eliminarSustitucion(id) {
+  if (!confirm("¿Eliminar esta sustitución?")) return;
+  const { error } = await sb.from("sustituciones").delete().eq("id", id);
+  if (error) {
+    alert("Error al eliminar: " + error.message);
+  } else {
+    await loadSustituciones();
   }
 }
 
