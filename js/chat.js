@@ -169,18 +169,21 @@ async function buildContext() {
   } catch(e) {}
 
   try {
-    let horariosQuery = sb.from("horarios").select("dia,hora,profesor,actividad").eq("centro_id", ctrId).order("dia").order("hora");
     if (role === "profesional" && currentUserName) {
-      // Names in DB are stored as "Apellido Apellido, Nombre" — search by any part
       const nameParts = currentUserName.split(" ").filter(p => p.length > 2);
       if (nameParts.length > 0) {
-        horariosQuery = horariosQuery.ilike("profesor", `%${nameParts[0]}%`);
+        const { data } = await sb.from("horarios")
+          .select("dia,hora,profesor,actividad")
+          .eq("centro_id", ctrId)
+          .ilike("profesor", `%${nameParts[0]}%`)
+          .order("dia").order("hora")
+          .limit(50);
+        if (data?.length) {
+          ctx += "MI HORARIO DE CLASES:\n";
+          data.forEach(h => { ctx += `- ${h.dia} a las ${h.hora}: ${h.actividad} (${h.profesor})\n`; });
+          ctx += "\n";
+        }
       }
-    }
-    const { data } = await horariosQuery;
-    if (data?.length) {
-      ctx += role === "profesional" ? "MI HORARIO DE CLASES:\n" : "HORARIOS DEL CENTRO:\n";
-      data.forEach(h => { ctx += `- ${h.dia} a las ${h.hora}: ${h.actividad} (${h.profesor})\n`; });
     }
   } catch(e) {}
   return ctx;
@@ -370,6 +373,18 @@ async function sendMsg() {
         }
       }
     }
+  }
+
+  if (esConsultaHorario && !respuestaHorarioDirecta && !horarioGrupoCtx) {
+    document.getElementById("typing").classList.remove("show");
+    const msgNoEncontrado = `<p>No he encontrado información de horario para esa consulta en la base de datos de ${ctrName}.</p><p>Puedes preguntar por el nombre completo del alumno, o por el grupo (por ejemplo: "1ESO A", "2BAC B").</p>`;
+    history.push({ role:"assistant", content: msgNoEncontrado });
+    addMsg("bot", msgNoEncontrado);
+    busy = false;
+    document.getElementById("send-btn").disabled = false;
+    document.getElementById("load-bar").classList.remove("show");
+    document.getElementById("chat-inp").focus();
+    return;
   }
 
   // Respuesta directa sin Gemini si ya tenemos la clase exacta
