@@ -294,7 +294,11 @@
       <div class="pg-hdr">
         <div>
           <div class="pg-title">Comedor escolar</div>
-          <div class="pg-sub" id="comedor-fecha">Cargando…</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <button onclick="changeComedorFecha(-1)" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">← Anterior</button>
+            <div id="comedor-fecha" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:#202124;"></div>
+            <button onclick="changeComedorFecha(1)" id="btn-comedor-sig" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">Siguiente →</button>
+          </div>
         </div>
         <button class="btn btn-p" onclick="loadComedor()">↺ Actualizar</button>
       </div>

@@ -1,13 +1,25 @@
 // ── COMEDOR MODULE ──
 let comedorData = [];
 let comedorFilter = 'todos';
+let comedorFecha = new Date().toISOString().split("T")[0];
+
+function changeComedorFecha(delta) {
+  var d = new Date(comedorFecha);
+  d.setDate(d.getDate() + delta);
+  var hoy = new Date().toISOString().split("T")[0];
+  if (d.toISOString().split("T")[0] > hoy) return;
+  comedorFecha = d.toISOString().split("T")[0];
+  var btnSig = document.getElementById("btn-comedor-sig");
+  if (btnSig) btnSig.disabled = comedorFecha >= hoy;
+  loadComedor();
+}
 
 async function loadComedor() {
-  const today = new Date();
+  const today = new Date(comedorFecha);
   const diasSinTilde = ["Domingo","Lunes","Martes","Miercoles","Jueves","Viernes","Sabado"];
   const diasConTilde = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
   const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  const fechaStr = today.toISOString().split("T")[0];
+  const fechaStr = comedorFecha;
   const horaActual = today.getHours() * 100 + today.getMinutes();
   const diaActual = diasSinTilde[today.getDay()];
 
