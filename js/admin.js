@@ -1,7 +1,6 @@
 async function loadAdmin() {
   if (!sb || !ctrId) return;
   await Promise.all([loadInfoCentro(), loadHorarios()]);
-  await Promise.all([loadSustituciones(), cargarProfesoresLibresEnSelect()]);
 }
 
 async function loadInfoCentro() {

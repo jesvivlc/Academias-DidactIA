@@ -305,6 +305,9 @@ async function loadUserProfile(user) {
   const hasComedor = modulosActivos.includes("comedor");
   if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
+  const tabSust = document.getElementById("tab-sust");
+  if (tabSust) tabSust.style.display = (role === "admin" || role === "profesional" || role === "superadmin") ? "block" : "none";
+
 
 
 
@@ -381,6 +384,7 @@ function showTab(t) {
   if (t === "admin") loadAdmin();
   if (t === "users") loadUsersPanel();
   if (t === "comedor") loadComedor();
+  if (t === "sust") { cargarProfesoresLibresEnSelect(); loadSustituciones(); }
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function goHome() {
