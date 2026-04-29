@@ -161,23 +161,84 @@ async function registrarSustitucion() {
   }
 }
 
-async function cargarProfesoresLibresEnSelect() {
+async function cargarProfesoresLibresEnSelect(tramoOverride) {
+  const tramoData = {
+    1: { hi: "08:50", hf: "09:45" }, 2: { hi: "09:45", hf: "10:40" },
+    3: { hi: "10:40", hf: "11:35" }, 4: { hi: "12:00", hf: "12:55" },
+    5: { hi: "12:55", hf: "13:50" }, 6: { hi: "13:50", hf: "14:45" },
+    7: { hi: "15:10", hf: "16:05" }, 8: { hi: "16:05", hf: "17:00" }
+  };
+
   const ahora = new Date();
   const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
   const dia = diasNombre[ahora.getDay()];
-  const hora = String(ahora.getHours()).padStart(2,"0") + ":" + String(ahora.getMinutes()).padStart(2,"0");
+
+  let horaRef = String(ahora.getHours()).padStart(2,"0") + ":" + String(ahora.getMinutes()).padStart(2,"0");
+  if (tramoOverride && tramoData[tramoOverride]) {
+    horaRef = tramoData[tramoOverride].hi;
+  }
+
   const { data: todos } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).not("profesor_nombre", "is", null);
   if (!todos) return;
   const todosProfes = [...new Set(todos.map(r => r.profesor_nombre).filter(Boolean))].sort();
-  const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("dia", dia).filter("hora_inicio", "lte", hora + ":00").filter("hora_fin", "gt", hora + ":00");
+
+  const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("dia", dia)
+    .filter("hora_inicio", "lte", horaRef + ":00")
+    .filter("hora_fin", "gt", horaRef + ":00");
+
   const ocupados = new Set((conClase || []).map(r => r.profesor_nombre).filter(Boolean));
   const libres = todosProfes.filter(p => !ocupados.has(p));
+  const ocupadosList = todosProfes.filter(p => ocupados.has(p));
+
   const selSust = document.getElementById("sust-sustituto");
   const selAus = document.getElementById("sust-ausente");
   if (selSust) {
     selSust.innerHTML = '<option value="">Seleccionar profesor libre…</option>' + libres.map(p => `<option value="${p}">${p}</option>`).join("");
   }
   if (selAus) {
-    selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>' + (ocupados.size ? [...ocupados].sort().map(p => `<option value="${p}">${p}</option>`).join("") : todosProfes.map(p => `<option value="${p}">${p}</option>`).join(""));
+    selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>' + ocupadosList.map(p => `<option value="${p}">${p}</option>`).join("");
   }
+}
+
+async function exportarSustituciones() {
+  const { data, error } = await sb.from("sustituciones")
+    .select("*")
+    .eq("centro_id", ctrId)
+    .order("fecha", { ascending: false })
+    .order("hora_inicio", { ascending: true });
+
+  if (error || !data || !data.length) {
+    alert("No hay sustituciones registradas para exportar.");
+    return;
+  }
+
+  const cabecera = ["Fecha","Día","Hora inicio","Hora fin","Tramo","Grupo","Profesor ausente","Profesor sustituto","Observaciones"];
+
+  const filas = data.map(s => {
+    const fecha = s.fecha || "";
+    const fechaObj = fecha ? new Date(fecha) : null;
+    const diasSemana = fechaObj ? ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][fechaObj.getDay()] : "";
+    return [
+      fecha,
+      diasSemana,
+      (s.hora_inicio || "").slice(0,5),
+      (s.hora_fin || "").slice(0,5),
+      s.tramo || "",
+      s.grupo_horario || "",
+      s.profesor_ausente || "",
+      s.profesor_sustituto || "",
+      s.observaciones || ""
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",");
+  });
+
+  const csv = "﻿" + cabecera.join(",") + "\n" + filas.join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sustituciones_" + new Date().toISOString().slice(0,10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
