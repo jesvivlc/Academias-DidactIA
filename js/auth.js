@@ -272,9 +272,10 @@ async function loadUserProfile(user) {
     ctrId = profile.centro_id;
     // Load centro name and modulos
     if (ctrId) {
-      const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos").eq("id", ctrId).single();
+      const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
       ctrName = ctr?.nombre || "Mi centro";
       modulosActivos = ctr?.modulos_activos || [];
+      applyTheme(ctr?.color_primario, ctr?.logo_url);
     }
     document.getElementById("ctr-name-hdr").textContent = ctrName;
   }
@@ -387,6 +388,38 @@ function showTab(t) {
   if (t === "sust") { cargarProfesoresLibresEnSelect(); loadSustituciones(); }
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
+function applyTheme(colorPrimario, logoUrl) {
+  var root = document.documentElement;
+  var color = colorPrimario && /^#[0-9a-fA-F]{6}$/.test(colorPrimario) ? colorPrimario : null;
+
+  if (color) {
+    var r = parseInt(color.slice(1,3),16);
+    var g = parseInt(color.slice(3,5),16);
+    var b = parseInt(color.slice(5,7),16);
+    root.style.setProperty("--ink", color);
+    root.style.setProperty("--ink-l", "rgba(" + r + "," + g + "," + b + ",0.15)");
+    root.style.setProperty("--ink-ll", "rgba(" + r + "," + g + "," + b + ",0.07)");
+  }
+
+  var logoEl = document.getElementById("brand-logo");
+  if (logoEl) {
+    if (logoUrl) {
+      var img = document.createElement("img");
+      img.src = logoUrl;
+      img.style.cssText = "width:100%;height:100%;object-fit:contain;border-radius:6px;";
+      img.onerror = function() { logoEl.textContent = "D"; logoEl.style.background = ""; };
+      logoEl.innerHTML = "";
+      logoEl.style.background = "white";
+      logoEl.style.padding = "3px";
+      logoEl.appendChild(img);
+    } else {
+      logoEl.textContent = "D";
+      logoEl.style.background = "";
+      logoEl.style.padding = "";
+    }
+  }
+}
+
 function goHome() {
   showTab("chat");
   var msgs = document.getElementById("chat-msgs");
