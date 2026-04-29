@@ -258,8 +258,9 @@ async function loadUserProfile(user) {
         ctrId = this.value;
         ctrName = this.options[this.selectedIndex].dataset.n;
         // Reload modulos for selected centro
-        const { data: ctr } = await sb.from("centros").select("modulos_activos").eq("id", ctrId).single();
+        const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
         modulosActivos = ctr?.modulos_activos || [];
+        applyTheme(ctr?.color_primario, ctr?.logo_url);
         // Update comedor tab visibility
         const cTab = document.getElementById("tab-comedor");
         if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
