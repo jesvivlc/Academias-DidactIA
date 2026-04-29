@@ -420,6 +420,24 @@ function applyTheme(colorPrimario, logoUrl) {
       logoEl.style.padding = "";
     }
   }
+
+  var appLogoEl = document.getElementById("app-brand-logo");
+  if (appLogoEl) {
+    if (logoUrl) {
+      var img2 = document.createElement("img");
+      img2.src = logoUrl;
+      img2.style.cssText = "width:100%;height:100%;object-fit:contain;border-radius:6px;";
+      img2.onerror = function() { appLogoEl.textContent = "D"; appLogoEl.style.background = ""; };
+      appLogoEl.innerHTML = "";
+      appLogoEl.style.background = "white";
+      appLogoEl.style.padding = "3px";
+      appLogoEl.appendChild(img2);
+    } else {
+      appLogoEl.textContent = "D";
+      appLogoEl.style.background = "";
+      appLogoEl.style.padding = "";
+    }
+  }
 }
 
 function goHome() {
