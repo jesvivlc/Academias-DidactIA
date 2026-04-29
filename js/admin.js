@@ -86,24 +86,47 @@ async function loadHorarios() {
   } catch(e) { c.innerHTML = `<div style="color:var(--red);font-size:13px;">Error: ${e.message}</div>`; }
 }
 
-async function loadSustituciones() {
+async function loadSustituciones(filtro) {
+  if (!filtro) filtro = 'hoy';
   const c = document.getElementById("sust-container");
   if (!c) return;
   c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div>';
-  const { data, error } = await sb.from("sustituciones").select("*").eq("centro_id", ctrId).order("created_at", { ascending: false }).limit(50);
+
+  const hoy = new Date().toISOString().split("T")[0];
+  const fechaInput = document.getElementById("sust-fecha");
+  if (fechaInput && !fechaInput.value) fechaInput.value = hoy;
+
+  let query = sb.from("sustituciones").select("*").eq("centro_id", ctrId);
+  if (filtro === 'hoy') {
+    query = query.eq("fecha", hoy).order("hora_inicio", { ascending: true });
+  } else if (filtro === 'semana') {
+    const hace6 = new Date(); hace6.setDate(hace6.getDate() - 6);
+    query = query.gte("fecha", hace6.toISOString().split("T")[0]).lte("fecha", hoy)
+      .order("fecha", { ascending: false }).order("hora_inicio", { ascending: true });
+  } else {
+    query = query.order("fecha", { ascending: false }).order("hora_inicio", { ascending: true }).limit(50);
+  }
+
+  const { data, error } = await query;
   if (error || !data || !data.length) {
     c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">No hay sustituciones registradas.</div>';
     return;
   }
-  c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Obs.</th></tr></thead><tbody>
-    ${data.map(s => `<tr>
-      <td>${s.fecha || "—"}</td>
-      <td>${s.hora_inicio ? s.hora_inicio.slice(0,5) + "–" + (s.hora_fin||"").slice(0,5) : "—"}</td>
-      <td>${s.grupo_horario || "—"}</td>
-      <td>${s.profesor_ausente || "—"}</td>
-      <td>${s.profesor_sustituto || "—"}</td>
-      <td>${s.observaciones || "—"}</td>
-    </tr>`).join("")}
+  c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Obs.</th><th>Estado</th></tr></thead><tbody>
+    ${data.map(s => {
+      const cubierta = s.cubierta
+        ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">Cubierta</span>'
+        : '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">Pendiente</span>';
+      return `<tr>
+        <td>${s.fecha || "—"}</td>
+        <td>${s.hora_inicio ? s.hora_inicio.slice(0,5) + "–" + (s.hora_fin||"").slice(0,5) : "—"}</td>
+        <td>${s.grupo_horario || "—"}</td>
+        <td>${s.profesor_ausente || "—"}</td>
+        <td>${s.profesor_sustituto || "—"}</td>
+        <td>${s.observaciones || "—"}</td>
+        <td>${cubierta}</td>
+      </tr>`;
+    }).join("")}
   </tbody></table>`;
 }
 
@@ -136,7 +159,7 @@ async function registrarSustitucion() {
 
   const { error } = await sb.from("sustituciones").insert({
     centro_id: ctrId,
-    fecha: new Date().toISOString().split("T")[0],
+    fecha: document.getElementById("sust-fecha")?.value || new Date().toISOString().split("T")[0],
     hora_inicio: t.hi,
     hora_fin: t.hf,
     tramo: parseInt(tramo),

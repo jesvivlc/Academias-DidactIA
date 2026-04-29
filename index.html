@@ -275,6 +275,10 @@
             <option value="8">8 — 16:05 a 17:00</option>
           </select>
         </div>
+        <div>
+          <label class="lbl">Fecha</label>
+          <input class="fi" type="date" id="sust-fecha" />
+        </div>
       </div>
       <div>
         <label class="lbl">Observaciones (opcional)</label>
@@ -284,7 +288,12 @@
         <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
         <div id="sust-msg" style="display:none;font-size:13px;"></div>
       </div>
-      <div id="sust-container" style="margin-top:14px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;margin-top:14px;">
+        <button onclick="loadSustituciones('hoy')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
+        <button onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
+        <button onclick="loadSustituciones('todo')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
+      </div>
+      <div id="sust-container"></div>
     </div>
   </div>
 
