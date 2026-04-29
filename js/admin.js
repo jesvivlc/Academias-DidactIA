@@ -213,13 +213,30 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
   const libres = todosProfes.filter(p => !ocupados.has(p));
   const ocupadosList = todosProfes.filter(p => ocupados.has(p));
 
+  const diaActual = dia;
+  const horaRefGuardia = tramoOverride && tramoData[tramoOverride] ? tramoData[tramoOverride].hi : horaRef;
+
+  const { data: conGuardia } = await sb.from("horarios_grupo")
+    .select("profesor_nombre")
+    .eq("centro_id", ctrId)
+    .eq("dia", diaActual)
+    .ilike("actividad", "%guardia%")
+    .filter("hora_inicio", "lte", horaRefGuardia + ":00")
+    .filter("hora_fin", "gt", horaRefGuardia + ":00");
+
+  const profesGuardia = new Set((conGuardia || []).map(r => r.profesor_nombre).filter(Boolean));
+  const disponibles = profesGuardia.size > 0 ? libres.filter(p => profesGuardia.has(p)) : libres;
+
   const selSust = document.getElementById("sust-sustituto");
   const selAus = document.getElementById("sust-ausente");
   if (selSust) {
-    selSust.innerHTML = '<option value="">Seleccionar profesor libre…</option>' + libres.map(p => `<option value="${p}">${p}</option>`).join("");
+    const etiqueta = profesGuardia.size > 0 ? "Seleccionar profesor de guardia…" : "Seleccionar profesor libre…";
+    selSust.innerHTML = '<option value="">' + etiqueta + '</option>'
+      + disponibles.map(p => '<option value="' + p + '">' + p + '</option>').join("");
   }
   if (selAus) {
-    selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>' + ocupadosList.map(p => `<option value="${p}">${p}</option>`).join("");
+    selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>'
+      + ocupadosList.map(p => '<option value="' + p + '">' + p + '</option>').join("");
   }
 }
 
