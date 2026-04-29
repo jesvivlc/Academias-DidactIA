@@ -351,6 +351,59 @@ async function sendMsg() {
       }
     }
 
+    // 1c. Búsqueda por nombre de profesor en horarios_grupo
+    if (!grupoTarget) {
+      const palabrasProf = txt.replace(/[¿?¡!.,;:]/g,"").split(/\s+/).filter(p => p.length >= 3);
+      for (const palabra of palabrasProf) {
+        const { data: profRows } = await sb.from("horarios_grupo")
+          .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
+          .eq("centro_id", ctrId)
+          .ilike("profesor_nombre", `%${palabra}%`)
+          .limit(50);
+        if (profRows && profRows.length > 0) {
+          // Verificar que la palabra coincide con el nombre del profesor
+          const { dia: diaProf, hora: horaProf } = extractDiaHora(txt);
+          const diaFinal = diaProf || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
+          if (diaFinal) {
+            const clasesDia = profRows.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
+            if (clasesDia.length) {
+              const profNombre = clasesDia[0].profesor_nombre;
+              let html = `<p><strong>${profNombre}</strong> — horario del ${diaFinal}:</p><ul>`;
+              for (const c of clasesDia) {
+                const hi = String(c.hora_inicio || "").slice(0,5);
+                const hf = String(c.hora_fin || "").slice(0,5);
+                const aula = c.aula ? ` · aula ${c.aula}` : "";
+                html += `<li><strong>${hi}–${hf}:</strong> ${c.actividad_nombre} (${c.grupo_horario})${aula}</li>`;
+              }
+              html += "</ul>";
+              respuestaHorarioDirecta = html;
+            } else {
+              respuestaHorarioDirecta = `<p><strong>${profRows[0].profesor_nombre}</strong> no tiene clases programadas el ${diaFinal}.</p>`;
+            }
+            break;
+          } else {
+            // Sin día → horario semanal del profesor
+            const profNombre = profRows[0].profesor_nombre;
+            const diasOrden = ["lunes","martes","miercoles","jueves","viernes"];
+            let html = `<p><strong>${profNombre}</strong> — horario semanal:</p>`;
+            for (const dia of diasOrden) {
+              const clasesDia = profRows.filter(r => r.dia === dia).sort((a,b) => a.tramo - b.tramo);
+              if (!clasesDia.length) continue;
+              html += `<p><strong>${dia.toUpperCase()}</strong></p><ul>`;
+              for (const c of clasesDia) {
+                const hi = String(c.hora_inicio || "").slice(0,5);
+                const hf = String(c.hora_fin || "").slice(0,5);
+                html += `<li>${hi}–${hf}: ${c.actividad_nombre} (${c.grupo_horario})</li>`;
+              }
+              html += "</ul>";
+            }
+            respuestaHorarioDirecta = html;
+            break;
+          }
+        }
+      }
+    }
+
     // 2. Búsqueda libre por nombre de alumno
     if (!grupoTarget) {
       const STOPWORDS = new Set([
