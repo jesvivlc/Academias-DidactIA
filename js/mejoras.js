@@ -19,6 +19,7 @@ function loadRoleCards() {
       { ico:"📝", lbl:"Incidencias", sub:"Registrar una", q:"¿Cómo registro una incidencia de convivencia?" }
     ],
     admin: [
+      { ico:"👨‍🏫", lbl:"Profesores libres", sub:"Quién puede hacer guardia", q:"¿Qué profesores están libres ahora?" },
       { ico:"📅", lbl:"Reunión familias", sub:"Actualizar fecha", tab:"admin", info:"proxima_reunion" },
       { ico:"📞", lbl:"Teléfono", sub:"Actualizar contacto", tab:"admin", info:"telefono" },
       { ico:"🥗", lbl:"Menú semanal", sub:"Editar menú", tab:"admin", info:"menu_semanal" },

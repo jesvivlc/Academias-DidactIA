@@ -135,6 +135,67 @@ async function buscarGrupoAlumno(nombreBuscado) {
   return filtrados;
 }
 
+async function getProfesoresLibres(dia, hora) {
+  if (!sb || !ctrId) return null;
+
+  // Todos los profesores del centro
+  const { data: todos } = await sb.from("horarios_grupo")
+    .select("profesor_nombre")
+    .eq("centro_id", ctrId)
+    .not("profesor_nombre", "is", null);
+  if (!todos?.length) return null;
+
+  const todosProfes = [...new Set(todos.map(r => r.profesor_nombre).filter(Boolean))].sort();
+
+  // Profesores con clase en este tramo
+  const { data: conClase } = await sb.from("horarios_grupo")
+    .select("profesor_nombre,actividad_nombre,grupo_horario,aula")
+    .eq("centro_id", ctrId)
+    .eq("dia", dia)
+    .filter("hora_inicio", "lte", hora + ":00")
+    .filter("hora_fin", "gt", hora + ":00");
+
+  const ocupados = new Set((conClase || []).map(r => r.profesor_nombre).filter(Boolean));
+  const libres = todosProfes.filter(p => !ocupados.has(p));
+  const enClase = (conClase || []).filter(r => r.profesor_nombre);
+
+  return { libres, enClase, total: todosProfes.length };
+}
+
+async function responderProfesoresLibres(txt) {
+  const ahora = new Date();
+  const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  const dia = diasNombre[ahora.getDay()];
+  const hora = String(ahora.getHours()).padStart(2,"0") + ":" + String(ahora.getMinutes()).padStart(2,"0");
+
+  if (dia === "sabado" || dia === "domingo") {
+    return "<p>Hoy es fin de semana, no hay clases programadas.</p>";
+  }
+
+  const resultado = await getProfesoresLibres(dia, hora);
+  if (!resultado) {
+    return "<p>No se han podido obtener los datos de horarios en este momento.</p>";
+  }
+
+  const { libres, enClase } = resultado;
+
+  let html = `<p><strong>Profesores disponibles ahora (${hora}):</strong></p>`;
+
+  if (libres.length === 0) {
+    html += "<p>Todos los profesores tienen clase en este momento.</p>";
+  } else {
+    html += "<ul>";
+    libres.forEach(p => { html += `<li>${p}</li>`; });
+    html += "</ul>";
+  }
+
+  if (enClase.length > 0) {
+    html += `<p style="font-size:12px;color:var(--txt3);margin-top:8px;">Con clase ahora: ${enClase.map(c => c.profesor_nombre).join(", ")}</p>`;
+  }
+
+  return html;
+}
+
 async function buildContext() {
   if (!sb || !ctrId) return "Sin información disponible.";
   let ctx = `Centro: ${ctrName}\n\n`;
@@ -226,6 +287,20 @@ async function sendMsg() {
   // Detectar consulta de horario: keywords explícitas O mensaje con día+hora
   const tieneDiaHora = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|ahora)\b/i.test(txt) && /\b(\d{1,2}[:.h]\d{2}|\d{1,2}\s*[ap]m|ahora)\b/i.test(txt);
   const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene/i.test(txt) || tieneDiaHora;
+
+  // Detectar consulta de guardias/profesores libres
+  const esConsultaGuardia = /libre|disponible|guardia|sin clase|no tiene clase|quién puede|quien puede|puede cubrir|puede sustituir/i.test(txt);
+  if (esConsultaGuardia && (role === "admin" || role === "profesional" || role === "superadmin")) {
+    const respGuardia = await responderProfesoresLibres(txt);
+    document.getElementById("typing").classList.remove("show");
+    history.push({ role:"assistant", content: respGuardia });
+    addMsg("bot", respGuardia);
+    busy = false;
+    document.getElementById("send-btn").disabled = false;
+    document.getElementById("load-bar").classList.remove("show");
+    document.getElementById("chat-inp").focus();
+    return;
+  }
 
   if (esConsultaHorario) {
     let grupoTarget = null;
