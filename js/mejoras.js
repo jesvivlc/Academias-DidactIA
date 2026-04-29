@@ -1,77 +1,16 @@
-// ── MEJORA 1+2+3+4: TARJETAS ROL + FICHA CENTRO + BANNER + EVENTOS ──
+// ── MEJORA 1+2+3+4: DASHBOARD POR ROL ──
 
-function loadRoleCards() {
+async function loadDashboard() {
   var container = document.getElementById("role-cards-container");
-  var cards = document.getElementById("role-cards");
-  if (!container || !cards) return;
-
-  var defs = {
-    familia: [
-      { ico:"📅", lbl:"Próxima reunión", sub:"Cuándo es", q:"¿Cuándo es la próxima reunión de familias?" },
-      { ico:"📞", lbl:"Secretaría", sub:"Teléfono del centro", q:"¿Cuál es el teléfono de secretaría?" },
-      { ico:"🥗", lbl:"Menú semanal", sub:"Ver esta semana", q:"¿Cuál es el menú de esta semana?" },
-      { ico:"📝", lbl:"Justificantes", sub:"Cómo justificar faltas", q:"¿Cómo funciona el protocolo de ausencias y justificantes?" }
-    ],
-    profesional: [
-      { ico:"📋", lbl:"Mi horario", sub:"Ver mis clases", q:"¿Cuál es mi horario de clases?" },
-      { ico:"🏫", lbl:"Próximo claustro", sub:"Fecha y hora", q:"¿Cuándo es el próximo claustro?" },
-      { ico:"📚", lbl:"Materiales", sub:"Solicitar recursos", q:"¿Cómo solicito material didáctico?" },
-      { ico:"📝", lbl:"Incidencias", sub:"Registrar una", q:"¿Cómo registro una incidencia de convivencia?" }
-    ],
-    admin: [
-      { ico:"👨‍🏫", lbl:"Profesores libres", sub:"Quién puede hacer guardia", q:"¿Qué profesores están libres ahora?" },
-      { ico:"📅", lbl:"Reunión familias", sub:"Actualizar fecha", tab:"admin", info:"proxima_reunion" },
-      { ico:"📞", lbl:"Teléfono", sub:"Actualizar contacto", tab:"admin", info:"telefono" },
-      { ico:"🥗", lbl:"Menú semanal", sub:"Editar menú", tab:"admin", info:"menu_semanal" },
-      { ico:"⚠️", lbl:"Aviso activo", sub:"Editar aviso", tab:"admin", info:"aviso_activo" }
-    ],
-    superadmin: [
-      { ico:"🏫", lbl:"Centros", sub:"Módulos activos", tab:"users" },
-      { ico:"👥", lbl:"Usuarios", sub:"Gestión global", tab:"users" },
-      { ico:"✏️", lbl:"Administrar", sub:"Info del centro", tab:"admin" },
-      { ico:"🍽️", lbl:"Comedor", sub:"Ver asistencia", tab:"comedor" }
-    ]
-  };
-
-  var rolCards = defs[role] || defs["familia"];
-  cards.innerHTML = "";
-  for (var i = 0; i < rolCards.length; i++) {
-    var c = rolCards[i];
-    var div = document.createElement("div");
-    div.className = "role-card";
-    div.innerHTML = "<div class=\"rc-ico\">" + c.ico + "</div><div><div class=\"rc-lbl\">" + c.lbl + "</div><div class=\"rc-sub\">" + c.sub + "</div></div>";
-    (function(card) {
-      div.addEventListener("click", function() {
-        if (card.q) {
-          askQ(card.q);
-        } else if (card.info) {
-          showTab(card.tab);
-          setTimeout(function() { jumpToInfo(card.info); }, 500);
-        } else if (card.tab) {
-          showTab(card.tab);
-        }
-      });
-    })(c);
-    cards.appendChild(div);
-  }
+  if (!container) return;
   container.style.display = "block";
-}
-
-async function loadFichaCentro() {
-  var container = document.getElementById("ficha-centro-container");
-  var dataEl = document.getElementById("ficha-centro-data");
-  if (!container || !dataEl || !sb || !ctrId) return;
-
-  var result = await sb.from("info_centro").select("nombre_config,datos").eq("centro_id", ctrId);
-  var data = result.data;
-  if (!data || !data.length) return;
 
   var cfg = {};
-  for (var i = 0; i < data.length; i++) {
-    cfg[data[i].nombre_config] = (data[i].datos && data[i].datos.valor) ? data[i].datos.valor : "";
+  if (ctrId) {
+    var r = await sb.from("info_centro").select("nombre_config,datos").eq("centro_id", ctrId);
+    if (r.data) r.data.forEach(function(d) { cfg[d.nombre_config] = (d.datos && d.datos.valor) ? d.datos.valor : ""; });
   }
 
-  // Banner aviso
   var bannerEl = document.getElementById("banner-aviso");
   var bannerTxt = document.getElementById("banner-aviso-txt");
   if (cfg.aviso_activo && bannerEl && bannerTxt) {
@@ -79,18 +18,95 @@ async function loadFichaCentro() {
     bannerEl.style.display = "flex";
   }
 
-  // Ficha
-  var rows = "";
-  if (ctrName) rows += "<strong style=\"font-size:15px;font-weight:600;color:var(--txt);\">" + ctrName + "</strong>";
-  if (cfg.telefono) rows += "<div style=\"display:flex;gap:6px;font-size:13px;\"><span style=\"font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);min-width:70px;\">📞 Tel</span><span>" + cfg.telefono + "</span></div>";
-  if (cfg.proxima_reunion) rows += "<div style=\"display:flex;gap:6px;font-size:13px;\"><span style=\"font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);min-width:70px;\">📅 Reunión</span><span>" + cfg.proxima_reunion + "</span></div>";
-  if (cfg.claustro && (role === "profesional" || role === "admin" || role === "superadmin")) {
-    rows += "<div style=\"display:flex;gap:6px;font-size:13px;\"><span style=\"font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);min-width:70px;\">🏫 Claustro</span><span>" + cfg.claustro + "</span></div>";
-  }
+  var fichaEl = document.getElementById("ficha-centro-container");
+  if (fichaEl) fichaEl.style.display = "none";
 
-  if (rows) {
-    dataEl.innerHTML = rows;
-    container.style.display = "block";
+  var today = new Date().toLocaleDateString("es-ES", { weekday:"long", day:"numeric", month:"long" });
+  today = today.charAt(0).toUpperCase() + today.slice(1);
+
+  if (role === "familia") {
+    var alumnosHtml = "";
+    if (currentUserAlumnos && currentUserAlumnos.length) {
+      var todayIso = new Date().toISOString().split("T")[0];
+      var ids = currentUserAlumnos.map(function(a) { return a.id; });
+      var asistMap = {};
+      if (modulosActivos.includes("comedor")) {
+        var ar = await sb.from("asistencia_comedor").select("alumno_id,se_queda").eq("centro_id", ctrId).eq("fecha", todayIso).in("alumno_id", ids);
+        if (ar.data) ar.data.forEach(function(x) { asistMap[x.alumno_id] = x.se_queda; });
+      }
+      currentUserAlumnos.forEach(function(a) {
+        var seQueda = asistMap[a.id];
+        var badge = seQueda === true
+          ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:500;">Comedor ✓</span>'
+          : seQueda === false
+          ? '<span style="background:#f1f3f4;color:#5f6368;border-radius:12px;padding:2px 8px;font-size:10px;">Sin comedor</span>'
+          : '<span style="background:#fef7e0;color:#b06000;border-radius:12px;padding:2px 8px;font-size:10px;">Sin confirmar</span>';
+        alumnosHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid #f1f3f4;font-size:13px;color:#3c4043;">'
+          + '<span>' + a.nombre + ' · <span style="color:#9aa0a6;font-size:11px;">' + (a.curso || "") + '</span></span>' + badge + '</div>';
+      });
+    } else {
+      alumnosHtml = '<div style="font-size:12px;color:#9aa0a6;">No hay alumnos vinculados.</div>';
+    }
+
+    var reuniones = cfg.proxima_reunion
+      ? '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:0.5px solid #f1f3f4;font-size:12px;color:#3c4043;"><span style="color:#1e4174;font-weight:500;font-size:11px;min-width:50px;text-transform:uppercase;">Reunión</span><span>' + cfg.proxima_reunion + '</span></div>'
+      : '<div style="font-size:12px;color:#9aa0a6;">Sin reuniones próximas.</div>';
+
+    container.innerHTML = ''
+      + '<div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:560px;">'
+      + '<div><div style="font-size:18px;font-weight:500;color:#202124;">Buenos días, <span style="color:#1e4174;">' + (currentUserName || "").split(" ")[0] + '</span></div><div style="font-size:12px;color:#5f6368;margin-top:2px;">' + today + ' · ' + ctrName + '</div></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:600;color:#202124;margin-bottom:8px;">Mis hijos hoy</div>' + alumnosHtml + '</div>'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:600;color:#202124;margin-bottom:8px;">Próximas reuniones</div>' + reuniones + '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      + '<div class="quick-q" onclick="askQ(\'¿Cómo funciona el protocolo de ausencias y justificantes?\')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Justificar falta</div>'
+      + (currentUserAlumnos && currentUserAlumnos[0] ? '<div class="quick-q" onclick="askQ(\'¿Qué clase tiene ' + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + ' ahora?\')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Ver horario de ' + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + '</div>' : "")
+      + '</div>'
+      + '</div>';
+
+  } else if (role === "profesional") {
+    var guardiasHtml = cfg.aviso_activo
+      ? '<div style="font-size:12px;color:#5f6368;">Consulta sustituciones para ver guardias pendientes.</div>'
+      : '<div style="font-size:12px;color:#9aa0a6;">Sin información de guardias.</div>';
+
+    container.innerHTML = ''
+      + '<div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:560px;">'
+      + '<div><div style="font-size:18px;font-weight:500;color:#202124;">Buenos días, <span style="color:#1e4174;">' + (currentUserName || "").split(" ")[0] + '</span></div><div style="font-size:12px;color:#5f6368;margin-top:2px;">' + today + '</div></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:600;color:#202124;margin-bottom:8px;">Mi horario hoy</div><div style="font-size:12px;color:#9aa0a6;">Pregunta al chat por tu horario de hoy.</div><div style="margin-top:10px;"><div class="quick-q" onclick="askQ(\'¿Cuál es mi horario de hoy?\')" style="border-radius:20px;padding:6px 12px;font-size:11px;display:inline-flex;">Ver mi horario →</div></div></div>'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:12px;font-weight:600;color:#202124;margin-bottom:8px;">Guardias del día</div>' + guardiasHtml + '<div style="margin-top:10px;"><div class="quick-q" onclick="showTab(\'sust\')" style="border-radius:20px;padding:6px 12px;font-size:11px;display:inline-flex;">Ver sustituciones →</div></div></div>'
+      + '</div>'
+      + '</div>';
+
+  } else if (role === "admin" || role === "superadmin") {
+    container.innerHTML = ''
+      + '<div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:560px;">'
+      + '<div><div style="font-size:18px;font-weight:500;color:#202124;">Buenos días, <span style="color:#1e4174;">' + (currentUserName || "").split(" ")[0] + '</span></div><div style="font-size:12px;color:#5f6368;margin-top:2px;">' + today + ' · ' + ctrName + '</div></div>'
+      + '<div id="admin-stats-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:24px;font-weight:500;color:#a50e0e;" id="stat-guardias">—</div><div style="font-size:10px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Guardias sin cubrir</div></div>'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:24px;font-weight:500;color:#b06000;" id="stat-ausentes">—</div><div style="font-size:10px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Profesores ausentes</div></div>'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:24px;font-weight:500;color:#1e6b3a;" id="stat-incidencias">0</div><div style="font-size:10px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Incidencias abiertas</div></div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="showTab(\'sust\')">'
+      + '<div style="width:36px;height:36px;border-radius:8px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1e4174" stroke-width="1.5"><path d="M8 2v12M2 8h12"/></svg></div>'
+      + '<div><div style="font-size:13px;font-weight:500;color:#202124;">Sustituciones</div><div style="font-size:11px;color:#9aa0a6;">Gestionar guardias</div></div></div>'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="showTab(\'admin\')">'
+      + '<div style="width:36px;height:36px;border-radius:8px;background:#e8f0fe;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#1e4174" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/></svg></div>'
+      + '<div><div style="font-size:13px;font-weight:500;color:#202124;">Administración</div><div style="font-size:11px;color:#9aa0a6;">Info del centro</div></div></div>'
+      + '</div>'
+      + '</div>';
+
+    var todayIso2 = new Date().toISOString().split("T")[0];
+    var sustR = await sb.from("sustituciones").select("id,cubierta").eq("centro_id", ctrId).eq("fecha", todayIso2);
+    if (sustR.data) {
+      var sinCubrir = sustR.data.filter(function(s) { return !s.cubierta; }).length;
+      var statG = document.getElementById("stat-guardias");
+      if (statG) { statG.textContent = sinCubrir; statG.style.color = sinCubrir > 0 ? "#a50e0e" : "#1e6b3a"; }
+      var statA = document.getElementById("stat-ausentes");
+      if (statA) statA.textContent = "—";
+    }
   }
 }
 
@@ -313,8 +329,7 @@ function populateGruposComedor() {
 
 // ── INIT: llamar a mejoras tras login ──
 function initWelcomeExtras() {
-  loadRoleCards();
-  loadFichaCentro();
+  loadDashboard();
   loadMisHijos();
   if (role === "familia" && modulosActivos.includes("comedor")) {
     loadComedorHijos();
