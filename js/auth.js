@@ -246,7 +246,7 @@ async function loadUserProfile(user) {
     ctrId = allCentros?.[0]?.id || null;
     ctrName = allCentros?.[0]?.nombre || "Todos los centros";
     modulosActivos = allCentros?.[0]?.modulos_activos || [];
-    applyTheme(allCentros?.[0]?.color_primario, allCentros?.[0]?.logo_url);
+    setTimeout(() => applyTheme(allCentros?.[0]?.color_primario, allCentros?.[0]?.logo_url), 100);
     // Build centro selector for superadmin
     const hdrRight = document.getElementById("ctr-name-hdr");
     if (allCentros?.length > 1) {
