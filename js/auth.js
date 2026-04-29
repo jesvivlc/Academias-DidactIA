@@ -442,7 +442,7 @@ function applyTheme(colorPrimario, logoUrl) {
   var wlcIco = document.querySelector("#welcome .wlc-ico");
   if (wlcIco) {
     if (logoUrl) {
-      wlcIco.style.cssText = "width:120px;height:60px;border-radius:10px;background:white;padding:6px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;";
+      wlcIco.style.cssText = "width:180px;height:90px;border-radius:10px;background:white;padding:6px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;";
       var img3 = document.createElement("img");
       img3.src = logoUrl;
       img3.style.cssText = "width:100%;height:100%;object-fit:contain;";
