@@ -242,10 +242,11 @@ async function loadUserProfile(user) {
 
   // Superadmin: load all centros and let them pick
   if (role === "superadmin") {
-    const { data: allCentros } = await sb.from("centros").select("id,nombre,modulos_activos").order("nombre");
+    const { data: allCentros } = await sb.from("centros").select("id,nombre,modulos_activos,color_primario,logo_url").order("nombre");
     ctrId = allCentros?.[0]?.id || null;
     ctrName = allCentros?.[0]?.nombre || "Todos los centros";
     modulosActivos = allCentros?.[0]?.modulos_activos || [];
+    applyTheme(allCentros?.[0]?.color_primario, allCentros?.[0]?.logo_url);
     // Build centro selector for superadmin
     const hdrRight = document.getElementById("ctr-name-hdr");
     if (allCentros?.length > 1) {
