@@ -240,6 +240,50 @@
       </div>
 
     </div>
+
+    <!-- MÓDULO SUSTITUCIONES -->
+    <div class="card" id="sust-panel" style="margin-top:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div class="card-title">👨‍🏫 Sustituciones de hoy</div>
+        <button class="btn btn-s" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <label class="lbl">Profesor ausente</label>
+          <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
+        </div>
+        <div>
+          <label class="lbl">Profesor sustituto (libre ahora)</label>
+          <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
+        </div>
+        <div>
+          <label class="lbl">Grupo</label>
+          <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
+        </div>
+        <div>
+          <label class="lbl">Tramo horario</label>
+          <select class="fi" id="sust-tramo">
+            <option value="1">1 — 08:50 a 09:45</option>
+            <option value="2">2 — 09:45 a 10:40</option>
+            <option value="3">3 — 10:40 a 11:35</option>
+            <option value="4">4 — 12:00 a 12:55</option>
+            <option value="5">5 — 12:55 a 13:50</option>
+            <option value="6">6 — 13:50 a 14:45</option>
+            <option value="7">7 — 15:10 a 16:05</option>
+            <option value="8">8 — 16:05 a 17:00</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Observaciones (opcional)</label>
+        <input class="fi" id="sust-obs" placeholder="Ej: cubre la guardia del laboratorio" />
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
+        <div id="sust-msg" style="display:none;font-size:13px;"></div>
+      </div>
+      <div id="sust-container" style="margin-top:14px;"></div>
+    </div>
   </div>
 
   <!-- COMEDOR PANEL -->
