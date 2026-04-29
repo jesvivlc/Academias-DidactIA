@@ -405,7 +405,7 @@ async function sendMsg() {
     }
 
     // 2. Búsqueda libre por nombre de alumno
-    if (!grupoTarget) {
+    if (!grupoTarget && !respuestaHorarioDirecta) {
       const STOPWORDS = new Set([
         "que","tiene","hay","clase","horario","cual","cuando","donde","como","para",
         "lunes","martes","miercoles","jueves","viernes","manana","hoy","ahora","las","los",
@@ -440,12 +440,15 @@ async function sendMsg() {
     }
 
     // 3. Extraer día y hora — usar contexto conversacional si no hay en el mensaje
-    let { dia, hora } = extractDiaHora(txt);
-    if (!dia && window._ultimoDiaHora.dia) dia = window._ultimoDiaHora.dia;
-    if (!hora && window._ultimoDiaHora.hora) hora = window._ultimoDiaHora.hora;
-    // Guardar para próxima pregunta
-    if (dia) window._ultimoDiaHora.dia = dia;
-    if (hora) window._ultimoDiaHora.hora = hora;
+    let dia, hora;
+    if (!respuestaHorarioDirecta) {
+      ({ dia, hora } = extractDiaHora(txt));
+      if (!dia && window._ultimoDiaHora.dia) dia = window._ultimoDiaHora.dia;
+      if (!hora && window._ultimoDiaHora.hora) hora = window._ultimoDiaHora.hora;
+      // Guardar para próxima pregunta
+      if (dia) window._ultimoDiaHora.dia = dia;
+      if (hora) window._ultimoDiaHora.hora = hora;
+    }
 
     // 4. Resolver clase exacta (sin Gemini)
     if (grupoTarget && dia && hora) {
