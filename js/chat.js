@@ -555,7 +555,9 @@ NO le pidas que se identifique — ya sabes quién es. Dirígete a él por su no
 Si pregunta por su horario, el de su hijo, o información personal, responde directamente con los datos que tienes.
 Solo respondes con información de ESTE centro. Si no tienes algo, sugiere contactar con secretaría.
 Responde en español, de forma amable. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.${instruccionHorario}
-No reveles información confidencial de otros alumnos o profesores a usuarios que no deban verla.
+${role === "superadmin" || role === "admin"
+  ? "Este usuario es administrador del centro. Puede consultar listados de alumnos por nombre, grupo o curso, y datos académicos (horarios, grupos, asistencia). No compartas datos de contacto privados de familias (teléfonos, emails) a menos que el usuario los pida explícitamente para una gestión concreta."
+  : "No reveles información confidencial de otros alumnos o profesores a usuarios que no deban verla."}
 
 CONTEXTO EN TIEMPO REAL:
 ${ctx}${horarioGrupoCtx}`;
