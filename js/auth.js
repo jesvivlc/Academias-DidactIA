@@ -260,11 +260,11 @@ async function loadUserProfile(user) {
         // Reload modulos for selected centro
         const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
         modulosActivos = ctr?.modulos_activos || [];
-        applyTheme(ctr?.color_primario, ctr?.logo_url);
         // Update comedor tab visibility
         const cTab = document.getElementById("tab-comedor");
         if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
         history = []; resetChat(); updateUI(); loadAdmin();
+        applyTheme(ctr?.color_primario, ctr?.logo_url);
       };
       hdrRight.replaceWith(sel);
     } else {
@@ -475,6 +475,8 @@ function goHome() {
       '<div id="mis-hijos-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Mis hijos</div><div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div></div>' +
       '<div id="busqueda-alumno-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Búsqueda rápida de alumno</div><input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" /><div id="busqueda-alumno-res"></div></div>' +
       '</div>';
+    applyTheme(document.documentElement.style.getPropertyValue('--ink') || null,
+      document.getElementById('app-brand-logo')?.querySelector('img')?.src || null);
     setTimeout(initWelcomeExtras, 300);
   }
 }
