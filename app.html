@@ -300,58 +300,94 @@
   <!-- COMEDOR PANEL -->
   <div class="panel" id="panel-comedor">
     <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
-      <div class="pg-hdr">
-        <div>
-          <div class="pg-title">Comedor escolar</div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-            <button onclick="changeComedorFecha(-1)" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">← Anterior</button>
-            <div id="comedor-fecha" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:#202124;"></div>
-            <button onclick="changeComedorFecha(1)" id="btn-comedor-sig" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">Siguiente →</button>
-          </div>
-        </div>
-        <button class="btn btn-p" onclick="loadComedor()">↺ Actualizar</button>
+
+      <!-- Tabs de vista -->
+      <div style="display:flex;gap:8px;">
+        <button id="btn-vista-dia" onclick="showComedorVista('dia')" style="background:var(--ink);color:#fff;border:none;border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;font-weight:500;">Hoy / Fecha</button>
+        <button id="btn-vista-historico" onclick="showComedorVista('historico')" style="background:white;border:1px solid var(--bdr);border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;color:var(--txt2);">Histórico</button>
       </div>
 
-      <!-- Resumen del día -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
-        <div class="stat" style="background:var(--ink);color:#fff;">
-          <div class="stat-n" id="total-comensales" style="color:#fff;">—</div>
-          <div class="stat-l" style="color:rgba(255,255,255,0.7);">Total hoy</div>
-        </div>
-        <div class="stat">
-          <div class="stat-n" id="total-fijos">—</div>
-          <div class="stat-l">Plaza fija</div>
-        </div>
-        <div class="stat">
-          <div class="stat-n" id="total-esporadicos">—</div>
-          <div class="stat-l">Esporádicos</div>
-        </div>
-      </div>
-
-      <!-- Lista de alumnos -->
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-ico g">📋</div>
+      <!-- Vista: día -->
+      <div id="comedor-vista-dia">
+        <div class="pg-hdr">
           <div>
-            <div class="card-title">Lista de asistencia</div>
-            <div class="card-desc" style="margin-top:2px;">Marca quién se queda hoy al comedor</div>
+            <div class="pg-title">Comedor escolar</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+              <button onclick="changeComedorFecha(-1)" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">← Anterior</button>
+              <div id="comedor-fecha" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:#202124;"></div>
+              <button onclick="changeComedorFecha(1)" id="btn-comedor-sig" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">Siguiente →</button>
+            </div>
+          </div>
+          <button class="btn btn-p" onclick="loadComedor()">↺ Actualizar</button>
+        </div>
+
+        <!-- Resumen del día -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px;">
+          <div class="stat" style="background:var(--ink);color:#fff;">
+            <div class="stat-n" id="total-comensales" style="color:#fff;">—</div>
+            <div class="stat-l" style="color:rgba(255,255,255,0.7);">Total hoy</div>
+          </div>
+          <div class="stat">
+            <div class="stat-n" id="total-fijos">—</div>
+            <div class="stat-l">Plaza fija</div>
+          </div>
+          <div class="stat">
+            <div class="stat-n" id="total-esporadicos">—</div>
+            <div class="stat-l">Esporádicos</div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('todos')">Todos</button>
-          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('se_queda')">✅ Se quedan</button>
-          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('no_se_queda')">❌ No se quedan</button>
-          <select class="fi" id="comedor-filtro-grupo" style="width:auto;font-size:12px;padding:4px 8px;height:36px;" onchange="filterComedor(comedorFilter)"><option value="">Todos los grupos</option></select>
+
+        <!-- Lista de alumnos -->
+        <div class="card" style="margin-top:6px;">
+          <div class="card-hdr">
+            <div class="card-ico g">📋</div>
+            <div>
+              <div class="card-title">Lista de asistencia</div>
+              <div class="card-desc" style="margin-top:2px;">Marca quién se queda hoy al comedor</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('todos')">Todos</button>
+            <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('se_queda')">✅ Se quedan</button>
+            <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('no_se_queda')">❌ No se quedan</button>
+            <select class="fi" id="comedor-filtro-grupo" style="width:auto;font-size:12px;padding:4px 8px;height:36px;" onchange="filterComedor(comedorFilter)"><option value="">Todos los grupos</option></select>
+          </div>
+          <div id="comedor-list" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;"><span class="spin">⟳</span> Cargando lista…</div>
+          </div>
         </div>
-        <div id="comedor-list" style="display:flex;flex-direction:column;gap:8px;">
-          <div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;"><span class="spin">⟳</span> Cargando lista…</div>
+
+        <!-- Imprimir lista -->
+        <div style="display:flex;gap:10px;margin-top:6px;">
+          <button class="btn btn-s" onclick="printComedor()">🖨️ Imprimir lista para cocina</button>
         </div>
       </div>
 
-      <!-- Imprimir lista -->
-      <div style="display:flex;gap:10px;">
-        <button class="btn btn-s" onclick="printComedor()">🖨️ Imprimir lista para cocina</button>
+      <!-- Vista: histórico -->
+      <div id="comedor-vista-historico" style="display:none;">
+        <div style="font-size:18px;font-weight:600;color:var(--txt);margin-bottom:16px;">Histórico de asistencia — últimos 30 días</div>
+        <div class="card" style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--bdr);">
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Fecha</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Día semana</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Total comensales</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Fijos</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Esporádicos</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="comedor-historico-body">
+              <tr><td colspan="6" style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="btn btn-s" onclick="exportarHistoricoCSV()">📥 Exportar CSV</button>
+        </div>
       </div>
+
     </div>
   </div>
 

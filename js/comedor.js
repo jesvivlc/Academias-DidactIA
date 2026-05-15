@@ -2,6 +2,7 @@
 let comedorData = [];
 let comedorFilter = 'todos';
 let comedorFecha = new Date().toISOString().split("T")[0];
+let historicoData = [];
 
 function changeComedorFecha(delta) {
   var d = new Date(comedorFecha);
@@ -178,4 +179,116 @@ function printComedor() {
 function jumpToInfo(k) {
   showTab("admin");
   setTimeout(() => { const el = document.getElementById("f-"+k); if(el){el.focus();el.scrollIntoView({behavior:"smooth",block:"center"});} }, 400);
+}
+
+async function loadComedorHistorico() {
+  const body = document.getElementById("comedor-historico-body");
+  if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--txt3);padding:20px;"><span class="spin">⟳</span> Cargando histórico…</td></tr>';
+
+  const hoy = new Date();
+  const hace30 = new Date();
+  hace30.setDate(hoy.getDate() - 30);
+  const fechaDesde = hace30.toISOString().split("T")[0];
+
+  const { data, error } = await sb.from("asistencia_comedor")
+    .select("fecha,se_queda,plaza_fija")
+    .eq("centro_id", ctrId)
+    .gte("fecha", fechaDesde)
+    .order("fecha", { ascending: false });
+
+  if (error || !data) {
+    if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--txt3);padding:20px;">Error al cargar el histórico.</td></tr>';
+    return;
+  }
+
+  const byFecha = {};
+  data.forEach(r => {
+    if (!byFecha[r.fecha]) byFecha[r.fecha] = { total: 0, fijos: 0, esporadicos: 0 };
+    if (r.se_queda) {
+      byFecha[r.fecha].total++;
+      if (r.plaza_fija) byFecha[r.fecha].fijos++;
+      else byFecha[r.fecha].esporadicos++;
+    }
+  });
+
+  historicoData = Object.entries(byFecha)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([fecha, stats]) => ({ fecha, ...stats }));
+
+  renderComedorHistorico(historicoData);
+}
+
+function renderComedorHistorico(data) {
+  const body = document.getElementById("comedor-historico-body");
+  if (!body) return;
+
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const hoy = new Date().toISOString().split("T")[0];
+
+  if (!data.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--txt3);padding:20px;">No hay datos en los últimos 30 días.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = data.map(d => {
+    const esHoy = d.fecha === hoy;
+    const fechaObj = new Date(d.fecha + "T12:00:00");
+    const diaSemana = dias[fechaObj.getDay()];
+    const fechaFmt = fechaObj.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const rowStyle = esHoy ? "background:var(--ink-ll);font-weight:500;" : "";
+    return `<tr style="${rowStyle}">
+      <td style="padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:13px;">${fechaFmt}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:13px;color:var(--txt2);">${diaSemana}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:13px;font-weight:600;color:var(--ink);">${d.total}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:13px;">${d.fijos}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--bdr);font-size:13px;">${d.esporadicos}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--bdr);">
+        <button onclick="verDiaHistorico('${d.fecha}')" style="background:var(--ink);color:#fff;border:none;border-radius:var(--r-sm);padding:5px 12px;font-size:12px;cursor:pointer;">Ver</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function verDiaHistorico(fecha) {
+  comedorFecha = fecha;
+  showComedorVista('dia');
+  loadComedor();
+}
+
+function showComedorVista(vista) {
+  const vDia = document.getElementById("comedor-vista-dia");
+  const vHist = document.getElementById("comedor-vista-historico");
+  const btnDia = document.getElementById("btn-vista-dia");
+  const btnHist = document.getElementById("btn-vista-historico");
+  if (vista === 'dia') {
+    if (vDia) vDia.style.display = "";
+    if (vHist) vHist.style.display = "none";
+    if (btnDia) { btnDia.style.background = "var(--ink)"; btnDia.style.color = "#fff"; btnDia.style.border = "none"; }
+    if (btnHist) { btnHist.style.background = "white"; btnHist.style.color = "var(--txt2)"; btnHist.style.border = "1px solid var(--bdr)"; }
+  } else {
+    if (vDia) vDia.style.display = "none";
+    if (vHist) vHist.style.display = "";
+    if (btnDia) { btnDia.style.background = "white"; btnDia.style.color = "var(--txt2)"; btnDia.style.border = "1px solid var(--bdr)"; }
+    if (btnHist) { btnHist.style.background = "var(--ink)"; btnHist.style.color = "#fff"; btnHist.style.border = "none"; }
+    loadComedorHistorico();
+  }
+}
+
+function exportarHistoricoCSV() {
+  if (!historicoData.length) return;
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const rows = [["Fecha","Día","Total","Fijos","Esporádicos"]];
+  historicoData.forEach(d => {
+    const fechaObj = new Date(d.fecha + "T12:00:00");
+    const fechaFmt = fechaObj.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+    rows.push([fechaFmt, dias[fechaObj.getDay()], d.total, d.fijos, d.esporadicos]);
+  });
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "historico-comedor-" + new Date().toISOString().split("T")[0] + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
 }
