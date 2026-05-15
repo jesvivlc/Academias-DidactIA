@@ -1,3 +1,30 @@
+let sustFiltroActivo = 'hoy';
+
+function detectarTramoActual() {
+  const ahora = new Date();
+  const hhmm = ahora.getHours() * 100 + ahora.getMinutes();
+  if (hhmm >= 850  && hhmm < 945)  return 1;
+  if (hhmm >= 945  && hhmm < 1040) return 2;
+  if (hhmm >= 1040 && hhmm < 1135) return 3;
+  if (hhmm >= 1200 && hhmm < 1255) return 4;
+  if (hhmm >= 1255 && hhmm < 1350) return 5;
+  if (hhmm >= 1350 && hhmm < 1445) return 6;
+  if (hhmm >= 1510 && hhmm < 1605) return 7;
+  if (hhmm >= 1605 && hhmm < 1700) return 8;
+  return 1;
+}
+
+function initSustPanel() {
+  const hoy = new Date().toISOString().split("T")[0];
+  const fechaInput = document.getElementById("sust-fecha");
+  if (fechaInput) fechaInput.value = hoy;
+  const tramo = detectarTramoActual();
+  const tramoSel = document.getElementById("sust-tramo");
+  if (tramoSel) tramoSel.value = tramo;
+  cargarProfesoresLibresEnSelect(tramo);
+  loadSustituciones('hoy');
+}
+
 async function loadAdmin() {
   if (!sb || !ctrId) return;
   await Promise.all([loadInfoCentro(), loadHorarios()]);
@@ -88,13 +115,22 @@ async function loadHorarios() {
 
 async function loadSustituciones(filtro) {
   if (!filtro) filtro = 'hoy';
+  sustFiltroActivo = filtro;
+
+  // Estado visual de botones de filtro
+  ['hoy', 'semana', 'todo'].forEach(k => {
+    const btn = document.getElementById('sust-btn-' + k);
+    if (!btn) return;
+    btn.style.background   = k === filtro ? 'var(--ink)' : 'white';
+    btn.style.color        = k === filtro ? '#fff' : '';
+    btn.style.borderColor  = k === filtro ? 'var(--ink)' : '#e0e0e0';
+  });
+
   const c = document.getElementById("sust-container");
   if (!c) return;
   c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div>';
 
   const hoy = new Date().toISOString().split("T")[0];
-  const fechaInput = document.getElementById("sust-fecha");
-  if (fechaInput && !fechaInput.value) fechaInput.value = hoy;
 
   let query = sb.from("sustituciones").select("*").eq("centro_id", ctrId);
   if (filtro === 'hoy') {
@@ -108,6 +144,13 @@ async function loadSustituciones(filtro) {
   }
 
   const { data, error } = await query;
+
+  // Actualizar contador en el tab
+  if (filtro === 'hoy') {
+    const tabSust = document.getElementById("tab-sust");
+    if (tabSust) tabSust.textContent = (data && data.length) ? `🔄 Sustituciones (${data.length})` : '🔄 Sustituciones';
+  }
+
   if (error || !data || !data.length) {
     c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">No hay sustituciones registradas.</div>';
     return;
@@ -115,8 +158,8 @@ async function loadSustituciones(filtro) {
   c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Obs.</th><th>Estado</th><th></th></tr></thead><tbody>
     ${data.map(s => {
       const cubierta = s.cubierta
-        ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">Cubierta</span>'
-        : '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">Pendiente</span>';
+        ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">✓ Cubierta</span>'
+        : '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">⚠ Pendiente</span>';
       return `<tr>
         <td>${s.fecha || "—"}</td>
         <td>${s.hora_inicio ? s.hora_inicio.slice(0,5) + "–" + (s.hora_fin||"").slice(0,5) : "—"}</td>
@@ -172,16 +215,17 @@ async function registrarSustitucion() {
   });
 
   if (error) {
+    msg.style.cssText = "display:block;color:var(--red);font-size:13px;padding:8px 12px;";
     msg.textContent = "Error: " + error.message;
-    msg.style.color = "var(--red)";
   } else {
-    msg.textContent = "✅ Sustitución registrada";
-    msg.style.color = "var(--ink)";
+    msg.style.cssText = "display:block;background:#e6f4ea;color:#1e6b3a;border-radius:var(--r-sm);padding:8px 12px;font-size:13px;";
+    msg.textContent = "✅ Sustitución registrada correctamente";
     document.getElementById("sust-ausente").value = "";
     document.getElementById("sust-sustituto").value = "";
     document.getElementById("sust-grupo").value = "";
     document.getElementById("sust-obs").value = "";
-    await loadSustituciones();
+    setTimeout(() => { msg.style.display = "none"; }, 3000);
+    await loadSustituciones(sustFiltroActivo);
   }
 }
 

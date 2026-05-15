@@ -387,7 +387,7 @@ function showTab(t) {
   if (t === "admin") loadAdmin();
   if (t === "users") loadUsersPanel();
   if (t === "comedor") loadComedor();
-  if (t === "sust") { cargarProfesoresLibresEnSelect(); loadSustituciones(); }
+  if (t === "sust") { initSustPanel(); }
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

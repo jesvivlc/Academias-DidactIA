@@ -289,9 +289,9 @@
         <div id="sust-msg" style="display:none;font-size:13px;"></div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px;margin-top:14px;">
-        <button onclick="loadSustituciones('hoy')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
-        <button onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
-        <button onclick="loadSustituciones('todo')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
+        <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')"    style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
+        <button id="sust-btn-semana" onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
+        <button id="sust-btn-todo"   onclick="loadSustituciones('todo')"   style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
       </div>
       <div id="sust-container"></div>
     </div>
