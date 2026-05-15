@@ -3,422 +3,1143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DidactIA — Asistente de Centro Educativo</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="css/styles.css">
-  <meta name="theme-color" content="#2a3d2b">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="DidactIA">
-  <link rel="manifest" href="manifest.json">
+<title>DidactIA — La inteligencia que hace hablar a tu centro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0e2a4a;
+  --navy2:#0f2d52;
+  --blue:#1a56db;
+  --blue-l:#e8f0fe;
+  --amber:#e8a020;
+  --amber-l:#fef3dc;
+  --white:#ffffff;
+  --off:#f6f8fc;
+  --txt:#0e2a4a;
+  --txt2:#3d5166;
+  --txt3:#7a90a8;
+  --bdr:#d8e2f0;
+  --r:8px;
+  --rl:14px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Geist',sans-serif;font-size:16px;line-height:1.65;color:var(--txt);background:var(--white);-webkit-font-smoothing:antialiased}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 6vw;height:68px;
+  background:rgba(255,255,255,0.96);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--bdr);
+}
+.nav-logo{
+  display:flex;align-items:center;gap:10px;
+  text-decoration:none;
+}
+.nav-logo-mark{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;
+  font-size:16px;color:var(--white);font-style:italic;
+}
+.nav-logo-text{
+  font-family:'Playfair Display',serif;
+  font-size:20px;color:var(--navy);letter-spacing:-0.01em;
+}
+.nav-links{
+  display:flex;gap:32px;list-style:none;
+}
+.nav-links a{
+  font-size:14px;color:var(--txt2);text-decoration:none;
+  transition:color .2s;
+}
+.nav-links a:hover{color:var(--navy)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-login{
+  font-size:14px;color:var(--txt2);text-decoration:none;
+  padding:8px 16px;border-radius:var(--r);
+  transition:color .2s;
+}
+.nav-login:hover{color:var(--navy)}
+.nav-cta{
+  background:var(--navy);color:var(--white);
+  padding:9px 22px;border-radius:var(--r);
+  font-size:14px;font-weight:500;text-decoration:none;
+  transition:background .2s,transform .15s;
+}
+.nav-cta:hover{background:var(--blue);transform:translateY(-1px)}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;
+  display:grid;grid-template-columns:1fr 1fr;
+  align-items:center;gap:0;
+  padding:100px 6vw 80px;
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;
+  top:0;right:0;width:50%;height:100%;
+  background:var(--off);
+  clip-path:polygon(8% 0,100% 0,100% 100%,0% 100%);
+  z-index:0;
+}
+.hero-left{position:relative;z-index:1;padding-right:6vw}
+.hero-right{position:relative;z-index:1}
+
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:500;letter-spacing:0.1em;
+  text-transform:uppercase;color:var(--blue);
+  margin-bottom:24px;
+}
+.hero-eyebrow::before{
+  content:'';width:24px;height:2px;background:var(--blue);
+}
+h1{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(40px,4.5vw,62px);
+  line-height:1.08;
+  color:var(--navy);
+  letter-spacing:-0.025em;
+  margin-bottom:24px;
+}
+h1 em{font-style:italic;color:var(--blue)}
+.hero-sub{
+  font-size:17px;color:var(--txt2);
+  line-height:1.7;font-weight:300;
+  max-width:480px;margin-bottom:40px;
+}
+.hero-divider{
+  width:48px;height:3px;
+  background:var(--amber);
+  margin-bottom:32px;
+}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:48px}
+.btn-primary{
+  background:var(--navy);color:var(--white);
+  padding:14px 28px;border-radius:var(--r);
+  font-size:14px;font-weight:500;text-decoration:none;
+  display:inline-flex;align-items:center;gap:8px;
+  transition:all .2s;
+  border:2px solid var(--navy);
+}
+.btn-primary:hover{background:var(--blue);border-color:var(--blue);transform:translateY(-2px)}
+.btn-outline{
+  background:transparent;color:var(--navy);
+  padding:14px 28px;border-radius:var(--r);
+  font-size:14px;font-weight:500;text-decoration:none;
+  border:2px solid var(--bdr);
+  transition:all .2s;
+}
+.btn-outline:hover{border-color:var(--navy)}
+.hero-trust{
+  display:flex;align-items:center;gap:16px;
+  padding-top:32px;border-top:1px solid var(--bdr);
+}
+.hero-trust p{font-size:13px;color:var(--txt3)}
+.trust-chips{display:flex;gap:8px;flex-wrap:wrap}
+.trust-chip{
+  background:var(--white);border:1px solid var(--bdr);
+  padding:5px 12px;border-radius:100px;
+  font-size:12px;font-weight:500;color:var(--txt2);
+}
+
+/* Hero mockup */
+.hero-mock{
+  background:var(--white);
+  border-radius:var(--rl);
+  border:1px solid var(--bdr);
+  box-shadow:0 8px 48px rgba(13,27,42,0.10),0 2px 8px rgba(13,27,42,0.06);
+  overflow:hidden;
+}
+.mock-bar{
+  background:var(--navy);
+  padding:14px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.mock-bar-dots{display:flex;gap:6px}
+.mock-dot{width:10px;height:10px;border-radius:50%}
+.mock-bar-title{
+  font-size:12px;font-weight:500;color:rgba(255,255,255,0.5);
+  letter-spacing:0.05em;
+}
+.mock-body{padding:24px}
+.mock-greeting{
+  font-family:'Playfair Display',serif;
+  font-size:20px;color:var(--navy);margin-bottom:4px;
+}
+.mock-date{font-size:12px;color:var(--txt3);margin-bottom:20px}
+.mock-chat{display:flex;flex-direction:column;gap:12px}
+.mock-msg-user{
+  align-self:flex-end;
+  background:var(--navy);color:var(--white);
+  padding:10px 16px;border-radius:14px 14px 3px 14px;
+  font-size:13px;max-width:85%;line-height:1.5;
+}
+.mock-msg-bot{
+  align-self:flex-start;
+  background:var(--off);color:var(--txt);
+  padding:12px 16px;border-radius:3px 14px 14px 14px;
+  font-size:13px;max-width:85%;line-height:1.6;
+}
+.mock-msg-bot strong{color:var(--navy);font-weight:500}
+.mock-msg-bot ul{margin:6px 0 0 16px}
+.mock-msg-bot li{color:var(--txt2);margin-bottom:2px}
+.mock-input{
+  display:flex;align-items:center;gap:8px;
+  margin-top:16px;padding-top:16px;
+  border-top:1px solid var(--bdr);
+}
+.mock-inp{
+  flex:1;background:var(--off);
+  border:1px solid var(--bdr);border-radius:8px;
+  padding:9px 14px;font-size:13px;color:var(--txt3);
+}
+.mock-send{
+  width:34px;height:34px;border-radius:8px;
+  background:var(--navy);display:flex;align-items:center;
+  justify-content:center;cursor:pointer;flex-shrink:0;
+}
+.mock-send svg{width:16px;height:16px;fill:none;stroke:white;stroke-width:2}
+
+/* ── SECCIÓN GENÉRICA ── */
+section{padding:96px 6vw}
+.s-eyebrow{
+  font-size:11px;font-weight:500;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--blue);
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:16px;
+}
+.s-eyebrow::before{content:'';width:20px;height:2px;background:var(--blue)}
+h2{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(30px,3.5vw,46px);
+  line-height:1.12;color:var(--navy);
+  letter-spacing:-0.02em;margin-bottom:16px;
+}
+h2 em{font-style:italic}
+.s-sub{
+  font-size:17px;color:var(--txt2);
+  font-weight:300;line-height:1.7;
+  max-width:560px;
+}
+
+/* ── DIFERENCIAL ── */
+.diferencial{
+  background:#0e2a4a;
+  padding:72px 6vw;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:40px;flex-wrap:wrap;
+}
+.diferencial-quote{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(22px,3vw,38px);
+  color:var(--white);
+  line-height:1.2;
+  letter-spacing:-0.02em;
+  max-width:600px;
+}
+.diferencial-quote em{
+  font-style:italic;color:var(--amber);
+}
+.diferencial-sub{
+  font-size:15px;color:rgba(255,255,255,0.5);
+  max-width:280px;line-height:1.6;
+  border-left:2px solid var(--amber);
+  padding-left:16px;
+}
+
+/* ── PROBLEMA ── */
+.problema{background:var(--off)}
+.problema-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:1px;margin-top:56px;
+  background:var(--bdr);
+  border:1px solid var(--bdr);
+  border-radius:var(--rl);overflow:hidden;
+}
+.problema-card{
+  background:var(--white);padding:32px;
+  transition:background .2s;
+}
+.problema-card:hover{background:#fafbff}
+.p-num{
+  font-family:'Playfair Display',serif;
+  font-size:40px;color:var(--bdr);
+  line-height:1;margin-bottom:20px;
+  font-weight:600;
+}
+.problema-card h3{
+  font-size:16px;font-weight:500;
+  color:var(--navy);margin-bottom:8px;
+}
+.problema-card p{font-size:14px;color:var(--txt2);line-height:1.65}
+
+/* ── MÓDULOS ── */
+.modulos-wrap{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:40px;margin-top:64px;align-items:start;
+}
+.modulo-list{display:flex;flex-direction:column;gap:3px}
+.modulo-item{
+  padding:24px 28px;
+  border-radius:var(--r);
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:all .2s;
+}
+.modulo-item:hover,.modulo-item.active{
+  background:var(--white);
+  border-color:var(--bdr);
+  box-shadow:0 2px 16px rgba(13,27,42,0.06);
+}
+.modulo-item.active .m-num{color:var(--blue)}
+.m-num{
+  font-size:11px;font-weight:500;color:var(--txt3);
+  letter-spacing:0.08em;text-transform:uppercase;
+  margin-bottom:8px;transition:color .2s;
+}
+.modulo-item h3{
+  font-size:17px;font-weight:500;color:var(--navy);
+  margin-bottom:6px;
+}
+.modulo-item p{font-size:14px;color:var(--txt2);line-height:1.6}
+.modulo-tag{
+  display:inline-block;margin-top:10px;
+  background:var(--blue-l);color:var(--blue);
+  padding:3px 10px;border-radius:100px;
+  font-size:11px;font-weight:500;letter-spacing:0.04em;
+}
+.modulo-preview{
+  background:var(--off);border:1px solid var(--bdr);
+  border-radius:var(--rl);overflow:hidden;
+  position:sticky;top:90px;
+  min-height:460px;
+}
+.mock-screen{
+  display:none;flex-direction:column;height:100%;
+}
+.mock-screen.active{display:flex}
+.mock-topbar{
+  background:#0e2a4a;padding:14px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.mock-topbar-title{font-size:13px;font-weight:500;color:rgba(255,255,255,0.7);letter-spacing:0.04em}
+.mock-topbar-badge{
+  background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);
+  padding:3px 10px;border-radius:100px;font-size:11px;
+}
+.mock-content{padding:24px;flex:1}
+.mock-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.mock-avatar{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:500;flex-shrink:0;
+}
+.mock-line{height:10px;border-radius:4px;background:var(--bdr)}
+.mock-pill{
+  padding:3px 10px;border-radius:100px;font-size:11px;font-weight:500;
+}
+.mock-pill.libre{background:#dcfce7;color:#166534}
+.mock-pill.clase{background:#fef3c7;color:#92400e}
+.mock-pill.ok{background:#dcfce7;color:#166534}
+.mock-pill.pend{background:#fef3c7;color:#92400e}
+.mock-table{width:100%;border-collapse:collapse;font-size:13px}
+.mock-table th{
+  font-size:11px;font-weight:500;color:var(--txt3);
+  letter-spacing:0.06em;text-transform:uppercase;
+  padding:0 12px 10px;text-align:left;
+  border-bottom:1px solid var(--bdr);
+}
+.mock-table td{
+  padding:10px 12px;color:var(--txt2);
+  border-bottom:1px solid var(--off);
+}
+.mock-table tr:last-child td{border-bottom:none}
+.mock-stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px}
+.mock-stat{
+  background:var(--white);border:1px solid var(--bdr);
+  border-radius:var(--r);padding:14px;text-align:center;
+}
+.mock-stat-n{font-family:'Playfair Display',serif;font-size:28px;color:#0e2a4a;line-height:1}
+.mock-stat-l{font-size:11px;color:var(--txt3);margin-top:4px}
+.mock-role-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--white);border:1px solid var(--bdr);
+  border-radius:var(--r);padding:12px 16px;margin-bottom:8px;
+}
+.mock-role-left{display:flex;align-items:center;gap:10px}
+.mock-role-name{font-size:14px;font-weight:500;color:#0e2a4a}
+.mock-role-email{font-size:12px;color:var(--txt3)}
+.mock-role-badge{
+  padding:3px 10px;border-radius:100px;font-size:11px;font-weight:500;
+}
+.mock-role-badge.admin{background:var(--blue-l);color:var(--blue)}
+.mock-role-badge.prof{background:#f0fdf4;color:#166534}
+.mock-role-badge.fam{background:#fef3c7;color:#92400e}
+.preview-feature{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:14px;color:var(--txt2);margin-bottom:10px;
+}
+.preview-feature::before{
+  content:'→';color:var(--blue);font-weight:500;
+  flex-shrink:0;margin-top:1px;
+}
+
+/* ── CÓMO FUNCIONA ── */
+.como{background:#0e2a4a}
+.como .s-eyebrow{color:#6ea8fe}
+.como .s-eyebrow::before{background:#6ea8fe}
+.como h2{color:var(--white)}
+.como .s-sub{color:rgba(255,255,255,0.5)}
+.pasos{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:0;margin-top:64px;
+  position:relative;
+}
+.pasos::before{
+  content:'';position:absolute;
+  top:22px;left:0;right:0;height:1px;
+  background:rgba(255,255,255,0.1);
+}
+.paso{padding:48px 32px 32px;position:relative}
+.paso-n{
+  width:44px;height:44px;border-radius:50%;
+  border:1px solid rgba(255,255,255,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;
+  font-size:18px;color:var(--white);
+  margin-bottom:24px;
+  background:var(--navy);
+  position:relative;z-index:1;
+}
+.paso.highlight .paso-n{
+  background:var(--amber);border-color:var(--amber);
+  color:var(--navy);
+}
+.paso h3{font-size:15px;font-weight:500;color:var(--white);margin-bottom:8px}
+.paso p{font-size:14px;color:rgba(255,255,255,0.45);line-height:1.6}
+
+/* ── PRECIOS ── */
+.precios-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:24px;margin-top:56px;max-width:860px;
+}
+.precio-card{
+  background:var(--white);
+  border:1px solid var(--bdr);
+  border-radius:var(--rl);
+  padding:36px;
+  position:relative;
+  transition:transform .2s,box-shadow .2s;
+}
+.precio-card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 8px 32px rgba(13,27,42,0.08);
+}
+.precio-card.featured{
+  border-color:#0e2a4a;border-width:2px;
+  background:#0e2a4a;
+}
+.precio-badge{
+  position:absolute;top:-13px;left:28px;
+  background:var(--amber);color:var(--navy);
+  padding:4px 14px;border-radius:100px;
+  font-size:11px;font-weight:500;letter-spacing:0.06em;
+  text-transform:uppercase;
+}
+.precio-label{
+  font-size:11px;font-weight:500;color:var(--txt3);
+  letter-spacing:0.08em;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.precio-card.featured .precio-label{color:rgba(255,255,255,0.4)}
+.precio-amount{
+  font-family:'Playfair Display',serif;
+  font-size:48px;color:var(--navy);line-height:1;
+  margin-bottom:6px;
+}
+.precio-card.featured .precio-amount{color:var(--white)}
+.precio-amount sup{font-size:20px;vertical-align:super;margin-right:2px}
+.precio-period{font-size:13px;color:var(--txt3);margin-bottom:28px}
+.precio-card.featured .precio-period{color:rgba(255,255,255,0.4)}
+.precio-sep{
+  width:32px;height:2px;background:var(--bdr);
+  margin-bottom:24px;
+}
+.precio-card.featured .precio-sep{background:rgba(255,255,255,0.15)}
+.precio-features{list-style:none;display:flex;flex-direction:column;gap:12px}
+.precio-features li{
+  font-size:14px;color:var(--txt2);
+  display:flex;gap:10px;align-items:flex-start;
+}
+.precio-card.featured .precio-features li{color:rgba(255,255,255,0.65)}
+.precio-check{
+  width:18px;height:18px;border-radius:50%;
+  background:var(--blue-l);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:1px;
+}
+.precio-card.featured .precio-check{background:rgba(255,255,255,0.15)}
+.precio-check::after{
+  content:'✓';font-size:10px;color:var(--blue);font-weight:600;
+}
+.precio-card.featured .precio-check::after{color:rgba(255,255,255,0.7)}
+.precio-cta{
+  display:block;text-align:center;
+  margin-top:32px;padding:13px;
+  border-radius:var(--r);
+  font-size:14px;font-weight:500;
+  text-decoration:none;transition:all .2s;
+}
+.precio-card:not(.featured) .precio-cta{
+  border:1.5px solid var(--bdr);color:var(--navy);
+}
+.precio-card:not(.featured) .precio-cta:hover{
+  border-color:var(--navy);
+}
+.precio-card.featured .precio-cta{
+  background:var(--amber);color:var(--navy);
+}
+.precio-card.featured .precio-cta:hover{
+  background:#d4901c;
+}
+
+/* FUNDAE */
+.fundae{
+  margin-top:32px;max-width:860px;
+  background:var(--off);
+  border:1px solid var(--bdr);
+  border-left:4px solid var(--amber);
+  border-radius:0 var(--r) var(--r) 0;
+  padding:24px 28px;
+  display:flex;gap:20px;align-items:flex-start;
+}
+.fundae-icon{font-size:28px;flex-shrink:0;margin-top:2px}
+.fundae h3{font-size:15px;font-weight:500;color:var(--navy);margin-bottom:6px}
+.fundae p{font-size:14px;color:var(--txt2);line-height:1.65}
+
+/* ── CONTACTO ── */
+.contacto-grid{
+  display:grid;grid-template-columns:5fr 7fr;
+  gap:80px;align-items:start;
+}
+@media(max-width:768px){
+  .contacto-grid{grid-template-columns:1fr}
+  .hero{grid-template-columns:1fr}
+  .hero::before{display:none}
+  .hero-right{display:none}
+  .modulos-wrap{grid-template-columns:1fr}
+  .pasos{grid-template-columns:1fr 1fr}
+  .nav-links{display:none}
+  .diferencial{flex-direction:column}
+}
+.contacto-left h2{margin-bottom:12px}
+.contacto-left .s-sub{margin-bottom:32px}
+.c-dato{
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:16px;font-size:14px;color:var(--txt2);
+}
+.c-icon{
+  width:40px;height:40px;border-radius:10px;
+  background:var(--blue-l);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:16px;
+}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}}
+.fg{margin-bottom:16px}
+.fg label{
+  display:block;font-size:12px;font-weight:500;
+  color:var(--txt2);letter-spacing:0.05em;text-transform:uppercase;
+  margin-bottom:7px;
+}
+.fg input,.fg select,.fg textarea{
+  width:100%;padding:11px 15px;
+  border:1.5px solid var(--bdr);border-radius:var(--r);
+  font-size:14px;font-family:inherit;color:var(--txt);
+  background:var(--white);outline:none;
+  transition:border-color .2s,box-shadow .2s;
+  appearance:none;
+}
+.fg input:focus,.fg select:focus,.fg textarea:focus{
+  border-color:var(--navy);
+  box-shadow:0 0 0 3px rgba(13,27,42,0.06);
+}
+.fg textarea{height:110px;resize:vertical}
+.form-submit{
+  width:100%;background:var(--navy);color:var(--white);
+  padding:14px;border:none;border-radius:var(--r);
+  font-size:14px;font-weight:500;font-family:inherit;
+  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  letter-spacing:0.02em;
+}
+.form-submit:hover{background:var(--blue)}
+.form-submit svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+
+/* ── FOOTER ── */
+footer{
+  background:#0e2a4a;
+  padding:32px 6vw;
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:16px;
+}
+.footer-logo{
+  font-family:'Playfair Display',serif;
+  font-size:18px;color:rgba(255,255,255,0.5);
+  font-style:italic;
+}
+.footer-links{display:flex;gap:24px}
+.footer-links a{font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:rgba(255,255,255,0.7)}
+
+/* ── ANIMACIONES ── */
+.reveal{
+  opacity:0;transform:translateY(28px);
+  transition:opacity .65s ease,transform .65s ease;
+}
+.reveal.visible{opacity:1;transform:none}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+</style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="setup">
-  <div class="setup-card">
-    <div class="setup-logo" id="brand-logo">D</div>
-    <div class="setup-title" id="auth-title">Bienvenido a DidactIA</div>
-    <div class="setup-sub" id="auth-sub">Accede con tu cuenta para continuar.</div>
-
-    <!-- LOGIN FORM -->
-    <div id="form-login">
-      <div class="setup-field">
-        <label class="setup-label">Email</label>
-        <input class="setup-input" id="login-email" type="email" placeholder="tu@email.com" />
-      </div>
-      <div class="setup-field">
-        <label class="setup-label">Contraseña</label>
-        <input class="setup-input" id="login-pass" type="password" placeholder="••••••••" />
-      </div>
-      <button class="setup-btn" onclick="doLogin()">Entrar →</button>
-      <div class="setup-err" id="login-err"></div>
-      <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
-    </div>
-
-    <!-- RECOVERY FORM -->
-    <div id="form-recovery" style="display:none">
-      <div class="setup-field">
-        <label class="setup-label">Nueva contraseña</label>
-        <input class="setup-input" id="recovery-pass" type="password" placeholder="Mínimo 6 caracteres" />
-      </div>
-      <div class="setup-field">
-        <label class="setup-label">Confirmar contraseña</label>
-        <input class="setup-input" id="recovery-pass2" type="password" placeholder="Repite la contraseña" />
-      </div>
-      <button class="setup-btn" onclick="doRecovery()">Guardar contraseña →</button>
-      <div class="setup-err" id="recovery-err"></div>
-    </div>
-
-    <!-- REGISTER FORM: STEP 1 — datos básicos -->
-    <div id="form-register" style="display:none">
-      <div style="display:flex;gap:8px;margin-bottom:18px;">
-        <div style="flex:1;height:3px;background:var(--ink);border-radius:2px;"></div>
-        <div style="flex:1;height:3px;background:var(--bdr);border-radius:2px;" id="step2-bar"></div>
-      </div>
-      <div id="reg-step1">
-        <div class="setup-field">
-          <label class="setup-label">Nombre completo</label>
-          <input class="setup-input" id="reg-name" type="text" placeholder="Tu nombre y apellidos" />
-        </div>
-        <div class="setup-field">
-          <label class="setup-label">Email</label>
-          <input class="setup-input" id="reg-email" type="email" placeholder="tu@email.com" />
-        </div>
-        <div class="setup-field">
-          <label class="setup-label">Contraseña</label>
-          <input class="setup-input" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres" />
-        </div>
-        <div class="setup-field">
-          <label class="setup-label">Código de acceso</label>
-          <input class="setup-input" id="reg-codigo" type="text" placeholder="El código que te dio el centro" style="text-transform:uppercase;" />
-          <div class="setup-hint">El administrador del centro te lo proporciona. Hay un código para familias y otro para profesionales.</div>
-        </div>
-        <button class="setup-btn" onclick="doRegisterStep1()">Siguiente →</button>
-        <div class="setup-err" id="reg-err"></div>
-        <span class="setup-link" onclick="showLogin()">¿Ya tienes cuenta? Inicia sesión</span>
-      </div>
-
-      <!-- STEP 2 — vinculación alumno (solo familias) -->
-      <div id="reg-step2" style="display:none">
-        <div style="background:var(--ink-ll);border:1px solid var(--ink-l);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--ink);">
-          ✅ Centro verificado: <strong id="centro-verificado">—</strong>
-        </div>
-        <div class="setup-sub" style="margin-bottom:16px;">¿Tienes hijos matriculados en este centro? Vincúlalos a tu cuenta para acceder a su información.</div>
-        <div id="alumnos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
-        <div id="alumnos-seleccionados" style="font-size:12px;color:var(--ink);margin-bottom:8px;display:none;">
-          ✓ <span id="sel-count">0</span> alumno(s) seleccionado(s)
-        </div>
-        <button class="setup-btn" onclick="doRegisterStep2()">Crear cuenta →</button>
-        <div class="setup-err" id="reg-err2"></div>
-        <div style="text-align:center;margin-top:10px;">
-          <span class="setup-link" onclick="doRegisterStep2(true)">Saltar — no tengo hijos matriculados</span>
-        </div>
-      </div>
-    </div>
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">D</div>
+    <span class="nav-logo-text">DidactIA</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#modulos">Producto</a></li>
+    <li><a href="#como">Implementación</a></li>
+    <li><a href="#precios">Precios</a></li>
+    <li><a href="#contacto">Contacto</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="https://didactia.eu" class="nav-login">Acceder</a>
+    <a href="#contacto" class="nav-cta">Solicitar demo</a>
   </div>
-</div>
-
-<!-- APP -->
-<header class="hdr" id="app-hdr" style="display:none">
-  <div class="brand" onclick="goHome()" style="cursor:pointer;" title="Ir al inicio">
-    <div class="brand-logo" id="app-brand-logo">D</div>
-    <div><div class="brand-name">DidactIA</div><div class="brand-sub">Asistente de centro educativo</div></div>
-  </div>
-  <div class="hdr-r">
-    <div class="ctr-pill">
-      <div class="ctr-dot"></div>
-      <span id="ctr-name-hdr" style="font-size:13px;font-weight:500;color:var(--txt2);">—</span>
-    </div>
-    <div class="role-pill fam" id="role-pill">👨‍👩‍👧 Familia</div>
-    <div class="role-pill fam" id="logout-btn" onclick="doLogout()" style="background:var(--srf2);color:var(--txt3);border-color:var(--bdr);margin-left:4px;">Salir</div>
-  </div>
-</header>
-
-<div id="banner-aviso">⚠️ <span id="banner-aviso-txt"></span></div>
-<nav class="tabs" id="app-tabs" style="display:none">
-  <div class="tab active" id="tab-chat" onclick="showTab('chat')">💬 Chatbot</div>
-  <div class="tab" id="tab-comedor" onclick="showTab('comedor')" style="display:none">🍽️ Comedor</div>
-  <div class="tab" id="tab-admin" onclick="showTab('admin')">⚙️ Administración</div>
-  <div class="tab" id="tab-sust" onclick="showTab('sust')" style="display:none">🔄 Sustituciones</div>
-  <div class="tab" id="tab-users" onclick="showTab('users')" style="display:none">👥 Usuarios</div>
 </nav>
 
-<div class="main" id="app-main" style="display:none">
-
-  <!-- CHAT -->
-  <div class="panel active" id="panel-chat">
-    <aside class="sidebar">
-      <div class="sb-sec">Preguntas frecuentes</div>
-      <div class="sb-item active" onclick="askQ('¿Cuál es el horario del comedor escolar?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2v5a3 3 0 0 0 6 0V2"/><line x1="8" y1="7" x2="8" y2="14"/></svg></span> Horario del comedor</div>
-      <div class="sb-item" onclick="askQ('¿Cuándo es la próxima reunión de familias?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="5" y1="1.5" x2="5" y2="4.5"/><line x1="11" y1="1.5" x2="11" y2="4.5"/><line x1="2" y1="7" x2="14" y2="7"/></svg></span> Próximas reuniones</div>
-      <div class="sb-item" onclick="askQ('¿Cuál es el horario de atención a familias?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg></span> Horario del centro</div>
-      <div class="sb-item" onclick="askQ('¿Qué actividades extraescolares hay disponibles?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 1 0 6 6"/><path d="M14 8a2 2 0 0 1-2 2"/></svg></span> Extraescolares</div>
-      <div class="sb-item" onclick="askQ('¿Cómo funciona el protocolo de ausencias y justificantes?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="1" width="10" height="14" rx="1.5"/><line x1="5.5" y1="5" x2="10.5" y2="5"/><line x1="5.5" y1="8" x2="10.5" y2="8"/><line x1="5.5" y1="11" x2="8" y2="11"/></svg></span> Justificantes</div>
-      <div class="sb-item" onclick="askQ('¿Cuál es el menú de esta semana?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/></svg></span> Menú semanal</div>
-      <div class="sb-sec">Para el profesorado</div>
-      <div class="sb-item" onclick="askQ('¿Cuándo es el próximo claustro?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.8 2.2-5 5-5"/><circle cx="11.5" cy="5" r="2"/><path d="M15 13c0-2.2-1.6-4-3.5-4"/></svg></span> Próximo claustro</div>
-      <div class="sb-item" onclick="askQ('¿Cómo solicito material didáctico?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="12" height="7" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg></span> Solicitar materiales</div>
-      <div class="sb-item" onclick="askQ('¿Cómo registro una incidencia de convivencia?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".8" fill="currentColor"/></svg></span> Registrar incidencia</div>
-      <div class="sb-sec">Horarios</div>
-      <div class="sb-item" onclick="askQ('¿Cuál es el horario de clases de esta semana?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="2" x2="5" y2="14"/><line x1="2" y1="6" x2="14" y2="6"/></svg></span> Ver horario de clases</div>
-      <div class="sb-sec" id="sb-sec-recientes" style="display:none;">Recientes</div>
-      <div id="sb-historial"></div>
-      <div class="sb-sec" id="sb-sec-acciones" style="display:none;">Acciones rápidas</div>
-      <div id="sb-acciones-rol"></div>
-    </aside>
-    <div class="chat-main">
-      <div class="load-bar" id="load-bar"></div>
-      <div class="chat-msgs" id="chat-msgs">
-        <div class="welcome" id="welcome">
-          <div class="wlc-ico">D</div>
-          <div class="wlc-title">Hola, soy DidactIA</div>
-          <div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">este centro</strong>. Puedo responder preguntas sobre horarios, menús, reuniones y mucho más.</div>
-          <div class="quick-qs">
-            <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
-            <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
-            <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
-          </div>
-
-          <!-- Tarjetas rápidas -->
-          <div id="role-cards-container" style="display:none;">
-            <div class="role-cards" id="role-cards"></div>
-          </div>
-          <!-- Ficha Mi Centro -->
-          <div id="ficha-centro-container" style="display:none; margin-top:14px;">
-            <div id="ficha-centro-data" style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;"></div>
-          </div>
-          <!-- Estado comedor hijos -->
-          <div id="comedor-hijos-container" style="display:none; margin-top:14px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Comedor hoy</div>
-            <div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-          </div>
-          <!-- Mis hijos -->
-          <div id="mis-hijos-container" style="display:none; margin-top:14px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Mis hijos</div>
-            <div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-          </div>
-          <!-- Búsqueda rápida alumno -->
-          <div id="busqueda-alumno-container" style="display:none; margin-top:14px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Búsqueda rápida de alumno</div>
-            <input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" />
-            <div id="busqueda-alumno-res"></div>
-          </div>
-        </div>
-      </div>
-      <div class="typing" id="typing">
-        <div class="typ-av">D</div>
-        <div class="dots"><span></span><span></span><span></span></div>
-      </div>
-      <div class="input-area">
-        <div class="inp-wrap">
-          <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
-            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        </div>
-        <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
-        <button class="send-btn" id="send-btn" onclick="sendMsg()">
-          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        </button>
-      </div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow reveal">Plataforma educativa española</div>
+    <h1 class="reveal reveal-delay-1">
+      La inteligencia<br>que hace <em>hablar</em><br>a tu centro
+    </h1>
+    <div class="hero-divider reveal reveal-delay-2"></div>
+    <p class="hero-sub reveal reveal-delay-2">
+      Las plataformas de gestión organizan el centro. DidactIA lo hace hablar. Cualquier miembro de tu comunidad educativa obtiene la respuesta que necesita, en segundos, desde cualquier dispositivo.
+    </p>
+    <div class="hero-actions reveal reveal-delay-3">
+      <a href="#contacto" class="btn-primary">
+        Solicitar demo
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#modulos" class="btn-outline">Ver qué incluye</a>
     </div>
-  </div>
-
-  <!-- ADMIN -->
-  <div class="panel" id="panel-admin">
-    <div class="pg-hdr">
-      <div><div class="pg-title">Administración</div><div class="pg-sub">Base de conocimiento de <span id="adm-ctr">—</span></div></div>
-      <button class="btn btn-p" onclick="loadAdmin()">↺ Recargar</button>
-    </div>
-    <div class="stats">
-      <div class="stat"><div class="stat-n" id="s-info">—</div><div class="stat-l">Configs en info_centro</div></div>
-      <div class="stat"><div class="stat-n" id="s-hor">—</div><div class="stat-l">Entradas de horario</div></div>
-      <div class="stat"><div class="stat-n">2</div><div class="stat-l">Roles activos</div></div>
-      <div class="stat"><div class="stat-n">✓</div><div class="stat-l">Multi-tenant activo</div><div class="stat-ch">Aislado por centro_id</div></div>
-    </div>
-    <div class="banner">ℹ️ &nbsp;Solo ves los datos de <strong id="bnr-ctr">este centro</strong>. Ningún otro centro puede acceder a esta información.</div>
-    <div class="grid2">
-
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico o">✏️</div><div><div class="card-title">Información del centro</div></div></div>
-        <div class="card-desc">Edita los datos de tu tabla <code>info_centro</code>. Estos se inyectan como contexto en cada respuesta del chatbot.</div>
-        <div id="info-fields"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando de Supabase…</div></div>
-        <button class="btn btn-p" onclick="saveInfo()">💾 Guardar en Supabase</button>
-        <div id="save-msg" style="font-size:12px;display:none;margin-top:-6px;"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico b">📅</div><div><div class="card-title">Horarios del centro</div></div></div>
-        <div class="card-desc">Datos en tiempo real de tu tabla <code>horarios</code>, filtrados por <code>centro_id</code>.</div>
-        <div id="hor-container" style="overflow-x:auto;"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
-        <button class="btn btn-s" onclick="loadHorarios()">↺ Actualizar</button>
-      </div>
-
-    </div>
-
-  </div>
-
-  <!-- SUSTITUCIONES PANEL -->
-  <div class="panel" id="panel-sust" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-    <div class="pg-hdr">
-      <div><div class="pg-title">Sustituciones</div><div class="pg-sub">Gestión de guardias y sustituciones</div></div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-p" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
-        <button class="btn btn-s" onclick="exportarSustituciones()">📥 Exportar</button>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-        <div>
-          <label class="lbl">Profesor ausente</label>
-          <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
-        </div>
-        <div>
-          <label class="lbl">Profesor sustituto (libre ahora)</label>
-          <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
-        </div>
-        <div>
-          <label class="lbl">Grupo</label>
-          <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
-        </div>
-        <div>
-          <label class="lbl">Tramo horario</label>
-          <select class="fi" id="sust-tramo" onchange="cargarProfesoresLibresEnSelect(parseInt(this.value))">
-            <option value="1">1 — 08:50 a 09:45</option>
-            <option value="2">2 — 09:45 a 10:40</option>
-            <option value="3">3 — 10:40 a 11:35</option>
-            <option value="4">4 — 12:00 a 12:55</option>
-            <option value="5">5 — 12:55 a 13:50</option>
-            <option value="6">6 — 13:50 a 14:45</option>
-            <option value="7">7 — 15:10 a 16:05</option>
-            <option value="8">8 — 16:05 a 17:00</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl">Fecha</label>
-          <input class="fi" type="date" id="sust-fecha" />
-        </div>
-      </div>
+    <div class="hero-trust reveal">
       <div>
-        <label class="lbl">Observaciones (opcional)</label>
-        <input class="fi" id="sust-obs" placeholder="Ej: cubre la guardia del laboratorio" />
+        <p>Activo en centros de</p>
+        <div class="trust-chips" style="margin-top:8px">
+          <span class="trust-chip">IES Buñol</span>
+          <span class="trust-chip">Agora Lledó International School</span>
+        </div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
-        <div id="sust-msg" style="display:none;font-size:13px;"></div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;margin-top:14px;">
-        <button onclick="loadSustituciones('hoy')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
-        <button onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
-        <button onclick="loadSustituciones('todo')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
-      </div>
-      <div id="sust-container"></div>
     </div>
   </div>
-
-  <!-- COMEDOR PANEL -->
-  <div class="panel" id="panel-comedor">
-    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
-      <div class="pg-hdr">
-        <div>
-          <div class="pg-title">Comedor escolar</div>
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-            <button onclick="changeComedorFecha(-1)" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">← Anterior</button>
-            <div id="comedor-fecha" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:#202124;"></div>
-            <button onclick="changeComedorFecha(1)" id="btn-comedor-sig" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">Siguiente →</button>
+  <div class="hero-right reveal reveal-delay-2">
+    <div class="hero-mock">
+      <div class="mock-bar">
+        <div class="mock-bar-dots">
+          <div class="mock-dot" style="background:#ff5f57"></div>
+          <div class="mock-dot" style="background:#ffbd2e"></div>
+          <div class="mock-dot" style="background:#28c840"></div>
+        </div>
+        <span class="mock-bar-title">DidactIA · Agora Lledó</span>
+        <div style="width:50px"></div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-greeting">Buenos días, Javier</div>
+        <div class="mock-date">Viernes, 16 de mayo · 08:52</div>
+        <div class="mock-chat">
+          <div class="mock-msg-user">¿Qué profesores están libres ahora mismo?</div>
+          <div class="mock-msg-bot">
+            <strong>Profesores disponibles ahora (08:52):</strong>
+            <ul>
+              <li>María González</li>
+              <li>Carlos Serrano</li>
+              <li>Ana Martínez</li>
+            </ul>
+          </div>
+          <div class="mock-msg-user">¿Cuándo tiene Matemáticas Marcos López?</div>
+          <div class="mock-msg-bot">
+            <strong>Marcos López</strong> (2ºESO B) tiene Matemáticas los <strong>martes de 10:40 a 11:35</strong> con Ana Martínez, aula 104.
           </div>
         </div>
-        <button class="btn btn-p" onclick="loadComedor()">↺ Actualizar</button>
-      </div>
-
-      <!-- Resumen del día -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
-        <div class="stat" style="background:var(--ink);color:#fff;">
-          <div class="stat-n" id="total-comensales" style="color:#fff;">—</div>
-          <div class="stat-l" style="color:rgba(255,255,255,0.7);">Total hoy</div>
-        </div>
-        <div class="stat">
-          <div class="stat-n" id="total-fijos">—</div>
-          <div class="stat-l">Plaza fija</div>
-        </div>
-        <div class="stat">
-          <div class="stat-n" id="total-esporadicos">—</div>
-          <div class="stat-l">Esporádicos</div>
-        </div>
-      </div>
-
-      <!-- Lista de alumnos -->
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-ico g">📋</div>
-          <div>
-            <div class="card-title">Lista de asistencia</div>
-            <div class="card-desc" style="margin-top:2px;">Marca quién se queda hoy al comedor</div>
+        <div class="mock-input">
+          <div class="mock-inp">Escribe una pregunta...</div>
+          <div class="mock-send">
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('todos')">Todos</button>
-          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('se_queda')">✅ Se quedan</button>
-          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('no_se_queda')">❌ No se quedan</button>
-          <select class="fi" id="comedor-filtro-grupo" style="width:auto;font-size:12px;padding:4px 8px;height:36px;" onchange="filterComedor(comedorFilter)"><option value="">Todos los grupos</option></select>
-        </div>
-        <div id="comedor-list" style="display:flex;flex-direction:column;gap:8px;">
-          <div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;"><span class="spin">⟳</span> Cargando lista…</div>
-        </div>
-      </div>
-
-      <!-- Imprimir lista -->
-      <div style="display:flex;gap:10px;">
-        <button class="btn btn-s" onclick="printComedor()">🖨️ Imprimir lista para cocina</button>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- USERS PANEL (superadmin only) -->
-  <div class="panel" id="panel-users">
-    <div class="pg-hdr">
-      <div><div class="pg-title">Gestión de usuarios</div><div class="pg-sub">Invita administradores y gestiona roles por centro</div></div>
-    </div>
-
-    <!-- Centros y módulos -->
-    <div class="card">
-      <div class="card-hdr"><div class="card-ico g">🏫</div><div><div class="card-title">Centros y módulos activos</div></div></div>
-      <div class="card-desc">Activa o desactiva módulos para cada centro educativo.</div>
-      <div id="centros-modulos-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
-    </div>
-
-        <!-- Invite new admin -->
-    <div class="card" style="max-width:560px;">
-      <div class="card-hdr"><div class="card-ico o">✉️</div><div><div class="card-title">Invitar administrador de centro</div></div></div>
-      <div class="card-desc">El usuario recibirá un email con un enlace para establecer su contraseña y acceder como administrador del centro seleccionado.</div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div>
-          <label class="lbl">Nombre completo</label>
-          <input class="fi" id="inv-name" placeholder="Nombre del administrador" />
-        </div>
-        <div>
-          <label class="lbl">Email</label>
-          <input class="fi" id="inv-email" type="email" placeholder="admin@centro.es" />
-        </div>
-        <div>
-          <label class="lbl">Centro educativo</label>
-          <select class="fi" id="inv-centro"><option value="">Cargando centros…</option></select>
-        </div>
-        <div>
-          <label class="lbl">Rol</label>
-          <select class="fi" id="inv-rol">
-            <option value="admin">⚙️ Administrador del centro</option>
-            <option value="profesional">👩‍🏫 Profesional</option>
-          </select>
-        </div>
-        <button class="btn btn-p" onclick="inviteUser()">📨 Enviar invitación</button>
-        <div id="inv-status" style="font-size:13px;display:none;padding:8px 12px;border-radius:var(--r-sm);"></div>
-      </div>
-    </div>
-
-    <!-- Users list -->
-    <div class="card">
-      <div class="card-hdr"><div class="card-ico b">👥</div><div><div class="card-title">Usuarios registrados</div></div></div>
-      <div class="card-desc">Lista de todos los usuarios de la plataforma. Puedes cambiar su rol directamente.</div>
-      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
-        <select class="fi" id="filter-centro" style="width:auto;" onchange="loadUsers()"><option value="">Todos los centros</option></select>
-        <button class="btn btn-s" onclick="loadUsers()">↺ Actualizar</button>
-      </div>
-      <div id="users-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando usuarios…</div></div>
-    </div>
+<!-- DIFERENCIAL -->
+<div class="diferencial">
+  <div class="diferencial-quote reveal">
+    Las plataformas de gestión<br>organizan el centro.<br>
+    DidactIA lo hace <em>hablar.</em>
   </div>
-
+  <div class="diferencial-sub reveal reveal-delay-1">
+    Un chat inteligente que responde en lenguaje natural a directores, profesores y familias. Sin formación, sin manuales.
+  </div>
 </div>
 
+<!-- PROBLEMA -->
+<section class="problema">
+  <div class="s-eyebrow reveal">El problema</div>
+  <h2 class="reveal">Cada día, las mismas<br><em>interrupciones</em></h2>
+  <p class="s-sub reveal">Los equipos directivos pierden horas resolviendo consultas que un sistema inteligente podría gestionar solo.</p>
+  <div class="problema-grid">
+    <div class="problema-card reveal">
+      <div class="p-num">01</div>
+      <h3>Guardias sin cubrir</h3>
+      <p>Saber quién está libre ahora mismo requiere consultar horarios manualmente y llamar a varios profesores.</p>
+    </div>
+    <div class="problema-card reveal reveal-delay-1">
+      <div class="p-num">02</div>
+      <h3>Comedor desorganizado</h3>
+      <p>El control de asistencia al comedor se hace a mano, con errores y sin datos históricos accesibles.</p>
+    </div>
+    <div class="problema-card reveal reveal-delay-2">
+      <div class="p-num">03</div>
+      <h3>Preguntas repetitivas</h3>
+      <p>Familias y profesores interrumpen a secretaría con las mismas consultas sobre horarios y contactos.</p>
+    </div>
+    <div class="problema-card reveal reveal-delay-3">
+      <div class="p-num">04</div>
+      <h3>Información dispersa</h3>
+      <p>Los datos del centro están repartidos entre Excel, email y sistemas que no se hablan entre sí.</p>
+    </div>
+  </div>
+</section>
 
-<script src="js/config.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/users.js"></script>
-<script src="js/admin.js"></script>
-<script src="js/chat.js"></script>
-<script src="js/comedor.js"></script>
-<script src="js/mejoras.js"></script>
+<!-- MÓDULOS -->
+<section id="modulos">
+  <div class="s-eyebrow reveal">Lo que incluye</div>
+  <h2 class="reveal">Cinco módulos.<br><em>Un solo acceso.</em></h2>
+  <p class="s-sub reveal">Diseñados para resolver los problemas más frecuentes en la gestión diaria de cualquier centro.</p>
+  <div class="modulos-wrap">
+    <div class="modulo-list">
+      <div class="modulo-item active reveal" onclick="selectModulo(0,this)">
+        <div class="m-num">01</div>
+        <h3>Asistente IA</h3>
+        <p>Chat inteligente en lenguaje natural para toda la comunidad educativa.</p>
+        <span class="modulo-tag">Más utilizado</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-1" onclick="selectModulo(1,this)">
+        <div class="m-num">02</div>
+        <h3>Guardias y sustituciones</h3>
+        <p>Profesores libres en tiempo real y gestión de guardias con historial.</p>
+        <span class="modulo-tag">Ahorra 1h/día</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-2" onclick="selectModulo(2,this)">
+        <div class="m-num">03</div>
+        <h3>Comedor escolar</h3>
+        <p>Control de asistencia diaria, filtros por grupo y exportación de datos.</p>
+        <span class="modulo-tag">Sin papel</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-3" onclick="selectModulo(3,this)">
+        <div class="m-num">04</div>
+        <h3>Panel de administración</h3>
+        <p>Gestión de usuarios, roles, módulos y tematización por centro.</p>
+        <span class="modulo-tag">Multicentro</span>
+      </div>
+      <div class="modulo-item reveal" onclick="selectModulo(4,this)">
+        <div class="m-num">05</div>
+        <h3>App móvil (PWA)</h3>
+        <p>Instalable en cualquier smartphone sin pasar por la App Store. Siempre actualizada.</p>
+        <span class="modulo-tag">iOS y Android</span>
+      </div>
+    </div>
+    <div class="modulo-preview reveal" id="modulo-preview">
 
+      <!-- SCREEN 0: Chat IA -->
+      <div class="mock-screen active" id="screen-0">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">DidactIA · Asistente</span>
+          <span class="mock-topbar-badge">En línea</span>
+        </div>
+        <div class="mock-content">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="align-self:flex-end;background:#0e2a4a;color:white;padding:9px 14px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:85%">¿Qué profesores están libres ahora?</div>
+            <div style="background:var(--white);border:1px solid var(--bdr);padding:12px 14px;border-radius:3px 12px 12px 12px;font-size:13px;max-width:90%;color:var(--txt2);line-height:1.6">
+              <span style="font-weight:500;color:#0e2a4a">Libres ahora (10:42):</span><br>
+              · María González<br>· Carlos Serrano<br>· Ana Martínez
+            </div>
+            <div style="align-self:flex-end;background:#0e2a4a;color:white;padding:9px 14px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:85%">¿Cuándo tiene Mates Marcos López?</div>
+            <div style="background:var(--white);border:1px solid var(--bdr);padding:12px 14px;border-radius:3px 12px 12px 12px;font-size:13px;max-width:90%;color:var(--txt2);line-height:1.6">
+              <span style="font-weight:500;color:#0e2a4a">Marcos López</span> (2ºESO B) tiene Matemáticas los <span style="font-weight:500;color:#0e2a4a">martes 10:40–11:35</span> con Ana Martínez · Aula 104.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr)">
+            <div style="flex:1;background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:9px 12px;font-size:12px;color:var(--txt3)">Escribe una pregunta...</div>
+            <div style="width:32px;height:32px;background:#0e2a4a;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="14" height="14" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 1: Sustituciones -->
+      <div class="mock-screen" id="screen-1">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Sustituciones · Hoy</span>
+          <span class="mock-topbar-badge">Viernes 16 may</span>
+        </div>
+        <div class="mock-content">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Profesores libres ahora · Tramo 3 (10:40–11:35)</div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dbeafe;color:#1e40af">MG</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">María González</div><div style="font-size:12px;color:var(--txt3)">Matemáticas · Sec.</div></div><span class="mock-pill libre">Libre</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">CS</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">Carlos Serrano</div><div style="font-size:12px;color:var(--txt3)">Lengua · Bach.</div></div><span class="mock-pill libre">Libre</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fef9c3;color:#854d0e">AM</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">Ana Martínez</div><div style="font-size:12px;color:var(--txt3)">Inglés · ESO</div></div><span class="mock-pill clase">Con clase</span></div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr)">
+            <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">Historial de hoy</div>
+            <table class="mock-table">
+              <tr><th>Sustituto</th><th>Grupo</th><th>Tramo</th></tr>
+              <tr><td>C. Serrano</td><td>3ºESO A</td><td>1</td></tr>
+              <tr><td>M. González</td><td>1BAC B</td><td>2</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 2: Comedor -->
+      <div class="mock-screen" id="screen-2">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Comedor · Viernes 16 may</span>
+          <span class="mock-topbar-badge">142 comensales</span>
+        </div>
+        <div class="mock-content">
+          <div class="mock-stat-row">
+            <div class="mock-stat"><div class="mock-stat-n">142</div><div class="mock-stat-l">Total hoy</div></div>
+            <div class="mock-stat"><div class="mock-stat-n">18</div><div class="mock-stat-l">Grupos</div></div>
+            <div class="mock-stat"><div class="mock-stat-n">4</div><div class="mock-stat-l">Sin confirmar</div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div style="flex:1;background:var(--white);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:12px;color:var(--txt3)">Filtrar por grupo...</div>
+            <div style="background:#0e2a4a;color:white;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer">Exportar</div>
+          </div>
+          <table class="mock-table">
+            <tr><th>Grupo</th><th>Alumnos</th><th>Estado</th></tr>
+            <tr><td>1ºESO A</td><td>22</td><td><span class="mock-pill ok">✓ OK</span></td></tr>
+            <tr><td>1ºESO B</td><td>19</td><td><span class="mock-pill ok">✓ OK</span></td></tr>
+            <tr><td>2ºESO A</td><td>24</td><td><span class="mock-pill ok">✓ OK</span></td></tr>
+            <tr><td>1ºBAC A</td><td>18</td><td><span class="mock-pill pend">Pendiente</span></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- SCREEN 3: Admin -->
+      <div class="mock-screen" id="screen-3">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Administración · Usuarios</span>
+          <span class="mock-topbar-badge">12 usuarios</span>
+        </div>
+        <div class="mock-content">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase">Gestión de roles</div>
+            <div style="background:#0e2a4a;color:white;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500">+ Invitar</div>
+          </div>
+          <div class="mock-role-row">
+            <div class="mock-role-left">
+              <div class="mock-avatar" style="background:#dbeafe;color:#1e40af;width:32px;height:32px;font-size:11px">JV</div>
+              <div><div class="mock-role-name">Javier V.</div><div class="mock-role-email">javier@agora.es</div></div>
+            </div>
+            <span class="mock-role-badge admin">Admin</span>
+          </div>
+          <div class="mock-role-row">
+            <div class="mock-role-left">
+              <div class="mock-avatar" style="background:#dcfce7;color:#166534;width:32px;height:32px;font-size:11px">MG</div>
+              <div><div class="mock-role-name">María G.</div><div class="mock-role-email">maria@agora.es</div></div>
+            </div>
+            <span class="mock-role-badge prof">Profesional</span>
+          </div>
+          <div class="mock-role-row">
+            <div class="mock-role-left">
+              <div class="mock-avatar" style="background:#fef3c7;color:#92400e;width:32px;height:32px;font-size:11px">LP</div>
+              <div><div class="mock-role-name">Laura P.</div><div class="mock-role-email">laura@gmail.com</div></div>
+            </div>
+            <span class="mock-role-badge fam">Familia</span>
+          </div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bdr)">
+            <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">Módulos activos</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="background:var(--blue-l);color:var(--blue);padding:4px 10px;border-radius:100px;font-size:11px;font-weight:500">Chat IA</span>
+              <span style="background:var(--blue-l);color:var(--blue);padding:4px 10px;border-radius:100px;font-size:11px;font-weight:500">Comedor</span>
+              <span style="background:var(--blue-l);color:var(--blue);padding:4px 10px;border-radius:100px;font-size:11px;font-weight:500">Sustituciones</span>
+              <span style="background:var(--off);color:var(--txt3);padding:4px 10px;border-radius:100px;font-size:11px">Espacios</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 4: App móvil PWA -->
+      <div class="mock-screen" id="screen-4">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">App móvil · PWA instalable</span>
+          <span class="mock-topbar-badge">iOS y Android</span>
+        </div>
+        <div class="mock-content" style="display:flex;justify-content:center;align-items:flex-start;gap:16px;padding-top:16px">
+          <div style="width:160px;flex-shrink:0;background:#0e2a4a;border-radius:28px;padding:8px;box-shadow:0 8px 32px rgba(14,42,74,0.25)">
+            <div style="background:#0e2a4a;border-radius:20px 20px 0 0;padding:6px 0;display:flex;justify-content:center">
+              <div style="width:40px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px"></div>
+            </div>
+            <div style="background:var(--off);border-radius:16px;overflow:hidden">
+              <div style="background:#0e2a4a;padding:10px 12px 8px">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:white">DidactIA</div>
+                  <div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:500">JV</div>
+                </div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.5);margin-top:2px">Agora Lledó · Admin</div>
+              </div>
+              <div style="display:flex;background:white;border-bottom:1px solid var(--bdr)">
+                <div style="flex:1;padding:6px 0;text-align:center;font-size:8px;color:#0e2a4a;font-weight:500;border-bottom:2px solid #0e2a4a">Chat</div>
+                <div style="flex:1;padding:6px 0;text-align:center;font-size:8px;color:var(--txt3)">Guardias</div>
+                <div style="flex:1;padding:6px 0;text-align:center;font-size:8px;color:var(--txt3)">Comedor</div>
+              </div>
+              <div style="padding:8px;display:flex;flex-direction:column;gap:6px">
+                <div style="background:#0e2a4a;color:white;padding:5px 9px;border-radius:7px 7px 2px 7px;font-size:9px;align-self:flex-end;max-width:85%">¿Libres en tramo 3?</div>
+                <div style="background:white;border:1px solid var(--bdr);padding:6px 9px;border-radius:2px 7px 7px 7px;font-size:9px;color:var(--txt2);line-height:1.5;max-width:92%"><span style="font-weight:500;color:#0e2a4a">3 libres:</span> M. González, C. Serrano, A. Martínez</div>
+                <div style="background:#0e2a4a;color:white;padding:5px 9px;border-radius:7px 7px 2px 7px;font-size:9px;align-self:flex-end;max-width:85%">Horario 2ºESO B hoy</div>
+                <div style="background:white;border:1px solid var(--bdr);padding:6px 9px;border-radius:2px 7px 7px 7px;font-size:9px;color:var(--txt2);line-height:1.5;max-width:92%"><span style="font-weight:500;color:#0e2a4a">2ºESO B · Hoy</span><br>09:45 Lengua<br>10:40 Mates<br>12:00 Inglés</div>
+              </div>
+              <div style="display:flex;gap:4px;padding:6px 8px;background:white;border-top:1px solid var(--bdr)">
+                <div style="flex:1;background:var(--off);border-radius:4px;padding:4px 7px;font-size:8px;color:var(--txt3)">Escribe...</div>
+                <div style="width:20px;height:20px;background:#0e2a4a;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg width="9" height="9" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+              </div>
+            </div>
+            <div style="padding:6px 0 2px;display:flex;justify-content:center">
+              <div style="width:32px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px"></div>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;color:#0e2a4a;margin-bottom:8px">Instalable en cualquier móvil</div>
+            <div style="font-size:12px;color:var(--txt2);line-height:1.65;margin-bottom:14px">Sin App Store ni Google Play. Se instala desde el navegador en iOS y Android en segundos.</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2)"><span style="color:var(--blue);font-weight:500">→</span>Acceso directo desde la pantalla de inicio</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2)"><span style="color:var(--blue);font-weight:500">→</span>Funciona sin conexión</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2)"><span style="color:var(--blue);font-weight:500">→</span>Siempre actualizada automáticamente</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2)"><span style="color:var(--blue);font-weight:500">→</span>Compatible con iOS y Android</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CÓMO FUNCIONA -->
+<section class="como" id="como">
+  <div class="s-eyebrow reveal">Implementación</div>
+  <h2 class="reveal">Operativo en<br><em>menos de una semana</em></h2>
+  <p class="s-sub reveal">Sin departamento técnico. Sin cambiar los sistemas que ya tienes. Sin formación extensa.</p>
+  <div class="pasos">
+    <div class="paso reveal">
+      <div class="paso-n">1</div>
+      <h3>Importamos tus datos</h3>
+      <p>Subimos el Excel con alumnos, horarios y grupos. Nos encargamos de la configuración inicial completa.</p>
+    </div>
+    <div class="paso highlight reveal reveal-delay-1">
+      <div class="paso-n">2</div>
+      <h3>Personalizamos el centro</h3>
+      <p>Aplicamos los colores e identidad visual de tu centro. Cada usuario ve solo la información de su rol.</p>
+    </div>
+    <div class="paso reveal reveal-delay-2">
+      <div class="paso-n">3</div>
+      <h3>Formamos al equipo</h3>
+      <p>Sesión de dos horas con dirección y jefatura de estudios. Nada más que aprender.</p>
+    </div>
+    <div class="paso reveal reveal-delay-3">
+      <div class="paso-n">4</div>
+      <h3>En marcha</h3>
+      <p>Acceso desde cualquier dispositivo. Funciona como app instalable en el móvil, sin instalación técnica.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRECIOS -->
+<section id="precios">
+  <div class="s-eyebrow reveal">Precios</div>
+  <h2 class="reveal">Transparente<br><em>desde el primer día</em></h2>
+  <p class="s-sub reveal">Sin permanencia el primer año. Sin costes ocultos.</p>
+  <div class="precios-grid">
+    <div class="precio-card reveal">
+      <div class="precio-label">Suscripción anual</div>
+      <div class="precio-amount"><sup>desde </sup>600<sup>€</sup></div>
+      <div class="precio-period">por centro y curso escolar</div>
+      <div class="precio-sep"></div>
+      <ul class="precio-features">
+        <li><div class="precio-check"></div>Todos los módulos incluidos</li>
+        <li><div class="precio-check"></div>Hasta 500 alumnos</li>
+        <li><div class="precio-check"></div>Soporte por email</li>
+        <li><div class="precio-check"></div>Actualizaciones incluidas</li>
+        <li><div class="precio-check"></div>Configuración inicial incluida</li>
+      </ul>
+      <a href="#contacto" class="precio-cta">Más información</a>
+    </div>
+    <div class="precio-card featured reveal reveal-delay-1">
+      <div class="precio-badge">FUNDAE · Centros concertados y privados</div>
+      <div class="precio-label">Formación bonificada</div>
+      <div class="precio-amount"><sup>desde </sup>3.500<sup>€</sup></div>
+      <div class="precio-period">bonificable al 100% por tu centro</div>
+      <div class="precio-sep"></div>
+      <ul class="precio-features">
+        <li><div class="precio-check"></div>20 horas de formación certificada</li>
+        <li><div class="precio-check"></div>IA aplicada en centros educativos</li>
+        <li><div class="precio-check"></div>Primer año de DidactIA incluido</li>
+        <li><div class="precio-check"></div>Implantación completa</li>
+        <li><div class="precio-check"></div>El centro no paga de su bolsillo</li>
+      </ul>
+      <a href="#contacto" class="precio-cta">Solicitar información</a>
+    </div>
+  </div>
+  <div class="fundae reveal">
+    <div class="fundae-icon">💡</div>
+    <div>
+      <h3>Tu centro tiene un fondo de formación anual que si no se usa, se pierde</h3>
+      <p>Los centros privados y concertados disponen de crédito FUNDAE para formación de su plantilla. DidactIA puede ser la acción formativa con la que agotar ese crédito — y el centro se queda con la herramienta funcionando el curso siguiente.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACTO -->
+<section id="contacto" style="background:var(--off)">
+  <div class="contacto-grid">
+    <div class="contacto-left">
+      <div class="s-eyebrow reveal">Contacto</div>
+      <h2 class="reveal">Hablemos<br><em>sin compromiso</em></h2>
+      <p class="s-sub reveal" style="margin-bottom:36px">Te mostramos DidactIA funcionando en un centro real y resolvemos tus dudas. Sin presentación comercial, sin presión.</p>
+      <div class="c-dato reveal">
+        <div class="c-icon">✉</div>
+        <div>
+          <div style="font-size:12px;color:var(--txt3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em">Email</div>
+          <div style="font-weight:500">hola@didactia.eu</div>
+        </div>
+      </div>
+      <div class="c-dato reveal reveal-delay-1">
+        <div class="c-icon">🌐</div>
+        <div>
+          <div style="font-size:12px;color:var(--txt3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em">Plataforma</div>
+          <div style="font-weight:500">didactia.eu</div>
+        </div>
+      </div>
+      <div class="c-dato reveal reveal-delay-2">
+        <div class="c-icon">📍</div>
+        <div>
+          <div style="font-size:12px;color:var(--txt3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em">País</div>
+          <div style="font-weight:500">España</div>
+        </div>
+      </div>
+    </div>
+    <div class="reveal reveal-delay-1">
+      <form onsubmit="handleSubmit(event)" style="background:var(--white);border:1px solid var(--bdr);border-radius:var(--rl);padding:36px">
+        <div class="form-row">
+          <div class="fg">
+            <label>Nombre</label>
+            <input type="text" placeholder="Tu nombre" required>
+          </div>
+          <div class="fg">
+            <label>Cargo</label>
+            <input type="text" placeholder="Director/a, Jefe de estudios...">
+          </div>
+        </div>
+        <div class="fg">
+          <label>Email</label>
+          <input type="email" placeholder="email@tucentro.es" required>
+        </div>
+        <div class="fg">
+          <label>Tipo de centro</label>
+          <select>
+            <option value="">Seleccionar...</option>
+            <option>Centro público</option>
+            <option>Centro concertado</option>
+            <option>Centro privado</option>
+            <option>Centro internacional</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>¿En qué podemos ayudarte?</label>
+          <textarea placeholder="Cuéntanos brevemente qué problema quieres resolver o qué módulo te interesa más..."></textarea>
+        </div>
+        <button type="submit" class="form-submit" id="submit-btn">
+          Enviar mensaje
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">DidactIA</div>
+  <div class="footer-links">
+    <a href="#">Legal</a>
+    <a href="#">Privacidad</a>
+    <a href="mailto:hola@didactia.eu">hola@didactia.eu</a>
+  </div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.25)">© 2025 DidactIA</div>
+</footer>
+
+<script>
+const moduloData=[
+  {icon:'💬',title:'Asistente IA conversacional',desc:'Cualquier miembro de la comunidad educativa puede preguntar en lenguaje natural. El sistema responde con datos reales del centro, filtrados según el rol del usuario.',features:['Horarios de alumnos y profesores','Información del centro por rol','Búsqueda directa de alumnos','Acceso para familias, profesores y dirección']},
+  {icon:'🔄',title:'Guardias y sustituciones',desc:'Visualiza en tiempo real qué profesores están libres en cada tramo horario. Gestiona sustituciones, consulta el historial y expórtalo cuando necesites.',features:['Profesores libres ahora mismo','Asignación de guardias','Historial de sustituciones','Exportación a CSV']},
+  {icon:'🍽️',title:'Comedor escolar',desc:'Control de asistencia diaria sin papel. Filtra por grupo, ve los datos históricos y exporta informes para la cocina o la administración del centro.',features:['Registro diario de asistencia','Filtro por grupo y fecha','Toast de confirmación instantáneo','Exportación de informes']},
+  {icon:'⚙️',title:'Panel de administración',desc:'Gestiona usuarios, roles e invitaciones. Configura los módulos activos para cada centro y personaliza la identidad visual con los colores y logo propios.',features:['Gestión de roles e invitaciones','Módulos activables por centro','Identidad visual personalizada','Vista multicentro para grupos']}
+];
+
+function selectModulo(idx,el){
+  document.querySelectorAll('.modulo-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.mock-screen').forEach(s=>s.classList.remove('active'));
+  const s=document.getElementById('screen-'+idx);
+  if(s)s.classList.add('active');
+}
+
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+function handleSubmit(e){
+  e.preventDefault();
+  const btn=document.getElementById('submit-btn');
+  btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Mensaje enviado — te contactamos pronto';
+  btn.style.background='#16803c';
+  btn.disabled=true;
+}
+</script>
 </body>
 </html>
