@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DidactIA — Asistente de Centro Educativo</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="theme-color" content="#2a3d2b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DidactIA">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="setup">
+  <div class="setup-card">
+    <div class="setup-logo" id="brand-logo">D</div>
+    <div class="setup-title" id="auth-title">Bienvenido a DidactIA</div>
+    <div class="setup-sub" id="auth-sub">Accede con tu cuenta para continuar.</div>
+
+    <!-- LOGIN FORM -->
+    <div id="form-login">
+      <div class="setup-field">
+        <label class="setup-label">Email</label>
+        <input class="setup-input" id="login-email" type="email" placeholder="tu@email.com" />
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Contraseña</label>
+        <input class="setup-input" id="login-pass" type="password" placeholder="••••••••" />
+      </div>
+      <button class="setup-btn" onclick="doLogin()">Entrar →</button>
+      <div class="setup-err" id="login-err"></div>
+      <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
+    </div>
+
+    <!-- RECOVERY FORM -->
+    <div id="form-recovery" style="display:none">
+      <div class="setup-field">
+        <label class="setup-label">Nueva contraseña</label>
+        <input class="setup-input" id="recovery-pass" type="password" placeholder="Mínimo 6 caracteres" />
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Confirmar contraseña</label>
+        <input class="setup-input" id="recovery-pass2" type="password" placeholder="Repite la contraseña" />
+      </div>
+      <button class="setup-btn" onclick="doRecovery()">Guardar contraseña →</button>
+      <div class="setup-err" id="recovery-err"></div>
+    </div>
+
+    <!-- REGISTER FORM: STEP 1 — datos básicos -->
+    <div id="form-register" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:18px;">
+        <div style="flex:1;height:3px;background:var(--ink);border-radius:2px;"></div>
+        <div style="flex:1;height:3px;background:var(--bdr);border-radius:2px;" id="step2-bar"></div>
+      </div>
+      <div id="reg-step1">
+        <div class="setup-field">
+          <label class="setup-label">Nombre completo</label>
+          <input class="setup-input" id="reg-name" type="text" placeholder="Tu nombre y apellidos" />
+        </div>
+        <div class="setup-field">
+          <label class="setup-label">Email</label>
+          <input class="setup-input" id="reg-email" type="email" placeholder="tu@email.com" />
+        </div>
+        <div class="setup-field">
+          <label class="setup-label">Contraseña</label>
+          <input class="setup-input" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div class="setup-field">
+          <label class="setup-label">Código de acceso</label>
+          <input class="setup-input" id="reg-codigo" type="text" placeholder="El código que te dio el centro" style="text-transform:uppercase;" />
+          <div class="setup-hint">El administrador del centro te lo proporciona. Hay un código para familias y otro para profesionales.</div>
+        </div>
+        <button class="setup-btn" onclick="doRegisterStep1()">Siguiente →</button>
+        <div class="setup-err" id="reg-err"></div>
+        <span class="setup-link" onclick="showLogin()">¿Ya tienes cuenta? Inicia sesión</span>
+      </div>
+
+      <!-- STEP 2 — vinculación alumno (solo familias) -->
+      <div id="reg-step2" style="display:none">
+        <div style="background:var(--ink-ll);border:1px solid var(--ink-l);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--ink);">
+          ✅ Centro verificado: <strong id="centro-verificado">—</strong>
+        </div>
+        <div class="setup-sub" style="margin-bottom:16px;">¿Tienes hijos matriculados en este centro? Vincúlalos a tu cuenta para acceder a su información.</div>
+        <div id="alumnos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
+        <div id="alumnos-seleccionados" style="font-size:12px;color:var(--ink);margin-bottom:8px;display:none;">
+          ✓ <span id="sel-count">0</span> alumno(s) seleccionado(s)
+        </div>
+        <button class="setup-btn" onclick="doRegisterStep2()">Crear cuenta →</button>
+        <div class="setup-err" id="reg-err2"></div>
+        <div style="text-align:center;margin-top:10px;">
+          <span class="setup-link" onclick="doRegisterStep2(true)">Saltar — no tengo hijos matriculados</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<header class="hdr" id="app-hdr" style="display:none">
+  <div class="brand" onclick="goHome()" style="cursor:pointer;" title="Ir al inicio">
+    <div class="brand-logo" id="app-brand-logo">D</div>
+    <div><div class="brand-name">DidactIA</div><div class="brand-sub">Asistente de centro educativo</div></div>
+  </div>
+  <div class="hdr-r">
+    <div class="ctr-pill">
+      <div class="ctr-dot"></div>
+      <span id="ctr-name-hdr" style="font-size:13px;font-weight:500;color:var(--txt2);">—</span>
+    </div>
+    <div class="role-pill fam" id="role-pill">👨‍👩‍👧 Familia</div>
+    <div class="role-pill fam" id="logout-btn" onclick="doLogout()" style="background:var(--srf2);color:var(--txt3);border-color:var(--bdr);margin-left:4px;">Salir</div>
+  </div>
+</header>
+
+<div id="banner-aviso">⚠️ <span id="banner-aviso-txt"></span></div>
+<nav class="tabs" id="app-tabs" style="display:none">
+  <div class="tab active" id="tab-chat" onclick="showTab('chat')">💬 Chatbot</div>
+  <div class="tab" id="tab-comedor" onclick="showTab('comedor')" style="display:none">🍽️ Comedor</div>
+  <div class="tab" id="tab-admin" onclick="showTab('admin')">⚙️ Administración</div>
+  <div class="tab" id="tab-sust" onclick="showTab('sust')" style="display:none">🔄 Sustituciones</div>
+  <div class="tab" id="tab-users" onclick="showTab('users')" style="display:none">👥 Usuarios</div>
+</nav>
+
+<div class="main" id="app-main" style="display:none">
+
+  <!-- CHAT -->
+  <div class="panel active" id="panel-chat">
+    <aside class="sidebar">
+      <div class="sb-sec">Preguntas frecuentes</div>
+      <div class="sb-item active" onclick="askQ('¿Cuál es el horario del comedor escolar?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2v5a3 3 0 0 0 6 0V2"/><line x1="8" y1="7" x2="8" y2="14"/></svg></span> Horario del comedor</div>
+      <div class="sb-item" onclick="askQ('¿Cuándo es la próxima reunión de familias?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="5" y1="1.5" x2="5" y2="4.5"/><line x1="11" y1="1.5" x2="11" y2="4.5"/><line x1="2" y1="7" x2="14" y2="7"/></svg></span> Próximas reuniones</div>
+      <div class="sb-item" onclick="askQ('¿Cuál es el horario de atención a familias?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg></span> Horario del centro</div>
+      <div class="sb-item" onclick="askQ('¿Qué actividades extraescolares hay disponibles?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 1 0 6 6"/><path d="M14 8a2 2 0 0 1-2 2"/></svg></span> Extraescolares</div>
+      <div class="sb-item" onclick="askQ('¿Cómo funciona el protocolo de ausencias y justificantes?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="1" width="10" height="14" rx="1.5"/><line x1="5.5" y1="5" x2="10.5" y2="5"/><line x1="5.5" y1="8" x2="10.5" y2="8"/><line x1="5.5" y1="11" x2="8" y2="11"/></svg></span> Justificantes</div>
+      <div class="sb-item" onclick="askQ('¿Cuál es el menú de esta semana?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/></svg></span> Menú semanal</div>
+      <div class="sb-sec">Para el profesorado</div>
+      <div class="sb-item" onclick="askQ('¿Cuándo es el próximo claustro?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.8 2.2-5 5-5"/><circle cx="11.5" cy="5" r="2"/><path d="M15 13c0-2.2-1.6-4-3.5-4"/></svg></span> Próximo claustro</div>
+      <div class="sb-item" onclick="askQ('¿Cómo solicito material didáctico?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="12" height="7" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg></span> Solicitar materiales</div>
+      <div class="sb-item" onclick="askQ('¿Cómo registro una incidencia de convivencia?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".8" fill="currentColor"/></svg></span> Registrar incidencia</div>
+      <div class="sb-sec">Horarios</div>
+      <div class="sb-item" onclick="askQ('¿Cuál es el horario de clases de esta semana?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="2" x2="5" y2="14"/><line x1="2" y1="6" x2="14" y2="6"/></svg></span> Ver horario de clases</div>
+      <div class="sb-sec" id="sb-sec-recientes" style="display:none;">Recientes</div>
+      <div id="sb-historial"></div>
+      <div class="sb-sec" id="sb-sec-acciones" style="display:none;">Acciones rápidas</div>
+      <div id="sb-acciones-rol"></div>
+    </aside>
+    <div class="chat-main">
+      <div class="load-bar" id="load-bar"></div>
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="welcome" id="welcome">
+          <div class="wlc-ico">D</div>
+          <div class="wlc-title">Hola, soy DidactIA</div>
+          <div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">este centro</strong>. Puedo responder preguntas sobre horarios, menús, reuniones y mucho más.</div>
+          <div class="quick-qs">
+            <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
+            <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
+            <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
+          </div>
+
+          <!-- Tarjetas rápidas -->
+          <div id="role-cards-container" style="display:none;">
+            <div class="role-cards" id="role-cards"></div>
+          </div>
+          <!-- Ficha Mi Centro -->
+          <div id="ficha-centro-container" style="display:none; margin-top:14px;">
+            <div id="ficha-centro-data" style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;"></div>
+          </div>
+          <!-- Estado comedor hijos -->
+          <div id="comedor-hijos-container" style="display:none; margin-top:14px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Comedor hoy</div>
+            <div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <!-- Mis hijos -->
+          <div id="mis-hijos-container" style="display:none; margin-top:14px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Mis hijos</div>
+            <div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <!-- Búsqueda rápida alumno -->
+          <div id="busqueda-alumno-container" style="display:none; margin-top:14px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Búsqueda rápida de alumno</div>
+            <input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" />
+            <div id="busqueda-alumno-res"></div>
+          </div>
+        </div>
+      </div>
+      <div class="typing" id="typing">
+        <div class="typ-av">D</div>
+        <div class="dots"><span></span><span></span><span></span></div>
+      </div>
+      <div class="input-area">
+        <div class="inp-wrap">
+          <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        </div>
+        <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
+        <button class="send-btn" id="send-btn" onclick="sendMsg()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="panel" id="panel-admin">
+    <div class="pg-hdr">
+      <div><div class="pg-title">Administración</div><div class="pg-sub">Base de conocimiento de <span id="adm-ctr">—</span></div></div>
+      <button class="btn btn-p" onclick="loadAdmin()">↺ Recargar</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="s-info">—</div><div class="stat-l">Configs en info_centro</div></div>
+      <div class="stat"><div class="stat-n" id="s-hor">—</div><div class="stat-l">Entradas de horario</div></div>
+      <div class="stat"><div class="stat-n">2</div><div class="stat-l">Roles activos</div></div>
+      <div class="stat"><div class="stat-n">✓</div><div class="stat-l">Multi-tenant activo</div><div class="stat-ch">Aislado por centro_id</div></div>
+    </div>
+    <div class="banner">ℹ️ &nbsp;Solo ves los datos de <strong id="bnr-ctr">este centro</strong>. Ningún otro centro puede acceder a esta información.</div>
+    <div class="grid2">
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico o">✏️</div><div><div class="card-title">Información del centro</div></div></div>
+        <div class="card-desc">Edita los datos de tu tabla <code>info_centro</code>. Estos se inyectan como contexto en cada respuesta del chatbot.</div>
+        <div id="info-fields"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando de Supabase…</div></div>
+        <button class="btn btn-p" onclick="saveInfo()">💾 Guardar en Supabase</button>
+        <div id="save-msg" style="font-size:12px;display:none;margin-top:-6px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><div class="card-ico b">📅</div><div><div class="card-title">Horarios del centro</div></div></div>
+        <div class="card-desc">Datos en tiempo real de tu tabla <code>horarios</code>, filtrados por <code>centro_id</code>.</div>
+        <div id="hor-container" style="overflow-x:auto;"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
+        <button class="btn btn-s" onclick="loadHorarios()">↺ Actualizar</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- SUSTITUCIONES PANEL -->
+  <div class="panel" id="panel-sust" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
+    <div class="pg-hdr">
+      <div><div class="pg-title">Sustituciones</div><div class="pg-sub">Gestión de guardias y sustituciones</div></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-p" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
+        <button class="btn btn-s" onclick="exportarSustituciones()">📥 Exportar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <label class="lbl">Profesor ausente</label>
+          <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
+        </div>
+        <div>
+          <label class="lbl">Profesor sustituto (libre ahora)</label>
+          <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
+        </div>
+        <div>
+          <label class="lbl">Grupo</label>
+          <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
+        </div>
+        <div>
+          <label class="lbl">Tramo horario</label>
+          <select class="fi" id="sust-tramo" onchange="cargarProfesoresLibresEnSelect(parseInt(this.value))">
+            <option value="1">1 — 08:50 a 09:45</option>
+            <option value="2">2 — 09:45 a 10:40</option>
+            <option value="3">3 — 10:40 a 11:35</option>
+            <option value="4">4 — 12:00 a 12:55</option>
+            <option value="5">5 — 12:55 a 13:50</option>
+            <option value="6">6 — 13:50 a 14:45</option>
+            <option value="7">7 — 15:10 a 16:05</option>
+            <option value="8">8 — 16:05 a 17:00</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Fecha</label>
+          <input class="fi" type="date" id="sust-fecha" />
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Observaciones (opcional)</label>
+        <input class="fi" id="sust-obs" placeholder="Ej: cubre la guardia del laboratorio" />
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
+        <div id="sust-msg" style="display:none;font-size:13px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;margin-top:14px;">
+        <button onclick="loadSustituciones('hoy')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
+        <button onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
+        <button onclick="loadSustituciones('todo')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
+      </div>
+      <div id="sust-container"></div>
+    </div>
+  </div>
+
+  <!-- COMEDOR PANEL -->
+  <div class="panel" id="panel-comedor">
+    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
+      <div class="pg-hdr">
+        <div>
+          <div class="pg-title">Comedor escolar</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <button onclick="changeComedorFecha(-1)" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">← Anterior</button>
+            <div id="comedor-fecha" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:#202124;"></div>
+            <button onclick="changeComedorFecha(1)" id="btn-comedor-sig" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">Siguiente →</button>
+          </div>
+        </div>
+        <button class="btn btn-p" onclick="loadComedor()">↺ Actualizar</button>
+      </div>
+
+      <!-- Resumen del día -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+        <div class="stat" style="background:var(--ink);color:#fff;">
+          <div class="stat-n" id="total-comensales" style="color:#fff;">—</div>
+          <div class="stat-l" style="color:rgba(255,255,255,0.7);">Total hoy</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n" id="total-fijos">—</div>
+          <div class="stat-l">Plaza fija</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n" id="total-esporadicos">—</div>
+          <div class="stat-l">Esporádicos</div>
+        </div>
+      </div>
+
+      <!-- Lista de alumnos -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-ico g">📋</div>
+          <div>
+            <div class="card-title">Lista de asistencia</div>
+            <div class="card-desc" style="margin-top:2px;">Marca quién se queda hoy al comedor</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('todos')">Todos</button>
+          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('se_queda')">✅ Se quedan</button>
+          <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('no_se_queda')">❌ No se quedan</button>
+          <select class="fi" id="comedor-filtro-grupo" style="width:auto;font-size:12px;padding:4px 8px;height:36px;" onchange="filterComedor(comedorFilter)"><option value="">Todos los grupos</option></select>
+        </div>
+        <div id="comedor-list" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;"><span class="spin">⟳</span> Cargando lista…</div>
+        </div>
+      </div>
+
+      <!-- Imprimir lista -->
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-s" onclick="printComedor()">🖨️ Imprimir lista para cocina</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS PANEL (superadmin only) -->
+  <div class="panel" id="panel-users">
+    <div class="pg-hdr">
+      <div><div class="pg-title">Gestión de usuarios</div><div class="pg-sub">Invita administradores y gestiona roles por centro</div></div>
+    </div>
+
+    <!-- Centros y módulos -->
+    <div class="card">
+      <div class="card-hdr"><div class="card-ico g">🏫</div><div><div class="card-title">Centros y módulos activos</div></div></div>
+      <div class="card-desc">Activa o desactiva módulos para cada centro educativo.</div>
+      <div id="centros-modulos-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
+    </div>
+
+        <!-- Invite new admin -->
+    <div class="card" style="max-width:560px;">
+      <div class="card-hdr"><div class="card-ico o">✉️</div><div><div class="card-title">Invitar administrador de centro</div></div></div>
+      <div class="card-desc">El usuario recibirá un email con un enlace para establecer su contraseña y acceder como administrador del centro seleccionado.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label class="lbl">Nombre completo</label>
+          <input class="fi" id="inv-name" placeholder="Nombre del administrador" />
+        </div>
+        <div>
+          <label class="lbl">Email</label>
+          <input class="fi" id="inv-email" type="email" placeholder="admin@centro.es" />
+        </div>
+        <div>
+          <label class="lbl">Centro educativo</label>
+          <select class="fi" id="inv-centro"><option value="">Cargando centros…</option></select>
+        </div>
+        <div>
+          <label class="lbl">Rol</label>
+          <select class="fi" id="inv-rol">
+            <option value="admin">⚙️ Administrador del centro</option>
+            <option value="profesional">👩‍🏫 Profesional</option>
+          </select>
+        </div>
+        <button class="btn btn-p" onclick="inviteUser()">📨 Enviar invitación</button>
+        <div id="inv-status" style="font-size:13px;display:none;padding:8px 12px;border-radius:var(--r-sm);"></div>
+      </div>
+    </div>
+
+    <!-- Users list -->
+    <div class="card">
+      <div class="card-hdr"><div class="card-ico b">👥</div><div><div class="card-title">Usuarios registrados</div></div></div>
+      <div class="card-desc">Lista de todos los usuarios de la plataforma. Puedes cambiar su rol directamente.</div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
+        <select class="fi" id="filter-centro" style="width:auto;" onchange="loadUsers()"><option value="">Todos los centros</option></select>
+        <button class="btn btn-s" onclick="loadUsers()">↺ Actualizar</button>
+      </div>
+      <div id="users-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando usuarios…</div></div>
+    </div>
+  </div>
+
+</div>
+
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/users.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/comedor.js"></script>
+<script src="js/mejoras.js"></script>
+
+</body>
+</html>
