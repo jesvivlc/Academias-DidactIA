@@ -235,3 +235,13 @@ git add <archivos> && git commit -m "tipo: descripción" && git push
 <script src="js/comedor.js"></script>
 <script src="js/mejoras.js"></script>
 ```
+
+---
+
+## Protocolo al terminar cada tarea
+
+Al completar cualquier tarea o funcionalidad, seguir este orden **antes de continuar**:
+
+1. **Actualizar este CLAUDE.md** — marcar lo completado en "Funcionalidades pendientes", añadir decisiones técnicas nuevas, actualizar tablas de BD si hubo cambios de esquema.
+2. **Commit del CLAUDE.md** junto con los archivos de la tarea.
+3. **Confirmar con el usuario** antes de pasar al siguiente sprint o tarea.
