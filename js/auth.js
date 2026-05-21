@@ -263,6 +263,8 @@ async function loadUserProfile(user) {
         // Update comedor tab visibility
         const cTab = document.getElementById("tab-comedor");
         if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
+        const eTab = document.getElementById("tab-espacios");
+        if (eTab) eTab.style.display = modulosActivos.includes("espacios") ? "block" : "none";
         history = []; resetChat(); updateUI(); loadAdmin();
         applyTheme(ctr?.color_primario, ctr?.logo_url);
       };
@@ -311,6 +313,12 @@ async function loadUserProfile(user) {
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (role === "admin" || role === "profesional" || role === "superadmin") ? "block" : "none";
 
+  const tabInc = document.getElementById("tab-incidencias");
+  if (tabInc) tabInc.style.display = (role === "profesional" || role === "admin" || role === "superadmin") ? "block" : "none";
+
+  const tabEsp = document.getElementById("tab-espacios");
+  if (tabEsp) tabEsp.style.display = (modulosActivos.includes("espacios") && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
+
 
 
 
@@ -338,6 +346,7 @@ async function loadUserProfile(user) {
   updateUI();
   loadAdmin();
   setTimeout(initWelcomeExtras, 400);
+  setTimeout(initRealtimeNotifications, 800);
 }
 
 function onCtrChange() {
@@ -387,7 +396,13 @@ function showTab(t) {
   if (t === "admin") loadAdmin();
   if (t === "users") loadUsersPanel();
   if (t === "comedor") loadComedor();
-  if (t === "sust") { initSustPanel(); }
+  if (t === "sust") {
+    initSustPanel();
+    var st = document.getElementById("tab-sust");
+    if (st) { st.style.outline = ""; st.style.outlineOffset = ""; }
+  }
+  if (t === "incidencias") initIncidenciasPanel();
+  if (t === "espacios") loadEspacios();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

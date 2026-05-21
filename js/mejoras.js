@@ -86,7 +86,7 @@ async function loadDashboard() {
       + '<div id="admin-stats-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'
       + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:24px;font-weight:500;color:#a50e0e;" id="stat-guardias">—</div><div style="font-size:10px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Guardias sin cubrir</div></div>'
       + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:24px;font-weight:500;color:#b06000;" id="stat-ausentes">—</div><div style="font-size:10px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Profesores ausentes</div></div>'
-      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:24px;font-weight:500;color:#1e6b3a;" id="stat-incidencias">0</div><div style="font-size:10px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Incidencias abiertas</div></div>'
+      + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;"><div style="font-size:24px;font-weight:500;color:#1e6b3a;" id="stat-incidencias">—</div><div style="font-size:10px;color:#9aa0a6;text-transform:uppercase;letter-spacing:.05em;margin-top:4px;">Incidencias abiertas</div></div>'
       + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
       + '<div style="background:white;border:1px solid #e0e0e0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="showTab(\'sust\')">'
@@ -107,6 +107,13 @@ async function loadDashboard() {
       var ausentes = new Set(sustR.data.map(function(s) { return s.profesor_ausente; }).filter(Boolean)).size;
       var statA = document.getElementById("stat-ausentes");
       if (statA) { statA.textContent = ausentes; statA.style.color = ausentes > 0 ? "#b06000" : "#1e6b3a"; }
+    }
+
+    var incR = await sb.from("incidencias").select("id").eq("centro_id", ctrId).eq("estado", "abierta");
+    if (!incR.error && incR.data) {
+      var incCount = incR.data.length;
+      var statI = document.getElementById("stat-incidencias");
+      if (statI) { statI.textContent = incCount; statI.style.color = incCount > 0 ? "#a50e0e" : "#1e6b3a"; }
     }
   }
 }
@@ -326,6 +333,42 @@ function populateGruposComedor() {
     html += "<option value=\"" + grupos[i] + "\"" + (current === grupos[i] ? " selected" : "") + ">" + grupos[i] + "</option>";
   }
   sel.innerHTML = html;
+}
+
+// ── REALTIME: NOTIFICACIONES DE SUSTITUCIONES ──
+var _realtimeChannel = null;
+
+function initRealtimeNotifications() {
+  if (!sb || !ctrId) return;
+  if (['profesional', 'admin', 'superadmin'].indexOf(role) === -1) return;
+  if (_realtimeChannel) { try { sb.removeChannel(_realtimeChannel); } catch(e) {} }
+
+  _realtimeChannel = sb.channel('sust-notif-' + ctrId)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'sustituciones',
+      filter: 'centro_id=eq.' + ctrId
+    }, function(payload) {
+      var s = payload.new;
+      var msg = 'Nueva sustitución: ' + (s.profesor_ausente || '—') + ' → ' + (s.profesor_sustituto || '—');
+      if (s.grupo_horario) msg += ' (' + s.grupo_horario + ')';
+      showToast(msg);
+      var tabSust = document.getElementById('tab-sust');
+      if (tabSust && !tabSust.classList.contains('active')) {
+        tabSust.style.outline = '2px solid var(--ink)';
+        tabSust.style.outlineOffset = '-2px';
+      }
+    })
+    .subscribe();
+}
+
+function showToast(msg) {
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);max-width:90vw;text-align:center;';
+  toast.textContent = '🔔 ' + msg;
+  document.body.appendChild(toast);
+  setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 5000);
 }
 
 // ── INIT: llamar a mejoras tras login ──

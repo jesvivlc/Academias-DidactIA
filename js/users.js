@@ -10,7 +10,7 @@ async function loadUsersPanel() {
 
     const MODULOS = [
       { key: "comedor", label: "🍽️ Módulo comedor" },
-      // { key: "espacios", label: "🏫 Módulo espacios" }, // Pendiente de implementar
+      { key: "espacios", label: "🏫 Módulo espacios" },
     ];
     const container = document.getElementById("centros-modulos-list");
     container.innerHTML = centros.map(function(c) {
