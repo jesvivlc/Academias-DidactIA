@@ -201,10 +201,10 @@ DOMContentLoaded (config.js)
 - [ ] **Contador de profesores ausentes** — `stat-ausentes` en el dashboard de admin siempre muestra "—". Cruzar con tabla `sustituciones` del día para contar profesores únicos ausentes.
 
 ### Media prioridad
-- [ ] **Módulo de incidencias** — `stat-incidencias` hardcodeado a `0` en dashboard admin. Requiere tabla `incidencias` + UI de registro y gestión.
-- [ ] **Módulo de espacios/salas** — comentado en `users.js` como pendiente. Reserva de aulas/espacios del centro.
-- [ ] **PWA Service Worker** — `manifest.json` existe pero no hay `sw.js`. Añadir cache offline básico para el chatbot.
-- [ ] **Notificaciones push** para sustituciones nuevas (profesional/admin).
+- [x] **Módulo de incidencias** — `js/incidencias.js` creado. Panel con formulario (tipo, fecha, alumno, grupo, descripción), filtros abiertas/cerradas/todas, cierre y eliminación. `stat-incidencias` en dashboard admin ahora consulta la BD. **Requiere crear tabla `incidencias` en Supabase** (ver SQL más abajo).
+- [x] **Módulo de espacios/salas** — `js/espacios.js` creado. Grid de disponibilidad por tramo horario. Admin puede añadir/eliminar espacios. Toggle en users.js activado. **Requiere crear tablas `espacios` y `reservas_espacios` en Supabase** (ver SQL más abajo).
+- [x] **PWA Service Worker** — `sw.js` creado con cache-first para assets locales y pass-through para Supabase. Registrado en `app.html`.
+- [x] **Notificaciones Realtime** — `initRealtimeNotifications()` en `mejoras.js` suscribe a INSERT en `sustituciones` vía Supabase Realtime. Toast + outline en tab cuando llega nueva sustitución.
 
 ### Baja prioridad / mejoras
 - [ ] **Página de recuperación de contraseña** — funciona via hash pero la UX es mejorable.
@@ -245,3 +245,73 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 1. **Actualizar este CLAUDE.md** — marcar lo completado en "Funcionalidades pendientes", añadir decisiones técnicas nuevas, actualizar tablas de BD si hubo cambios de esquema.
 2. **Commit del CLAUDE.md** junto con los archivos de la tarea.
 3. **Confirmar con el usuario** antes de pasar al siguiente sprint o tarea.
+
+
+---
+
+## SQL pendiente de ejecutar en Supabase
+
+### Tabla `incidencias`
+```sql
+CREATE TABLE public.incidencias (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  centro_id uuid REFERENCES public.centros(id) ON DELETE CASCADE,
+  fecha date NOT NULL DEFAULT CURRENT_DATE,
+  tipo text NOT NULL DEFAULT 'convivencia',
+  descripcion text NOT NULL,
+  alumno_nombre text,
+  grupo_horario text,
+  registrado_por uuid,
+  estado text NOT NULL DEFAULT 'abierta',
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.incidencias ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "centro_isolation" ON public.incidencias FOR ALL
+  USING (
+    centro_id = (SELECT centro_id FROM public.profiles WHERE user_id = auth.uid())
+    OR (SELECT rol FROM public.profiles WHERE user_id = auth.uid()) = 'superadmin'
+  );
+```
+
+### Tablas `espacios` y `reservas_espacios`
+```sql
+CREATE TABLE public.espacios (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  centro_id uuid REFERENCES public.centros(id) ON DELETE CASCADE,
+  nombre text NOT NULL,
+  capacidad int
+);
+ALTER TABLE public.espacios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "centro_isolation" ON public.espacios FOR ALL
+  USING (
+    centro_id = (SELECT centro_id FROM public.profiles WHERE user_id = auth.uid())
+    OR (SELECT rol FROM public.profiles WHERE user_id = auth.uid()) = 'superadmin'
+  );
+
+CREATE TABLE public.reservas_espacios (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  centro_id uuid REFERENCES public.centros(id) ON DELETE CASCADE,
+  espacio_id uuid REFERENCES public.espacios(id) ON DELETE CASCADE,
+  fecha date NOT NULL,
+  tramo int NOT NULL,
+  hora_inicio text,
+  hora_fin text,
+  reservado_por uuid REFERENCES public.profiles(id),
+  motivo text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.reservas_espacios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "centro_isolation" ON public.reservas_espacios FOR ALL
+  USING (
+    centro_id = (SELECT centro_id FROM public.profiles WHERE user_id = auth.uid())
+    OR (SELECT rol FROM public.profiles WHERE user_id = auth.uid()) = 'superadmin'
+  );
+```
+
+> **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
+
+---
+
+## Registro de cambios recientes
+
+- `2026-05-21 23:22` · `5948071` — docs: añadir protocolo de cierre de tarea a CLAUDE.md
