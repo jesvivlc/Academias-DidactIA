@@ -99,13 +99,14 @@ async function loadDashboard() {
       + '</div>';
 
     var todayIso2 = new Date().toISOString().split("T")[0];
-    var sustR = await sb.from("sustituciones").select("id,cubierta").eq("centro_id", ctrId).eq("fecha", todayIso2);
+    var sustR = await sb.from("sustituciones").select("id,cubierta,profesor_ausente").eq("centro_id", ctrId).eq("fecha", todayIso2);
     if (sustR.data) {
       var sinCubrir = sustR.data.filter(function(s) { return !s.cubierta; }).length;
       var statG = document.getElementById("stat-guardias");
       if (statG) { statG.textContent = sinCubrir; statG.style.color = sinCubrir > 0 ? "#a50e0e" : "#1e6b3a"; }
+      var ausentes = new Set(sustR.data.map(function(s) { return s.profesor_ausente; }).filter(Boolean)).size;
       var statA = document.getElementById("stat-ausentes");
-      if (statA) statA.textContent = "—";
+      if (statA) { statA.textContent = ausentes; statA.style.color = ausentes > 0 ? "#b06000" : "#1e6b3a"; }
     }
   }
 }

@@ -158,8 +158,8 @@ async function loadSustituciones(filtro) {
   c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Obs.</th><th>Estado</th><th></th></tr></thead><tbody>
     ${data.map(s => {
       const cubierta = s.cubierta
-        ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">✓ Cubierta</span>'
-        : '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">⚠ Pendiente</span>';
+        ? `<button onclick="toggleCubierta('${s.id}',true)" style="background:#e6f4ea;color:#1e6b3a;border:none;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:500;cursor:pointer;">✓ Cubierta</button>`
+        : `<button onclick="toggleCubierta('${s.id}',false)" style="background:#fce8e6;color:#a50e0e;border:none;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:500;cursor:pointer;">⚠ Pendiente</button>`;
       return `<tr>
         <td>${s.fecha || "—"}</td>
         <td>${s.hora_inicio ? s.hora_inicio.slice(0,5) + "–" + (s.hora_fin||"").slice(0,5) : "—"}</td>
@@ -282,6 +282,15 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
   if (selAus) {
     selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>'
       + ocupadosList.map(p => '<option value="' + p + '">' + p + '</option>').join("");
+  }
+}
+
+async function toggleCubierta(id, estadoActual) {
+  const { error } = await sb.from("sustituciones").update({ cubierta: !estadoActual }).eq("id", id);
+  if (error) {
+    alert("Error al actualizar: " + error.message);
+  } else {
+    await loadSustituciones(sustFiltroActivo);
   }
 }
 
