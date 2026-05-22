@@ -85,6 +85,9 @@ scripts/
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
 | `ausencias_profesor` | centro_id, profile_id, fecha, tramo, trimestre, curso_escolar, created_at | Registro de ausencias; trimestre IN (1,2,3) |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
+| `incidencias` | centro_id, fecha, tipo, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo por defecto 'convivencia' |
+| `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
+| `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 
 ---
 
@@ -218,8 +221,8 @@ DOMContentLoaded (config.js)
 - [x] **Contador de profesores ausentes** — `stat-ausentes` ahora cruza con `sustituciones` del día y cuenta profesores únicos ausentes.
 
 ### Media prioridad
-- [x] **Módulo de incidencias** — `js/incidencias.js` creado. Panel con formulario (tipo, fecha, alumno, grupo, descripción), filtros abiertas/cerradas/todas, cierre y eliminación. `stat-incidencias` en dashboard admin ahora consulta la BD. **Requiere crear tabla `incidencias` en Supabase** (ver SQL más abajo).
-- [x] **Módulo de espacios/salas** — `js/espacios.js` creado. Grid de disponibilidad por tramo horario. Admin puede añadir/eliminar espacios. Toggle en users.js activado. **Requiere crear tablas `espacios` y `reservas_espacios` en Supabase** (ver SQL más abajo).
+- [x] **Módulo de incidencias** — `js/incidencias.js` creado. Panel con formulario (tipo, fecha, alumno, grupo, descripción), filtros abiertas/cerradas/todas, cierre y eliminación. `stat-incidencias` en dashboard admin ahora consulta la BD. Tabla `incidencias` creada en Supabase con RLS.
+- [x] **Módulo de espacios/salas** — `js/espacios.js` creado. Grid de disponibilidad por tramo horario. Admin puede añadir/eliminar espacios. Toggle en users.js activado. Tablas `espacios` y `reservas_espacios` creadas en Supabase con RLS.
 - [x] **PWA Service Worker** — `sw.js` creado con cache-first para assets locales y pass-through para Supabase. Registrado en `app.html`.
 - [x] **Notificaciones Realtime** — `initRealtimeNotifications()` en `mejoras.js` suscribe a INSERT en `sustituciones` vía Supabase Realtime. Toast + outline en tab cuando llega nueva sustitución.
 
@@ -266,71 +269,13 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 ---
 
-## SQL pendiente de ejecutar en Supabase
-
-### Tabla `incidencias`
-```sql
-CREATE TABLE public.incidencias (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  centro_id uuid REFERENCES public.centros(id) ON DELETE CASCADE,
-  fecha date NOT NULL DEFAULT CURRENT_DATE,
-  tipo text NOT NULL DEFAULT 'convivencia',
-  descripcion text NOT NULL,
-  alumno_nombre text,
-  grupo_horario text,
-  registrado_por uuid,
-  estado text NOT NULL DEFAULT 'abierta',
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.incidencias ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "centro_isolation" ON public.incidencias FOR ALL
-  USING (
-    centro_id = (SELECT centro_id FROM public.profiles WHERE user_id = auth.uid())
-    OR (SELECT rol FROM public.profiles WHERE user_id = auth.uid()) = 'superadmin'
-  );
-```
-
-### Tablas `espacios` y `reservas_espacios`
-```sql
-CREATE TABLE public.espacios (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  centro_id uuid REFERENCES public.centros(id) ON DELETE CASCADE,
-  nombre text NOT NULL,
-  capacidad int
-);
-ALTER TABLE public.espacios ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "centro_isolation" ON public.espacios FOR ALL
-  USING (
-    centro_id = (SELECT centro_id FROM public.profiles WHERE user_id = auth.uid())
-    OR (SELECT rol FROM public.profiles WHERE user_id = auth.uid()) = 'superadmin'
-  );
-
-CREATE TABLE public.reservas_espacios (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  centro_id uuid REFERENCES public.centros(id) ON DELETE CASCADE,
-  espacio_id uuid REFERENCES public.espacios(id) ON DELETE CASCADE,
-  fecha date NOT NULL,
-  tramo int NOT NULL,
-  hora_inicio text,
-  hora_fin text,
-  reservado_por uuid REFERENCES public.profiles(id),
-  motivo text,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.reservas_espacios ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "centro_isolation" ON public.reservas_espacios FOR ALL
-  USING (
-    centro_id = (SELECT centro_id FROM public.profiles WHERE user_id = auth.uid())
-    OR (SELECT rol FROM public.profiles WHERE user_id = auth.uid()) = 'superadmin'
-  );
-```
-
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 ---
 
 ## Registro de cambios recientes
 
+- `2026-05-22` · — chore: tablas incidencias, espacios y reservas_espacios creadas en Supabase con RLS
 - `2026-05-22` · — feat: tablas RRHH creadas en Supabase (profesores, ausencias_profesor, guardias_realizadas) con RLS
 - `2026-05-22` · `049c9a1` — feat: módulo completo de gestión de usuarios (admin + superadmin)
 - `2026-05-21 23:22` · `5948071` — docs: añadir protocolo de cierre de tarea a CLAUDE.md
