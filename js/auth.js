@@ -334,6 +334,9 @@ async function loadUserProfile(user) {
   const usersTab = document.getElementById("tab-users");
   if (usersTab) usersTab.style.display = (role === "admin" || role === "superadmin") ? "block" : "none";
 
+  const tabRrhh = document.getElementById("tab-rrhh");
+  if (tabRrhh) tabRrhh.style.display = (["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
+
   // Show app
   document.getElementById("setup").style.display = "none";
   document.getElementById("app-hdr").style.display = "flex";
@@ -400,6 +403,7 @@ function showTab(t) {
   }
   if (t === "incidencias") initIncidenciasPanel();
   if (t === "espacios") loadEspacios();
+  if (t === "rrhh") loadRrhhPanel();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

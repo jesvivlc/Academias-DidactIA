@@ -126,6 +126,7 @@
   <div class="tab" id="tab-incidencias" onclick="showTab('incidencias')" style="display:none">⚠️ Incidencias</div>
   <div class="tab" id="tab-espacios" onclick="showTab('espacios')" style="display:none">🏫 Espacios</div>
   <div class="tab" id="tab-users" onclick="showTab('users')" style="display:none">👥 Usuarios</div>
+  <div class="tab" id="tab-rrhh" onclick="showTab('rrhh')" style="display:none">👔 RRHH</div>
 </nav>
 
 <div class="main" id="app-main" style="display:none">
@@ -478,6 +479,11 @@
     </div>
   </div>
 
+  <!-- RRHH PANEL -->
+  <div class="panel" id="panel-rrhh" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
+    <div id="rrhh-container"></div>
+  </div>
+
 </div>
 
 
@@ -550,6 +556,7 @@
 <script src="js/mejoras.js"></script>
 <script src="js/incidencias.js"></script>
 <script src="js/espacios.js"></script>
+<script src="js/rrhh.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
