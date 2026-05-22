@@ -170,9 +170,16 @@ DOMContentLoaded (config.js)
 - Input de voz (Web Speech API, es-ES)
 
 ### Gestión de usuarios (users.js)
-- Invitación por email con rol y centro
-- Lista de usuarios con cambio de rol en línea + notificación email
-- Toggle de módulos por centro (actualmente solo `comedor`)
+- Accesible a `admin` (solo su centro) y `superadmin` (todos los centros)
+- Tabla con badges de rol (azul/verde/naranja/rojo) y estado (activo/inactivo/pendiente)
+- Buscador en tiempo real y filtros por rol (pills)
+- Contador en cabecera: X profesionales · X familias · X admins
+- Modal **Invitar**: nombre, email, rol, centro (admin bloqueado al suyo), vinculación de alumnos para familias
+- Modal **Editar**: nombre, rol, alumnos vinculados; llama `notify-role` si cambia rol
+- Desactivar/Reactivar (campo `activo` en profiles); login bloqueado si `activo = false`
+- Badge "Pendiente" + botón "Reenviar invitación" para usuarios sin `email_confirmed_at`
+- Seguridad: admin no puede crear superadmins ni cambiar/desactivar su propio perfil
+- Toggle de módulos por centro (comedor, espacios, incidencias) — solo superadmin
 
 ### Administración (admin.js)
 - Editor de `info_centro` (10 campos, con visibilidad por rol)
@@ -197,8 +204,8 @@ DOMContentLoaded (config.js)
 ## Funcionalidades pendientes
 
 ### Alta prioridad
-- [ ] **Marcar sustitución como cubierta** — el campo `cubierta` existe en BD pero no hay botón en la UI para cambiarlo. Añadir toggle en la fila de la tabla.
-- [ ] **Contador de profesores ausentes** — `stat-ausentes` en el dashboard de admin siempre muestra "—". Cruzar con tabla `sustituciones` del día para contar profesores únicos ausentes.
+- [x] **Marcar sustitución como cubierta** — toggle en la fila de la tabla, actualiza campo `cubierta` en BD.
+- [x] **Contador de profesores ausentes** — `stat-ausentes` ahora cruza con `sustituciones` del día y cuenta profesores únicos ausentes.
 
 ### Media prioridad
 - [x] **Módulo de incidencias** — `js/incidencias.js` creado. Panel con formulario (tipo, fecha, alumno, grupo, descripción), filtros abiertas/cerradas/todas, cierre y eliminación. `stat-incidencias` en dashboard admin ahora consulta la BD. **Requiere crear tabla `incidencias` en Supabase** (ver SQL más abajo).
@@ -314,4 +321,5 @@ CREATE POLICY "centro_isolation" ON public.reservas_espacios FOR ALL
 
 ## Registro de cambios recientes
 
+- `2026-05-22` · `049c9a1` — feat: módulo completo de gestión de usuarios (admin + superadmin)
 - `2026-05-21 23:22` · `5948071` — docs: añadir protocolo de cierre de tarea a CLAUDE.md
