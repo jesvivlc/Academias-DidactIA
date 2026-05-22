@@ -82,6 +82,9 @@ scripts/
 | `familia_alumno` | profile_id, alumno_id | N:M familias↔alumnos |
 | `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por | Una fila por alumno/día |
 | `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | Campo `cubierta` existe pero sin UI |
+| `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
+| `ausencias_profesor` | centro_id, profile_id, fecha, tramo, trimestre, curso_escolar, created_at | Registro de ausencias; trimestre IN (1,2,3) |
+| `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
 
 ---
 
@@ -185,6 +188,13 @@ DOMContentLoaded (config.js)
 - Editor de `info_centro` (10 campos, con visibilidad por rol)
 - Visor de horarios en tabla
 - Estadísticas: nº configs, nº entradas de horario
+
+### RRHH — tablas creadas, UI pendiente (2026-05-22)
+- **`profesores`**: ficha HR del profesor (especialidad, departamento, horas_semanales, tipo_jornada). `profile_id` opcional para profesores sin cuenta de usuario.
+- **`ausencias_profesor`**: registro de ausencias por `profile_id`, fecha, tramo, trimestre (1-3) y curso_escolar.
+- **`guardias_realizadas`**: guardias cubiertas vinculadas a una ausencia (`ausencia_id` → `ausencias_profesor`). Incluye grupo_horario, aula y observaciones.
+- RLS en las tres tablas: `profesional` ve solo lo suyo · `admin` ve su centro · `superadmin` ve todo.
+- Migración ejecutada vía Supabase CLI (`supabase db query --linked`).
 
 ---
 
@@ -321,5 +331,6 @@ CREATE POLICY "centro_isolation" ON public.reservas_espacios FOR ALL
 
 ## Registro de cambios recientes
 
+- `2026-05-22` · — feat: tablas RRHH creadas en Supabase (profesores, ausencias_profesor, guardias_realizadas) con RLS
 - `2026-05-22` · `049c9a1` — feat: módulo completo de gestión de usuarios (admin + superadmin)
 - `2026-05-21 23:22` · `5948071` — docs: añadir protocolo de cierre de tarea a CLAUDE.md
