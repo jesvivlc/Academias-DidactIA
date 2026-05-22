@@ -83,7 +83,7 @@ scripts/
 | `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por | Una fila por alumno/día |
 | `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | Campo `cubierta` existe pero sin UI |
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
-| `ausencias_profesor` | centro_id, profile_id, fecha, tramo, trimestre, curso_escolar, created_at | Registro de ausencias; trimestre IN (1,2,3) |
+| `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, tramo, trimestre, curso_escolar, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
 | `incidencias` | centro_id, fecha, tipo, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo por defecto 'convivencia' |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
@@ -192,12 +192,16 @@ DOMContentLoaded (config.js)
 - Visor de horarios en tabla
 - Estadísticas: nº configs, nº entradas de horario
 
-### RRHH — tablas creadas, UI pendiente (2026-05-22)
-- **`profesores`**: ficha HR del profesor (especialidad, departamento, horas_semanales, tipo_jornada). `profile_id` opcional para profesores sin cuenta de usuario.
-- **`ausencias_profesor`**: registro de ausencias por `profile_id`, fecha, tramo, trimestre (1-3) y curso_escolar.
-- **`guardias_realizadas`**: guardias cubiertas vinculadas a una ausencia (`ausencia_id` → `ausencias_profesor`). Incluye grupo_horario, aula y observaciones.
+### RRHH — gestión de ausencias (rrhh.js)
+- **Vista profesor**: botón "Solicitar ausencia", formulario (fecha inicio/fin, tipo, motivo), historial con badges de estado.
+- **Vista admin/jefatura**: lista de solicitudes con filtros por estado/profesor/fecha, botones Aprobar y Rechazar con confirmación.
+- **Al aprobar**: genera automáticamente tramos pendientes en `sustituciones` cruzando `horarios_grupo` del profesor para cada día lectivo del rango.
+- Badges: ⏳ pendiente (amarillo) · ✓ aprobada (verde) · ✕ rechazada (rojo).
+- Tab `👔 RRHH` visible para `profesional`, `admin` y `superadmin`.
+- **`profesores`**: ficha HR del profesor (especialidad, departamento, horas_semanales, tipo_jornada). `profile_id` opcional.
+- **`ausencias_profesor`**: columnas extendidas con `fecha_fin`, `tipo`, `motivo`, `estado`, `aprobada_por`, `motivo_rechazo` vía ALTER TABLE.
+- **`guardias_realizadas`**: guardias cubiertas vinculadas a `ausencia_id` → `ausencias_profesor`.
 - RLS en las tres tablas: `profesional` ve solo lo suyo · `admin` ve su centro · `superadmin` ve todo.
-- Migración ejecutada vía Supabase CLI (`supabase db query --linked`).
 
 ---
 
@@ -254,6 +258,9 @@ git add <archivos> && git commit -m "tipo: descripción" && git push
 <script src="js/chat.js"></script>
 <script src="js/comedor.js"></script>
 <script src="js/mejoras.js"></script>
+<script src="js/incidencias.js"></script>
+<script src="js/espacios.js"></script>
+<script src="js/rrhh.js"></script>
 ```
 
 ---
@@ -275,6 +282,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 ## Registro de cambios recientes
 
+- `2026-05-22` · `15ef7d8` — feat: módulo RRHH completo (js/rrhh.js) — ausencias, aprobación, sustituciones automáticas
 - `2026-05-22` · — chore: tablas incidencias, espacios y reservas_espacios creadas en Supabase con RLS
 - `2026-05-22` · — feat: tablas RRHH creadas en Supabase (profesores, ausencias_profesor, guardias_realizadas) con RLS
 - `2026-05-22` · `049c9a1` — feat: módulo completo de gestión de usuarios (admin + superadmin)
