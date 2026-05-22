@@ -62,6 +62,10 @@ js/
   admin.js              loadAdmin, loadSustituciones, registrarSustitucion, initSustPanel
   mejoras.js            loadDashboard, loadComedorHijos, buscarAlumnoRapido, toggleVoice
   users.js              loadUsersPanel, inviteUser, changeRole, toggleModulo
+  incidencias.js        loadIncidencias, registrarIncidencia, initIncidenciasPanel
+  espacios.js           loadEspacios, reservarEspacio
+  rrhh.js               loadRrhhPanel, solicitarAusencia, aprobarAusencia, rechazarAusencia
+  guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
 manifest.json           PWA manifest (sin service worker aún)
 scripts/
   importar_horarios_profes.py   Import CSV de horarios → Supabase
@@ -166,6 +170,17 @@ DOMContentLoaded (config.js)
 - Badges ✓ Cubierta / ⚠ Pendiente
 - Exportación CSV completa del historial
 - Eliminación desde la tabla
+- Selector de sustituto ordenado por equidad (fewest guards first) con recuento `(N g.)`
+- Al registrar: inserta automáticamente en `guardias_realizadas` y refresca la bolsa
+
+### Bolsa de guardias con equidad (guardias.js)
+- `loadBolsaGuardias()`: ranking de todos los profesores ordenado por nº de guardias del trimestre (menor → mayor)
+- Barra de progreso relativa + badge de color: verde (0) · azul (1-3) · amarillo (4-6) · rojo (7+)
+- Cuenta desde `sustituciones.profesor_sustituto` del trimestre actual (sin configuración adicional)
+- `getGuardiaCountsByName()`: mapa nombre→count usado por `admin.js` para ordenar el selector
+- `registrarGuardiaEnBD()`: inserta en `guardias_realizadas` resolviendo `profile_id` por nombre
+- Se carga automáticamente al abrir el tab Sustituciones y se refresca tras cada registro
+- Card "Bolsa de guardias" integrada en `panel-sust` (visible junto al formulario)
 
 ### Dashboard por rol (mejoras.js)
 - `familia`: hijos con estado comedor del día, próximas reuniones, quick actions
@@ -261,6 +276,7 @@ git add <archivos> && git commit -m "tipo: descripción" && git push
 <script src="js/incidencias.js"></script>
 <script src="js/espacios.js"></script>
 <script src="js/rrhh.js"></script>
+<script src="js/guardias.js"></script>
 ```
 
 ---
@@ -282,6 +298,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 ## Registro de cambios recientes
 
+- `2026-05-22` · `e56ccb2` — feat: bolsa de guardias con equidad automática (js/guardias.js)
 - `2026-05-22` · `15ef7d8` — feat: módulo RRHH completo (js/rrhh.js) — ausencias, aprobación, sustituciones automáticas
 - `2026-05-22` · — chore: tablas incidencias, espacios y reservas_espacios creadas en Supabase con RLS
 - `2026-05-22` · — feat: tablas RRHH creadas en Supabase (profesores, ausencias_profesor, guardias_realizadas) con RLS
