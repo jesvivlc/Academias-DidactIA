@@ -26,6 +26,7 @@ URL pública: **didactia.eu**
 | IA | Gemini 2.5 Flash vía Edge Function `chat` |
 | Email | Resend (dominio didactia.eu) |
 | Deploy | Vercel (frontend) + GitHub (fuente) |
+| Automatización | n8n (local, http://localhost:5678) |
 
 ## Centros activos
 
@@ -51,8 +52,8 @@ Cada centro tiene `centro_id` único. Toda consulta a Supabase filtra por `centr
 ## Estructura de archivos
 
 ```
-index.html              Landing page (Playfair + Geist, Navy/Blue/Amber)
-app.html                Aplicación: login, header, tabs, paneles
+index.html                      Landing page (Playfair + Geist, Navy/Blue/Amber)
+app.html                        Aplicación: login, header, tabs, paneles
 css/styles.css          Tokens CSS + estilos globales
 js/
   config.js             SB_URL, SB_KEY, variables globales, boot DOMContentLoaded
@@ -66,7 +67,8 @@ js/
   espacios.js           loadEspacios, reservarEspacio
   rrhh.js               loadRrhhPanel, solicitarAusencia, aprobarAusencia, rechazarAusencia
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
-manifest.json           PWA manifest (sin service worker aún)
+manifest.json                   PWA manifest (sin service worker aún)
+n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
 scripts/
   importar_horarios_profes.py   Import CSV de horarios → Supabase
 ```
@@ -290,6 +292,42 @@ DOMContentLoaded (config.js)
 
 ---
 
+## Automatizaciones n8n
+
+n8n instalado en local (`http://localhost:5678`). Los workflows se versionan como JSON en el repo y se importan manualmente en n8n.
+
+### Briefing matutino (`n8n-briefing-matutino.json`)
+
+**Trigger:** lunes–viernes a las 8:15 (cron `15 8 * * 1-5`)
+
+**Nodos (7):**
+
+| Nodo | Tipo | Descripción |
+|------|------|-------------|
+| Lunes-Viernes 8:15 | scheduleTrigger | Cron `15 8 * * 1-5` |
+| Config y fechas | code | Declara `SUPABASE_KEY`, `RESEND_KEY`, URLs, `today`, `yesterday`, `fechaLegible` |
+| Get Admins | httpRequest | `profiles?rol=eq.admin&activo=neq.false` con join `centros(id,nombre)` |
+| Get Sustituciones | httpRequest | `sustituciones?cubierta=eq.false&fecha=eq.{today}` |
+| Get Ausencias | httpRequest | `ausencias_profesor?estado=eq.aprobada&fecha=lte.{today}&fecha_fin=gte.{today}` |
+| Build Emails | code | Fetch inline de `asistencia_comedor` (ayer, se_queda=true); agrupa por centro; genera HTML; devuelve un item por admin |
+| Send Resend | httpRequest | POST `https://api.resend.com/emails` con body `{from, to, subject, html}` |
+
+**Claves a configurar:** editar las líneas 1-2 del nodo "Config y fechas":
+```js
+const SUPABASE_KEY = 'eyJ...service_role_key...';
+const RESEND_KEY   = 're_...resend_api_key...';
+```
+
+**Notas de implementación:**
+- `asistencia_comedor` se obtiene con `fetch()` dentro de Build Emails en lugar de un nodo HTTP separado — evita que un resultado vacío corte el workflow
+- `_get(name)` soporta ambos modos de n8n: respuesta como array único o auto-dividida en items
+- `to` se castea explícitamente a `String` y se filtra con `.includes('@')` antes de enviar
+- El email HTML usa `<table>` para compatibilidad con clientes de correo; atributos en comillas simples dentro de template literals
+
+**Para importar:** Workflows → Import from file → `n8n-briefing-matutino.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
+
+---
+
 ## Convenciones críticas
 
 1. **Nunca** hardcodear `centro_id` — siempre usar la variable global `ctrId`
@@ -352,6 +390,15 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+
+### 2026-05-22 — n8n briefing matutino
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| `77ebdd4` | fix | `_get()` robusto para ambos modos de n8n; `to` casteado a String explícito con filtro `@` |
+| `1faa4e6` | refactor | Fetch de `asistencia_comedor` inline en Build Emails; eliminado nodo Get Comedor (7 nodos en total) |
+| `db64954` | fix | Manejo seguro de respuestas vacías de Supabase en Build Emails con `.all()[0]` |
+| `9e2468f` | feat | `n8n-briefing-matutino.json` — workflow completo de briefing matutino (cron L-V 8:15, 3 queries Supabase, email HTML por centro vía Resend) |
 
 ### 2026-05-22 — Sprint RRHH + Usuarios
 
