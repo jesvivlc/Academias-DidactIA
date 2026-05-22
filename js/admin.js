@@ -23,6 +23,7 @@ function initSustPanel() {
   if (tramoSel) tramoSel.value = tramo;
   cargarProfesoresLibresEnSelect(tramo);
   loadSustituciones('hoy');
+  if (typeof loadBolsaGuardias === "function") loadBolsaGuardias();
 }
 
 async function loadAdmin() {
@@ -220,12 +221,18 @@ async function registrarSustitucion() {
   } else {
     msg.style.cssText = "display:block;background:#e6f4ea;color:#1e6b3a;border-radius:var(--r-sm);padding:8px 12px;font-size:13px;";
     msg.textContent = "✅ Sustitución registrada correctamente";
+    const _fecha = document.getElementById("sust-fecha")?.value || new Date().toISOString().split("T")[0];
     document.getElementById("sust-ausente").value = "";
     document.getElementById("sust-sustituto").value = "";
     document.getElementById("sust-grupo").value = "";
     document.getElementById("sust-obs").value = "";
+    // Registrar guardia realizada para equidad
+    if (typeof registrarGuardiaEnBD === "function") {
+      registrarGuardiaEnBD(sustituto, _fecha, parseInt(tramo), grupo || null);
+    }
     setTimeout(() => { msg.style.display = "none"; }, 3000);
     await loadSustituciones(sustFiltroActivo);
+    if (typeof loadBolsaGuardias === "function") loadBolsaGuardias();
   }
 }
 
@@ -272,12 +279,21 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
   const profesGuardia = new Set((conGuardia || []).map(r => r.profesor_nombre).filter(Boolean));
   const disponibles = profesGuardia.size > 0 ? libres.filter(p => profesGuardia.has(p)) : libres;
 
+  // Equity sorting: order by fewest guards done this trimester
+  let guardCounts = {};
+  if (typeof getGuardiaCountsByName === "function") {
+    try { guardCounts = await getGuardiaCountsByName(); } catch(e) {}
+  }
+  const disponiblesOrdenados = disponibles
+    .map(p => ({ n: p, c: guardCounts[p] || 0 }))
+    .sort((a, b) => a.c - b.c || a.n.localeCompare(b.n, "es"));
+
   const selSust = document.getElementById("sust-sustituto");
   const selAus = document.getElementById("sust-ausente");
   if (selSust) {
-    const etiqueta = profesGuardia.size > 0 ? "Seleccionar profesor de guardia…" : "Seleccionar profesor libre…";
+    const etiqueta = profesGuardia.size > 0 ? "Seleccionar de guardia (por equidad)…" : "Seleccionar libre (por equidad)…";
     selSust.innerHTML = '<option value="">' + etiqueta + '</option>'
-      + disponibles.map(p => '<option value="' + p + '">' + p + '</option>').join("");
+      + disponiblesOrdenados.map(p => '<option value="' + p.n + '">' + p.n + ' (' + p.c + ' g.)</option>').join("");
   }
   if (selAus) {
     selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>'
