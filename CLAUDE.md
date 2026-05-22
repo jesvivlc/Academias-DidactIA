@@ -78,16 +78,16 @@ scripts/
 | Tabla | Campos clave | Notas |
 |-------|-------------|-------|
 | `centros` | id, nombre, modulos_activos[], color_primario, logo_url | Configura tematización y módulos |
-| `profiles` | id, user_id, full_name, email, rol, centro_id | Extiende auth.users |
+| `profiles` | id, user_id, full_name, email, rol, centro_id, activo (bool DEFAULT true), created_at | Extiende auth.users. `id = user_id` (ambos = auth UUID). `activo=false` bloquea el login |
 | `info_centro` | centro_id, nombre_config, datos (jsonb), visible_para | Contexto del chatbot |
 | `horarios` | centro_id, dia, hora, profesor, actividad | Tabla legacy — chatbot búsqueda por apellido |
 | `horarios_grupo` | centro_id, grupo_horario, dia, tramo, hora_inicio, hora_fin, actividad_nombre, profesor_nombre, aula | Tabla principal — lógica horaria directa |
 | `alumnos` | centro_id, nombre, curso, grupo_horario | Vinculados vía familia_alumno |
 | `familia_alumno` | profile_id, alumno_id | N:M familias↔alumnos |
 | `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por | Una fila por alumno/día |
-| `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | Campo `cubierta` existe pero sin UI |
+| `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | `cubierta` tiene toggle en la tabla. Se auto-genera desde RRHH al aprobar ausencias |
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
-| `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, tramo, trimestre, curso_escolar, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros |
+| `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre, curso_escolar, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. Tabla base creada con `rrhh_migration.sql`; columnas extendidas vía ALTER TABLE |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
 | `incidencias` | centro_id, fecha, tipo, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo por defecto 'convivencia' |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
@@ -163,15 +163,14 @@ DOMContentLoaded (config.js)
 - `showComedorVista('dia'|'historico')` alterna las dos vistas
 
 ### Sustituciones (admin.js)
-- Registro: profesor ausente, sustituto (filtrado a profesores de guardia), grupo, tramo, fecha, observaciones
-- `initSustPanel()`: auto-detecta tramo actual por hora del sistema, pre-rellena fecha con hoy
-- Filtros "Hoy / Esta semana / Todo" con estado activo visual (`sustFiltroActivo`)
-- Contador en el tab: "🔄 Sustituciones (N)" cuando hay sustituciones hoy
-- Badges ✓ Cubierta / ⚠ Pendiente
-- Exportación CSV completa del historial
-- Eliminación desde la tabla
-- Selector de sustituto ordenado por equidad (fewest guards first) con recuento `(N g.)`
-- Al registrar: inserta automáticamente en `guardias_realizadas` y refresca la bolsa
+- Registro: profesor ausente, sustituto, grupo, tramo, fecha, observaciones
+- `initSustPanel()`: auto-detecta tramo por hora del sistema, pre-rellena fecha con hoy
+- Selector de sustituto ordenado por equidad (menor → mayor guardias) con recuento `(N g.)` — carga desde `getGuardiaCountsByName()`
+- Al registrar sustitución: inserta en `guardias_realizadas` vía `registrarGuardiaEnBD()` y refresca bolsa
+- Toggle `cubierta` inline en cada fila de la tabla
+- Filtros "Hoy / Esta semana / Todo" con estado activo visual
+- Contador en el tab: "🔄 Sustituciones (N)" cuando hay pendientes hoy
+- Badges ✓ Cubierta / ⚠ Pendiente, exportación CSV, eliminación desde tabla
 
 ### Bolsa de guardias con equidad (guardias.js)
 - `loadBolsaGuardias()`: ranking de todos los profesores ordenado por nº de guardias del trimestre (menor → mayor)
@@ -208,15 +207,86 @@ DOMContentLoaded (config.js)
 - Estadísticas: nº configs, nº entradas de horario
 
 ### RRHH — gestión de ausencias (rrhh.js)
-- **Vista profesor**: botón "Solicitar ausencia", formulario (fecha inicio/fin, tipo, motivo), historial con badges de estado.
-- **Vista admin/jefatura**: lista de solicitudes con filtros por estado/profesor/fecha, botones Aprobar y Rechazar con confirmación.
-- **Al aprobar**: genera automáticamente tramos pendientes en `sustituciones` cruzando `horarios_grupo` del profesor para cada día lectivo del rango.
-- Badges: ⏳ pendiente (amarillo) · ✓ aprobada (verde) · ✕ rechazada (rojo).
-- Tab `👔 RRHH` visible para `profesional`, `admin` y `superadmin`.
-- **`profesores`**: ficha HR del profesor (especialidad, departamento, horas_semanales, tipo_jornada). `profile_id` opcional.
-- **`ausencias_profesor`**: columnas extendidas con `fecha_fin`, `tipo`, `motivo`, `estado`, `aprobada_por`, `motivo_rechazo` vía ALTER TABLE.
-- **`guardias_realizadas`**: guardias cubiertas vinculadas a `ausencia_id` → `ausencias_profesor`.
-- RLS en las tres tablas: `profesional` ve solo lo suyo · `admin` ve su centro · `superadmin` ve todo.
+- Tab `👔 RRHH` visible para `profesional`, `admin` y `superadmin`
+- **Vista profesor** (`_renderRrhhProfesor`): formulario solicitud (fecha ini/fin, tipo, motivo), historial propio con badges
+- **Vista admin/jefatura** (`_renderRrhhAdmin`): lista todas las solicitudes del centro; filtros por estado (pills), profesor y fecha
+- `aprobarAusencia(id)`: marca estado=aprobada → llama `_crearSustituciones(ausencia, nombreProf)`
+  - `_crearSustituciones`: expande rango de fechas a días lectivos, consulta `horarios_grupo` del profesor por día, inserta una fila en `sustituciones` por cada tramo encontrado (cubierta=false)
+  - Nombre del profesor: busca primero en tabla `profesores` (por `profile_id`), luego en `profiles.full_name`
+- `rechazarAusencia(id)`: prompt con motivo → guarda `estado=rechazada, motivo_rechazo`
+- Badges: ⏳ pendiente · ✓ aprobada · ✕ rechazada
+- Helpers: `_getCursoEscolar()`, `_getTrimestreActual()` (mes ≥9 → T1, ≤3 → T2, resto → T3)
+
+### Bolsa de guardias con equidad (guardias.js)
+- `loadBolsaGuardias()`: cuenta `sustituciones.profesor_sustituto` del trimestre actual → ranking menor→mayor
+  - Profesores del ranking: todos los que aparecen en `horarios_grupo` + los que ya hicieron guardia ese trimestre
+  - Barra de progreso relativa + badge: verde (0) · azul (1-3) · ámbar (4-6) · rojo (7+)
+- `getGuardiaCountsByName()`: devuelve mapa `{nombre: count}` usado por `admin.js` para ordenar el selector de sustitutos
+- `registrarGuardiaEnBD(nombre, fecha, tramo, grupo)`: resuelve `profile_id` por `ilike(full_name)` e inserta en `guardias_realizadas` con `ausencia_id: null`
+- Card "Bolsa de guardias" integrada en `panel-sust`, se recarga al abrir el tab y tras cada registro
+- Helpers: `_guardiaTrimActual()`, `_guardiaTrimDates(trim)`, `_guardiaCursoActual()`
+
+---
+
+## Estado del proyecto (2026-05-22)
+
+### Tablas verificadas en Supabase (proyecto: rflfsbrdmgaidhvbuvwb)
+
+| Tabla | Estado | Notas |
+|-------|--------|-------|
+| `centros` | ✅ OK | `modulos_activos[]` controla tabs visibles |
+| `profiles` | ✅ OK | Añadidas columnas `activo` y `created_at` |
+| `info_centro` | ✅ OK | |
+| `horarios` | ✅ OK | Tabla legacy, se mantiene para compatibilidad |
+| `horarios_grupo` | ✅ OK | Tabla principal de horarios |
+| `alumnos` | ✅ OK | |
+| `familia_alumno` | ✅ OK | RLS ampliada con policy `admin_gestiona_familia` |
+| `asistencia_comedor` | ✅ OK | |
+| `sustituciones` | ✅ OK | Realtime activado para notificaciones push |
+| `profesores` | ✅ OK | Creada con `rrhh_migration.sql` |
+| `ausencias_profesor` | ✅ OK | Creada con migration + ALTER TABLE para campos extra |
+| `guardias_realizadas` | ✅ OK | Creada con `rrhh_migration.sql` |
+| `incidencias` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
+| `espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
+| `reservas_espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
+
+### Funciones RPC en Supabase
+
+| Función | Descripción |
+|---------|-------------|
+| `get_users_with_auth(p_centro_id)` | SECURITY DEFINER. JOIN profiles + auth.users + centros. Admin ve solo su centro; superadmin ve todos |
+| `_caller_rol()` | Helper SECURITY DEFINER para RLS policies sin recursión |
+| `_caller_centro()` | Helper SECURITY DEFINER para RLS policies sin recursión |
+
+### Módulos operativos por rol
+
+| Módulo | familia | profesional | admin | superadmin |
+|--------|---------|-------------|-------|------------|
+| Chatbot | ✅ | ✅ | ✅ | ✅ |
+| Comedor | — | ✅ (módulo) | ✅ (módulo) | ✅ |
+| Sustituciones | — | ✅ | ✅ | ✅ |
+| Incidencias | — | ✅ | ✅ | ✅ |
+| Espacios | — | ✅ (módulo) | ✅ (módulo) | ✅ |
+| RRHH | — | ✅ (vista propia) | ✅ (gestión) | ✅ |
+| Administración | — | — | ✅ | ✅ |
+| Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
+
+`(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
+
+### Orden de carga de scripts en app.html
+```html
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/users.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/comedor.js"></script>
+<script src="js/mejoras.js"></script>
+<script src="js/incidencias.js"></script>
+<script src="js/espacios.js"></script>
+<script src="js/rrhh.js"></script>
+<script src="js/guardias.js"></script>
+```
 
 ---
 
@@ -264,21 +334,6 @@ git add <archivos> && git commit -m "tipo: descripción" && git push
 # Vercel despliega automáticamente desde main
 ```
 
-**Orden de carga de scripts en app.html:**
-```html
-<script src="js/config.js"></script>   <!-- globals + boot -->
-<script src="js/auth.js"></script>      <!-- auth + navegación -->
-<script src="js/users.js"></script>
-<script src="js/admin.js"></script>
-<script src="js/chat.js"></script>
-<script src="js/comedor.js"></script>
-<script src="js/mejoras.js"></script>
-<script src="js/incidencias.js"></script>
-<script src="js/espacios.js"></script>
-<script src="js/rrhh.js"></script>
-<script src="js/guardias.js"></script>
-```
-
 ---
 
 ## Protocolo al terminar cada tarea
@@ -298,9 +353,17 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 ## Registro de cambios recientes
 
-- `2026-05-22` · `e56ccb2` — feat: bolsa de guardias con equidad automática (js/guardias.js)
-- `2026-05-22` · `15ef7d8` — feat: módulo RRHH completo (js/rrhh.js) — ausencias, aprobación, sustituciones automáticas
-- `2026-05-22` · — chore: tablas incidencias, espacios y reservas_espacios creadas en Supabase con RLS
-- `2026-05-22` · — feat: tablas RRHH creadas en Supabase (profesores, ausencias_profesor, guardias_realizadas) con RLS
-- `2026-05-22` · `049c9a1` — feat: módulo completo de gestión de usuarios (admin + superadmin)
-- `2026-05-21 23:22` · `5948071` — docs: añadir protocolo de cierre de tarea a CLAUDE.md
+### 2026-05-22 — Sprint RRHH + Usuarios
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| `2365a78` | docs | CLAUDE.md actualizado con bolsa de guardias |
+| `e56ccb2` | feat | `js/guardias.js` — bolsa de guardias con equidad por trimestre; selector de sustituto ordenado; auto-registro en `guardias_realizadas` |
+| `06adeb2` | docs | CLAUDE.md actualizado con módulo RRHH |
+| `15ef7d8` | feat | `js/rrhh.js` — módulo RRHH completo (ausencias, aprobación con sustituciones automáticas, rechazo); `app.html` tab 👔 RRHH |
+| `4514510` | docs | Tablas incidencias/espacios/reservas marcadas como creadas |
+| `54dbdee` | feat | Tablas RRHH en Supabase: `profesores`, `ausencias_profesor`, `guardias_realizadas` + RLS completa (`rrhh_migration.sql`) |
+| `38f3fdf` | feat | Estados activo/inactivo/pendiente en tabla de gestión de usuarios |
+| `30c5d91` | docs | CLAUDE.md actualizado con módulo de usuarios |
+| `049c9a1` | feat | `js/users.js` reescritura completa — panel admin+superadmin, modales invitar/editar, desactivar/reactivar, reenvío invitación |
+| `d92efb1` | docs | Tablas media prioridad marcadas como completadas; SQL pendiente documentado |
