@@ -455,62 +455,91 @@
     </div>
   </div>
 
-  <!-- USERS PANEL (superadmin only) -->
-  <div class="panel" id="panel-users">
+  <!-- USERS PANEL -->
+  <div class="panel" id="panel-users" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
     <div class="pg-hdr">
-      <div><div class="pg-title">Gestión de usuarios</div><div class="pg-sub">Invita administradores y gestiona roles por centro</div></div>
+      <div><div class="pg-title">Gestión de usuarios</div><div class="pg-sub" id="users-counters">—</div></div>
+      <button class="btn btn-p" onclick="mostrarModalInvitar()">+ Invitar usuario</button>
     </div>
-
-    <!-- Centros y módulos -->
-    <div class="card">
+    <!-- Centros y módulos (superadmin only) -->
+    <div class="card" id="centros-modulos-card" style="display:none;">
       <div class="card-hdr"><div class="card-ico g">🏫</div><div><div class="card-title">Centros y módulos activos</div></div></div>
       <div class="card-desc">Activa o desactiva módulos para cada centro educativo.</div>
-      <div id="centros-modulos-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
+      <div id="centros-modulos-list"></div>
     </div>
-
-        <!-- Invite new admin -->
-    <div class="card" style="max-width:560px;">
-      <div class="card-hdr"><div class="card-ico o">✉️</div><div><div class="card-title">Invitar administrador de centro</div></div></div>
-      <div class="card-desc">El usuario recibirá un email con un enlace para establecer su contraseña y acceder como administrador del centro seleccionado.</div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div>
-          <label class="lbl">Nombre completo</label>
-          <input class="fi" id="inv-name" placeholder="Nombre del administrador" />
-        </div>
-        <div>
-          <label class="lbl">Email</label>
-          <input class="fi" id="inv-email" type="email" placeholder="admin@centro.es" />
-        </div>
-        <div>
-          <label class="lbl">Centro educativo</label>
-          <select class="fi" id="inv-centro"><option value="">Cargando centros…</option></select>
-        </div>
-        <div>
-          <label class="lbl">Rol</label>
-          <select class="fi" id="inv-rol">
-            <option value="admin">⚙️ Administrador del centro</option>
-            <option value="profesional">👩‍🏫 Profesional</option>
-          </select>
-        </div>
-        <button class="btn btn-p" onclick="inviteUser()">📨 Enviar invitación</button>
-        <div id="inv-status" style="font-size:13px;display:none;padding:8px 12px;border-radius:var(--r-sm);"></div>
-      </div>
-    </div>
-
-    <!-- Users list -->
+    <!-- Filtros y lista -->
     <div class="card">
-      <div class="card-hdr"><div class="card-ico b">👥</div><div><div class="card-title">Usuarios registrados</div></div></div>
-      <div class="card-desc">Lista de todos los usuarios de la plataforma. Puedes cambiar su rol directamente.</div>
-      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
-        <select class="fi" id="filter-centro" style="width:auto;" onchange="loadUsers()"><option value="">Todos los centros</option></select>
-        <button class="btn btn-s" onclick="loadUsers()">↺ Actualizar</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <input class="fi" id="users-search" placeholder="Buscar por nombre o email…" style="flex:1;min-width:180px;" oninput="buscarUsuarios(this.value)" />
+        <select class="fi" id="filter-centro" style="width:auto;display:none;" onchange="loadUsers()"><option value="">Todos los centros</option></select>
       </div>
-      <div id="users-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando usuarios…</div></div>
+      <div id="users-filtros-rol" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+      <div id="users-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando…</div></div>
     </div>
   </div>
 
 </div>
 
+
+<!-- MODAL: INVITAR USUARIO -->
+<div id="modal-invitar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--srf);border-radius:var(--r);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:17px;font-weight:600;color:var(--txt);">Invitar nuevo usuario</div>
+      <button onclick="cerrarModalInvitar()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt3);line-height:1;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="lbl">Nombre completo *</label><input class="fi" id="inv-name" placeholder="Nombre del usuario" /></div>
+      <div><label class="lbl">Email *</label><input class="fi" id="inv-email" type="email" placeholder="usuario@email.com" /></div>
+      <div id="inv-centro-wrap">
+        <label class="lbl">Centro educativo *</label>
+        <select class="fi" id="inv-centro" onchange="cargarAlumnosCentroInv()"><option value="">Selecciona un centro…</option></select>
+      </div>
+      <div>
+        <label class="lbl">Rol *</label>
+        <select class="fi" id="inv-rol" onchange="onInvRolChange()">
+          <option value="familia">👨‍👩‍👧 Familia</option>
+          <option value="profesional">👩‍🏫 Profesional</option>
+          <option value="admin">⚙️ Administrador</option>
+        </select>
+      </div>
+      <div id="inv-alumnos-wrap" style="display:none;">
+        <label class="lbl">Alumnos vinculados</label>
+        <div id="inv-alumnos-lista" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;border:1px solid var(--bdr);border-radius:var(--r-sm);padding:8px;"></div>
+      </div>
+      <button class="btn btn-p" onclick="inviteUser()">📨 Enviar invitación</button>
+      <div id="inv-status" style="display:none;font-size:13px;padding:8px 12px;border-radius:var(--r-sm);"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR USUARIO -->
+<div id="modal-editar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--srf);border-radius:var(--r);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:17px;font-weight:600;color:var(--txt);">Editar usuario</div>
+      <button onclick="cerrarModalEditar()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt3);line-height:1;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div><label class="lbl">Nombre completo</label><input class="fi" id="edit-name" placeholder="Nombre completo" /></div>
+      <div>
+        <label class="lbl">Rol</label>
+        <select class="fi" id="edit-rol" onchange="onEditRolChange()">
+          <option value="familia">👨‍👩‍👧 Familia</option>
+          <option value="profesional">👩‍🏫 Profesional</option>
+          <option value="admin">⚙️ Administrador</option>
+          <option value="superadmin">🔑 Superadmin</option>
+        </select>
+      </div>
+      <div id="edit-alumnos-wrap" style="display:none;">
+        <label class="lbl">Alumnos vinculados</label>
+        <div id="edit-alumnos-lista" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;border:1px solid var(--bdr);border-radius:var(--r-sm);padding:8px;"></div>
+      </div>
+      <div id="edit-status" style="display:none;font-size:13px;padding:8px 12px;border-radius:var(--r-sm);"></div>
+      <button class="btn btn-p" onclick="guardarCambiosUsuario()">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
 
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>

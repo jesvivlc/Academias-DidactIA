@@ -224,7 +224,7 @@ async function loadUserProfile(user) {
   // Get profile with centro info
   const { data: profile, error } = await sb
     .from("profiles")
-    .select("id, centro_id, rol, full_name")
+    .select("id, centro_id, rol, full_name, activo")
     .eq("user_id", user.id)
     .single();
 
@@ -239,6 +239,14 @@ async function loadUserProfile(user) {
 
   role = profile.rol || "familia";
   currentUserName = profile.full_name || user.email;
+
+  if (profile.activo === false) {
+    const errEl = document.getElementById("login-err");
+    errEl.textContent = "Tu cuenta ha sido desactivada. Contacta con el administrador del centro.";
+    errEl.style.display = "block";
+    await sb.auth.signOut();
+    return;
+  }
 
   // Superadmin: load all centros and let them pick
   if (role === "superadmin") {
@@ -323,19 +331,8 @@ async function loadUserProfile(user) {
 
 
 
-    // Superadmin: also show users management tab
   const usersTab = document.getElementById("tab-users");
-  if (usersTab) usersTab.style.display = role === "superadmin" ? "block" : "none";
-
-  // Apply admin panel styling to users panel
-  const usersPanel = document.getElementById("panel-users");
-  if (usersPanel) {
-    usersPanel.style.flexDirection = "column";
-    usersPanel.style.overflowY = "auto";
-    usersPanel.style.padding = "28px";
-    usersPanel.style.gap = "22px";
-    usersPanel.style.background = "var(--bg)";
-  }
+  if (usersTab) usersTab.style.display = (role === "admin" || role === "superadmin") ? "block" : "none";
 
   // Show app
   document.getElementById("setup").style.display = "none";
