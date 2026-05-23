@@ -70,8 +70,8 @@ DELETE FROM public.info_centro WHERE centro_id = cid;
 DELETE FROM public.centros    WHERE id = cid;
 
 -- 2. CENTRO ──────────────────────────────────────────────────
-INSERT INTO public.centros (id, nombre, color_primario, modulos_activos) VALUES
-  (cid, 'IES Demo', '#0f4c81',
+INSERT INTO public.centros (id, nombre, slug, color_primario, modulos_activos) VALUES
+  (cid, 'IES Demo', 'ies-demo', '#0f4c81',
    ARRAY['comedor','espacios','incidencias']);
 
 INSERT INTO public.info_centro (centro_id, nombre_config, datos, visible_para) VALUES
