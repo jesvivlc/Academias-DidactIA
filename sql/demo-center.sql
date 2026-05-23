@@ -46,34 +46,37 @@ DO $pol2$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $pol2$;
 
 -- ============================================================
+-- 1. LIMPIEZA (orden FK inverso, fuera del bloque DO) ────────
+DELETE FROM public.extended_essay      WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.cas_actividades     WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.asistencia_comedor  WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.guardias_realizadas WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.sustituciones       WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.ausencias_profesor  WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.plazos_ib           WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.incidencias         WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.reservas_espacios   WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.horarios_grupo      WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.familia_alumno
+  WHERE alumno_id IN (SELECT id FROM public.alumnos WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001');
+DELETE FROM public.alumnos    WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.profesores WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.info_centro WHERE centro_id = 'a0eedbc0-0001-4d52-8f00-000000000001';
+DELETE FROM public.centros    WHERE id        = 'a0eedbc0-0001-4d52-8f00-000000000001';
+
+-- 2. CENTRO (fuera del bloque DO) ────────────────────────────
+INSERT INTO public.centros (id, nombre, slug, color_primario, modulos_activos) VALUES
+  ('a0eedbc0-0001-4d52-8f00-000000000001', 'IES Demo', 'ies-demo', '#0f4c81',
+   ARRAY['comedor','espacios','incidencias']);
+
+-- ============================================================
+-- Resto de datos dentro del bloque DO (usa cid como variable)
 DO $$
 DECLARE
   cid uuid := 'a0eedbc0-0001-4d52-8f00-000000000001';
 BEGIN
 
--- 1. LIMPIEZA (orden FK inverso) ─────────────────────────────
-DELETE FROM public.extended_essay      WHERE centro_id = cid;
-DELETE FROM public.cas_actividades     WHERE centro_id = cid;
-DELETE FROM public.asistencia_comedor  WHERE centro_id = cid;
-DELETE FROM public.guardias_realizadas WHERE centro_id = cid;
-DELETE FROM public.sustituciones       WHERE centro_id = cid;
-DELETE FROM public.ausencias_profesor  WHERE centro_id = cid;
-DELETE FROM public.plazos_ib           WHERE centro_id = cid;
-DELETE FROM public.incidencias         WHERE centro_id = cid;
-DELETE FROM public.reservas_espacios   WHERE centro_id = cid;
-DELETE FROM public.horarios_grupo      WHERE centro_id = cid;
-DELETE FROM public.familia_alumno
-  WHERE alumno_id IN (SELECT id FROM public.alumnos WHERE centro_id = cid);
-DELETE FROM public.alumnos    WHERE centro_id = cid;
-DELETE FROM public.profesores WHERE centro_id = cid;
-DELETE FROM public.info_centro WHERE centro_id = cid;
-DELETE FROM public.centros    WHERE id = cid;
-
--- 2. CENTRO ──────────────────────────────────────────────────
-INSERT INTO public.centros (id, nombre, slug, color_primario, modulos_activos) VALUES
-  (cid, 'IES Demo', 'ies-demo', '#0f4c81',
-   ARRAY['comedor','espacios','incidencias']);
-
+-- 3. INFO_CENTRO ─────────────────────────────────────────────
 INSERT INTO public.info_centro (centro_id, nombre_config, datos, visible_para) VALUES
   (cid, 'descripcion',
    '{"texto":"IES Demo es un centro de educación secundaria y bachillerato con Programa IB autorizado. Cuenta con 450 alumnos, 45 profesores y modernas instalaciones deportivas y 3 laboratorios equipados."}',
@@ -85,7 +88,7 @@ INSERT INTO public.info_centro (centro_id, nombre_config, datos, visible_para) V
    '{"texto":"Secretaría: 963 000 000. Email: secretaria@iesdemo.es. Horario: L-V 9:00-14:00."}',
    'todos');
 
--- 3. PROFESORES (15) ─────────────────────────────────────────
+-- 4. PROFESORES (15) ─────────────────────────────────────────
 INSERT INTO public.profesores
   (id, centro_id, nombre, especialidad, departamento, activo) VALUES
   ('b1000000-0001-4000-8000-000000000001',cid,'María García López',      'Matemáticas',          'Matemáticas',    true),
@@ -104,7 +107,7 @@ INSERT INTO public.profesores
   ('b1000000-0001-4000-8000-000000000014',cid,'Sergio Romero Fernández', 'Matemáticas',          'Matemáticas',    true),
   ('b1000000-0001-4000-8000-000000000015',cid,'Natalia Torres Díaz',     'Biología/CC. IB',      'IB',             true);
 
--- 4. ALUMNOS (80 en 13 grupos) ───────────────────────────────
+-- 5. ALUMNOS (80 en 13 grupos) ───────────────────────────────
 INSERT INTO public.alumnos (id, centro_id, nombre, curso, grupo_horario) VALUES
 -- 1ESOA (7)
   (gen_random_uuid(),cid,'Ana García López',           '1ESO','1ESOA'),
@@ -200,7 +203,7 @@ INSERT INTO public.alumnos (id, centro_id, nombre, curso, grupo_horario) VALUES
   (gen_random_uuid(),cid,'Leo Pérez Yamamoto',         '2IB','2IB'),
   (gen_random_uuid(),cid,'Camila Romero Silva',        '2IB','2IB');
 
--- 5. HORARIOS (13 grupos × 5 días × 5 tramos = 325 filas) ───
+-- 6. HORARIOS (13 grupos × 5 días × 5 tramos = 325 filas) ───
 INSERT INTO public.horarios_grupo
   (centro_id,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula)
 VALUES
@@ -543,7 +546,7 @@ VALUES
 (cid,'2IB','viernes',  '4','11:30','12:30','Mathematics AA HL',    'Sergio Romero Fernández', 'IB02'),
 (cid,'2IB','viernes',  '5','12:30','13:30','English A HL',         'Ana Rodríguez Fernández', 'IB02');
 
--- 6. SUSTITUCIONES (10: 5 cubiertas + 5 pendientes) ─────────
+-- 7. SUSTITUCIONES (10: 5 cubiertas + 5 pendientes) ─────────
 INSERT INTO public.sustituciones
   (centro_id,fecha,hora_inicio,hora_fin,tramo,grupo_horario,
    profesor_ausente,profesor_sustituto,observaciones,cubierta,creado_por)
@@ -559,7 +562,7 @@ VALUES
   (cid,CURRENT_DATE,  '11:30','12:30','4','4ESOB','Carmen Moreno Sánchez',  NULL,                     'Cita médica',            false,'Sistema'),
   (cid,CURRENT_DATE,  '12:30','13:30','5','1BACB','Natalia Torres Díaz',    NULL,                     'Sin asignar',            false,'Sistema');
 
--- 7. ASISTENCIA COMEDOR (30 días × alumnos, ~65% asistencia) ─
+-- 8. ASISTENCIA COMEDOR (30 días × alumnos, ~65% asistencia) ─
 INSERT INTO public.asistencia_comedor (centro_id, alumno_id, fecha, se_queda)
 SELECT
   cid,
@@ -577,7 +580,7 @@ CROSS JOIN (
 WHERE al.centro_id = cid
   AND EXTRACT(DOW FROM d.fecha) BETWEEN 1 AND 5;
 
--- 8. AUSENCIAS PROFESOR (5, mix de estados) ──────────────────
+-- 9. AUSENCIAS PROFESOR (5, mix de estados) ──────────────────
 INSERT INTO public.ausencias_profesor
   (centro_id,profile_id,fecha,fecha_fin,tipo,motivo,estado,trimestre,curso_escolar)
 VALUES
@@ -587,7 +590,7 @@ VALUES
   (cid,NULL,CURRENT_DATE,   CURRENT_DATE+2, 'formacion',    'Curso IB Category 1 — Valencia','pendiente', 'T3','2024-2025'),
   (cid,NULL,CURRENT_DATE+5, CURRENT_DATE+5, 'sindical',     'Reunión comité de empresa',    'pendiente', 'T3','2024-2025');
 
--- 9. PLAZOS IB (3) ───────────────────────────────────────────
+-- 10. PLAZOS IB (3) ──────────────────────────────────────────
 INSERT INTO public.plazos_ib
   (centro_id,curso_escolar,titulo,descripcion,fecha_limite,tipo,afecta_a,estado)
 VALUES
@@ -607,7 +610,7 @@ VALUES
    CURRENT_DATE + 21,
    'cas','alumnos 1IB y 2IB','pendiente');
 
--- 10. ACTIVIDADES CAS (3 por alumno IB = 30 registros) ───────
+-- 11. ACTIVIDADES CAS (3 por alumno IB = 30 registros) ───────
 INSERT INTO public.cas_actividades
   (centro_id, alumno_id, titulo, tipo, descripcion, fecha_inicio, horas, estado)
 SELECT
@@ -634,7 +637,7 @@ CROSS JOIN (VALUES
 WHERE al.centro_id = cid
   AND al.grupo_horario IN ('1IB', '2IB');
 
--- 11. EXTENDED ESSAY (2 alumnos de 2IB) ─────────────────────
+-- 12. EXTENDED ESSAY (2 alumnos de 2IB) ─────────────────────
 INSERT INTO public.extended_essay
   (centro_id, alumno_id, titulo, asignatura, supervisor_nombre,
    estado, fecha_entrega_limite, palabras_actuales)
