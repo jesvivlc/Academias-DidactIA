@@ -95,6 +95,8 @@ scripts/
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
+| `cas_actividades` | centro_id, alumno_id, titulo, tipo, descripcion, reflexion, fecha_inicio, horas, estado, created_at | Actividades CAS del Diploma IB; tipo: creatividad/actividad/servicio; estado: en_curso/completada. Creada en `sql/demo-center.sql` |
+| `extended_essay` | centro_id, alumno_id, titulo, asignatura, supervisor_nombre, estado, fecha_entrega_limite, palabras_actuales, created_at | Extended Essay del Diploma IB; estado: en_proceso/primer_borrador/borrador_final/entregado. Creada en `sql/demo-center.sql` |
 
 ---
 
@@ -452,6 +454,48 @@ CREATE INDEX idx_plazos_ib_centro_fecha ON public.plazos_ib (centro_id, fecha_li
 
 ---
 
+---
+
+## Centro de demostración
+
+Archivo: `sql/demo-center.sql` — ejecutar en Supabase SQL Editor con rol service_role.
+
+**PASO PREVIO obligatorio:** invitar `demo@didactia.eu` como `admin` desde la app (Usuarios → Invitar) antes o después de ejecutar el SQL. No se puede crear via SQL porque `profiles` exige una entrada previa en `auth.users`.
+
+### Datos del centro demo
+
+| Campo | Valor |
+|-------|-------|
+| UUID fijo | `a0eedbc0-0001-4d52-8f00-000000000001` |
+| Nombre | IES Demo |
+| Color | `#0f4c81` |
+| Módulos | comedor, espacios, incidencias |
+
+### Contenido generado
+
+| Entidad | Cantidad | Notas |
+|---------|----------|-------|
+| Alumnos | 80 | 13 grupos: 1ESOA/B, 2ESOA/B, 3ESOA/B, 4ESOA/B, 1BACA/B, 2BACA, 1IB, 2IB |
+| Profesores | 15 | Solo tabla `profesores` (sin cuentas de usuario) |
+| Horarios | 325 filas | 13 grupos × 5 días × 5 tramos (T1-T5, 08:00-13:30) |
+| Sustituciones | 10 | 5 cubiertas (días -6 a -2) + 5 pendientes (hoy) |
+| Asistencia comedor | ~880 filas | 30 días laborables × 80 alumnos, ~65% se_queda via hashtext |
+| Ausencias | 5 | 2 aprobadas, 1 rechazada, 2 pendientes |
+| Plazos IB | 3 | +4 días (urgente), +7 días (borderline), +21 días (upcoming) |
+| CAS actividades | 30 | 10 alumnos IB × 3 tipos (creatividad/actividad/servicio) |
+| Extended Essays | 2 | Primeros 2 alumnos de 2IB, en distintos estados |
+
+### Idempotencia
+
+El script elimina y regenera todos los datos demo en cada ejecución (DELETE en orden FK-safe, luego INSERT). Seguro ejecutarlo múltiples veces.
+
+### Tablas creadas por el script (si no existen)
+
+- `cas_actividades` — ver esquema en sección Tablas de Supabase
+- `extended_essay` — ver esquema en sección Tablas de Supabase
+
+---
+
 ## Convenciones críticas
 
 1. **Nunca** hardcodear `centro_id` — siempre usar la variable global `ctrId`
@@ -514,8 +558,16 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-23 17:4x` · (este commit) — feat: SQL centro demo IES Demo + tablas cas_actividades y extended_essay
+- `2026-05-23 12:14` · `1484aab` — feat: n8n alertas plazos IB + tabla plazos_ib
 - `2026-05-23 12:07` · `52ce5c3` — feat: n8n alerta absentismo comedor
 - `2026-05-23 11:53` · `cd592dc` — feat: n8n informe semanal automático para dirección
+
+### 2026-05-23 — Centro de demostración IES Demo
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| (este commit) | feat | `sql/demo-center.sql` — centro demo con UUID fijo, 80 alumnos/13 grupos, 15 profesores, 325 horarios, comedor 30 días, datos IB (CAS + EE + plazos). Tablas `cas_actividades` y `extended_essay` creadas con IF NOT EXISTS |
 
 ### 2026-05-23 — n8n alertas plazos IB
 
