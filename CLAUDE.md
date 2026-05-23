@@ -94,6 +94,7 @@ scripts/
 | `incidencias` | centro_id, fecha, tipo, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo por defecto 'convivencia' |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
+| `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
 
 ---
 
@@ -398,6 +399,59 @@ const RESEND_KEY   = 're_...resend_api_key...';
 
 ---
 
+### Alertas plazos IB (`n8n-alertas-ib.json`)
+
+**Trigger:** lunes–viernes a las 9:00 (cron `0 9 * * 1-5`)
+
+**Tabla requerida:** `plazos_ib` — ver SQL en RRHH migration o ejecutar:
+```sql
+CREATE TABLE public.plazos_ib (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  centro_id uuid REFERENCES public.centros(id) ON DELETE CASCADE,
+  curso_escolar text NOT NULL DEFAULT '2024-2025',
+  titulo text NOT NULL,
+  descripcion text,
+  fecha_limite date NOT NULL,
+  tipo text NOT NULL DEFAULT 'otro',
+  afecta_a text NOT NULL DEFAULT 'coordinador',
+  estado text NOT NULL DEFAULT 'pendiente',
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.plazos_ib ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "centro_isolation" ON public.plazos_ib FOR ALL
+  USING (
+    centro_id = (SELECT centro_id FROM public.profiles WHERE id = auth.uid())
+    OR (SELECT rol FROM public.profiles WHERE id = auth.uid()) = 'superadmin'
+  );
+CREATE INDEX idx_plazos_ib_centro_fecha ON public.plazos_ib (centro_id, fecha_limite, estado);
+```
+
+**Nodos (6):**
+
+| Nodo | Tipo | Descripción |
+|------|------|-------------|
+| Lunes-Viernes 9:00 | scheduleTrigger | Cron `0 9 * * 1-5` |
+| Config y fechas | code | Claves, `today`, `fechaLegible`, `SUPERADMIN_CC = jesvivlc@gmail.com` |
+| Get Admins | httpRequest | `profiles?rol=eq.admin&activo=neq.false` con join `centros` |
+| Get Plazos | httpRequest | `plazos_ib?estado=eq.pendiente&order=fecha_limite.asc` |
+| Build Emails | code | Calcula días restantes, aplica umbrales, genera HTML con kpis + tabla |
+| Send Resend | httpRequest | POST Resend con `to` + `cc` (siempre copia al superadmin) |
+
+**Umbrales y comportamiento:**
+- `dias > 7` → no se envía email para ese centro (ningún plazo urgente)
+- `3–7 días` → email normal, cabecera azul `#1565c0`
+- `0–2 días` → email urgente, cabecera naranja `#e65100`, prefijo `⚠️ URGENTE —` en asunto
+- `< 0 días (vencido)` → email crítico, cabecera roja `#b71c1c`, prefijo `🚨 VENCIDO —` en asunto
+- La tabla muestra todos los plazos ≤30 días (incluyendo vencidos), con badge de color
+- Los KPIs del header cuentan TODOS los plazos pendientes del centro (no solo los ≤30)
+- CC siempre a `jesvivlc@gmail.com`
+
+**tipos IB soportados:** `entrega_ia`, `tok`, `cas`, `examen`, `formulario`, `reunion`, `otro`
+
+**Para importar:** Workflows → Import from file → `n8n-alertas-ib.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
+
+---
+
 ## Convenciones críticas
 
 1. **Nunca** hardcodear `centro_id` — siempre usar la variable global `ctrId`
@@ -460,7 +514,14 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-23 12:07` · `52ce5c3` — feat: n8n alerta absentismo comedor
 - `2026-05-23 11:53` · `cd592dc` — feat: n8n informe semanal automático para dirección
+
+### 2026-05-23 — n8n alertas plazos IB
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| (este commit) | feat | `n8n-alertas-ib.json` — workflow L-V 9:00; umbrales 7/2/0 días con cabecera y asunto dinámicos; CC superadmin; tabla `plazos_ib` + RLS + índice |
 
 ### 2026-05-23 — n8n alerta absentismo comedor
 
