@@ -173,14 +173,14 @@ function ibToggleCas(id) {
 }
 
 async function ibAprobarCas(actId) {
-  const { error } = await sb.from("cas_actividades").update({ estado: "completada" }).eq("id", actId);
+  const { error } = await sb.from("cas_actividades").update({ estado: "completada" }).eq("id", actId).eq("centro_id", ctrId);
   if (!error) _loadCasPanel();
   else alert("Error: " + error.message);
 }
 
 async function ibRechazarCas(actId) {
   if (!confirm("¿Rechazar y eliminar esta actividad CAS?")) return;
-  const { error } = await sb.from("cas_actividades").delete().eq("id", actId);
+  const { error } = await sb.from("cas_actividades").delete().eq("id", actId).eq("centro_id", ctrId);
   if (!error) _loadCasPanel();
   else alert("Error: " + error.message);
 }
@@ -188,7 +188,7 @@ async function ibRechazarCas(actId) {
 async function ibEditarLOs(actId, alumnoId) {
   const { data: act } = await sb.from("cas_actividades")
     .select("titulo,descripcion,reflexion,tipo,los_trabajados")
-    .eq("id", actId).single();
+    .eq("id", actId).eq("centro_id", ctrId).single();
   const current = act?.los_trabajados || [];
   const selected = new Set(current);
 
@@ -230,7 +230,7 @@ async function ibSugerirLOs(actId) {
   try {
     const { data: act } = await sb.from("cas_actividades")
       .select("titulo,descripcion,reflexion,tipo")
-      .eq("id", actId).single();
+      .eq("id", actId).eq("centro_id", ctrId).single();
 
     const { data, error } = await sb.functions.invoke("cas-analyzer", {
       body: { actividad: act }
@@ -261,7 +261,7 @@ async function ibSugerirLOs(actId) {
 async function ibGuardarLOs(actId) {
   const checks = document.querySelectorAll("#ib-los-modal .ib-lo-check:checked");
   const los = Array.from(checks).map(c => c.value);
-  const { error } = await sb.from("cas_actividades").update({ los_trabajados: los }).eq("id", actId);
+  const { error } = await sb.from("cas_actividades").update({ los_trabajados: los }).eq("id", actId).eq("centro_id", ctrId);
   if (error) { alert("Error: " + error.message); return; }
   document.querySelector("[style*='fixed'][style*='z-index:2000']")?.remove();
   _loadCasPanel();
@@ -516,7 +516,7 @@ async function ibGuardarEe(alumnoId, eeId) {
 
   let error;
   if (eeId && eeId !== 'null') {
-    ({ error } = await sb.from("extended_essay").update(payload).eq("id", eeId));
+    ({ error } = await sb.from("extended_essay").update(payload).eq("id", eeId).eq("centro_id", ctrId));
   } else {
     ({ error } = await sb.from("extended_essay").insert(payload));
   }
@@ -637,13 +637,13 @@ function ibTogglePlazosComp() {
 }
 
 async function ibMarcarPlazo(id) {
-  const { error } = await sb.from("plazos_ib").update({ estado: "completado" }).eq("id", id);
+  const { error } = await sb.from("plazos_ib").update({ estado: "completado" }).eq("id", id).eq("centro_id", ctrId);
   if (!error) _loadPlazosPanel();
   else alert("Error: " + error.message);
 }
 
 async function ibReabrirPlazo(id) {
-  const { error } = await sb.from("plazos_ib").update({ estado: "pendiente" }).eq("id", id);
+  const { error } = await sb.from("plazos_ib").update({ estado: "pendiente" }).eq("id", id).eq("centro_id", ctrId);
   if (!error) _loadPlazosPanel();
   else alert("Error: " + error.message);
 }

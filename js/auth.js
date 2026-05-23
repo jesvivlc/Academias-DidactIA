@@ -275,6 +275,11 @@ async function loadUserProfile(user) {
         if (eTab) eTab.style.display = modulosActivos.includes("espacios") ? "block" : "none";
         history = []; resetChat(); updateUI(); loadAdmin();
         applyTheme(ctr?.color_primario, ctr?.logo_url);
+        // Limpiar panel IB para forzar recarga con el nuevo centro_id
+        const ibCont = document.getElementById("ib-container");
+        if (ibCont) ibCont.innerHTML = "";
+        const ibPanel = document.getElementById("panel-ib");
+        if (ibPanel && ibPanel.classList.contains("active")) loadIbPanel();
       };
       hdrRight.replaceWith(sel);
     } else {
