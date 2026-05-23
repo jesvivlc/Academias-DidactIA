@@ -328,6 +328,39 @@ const RESEND_KEY   = 're_...resend_api_key...';
 
 ---
 
+### Informe semanal (`n8n-informe-semanal.json`)
+
+**Trigger:** viernes a las 15:00 (cron `0 15 * * 5`)
+
+**Nodos (7):**
+
+| Nodo | Tipo | Descripción |
+|------|------|-------------|
+| Viernes 15:00 | scheduleTrigger | Cron `0 15 * * 5` |
+| Config y fechas | code | Calcula `weekStart` (lunes), `weekEnd` (viernes), array `weekDays`, `semanaLegible`, `fechaEmision` |
+| Get Admins | httpRequest | `profiles?rol=eq.admin&activo=neq.false` con join `centros(id,nombre)` |
+| Get Sustituciones | httpRequest | `sustituciones?fecha=gte.{weekStart}&fecha=lte.{weekEnd}` — todas (cubiertas y pendientes) |
+| Get Ausencias | httpRequest | `ausencias_profesor?estado=eq.aprobada` solapadas con la semana |
+| Build Emails | code | Fetch inline de `asistencia_comedor` y `guardias_realizadas` de la semana; genera HTML con 4 tablas; devuelve un item por admin |
+| Send Resend | httpRequest | POST `https://api.resend.com/emails` con body `{from, to, subject, html}` |
+
+**Email incluye:**
+- KPIs: sustituciones totales, sin cubrir, ausencias, comidas totales
+- Tabla resumen por día (sustituciones + comensales) con fila de totales
+- Tabla detalle de sustituciones con estado ✓/⚠
+- Ranking de profesores con más guardias (top 5)
+- Ausencias agrupadas por tipo
+
+**Claves a configurar:** editar las líneas 1-2 del nodo "Config y fechas":
+```js
+const SUPABASE_KEY = 'eyJ...service_role_key...';
+const RESEND_KEY   = 're_...resend_api_key...';
+```
+
+**Para importar:** Workflows → Import from file → `n8n-informe-semanal.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
+
+---
+
 ## Convenciones críticas
 
 1. **Nunca** hardcodear `centro_id` — siempre usar la variable global `ctrId`
@@ -390,6 +423,12 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+
+### 2026-05-23 — n8n informe semanal
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| (este commit) | feat | `n8n-informe-semanal.json` — workflow informe semanal (cron viernes 15:00, 4 queries Supabase, email HTML con KPIs + 4 tablas por centro vía Resend) |
 
 ### 2026-05-22 — n8n briefing matutino
 
