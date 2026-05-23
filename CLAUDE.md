@@ -361,6 +361,43 @@ const RESEND_KEY   = 're_...resend_api_key...';
 
 ---
 
+### Alerta absentismo comedor (`n8n-alerta-comedor.json`)
+
+**Trigger:** lunes–viernes a las 16:00 (cron `0 16 * * 1-5`)
+
+**Nodos (6):**
+
+| Nodo | Tipo | Descripción |
+|------|------|-------------|
+| Lunes-Viernes 16:00 | scheduleTrigger | Cron `0 16 * * 1-5` |
+| Config y fechas | code | Declara `SUPABASE_KEY`, `RESEND_KEY`, `today`, `thirtyDaysAgo`, `fechaLegible` |
+| Get Alumnos | httpRequest | `alumnos?select=id,nombre,grupo_horario,centro_id&limit=3000` |
+| Get Asistencia | httpRequest | `asistencia_comedor` últimos 30 días. Header `Range: 0-9999` para superar límite de 1000 filas |
+| Build Emails | code | 2 fetches inline (`horarios_grupo` + `profiles`). Lógica completa de detección y agrupación por tutor |
+| Send Resend | httpRequest | POST `https://api.resend.com/emails` — uno por tutor con alertas |
+
+**Lógica de detección en Build Emails:**
+1. Construye mapa `alumno_id → { fecha → se_queda }` de los últimos 30 días
+2. **Comedores habituales:** alumno con ≥5 registros `se_queda=true` en 30 días laborables
+3. **Racha de ausencia:** itera días laborables hacia atrás desde hoy; corta al encontrar `se_queda=true`. Si racha ≥3 → alerta
+4. **Tutor del grupo:** primer `profesor_nombre` del tramo más bajo en `horarios_grupo` ordenado por `grupo_horario.asc,tramo.asc`
+5. Cruza nombre del tutor con `profiles` (`rol=in.(profesional,admin)`) para obtener email
+6. Agrupa por tutor, ordena alumnos por días descendente, genera HTML naranja con badge de días
+
+**Email incluye:** cabecera naranja `#e65100`, aviso contextual al tutor, tabla con nombre/grupo/días consecutivos (badge rojo ≥5, naranja ≥3), nota con criterio de alerta.
+
+**Si no hay alertas:** `Build Emails` devuelve `[]` y el workflow finaliza sin enviar nada.
+
+**Claves a configurar:** editar las líneas 1-2 del nodo "Config y fechas":
+```js
+const SUPABASE_KEY = 'eyJ...service_role_key...';
+const RESEND_KEY   = 're_...resend_api_key...';
+```
+
+**Para importar:** Workflows → Import from file → `n8n-alerta-comedor.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
+
+---
+
 ## Convenciones críticas
 
 1. **Nunca** hardcodear `centro_id` — siempre usar la variable global `ctrId`
@@ -423,6 +460,13 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-23 11:53` · `cd592dc` — feat: n8n informe semanal automático para dirección
+
+### 2026-05-23 — n8n alerta absentismo comedor
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| (este commit) | feat | `n8n-alerta-comedor.json` — workflow alerta L-V 16:00; detección racha ≥3 días laborables en comedores habituales; email por tutor vía Resend |
 
 ### 2026-05-23 — n8n informe semanal
 
