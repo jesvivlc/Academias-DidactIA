@@ -1,6 +1,11 @@
 // ── MÓDULO IB ──
 // Panel CAS, Extended Essay y Plazos IB para centros con Diploma IB
 
+// Filtra filas de cálculo/agrupación importadas por error desde hojas de cálculo
+function _ibEsAlumnoReal(a) {
+  return !/^total(es)?\b/i.test((a.nombre || '').trim());
+}
+
 const IB_LOS = ["LO1","LO2","LO3","LO4","LO5","LO6","LO7"];
 const IB_LO_DESC = {
   LO1: "Identifica fortalezas y áreas de mejora",
@@ -70,13 +75,15 @@ async function _loadCasPanel() {
   const container = document.getElementById("ib-panel-cas");
   if (!container) return;
 
-  const { data: alumnos } = await sb.from("alumnos")
+  const { data: alumnosRaw } = await sb.from("alumnos")
     .select("id,nombre,grupo_horario")
     .eq("centro_id", ctrId)
     .in("grupo_horario", ["1IB","2IB"])
     .order("grupo_horario").order("nombre");
 
-  if (!alumnos || alumnos.length === 0) {
+  const alumnos = (alumnosRaw || []).filter(_ibEsAlumnoReal);
+
+  if (alumnos.length === 0) {
     container.innerHTML = '<div style="color:var(--txt3);padding:16px;font-size:13px;">No hay alumnos IB registrados en este centro.</div>';
     return;
   }
@@ -278,10 +285,11 @@ function ibNuevaActividad() {
 async function _ibModalActividad(preAlumnoId, preAlumnoNombre) {
   let alumnosOpts = "";
   if (!preAlumnoId) {
-    const { data: alumnos } = await sb.from("alumnos")
+    const { data: alumnosRaw } = await sb.from("alumnos")
       .select("id,nombre,grupo_horario").eq("centro_id", ctrId)
       .in("grupo_horario", ["1IB","2IB"]).order("nombre");
-    alumnosOpts = (alumnos || []).map(a => `<option value="${a.id}">${a.nombre} (${a.grupo_horario})</option>`).join("");
+    alumnosOpts = (alumnosRaw || []).filter(_ibEsAlumnoReal)
+      .map(a => `<option value="${a.id}">${a.nombre} (${a.grupo_horario})</option>`).join("");
   }
 
   const div = document.createElement("div");
@@ -360,13 +368,15 @@ async function _loadEePanel() {
   const container = document.getElementById("ib-panel-ee");
   if (!container) return;
 
-  const { data: alumnos } = await sb.from("alumnos")
+  const { data: alumnosRaw } = await sb.from("alumnos")
     .select("id,nombre,grupo_horario")
     .eq("centro_id", ctrId)
     .eq("grupo_horario", "2IB")
     .order("nombre");
 
-  if (!alumnos || alumnos.length === 0) {
+  const alumnos = (alumnosRaw || []).filter(_ibEsAlumnoReal);
+
+  if (alumnos.length === 0) {
     container.innerHTML = '<div style="color:var(--txt3);padding:16px;font-size:13px;">No hay alumnos de 2IB registrados en este centro.</div>';
     return;
   }
