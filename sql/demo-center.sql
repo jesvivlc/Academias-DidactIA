@@ -73,8 +73,11 @@ INSERT INTO public.centros (id, nombre, slug, color_primario, modulos_activos) V
 -- Resto de datos dentro del bloque DO (usa cid como variable)
 DO $$
 DECLARE
-  cid uuid := 'a0eedbc0-0001-4d52-8f00-000000000001';
+  cid     uuid := 'a0eedbc0-0001-4d52-8f00-000000000001';
+  demo_pid uuid;
 BEGIN
+  -- Resuelve un profile_id real del centro demo (necesario para FKs NOT NULL)
+  SELECT id INTO demo_pid FROM public.profiles WHERE centro_id = cid LIMIT 1;
 
 -- 3. INFO_CENTRO ─────────────────────────────────────────────
 INSERT INTO public.info_centro (centro_id, nombre_config, datos, visible_para) VALUES
@@ -551,16 +554,16 @@ INSERT INTO public.sustituciones
   (centro_id,fecha,hora_inicio,hora_fin,tramo,grupo_horario,
    profesor_ausente,profesor_sustituto,observaciones,cubierta,creado_por)
 VALUES
-  (cid,CURRENT_DATE-6,'08:00','09:00','1','1ESOA','Laura González Pérez',  'Francisco Jiménez López','Baja médica',            true, 'Sistema'),
-  (cid,CURRENT_DATE-5,'09:00','10:00','2','3ESOA','Miguel Hernández García','Carmen Moreno Sánchez',  'Permiso sindical',       true, 'Sistema'),
-  (cid,CURRENT_DATE-4,'10:00','11:00','3','1BACA','Carlos López Martínez',  'Javier Ruiz García',     'Asunto propio',          true, 'Sistema'),
-  (cid,CURRENT_DATE-3,'11:30','12:30','4','2ESOB','Juan Martínez Sánchez',  'Elena Díaz González',    'Formación externa',      true, 'Sistema'),
-  (cid,CURRENT_DATE-2,'12:30','13:30','5','4ESOA','David Sánchez Martínez', 'Francisco Jiménez López','Guardia cubierta OK',    true, 'Sistema'),
-  (cid,CURRENT_DATE,  '08:00','09:00','1','2BACA','Pilar Álvarez Martín',   NULL,                     'Baja médica — urgente',  false,'Sistema'),
-  (cid,CURRENT_DATE,  '09:00','10:00','2','1IB',  'Sergio Romero Fernández',NULL,                     'Permiso personal',       false,'Sistema'),
-  (cid,CURRENT_DATE,  '10:00','11:00','3','3ESOB','Isabel Martín López',    NULL,                     'Formación IB Valencia',  false,'Sistema'),
-  (cid,CURRENT_DATE,  '11:30','12:30','4','4ESOB','Carmen Moreno Sánchez',  NULL,                     'Cita médica',            false,'Sistema'),
-  (cid,CURRENT_DATE,  '12:30','13:30','5','1BACB','Natalia Torres Díaz',    NULL,                     'Sin asignar',            false,'Sistema');
+  (cid,CURRENT_DATE-6,'08:00','09:00','1','1ESOA','Laura González Pérez',  'Francisco Jiménez López','Baja médica',            true, NULL),
+  (cid,CURRENT_DATE-5,'09:00','10:00','2','3ESOA','Miguel Hernández García','Carmen Moreno Sánchez',  'Permiso sindical',       true, NULL),
+  (cid,CURRENT_DATE-4,'10:00','11:00','3','1BACA','Carlos López Martínez',  'Javier Ruiz García',     'Asunto propio',          true, NULL),
+  (cid,CURRENT_DATE-3,'11:30','12:30','4','2ESOB','Juan Martínez Sánchez',  'Elena Díaz González',    'Formación externa',      true, NULL),
+  (cid,CURRENT_DATE-2,'12:30','13:30','5','4ESOA','David Sánchez Martínez', 'Francisco Jiménez López','Guardia cubierta OK',    true, NULL),
+  (cid,CURRENT_DATE,  '08:00','09:00','1','2BACA','Pilar Álvarez Martín',   'Por asignar',            'Baja médica — urgente',  false,NULL),
+  (cid,CURRENT_DATE,  '09:00','10:00','2','1IB',  'Sergio Romero Fernández','Por asignar',            'Permiso personal',       false,NULL),
+  (cid,CURRENT_DATE,  '10:00','11:00','3','3ESOB','Isabel Martín López',    'Por asignar',            'Formación IB Valencia',  false,NULL),
+  (cid,CURRENT_DATE,  '11:30','12:30','4','4ESOB','Carmen Moreno Sánchez',  'Por asignar',            'Cita médica',            false,NULL),
+  (cid,CURRENT_DATE,  '12:30','13:30','5','1BACB','Natalia Torres Díaz',    'Por asignar',            'Sin asignar',            false,NULL);
 
 -- 8. ASISTENCIA COMEDOR (30 días × alumnos, ~65% asistencia) ─
 INSERT INTO public.asistencia_comedor (centro_id, alumno_id, fecha, se_queda)
@@ -581,14 +584,16 @@ WHERE al.centro_id = cid
   AND EXTRACT(DOW FROM d.fecha) BETWEEN 1 AND 5;
 
 -- 9. AUSENCIAS PROFESOR (5, mix de estados) ──────────────────
-INSERT INTO public.ausencias_profesor
-  (centro_id,profile_id,fecha,fecha_fin,tipo,motivo,estado,trimestre,curso_escolar)
-VALUES
-  (cid,NULL,CURRENT_DATE-10,CURRENT_DATE-8, 'baja_medica',  'Gastroenteritis aguda',        'aprobada',  'T3','2024-2025'),
-  (cid,NULL,CURRENT_DATE-5, CURRENT_DATE-5, 'permiso',      'Nacimiento hijo',              'aprobada',  'T3','2024-2025'),
-  (cid,NULL,CURRENT_DATE-2, CURRENT_DATE-2, 'asunto_propio','Gestión administrativa',        'rechazada', 'T3','2024-2025'),
-  (cid,NULL,CURRENT_DATE,   CURRENT_DATE+2, 'formacion',    'Curso IB Category 1 — Valencia','pendiente', 'T3','2024-2025'),
-  (cid,NULL,CURRENT_DATE+5, CURRENT_DATE+5, 'sindical',     'Reunión comité de empresa',    'pendiente', 'T3','2024-2025');
+IF demo_pid IS NOT NULL THEN
+  INSERT INTO public.ausencias_profesor
+    (centro_id,profile_id,fecha,fecha_fin,tipo,motivo,estado,trimestre,curso_escolar)
+  VALUES
+    (cid,demo_pid,CURRENT_DATE-10,CURRENT_DATE-8, 'baja_medica',  'Gastroenteritis aguda',        'aprobada',  3,'2024-2025'),
+    (cid,demo_pid,CURRENT_DATE-5, CURRENT_DATE-5, 'permiso',      'Nacimiento hijo',              'aprobada',  3,'2024-2025'),
+    (cid,demo_pid,CURRENT_DATE-2, CURRENT_DATE-2, 'asunto_propio','Gestión administrativa',        'rechazada', 3,'2024-2025'),
+    (cid,demo_pid,CURRENT_DATE,   CURRENT_DATE+2, 'formacion',    'Curso IB Category 1 — Valencia','pendiente', 3,'2024-2025'),
+    (cid,demo_pid,CURRENT_DATE+5, CURRENT_DATE+5, 'sindical',     'Reunión comité de empresa',    'pendiente', 3,'2024-2025');
+END IF;
 
 -- 10. PLAZOS IB (3) ──────────────────────────────────────────
 INSERT INTO public.plazos_ib
@@ -650,15 +655,17 @@ SELECT
   ee.estado,
   CURRENT_DATE + ee.dias_limite,
   ee.palabras
-FROM public.alumnos al
+FROM (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY nombre) AS rn
+  FROM public.alumnos
+  WHERE centro_id = cid AND grupo_horario = '2IB'
+) al
 JOIN (VALUES
   (1, 'The Impact of Social Media on Political Polarization in Spain (2015-2023)',
       'History SL', 'Carlos López Martínez', 'borrador_final', 90, 3200),
   (2, 'Análisis termodinámico de la eficiencia de paneles solares en clima mediterráneo',
       'Physics HL', 'Miguel Hernández García', 'primer_borrador', 120, 1800)
 ) AS ee(rn, titulo, asignatura, supervisor, estado, dias_limite, palabras)
-  ON ROW_NUMBER() OVER (ORDER BY al.nombre) = ee.rn
-WHERE al.centro_id = cid
-  AND al.grupo_horario = '2IB';
+  ON al.rn = ee.rn;
 
 END $$;
