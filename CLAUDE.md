@@ -89,7 +89,7 @@ scripts/
 | `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por | Una fila por alumno/día |
 | `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | `cubierta` tiene toggle en la tabla. Se auto-genera desde RRHH al aprobar ausencias |
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
-| `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre, curso_escolar, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. Tabla base creada con `rrhh_migration.sql`; columnas extendidas vía ALTER TABLE |
+| `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre, curso_escolar, trabajo_alumnos, justificante_url, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. `trabajo_alumnos` visible al sustituto; `justificante_url` → Storage bucket `justificantes` |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
 | `incidencias` | centro_id, fecha, tipo, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo por defecto 'convivencia' |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
@@ -107,6 +107,7 @@ scripts/
 | `chat` | Proxy a Gemini 2.5 Flash. Recibe `{ contents: [...] }` en formato Gemini |
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
+| `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
 
 ---
 
@@ -221,6 +222,9 @@ DOMContentLoaded (config.js)
 - `rechazarAusencia(id)`: prompt con motivo → guarda `estado=rechazada, motivo_rechazo`
 - Badges: ⏳ pendiente · ✓ aprobada · ✕ rechazada
 - Helpers: `_getCursoEscolar()`, `_getTrimestreActual()` (mes ≥9 → T1, ≤3 → T2, resto → T3)
+- **Justificantes:** formulario de solicitud incluye campo `trabajo_alumnos` (texto libre) y subida de archivo al bucket `justificantes` de Supabase Storage → guarda URL en `justificante_url`
+- **Privacidad del sustituto:** al notificar una guardia, la Edge Function `notify-sustitucion` envía solo grupo, aula y `trabajo_alumnos`; el motivo de ausencia y la URL del justificante son invisibles para el sustituto
+- **Notificación automática:** al asignar sustituto en el panel de sustituciones, se llama `notify-sustitucion` vía `supabase.functions.invoke()`
 
 ### Bolsa de guardias con equidad (guardias.js)
 - `loadBolsaGuardias()`: cuenta `sustituciones.profesor_sustituto` del trimestre actual → ranking menor→mayor
@@ -233,7 +237,7 @@ DOMContentLoaded (config.js)
 
 ---
 
-## Estado del proyecto (2026-05-22)
+## Estado del proyecto (2026-05-23)
 
 ### Tablas verificadas en Supabase (proyecto: rflfsbrdmgaidhvbuvwb)
 
@@ -249,11 +253,20 @@ DOMContentLoaded (config.js)
 | `asistencia_comedor` | ✅ OK | |
 | `sustituciones` | ✅ OK | Realtime activado para notificaciones push |
 | `profesores` | ✅ OK | Creada con `rrhh_migration.sql` |
-| `ausencias_profesor` | ✅ OK | Creada con migration + ALTER TABLE para campos extra |
+| `ausencias_profesor` | ✅ OK | Ampliada con `trabajo_alumnos` y `justificante_url` vía ALTER TABLE |
 | `guardias_realizadas` | ✅ OK | Creada con `rrhh_migration.sql` |
 | `incidencias` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `reservas_espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
+| `plazos_ib` | ✅ OK | Creada con SQL del workflow alertas IB + RLS + índice |
+| `cas_actividades` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
+| `extended_essay` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
+
+### Storage buckets en Supabase
+
+| Bucket | Acceso | Uso |
+|--------|--------|-----|
+| `justificantes` | Privado (solo autenticados) | Justificantes de ausencias de profesores |
 
 ### Funciones RPC en Supabase
 
@@ -299,7 +312,26 @@ DOMContentLoaded (config.js)
 
 n8n instalado en local (`http://localhost:5678`). Los workflows se versionan como JSON en el repo y se importan manualmente en n8n.
 
-### Briefing matutino (`n8n-briefing-matutino.json`)
+### Patrón común a todos los workflows
+
+**Configuración de claves** — nodo "Config y fechas" (primeras 2 líneas):
+```js
+const SUPABASE_KEY = 'eyJ...service_role_key...';
+const RESEND_KEY   = 're_...resend_api_key...';
+```
+
+**Nodo Send Resend** — configuración HTTP:
+- Method: `POST`
+- URL: `https://api.resend.com/emails`
+- Headers: `Authorization: Bearer {{ $json.resendKey }}` · `Content-Type: application/json`
+- Body (JSON): `{ "from": "...", "to": [...], "cc": [...], "subject": "...", "html": "..." }`
+- `to` y `cc` son **arrays**; `cc` solo si existe en el item
+
+**Para importar cualquier workflow:** Workflows → Import from file → guardar → editar nodo "Config y fechas" → Execute Workflow para probar → activar toggle.
+
+---
+
+### Briefing matutino (`n8n-briefing-matutino.json`) ✅
 
 **Trigger:** lunes–viernes a las 8:15 (cron `15 8 * * 1-5`)
 
@@ -313,25 +345,17 @@ n8n instalado en local (`http://localhost:5678`). Los workflows se versionan com
 | Get Sustituciones | httpRequest | `sustituciones?cubierta=eq.false&fecha=eq.{today}` |
 | Get Ausencias | httpRequest | `ausencias_profesor?estado=eq.aprobada&fecha=lte.{today}&fecha_fin=gte.{today}` |
 | Build Emails | code | Fetch inline de `asistencia_comedor` (ayer, se_queda=true); agrupa por centro; genera HTML; devuelve un item por admin |
-| Send Resend | httpRequest | POST `https://api.resend.com/emails` con body `{from, to, subject, html}` |
-
-**Claves a configurar:** editar las líneas 1-2 del nodo "Config y fechas":
-```js
-const SUPABASE_KEY = 'eyJ...service_role_key...';
-const RESEND_KEY   = 're_...resend_api_key...';
-```
+| Send Resend | httpRequest | POST Resend con `to` del admin |
 
 **Notas de implementación:**
-- `asistencia_comedor` se obtiene con `fetch()` dentro de Build Emails en lugar de un nodo HTTP separado — evita que un resultado vacío corte el workflow
+- `asistencia_comedor` se obtiene con `fetch()` dentro de Build Emails — evita que un resultado vacío corte el workflow
 - `_get(name)` soporta ambos modos de n8n: respuesta como array único o auto-dividida en items
 - `to` se castea explícitamente a `String` y se filtra con `.includes('@')` antes de enviar
-- El email HTML usa `<table>` para compatibilidad con clientes de correo; atributos en comillas simples dentro de template literals
-
-**Para importar:** Workflows → Import from file → `n8n-briefing-matutino.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
+- HTML con `<table>`; atributos en comillas simples dentro de template literals
 
 ---
 
-### Informe semanal (`n8n-informe-semanal.json`)
+### Informe semanal (`n8n-informe-semanal.json`) ✅
 
 **Trigger:** viernes a las 15:00 (cron `0 15 * * 5`)
 
@@ -354,17 +378,9 @@ const RESEND_KEY   = 're_...resend_api_key...';
 - Ranking de profesores con más guardias (top 5)
 - Ausencias agrupadas por tipo
 
-**Claves a configurar:** editar las líneas 1-2 del nodo "Config y fechas":
-```js
-const SUPABASE_KEY = 'eyJ...service_role_key...';
-const RESEND_KEY   = 're_...resend_api_key...';
-```
-
-**Para importar:** Workflows → Import from file → `n8n-informe-semanal.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
-
 ---
 
-### Alerta absentismo comedor (`n8n-alerta-comedor.json`)
+### Alerta absentismo comedor (`n8n-alerta-comedor.json`) ✅
 
 **Trigger:** lunes–viernes a las 16:00 (cron `0 16 * * 1-5`)
 
@@ -391,17 +407,9 @@ const RESEND_KEY   = 're_...resend_api_key...';
 
 **Si no hay alertas:** `Build Emails` devuelve `[]` y el workflow finaliza sin enviar nada.
 
-**Claves a configurar:** editar las líneas 1-2 del nodo "Config y fechas":
-```js
-const SUPABASE_KEY = 'eyJ...service_role_key...';
-const RESEND_KEY   = 're_...resend_api_key...';
-```
-
-**Para importar:** Workflows → Import from file → `n8n-alerta-comedor.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
-
 ---
 
-### Alertas plazos IB (`n8n-alertas-ib.json`)
+### Alertas plazos IB (`n8n-alertas-ib.json`) ✅
 
 **Trigger:** lunes–viernes a las 9:00 (cron `0 9 * * 1-5`)
 
@@ -450,9 +458,7 @@ CREATE INDEX idx_plazos_ib_centro_fecha ON public.plazos_ib (centro_id, fecha_li
 
 **tipos IB soportados:** `entrega_ia`, `tok`, `cas`, `examen`, `formulario`, `reunion`, `otro`
 
-**Para importar:** Workflows → Import from file → `n8n-alertas-ib.json` → guardar → editar Config y fechas → Execute Workflow para probar → activar toggle.
-
----
+**Requiere datos en `plazos_ib`** — sin filas, el workflow no envía nada. Usar el centro demo o insertar plazos reales desde la app (pendiente: módulo de gestión IB en la app).
 
 ---
 
@@ -509,23 +515,110 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ---
 
-## Funcionalidades pendientes
+## Roadmap
 
-### Alta prioridad
-- [x] **Marcar sustitución como cubierta** — toggle en la fila de la tabla, actualiza campo `cubierta` en BD.
-- [x] **Contador de profesores ausentes** — `stat-ausentes` ahora cruza con `sustituciones` del día y cuenta profesores únicos ausentes.
+### Completado ✅
+- [x] Chatbot con Gemini 2.5 Flash, contexto multi-rol, resolución directa de horarios
+- [x] Módulo comedor: asistencia diaria, histórico 30 días, CSV export
+- [x] Sustituciones: registro, toggle cubierta, filtros, CSV, contador de tab
+- [x] Bolsa de guardias con equidad (ranking trimestral, barra de progreso, selector ordenado)
+- [x] Dashboard por rol con contadores live y búsqueda rápida de alumno
+- [x] Gestión de usuarios: invitar, editar, desactivar, reenviar invitación, badges de estado
+- [x] Toggle de módulos por centro (superadmin)
+- [x] Módulo incidencias: formulario, filtros, cierre, eliminación
+- [x] Módulo espacios/salas: grid de disponibilidad, reservas, gestión de espacios
+- [x] RRHH: solicitud de ausencias, aprobación (genera sustituciones automáticas), rechazo
+- [x] RRHH: subida de justificantes a Storage, privacidad del sustituto, notificación via Edge Function
+- [x] PWA Service Worker (cache-first assets, pass-through Supabase)
+- [x] Notificaciones Realtime (sustituciones nuevas → toast)
+- [x] n8n Briefing matutino (L-V 8:15, email a admins)
+- [x] n8n Informe semanal (viernes 15:00, email a admins)
+- [x] n8n Alerta absentismo comedor (L-V 16:00, email a tutores)
+- [x] n8n Alertas plazos IB (L-V 9:00, email a admins con CC superadmin)
+- [x] Centro demo IES Demo con 80 alumnos, horarios, datos IB y 30 días comedor
 
-### Media prioridad
-- [x] **Módulo de incidencias** — `js/incidencias.js` creado. Panel con formulario (tipo, fecha, alumno, grupo, descripción), filtros abiertas/cerradas/todas, cierre y eliminación. `stat-incidencias` en dashboard admin ahora consulta la BD. Tabla `incidencias` creada en Supabase con RLS.
-- [x] **Módulo de espacios/salas** — `js/espacios.js` creado. Grid de disponibilidad por tramo horario. Admin puede añadir/eliminar espacios. Toggle en users.js activado. Tablas `espacios` y `reservas_espacios` creadas en Supabase con RLS.
-- [x] **PWA Service Worker** — `sw.js` creado con cache-first para assets locales y pass-through para Supabase. Registrado en `app.html`.
-- [x] **Notificaciones Realtime** — `initRealtimeNotifications()` en `mejoras.js` suscribe a INSERT en `sustituciones` vía Supabase Realtime. Toast + outline en tab cuando llega nueva sustitución.
+### Próximo sprint — App Familias / Portal familias
+- [ ] **App Familias (PWA separada o tab nuevo)** — onboarding, dashboard hijo, chat con el centro, notificaciones push
+- [ ] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor
+- [ ] **Módulo IB en la app** — gestión de `plazos_ib`, CAS tracker, Extended Essay status (para centros con IB)
+- [ ] **Página de recuperación de contraseña** — UX mejorable; actualmente funciona via hash
+- [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
 
-### Baja prioridad / mejoras
-- [ ] **Página de recuperación de contraseña** — funciona via hash pero la UX es mejorable.
-- [ ] **Onboarding de nuevo centro** — flujo guiado para configurar info_centro, importar horarios y alumnos.
-- [ ] **Vista móvil mejorada** — la app funciona en móvil pero no está optimizada.
-- [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`).
+### Backlog
+- [ ] Vista móvil optimizada (actualmente funcional pero no adaptada)
+- [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
+- [ ] Módulo de comunicados/circulares — editor + envío email a familias por grupo
+- [ ] Estadísticas avanzadas para dirección (dashboard superadmin con métricas cross-centro)
+- [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
+
+---
+
+## Propuesta comercial
+
+### Precios (pendiente decisión con Salva)
+
+| Plan | Precio/centro/mes | Incluye |
+|------|------------------|---------|
+| Básico | 99 € | Chatbot + Sustituciones + RRHH |
+| Profesional | 199 € | Todo Básico + Comedor + Incidencias + Espacios + n8n workflows |
+| IB | 289 € | Todo Profesional + Módulo IB (plazos, CAS, Extended Essay) |
+
+> **Nota:** nuestra propuesta inicial era 150/250/350 €. La propuesta actual (99/199/289) está pendiente de validación con Salva antes de publicar en la landing.
+
+---
+
+## Contenido y assets preparados
+
+### n8n / Email templates
+- Todos los workflows usan HTML con `<table>` + inline styles para compatibilidad máxima con clientes de correo
+- Paleta de colores: azul `#1565c0` (normal), naranja `#e65100` (urgente), rojo `#b71c1c` (crítico/vencido), verde `#1e6b3a` (OK)
+
+### Contenido Gemini / IA
+
+**7 Learning Outcomes CAS (IB) con descripciones en español** — listos para inyectar en el system prompt del chatbot cuando el usuario pregunte sobre CAS:
+1. LO1 — Identificar propias fortalezas y desarrollar áreas de mejora
+2. LO2 — Demostrar que los retos se han afrontado y superado
+3. LO3 — Iniciativa y planificación de actividades CAS
+4. LO4 — Demostrar compromiso y perseverancia
+5. LO5 — Trabajar de forma colaborativa con otros
+6. LO6 — Compromiso global con implicaciones éticas
+7. LO7 — Reconocer y considerar la ética de las acciones y decisiones
+
+**Plazos oficiales IB convocatoria mayo 2025** — para pre-cargar en `plazos_ib` de centros IB reales:
+- Nov 2024: Registro candidatos exámenes mayo
+- Dic 2024: Entrega EE primer borrador al supervisor
+- Ene 2025: Predicciones a IB (Predicted Grades)
+- Feb 2025: TOK Essay borrador final
+- Mar 2025: Deadline IAs todas las asignaturas
+- Abr 2025: Entrega final EE
+- May 2025: Exámenes escritos
+
+**3 reflexiones CAS de ejemplo** (para few-shot prompting en el chatbot cuando alumno pide ayuda para redactar reflexión):
+- Reflexión inicial: expectativas, miedos, plan
+- Reflexión de proceso: aprendizajes, obstáculos, LOs trabajados
+- Reflexión final: evidencias de crecimiento, LOs demostrados, conexión TOK
+
+**3 plantillas de comunicados para centros** (para módulo de comunicados futuro):
+- Circular inicio de trimestre (familias)
+- Aviso actividad extraescolar (familias de un grupo)
+- Comunicado de cierre anticipado (toda la comunidad)
+
+**3 incidencias de convivencia de ejemplo** — insertadas en IES Demo para mostrar el módulo:
+- Conflicto verbal en pasillo (2ESO)
+- Uso de móvil en clase reiterado (3ESO)
+- Deterioro de material escolar (1BAC)
+
+### Textos App Familias (pendiente implementación)
+- **Onboarding:** "Bienvenido/a a DidactIA — Tu ventana al día a día de [nombre alumno] en [nombre centro]"
+- **Dashboard:** estado comedor hoy, próximas guardias que afectan al grupo, incidencias abiertas
+- **Chat:** "Pregúntame sobre el horario, el comedor o cualquier comunicado del centro"
+- **Notificaciones push:** "[Nombre alumno] no ha marcado asistencia al comedor hoy. ¿Confirmas que no se queda?"
+
+### Copywriting landing page didactia.eu
+- Headline: "La gestión escolar que desaparece del camino"
+- Subheadline: "Sustituciones, comedor, RRHH y familias — todo en un solo lugar, sin instalaciones ni mantenimiento"
+- CTA principal: "Solicitar demo gratuita"
+- 3 propuestas de valor: Ahorra 2h/día al equipo directivo · Familias siempre informadas · Sin papel ni Excel
 
 ---
 
@@ -558,10 +651,17 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
-- `2026-05-23 17:4x` · (este commit) — feat: SQL centro demo IES Demo + tablas cas_actividades y extended_essay
+- `2026-05-23 17:5x` · (este commit) — docs: CLAUDE.md actualización completa — roadmap, precios, contenido, RRHH ampliado, n8n patrón común
+- `2026-05-23 17:44` · `bf718d3` — feat: SQL centro demo IES Demo con datos completos para ventas
 - `2026-05-23 12:14` · `1484aab` — feat: n8n alertas plazos IB + tabla plazos_ib
 - `2026-05-23 12:07` · `52ce5c3` — feat: n8n alerta absentismo comedor
 - `2026-05-23 11:53` · `cd592dc` — feat: n8n informe semanal automático para dirección
+
+### 2026-05-23 — Actualización CLAUDE.md completa
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| (este commit) | docs | Roadmap completo, propuesta comercial (precios 99/199/289 pendiente Salva), assets de contenido Gemini/IB/familias, patrón Send Resend unificado, RRHH ampliado con justificantes y privacidad |
 
 ### 2026-05-23 — Centro de demostración IES Demo
 
