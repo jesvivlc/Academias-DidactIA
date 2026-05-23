@@ -36,7 +36,14 @@ async function loadIncidencias(filtro) {
   }
 
   var tipoLabels = { convivencia:'👥 Convivencia', material:'📦 Material', instalaciones:'🏗️ Instalaciones', otro:'📝 Otro' };
-  c.innerHTML = '<table class="tbl"><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Alumno / Grupo</th><th>Estado</th><th></th></tr></thead><tbody>'
+
+  var gravedadBadge = function(g) {
+    if (g === 'muy_grave') return '<span style="background:#fce8e6;color:#b71c1c;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;">🔴 Muy grave</span>';
+    if (g === 'grave')     return '<span style="background:#fff3e0;color:#e65100;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;">🟠 Grave</span>';
+    return '<span style="background:#e8f5e9;color:#2e7d32;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">🟢 Leve</span>';
+  };
+
+  c.innerHTML = '<table class="tbl"><thead><tr><th>Fecha</th><th>Tipo</th><th>Gravedad</th><th>Descripción</th><th>Alumno / Grupo</th><th>Estado</th><th></th></tr></thead><tbody>'
     + r.data.map(function(i) {
       var estado = i.estado === 'abierta'
         ? '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">⚠ Abierta</span>'
@@ -44,11 +51,16 @@ async function loadIncidencias(filtro) {
       var alumnoGrupo = [i.alumno_nombre, i.grupo_horario].filter(Boolean).join(' · ') || '—';
       var acciones = '';
       if (i.estado === 'abierta') acciones += '<button onclick="cerrarIncidencia(\'' + i.id + '\')" style="background:none;border:1px solid #1e6b3a;cursor:pointer;color:#1e6b3a;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;">✓ Cerrar</button>';
+      var gravedad = i.gravedad || 'leve';
+      if ((gravedad === 'grave' || gravedad === 'muy_grave') && i.alumno_nombre) {
+        acciones += '<button onclick="notificarFamiliaIncidencia(\'' + i.id + '\', ' + JSON.stringify(i.alumno_nombre) + ')" style="background:none;border:1px solid #e65100;cursor:pointer;color:#e65100;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;" title="Notificar a la familia por email">📧 Familia</button>';
+      }
       acciones += '<button onclick="eliminarIncidencia(\'' + i.id + '\')" style="background:none;border:none;cursor:pointer;color:#a50e0e;font-size:12px;padding:4px 8px;border-radius:8px;" title="Eliminar">✕</button>';
       return '<tr>'
         + '<td>' + (i.fecha || '—') + '</td>'
         + '<td>' + (tipoLabels[i.tipo] || i.tipo || '—') + '</td>'
-        + '<td style="max-width:220px;white-space:normal;">' + (i.descripcion || '—') + '</td>'
+        + '<td>' + gravedadBadge(gravedad) + '</td>'
+        + '<td style="max-width:200px;white-space:normal;">' + (i.descripcion || '—') + '</td>'
         + '<td>' + alumnoGrupo + '</td>'
         + '<td>' + estado + '</td>'
         + '<td style="white-space:nowrap;">' + acciones + '</td>'
@@ -58,12 +70,13 @@ async function loadIncidencias(filtro) {
 }
 
 async function registrarIncidencia() {
-  var tipo  = document.getElementById('inc-tipo').value;
-  var desc  = document.getElementById('inc-desc').value.trim();
-  var alumno = document.getElementById('inc-alumno').value.trim();
-  var grupo  = document.getElementById('inc-grupo').value.trim();
-  var fecha  = document.getElementById('inc-fecha').value;
-  var msg    = document.getElementById('inc-msg');
+  var tipo     = document.getElementById('inc-tipo').value;
+  var gravedad = document.getElementById('inc-gravedad') ? document.getElementById('inc-gravedad').value : 'leve';
+  var desc     = document.getElementById('inc-desc').value.trim();
+  var alumno   = document.getElementById('inc-alumno').value.trim();
+  var grupo    = document.getElementById('inc-grupo').value.trim();
+  var fecha    = document.getElementById('inc-fecha').value;
+  var msg      = document.getElementById('inc-msg');
 
   if (!desc) {
     msg.textContent = 'La descripción es obligatoria.';
@@ -77,39 +90,78 @@ async function registrarIncidencia() {
   msg.style.display = 'block';
 
   var r = await sb.from('incidencias').insert({
-    centro_id: ctrId,
-    fecha: fecha || new Date().toISOString().split('T')[0],
-    tipo: tipo,
-    descripcion: desc,
+    centro_id:    ctrId,
+    fecha:        fecha || new Date().toISOString().split('T')[0],
+    tipo:         tipo,
+    gravedad:     gravedad,
+    descripcion:  desc,
     alumno_nombre: alumno || null,
     grupo_horario: grupo || null,
     registrado_por: currentUser.id,
     estado: 'abierta'
-  });
+  }).select().single();
 
   if (r.error) {
     msg.textContent = 'Error: ' + r.error.message;
     msg.style.color = 'var(--red)';
-  } else {
-    msg.textContent = '✅ Incidencia registrada';
-    msg.style.color = 'var(--ink)';
-    document.getElementById('inc-desc').value = '';
-    document.getElementById('inc-alumno').value = '';
-    document.getElementById('inc-grupo').value = '';
-    setTimeout(function() { msg.style.display = 'none'; }, 3000);
-    await loadIncidencias(incFiltroActivo);
+    return;
+  }
+
+  msg.textContent = '✅ Incidencia registrada';
+  msg.style.color = 'var(--ink)';
+  document.getElementById('inc-desc').value = '';
+  document.getElementById('inc-alumno').value = '';
+  document.getElementById('inc-grupo').value = '';
+  setTimeout(function() { msg.style.display = 'none'; }, 3000);
+  await loadIncidencias(incFiltroActivo);
+
+  // Si es grave o muy_grave y tiene alumno, sugerir notificación a familia
+  if ((gravedad === 'grave' || gravedad === 'muy_grave') && alumno && r.data) {
+    setTimeout(function() {
+      if (confirm('Incidencia ' + gravedad.replace('_', ' ') + ' registrada. ¿Desea notificar ahora a la familia de ' + alumno + '?')) {
+        notificarFamiliaIncidencia(r.data.id, alumno);
+      }
+    }, 400);
   }
 }
 
 async function cerrarIncidencia(id) {
-  var r = await sb.from('incidencias').update({ estado: 'cerrada' }).eq('id', id);
+  var r = await sb.from('incidencias').update({ estado: 'cerrada' }).eq('id', id).eq('centro_id', ctrId);
   if (r.error) alert('Error: ' + r.error.message);
   else await loadIncidencias(incFiltroActivo);
 }
 
 async function eliminarIncidencia(id) {
   if (!confirm('¿Eliminar esta incidencia?')) return;
-  var r = await sb.from('incidencias').delete().eq('id', id);
+  var r = await sb.from('incidencias').delete().eq('id', id).eq('centro_id', ctrId);
   if (r.error) alert('Error: ' + r.error.message);
   else await loadIncidencias(incFiltroActivo);
+}
+
+async function notificarFamiliaIncidencia(incId, alumnoNombre) {
+  if (!confirm('Se enviará un email a la familia de ' + alumnoNombre + ' con los detalles de la incidencia. ¿Continuar?')) return;
+
+  var r = await sb.functions.invoke('notify-incidencia', { body: { incidencia_id: incId } });
+
+  if (r.error) {
+    alert('Error al enviar notificación: ' + r.error.message);
+    return;
+  }
+
+  var data = r.data;
+  if (data && data.error) {
+    var msgs = {
+      sin_alumno: 'La incidencia no tiene alumno registrado.',
+      sin_alumnos: 'No se encontró el alumno en la base de datos del centro.',
+      sin_familias: 'El alumno no tiene familias vinculadas en el sistema.',
+      sin_emails: 'Las familias vinculadas no tienen email válido.',
+      incidencia_no_encontrada: 'Incidencia no encontrada.',
+    };
+    alert(msgs[data.error] || ('Error: ' + (data.message || data.error)));
+    return;
+  }
+
+  if (data && data.success) {
+    alert('✅ Notificación enviada a ' + data.enviados + ' de ' + data.total + ' familias.');
+  }
 }
