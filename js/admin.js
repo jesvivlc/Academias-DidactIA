@@ -296,8 +296,14 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
       + disponiblesOrdenados.map(p => '<option value="' + p.n + '">' + p.n + ' (' + p.c + ' g.)</option>').join("");
   }
   if (selAus) {
+    let ausentesOpciones = todosProfes;
+    if (ausentesOpciones.length === 0) {
+      const { data: profData } = await sb.from("profesores")
+        .select("nombre").eq("centro_id", ctrId).eq("activo", true).order("nombre");
+      ausentesOpciones = (profData || []).map(p => p.nombre).filter(Boolean);
+    }
     selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>'
-      + ocupadosList.map(p => '<option value="' + p + '">' + p + '</option>').join("");
+      + ausentesOpciones.map(p => '<option value="' + p + '">' + p + '</option>').join("");
   }
 }
 
