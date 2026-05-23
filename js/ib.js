@@ -186,33 +186,80 @@ async function ibRechazarCas(actId) {
 }
 
 async function ibEditarLOs(actId, alumnoId) {
-  const { data: act } = await sb.from("cas_actividades").select("titulo,los_trabajados").eq("id", actId).single();
+  const { data: act } = await sb.from("cas_actividades")
+    .select("titulo,descripcion,reflexion,tipo,los_trabajados")
+    .eq("id", actId).single();
   const current = act?.los_trabajados || [];
-
   const selected = new Set(current);
+
   const div = document.createElement("div");
   div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;";
   div.innerHTML = `
-    <div style="background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:400px;box-shadow:var(--sh-lg);">
+    <div id="ib-los-modal" style="background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:400px;box-shadow:var(--sh-lg);">
       <div style="font-size:16px;font-weight:600;margin-bottom:4px;">Learning Outcomes</div>
-      <div style="font-size:12px;color:var(--txt3);margin-bottom:16px;">${act?.titulo || ''}</div>
+      <div style="font-size:12px;color:var(--txt3);margin-bottom:12px;">${act?.titulo || ''}</div>
+      <button id="btn-sugerir-ia" class="btn btn-s" onclick="ibSugerirLOs('${actId}')"
+        style="width:100%;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;">
+        ✨ Sugerir etiquetas con IA
+      </button>
+      <div id="los-ia-msg" style="display:none;font-size:12px;margin-bottom:10px;padding:7px 10px;border-radius:var(--r-sm);"></div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
         ${IB_LOS.map(lo => `
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-            <input type="checkbox" value="${lo}" ${selected.has(lo) ? 'checked' : ''} style="width:15px;height:15px;" />
+            <input type="checkbox" class="ib-lo-check" value="${lo}" ${selected.has(lo) ? 'checked' : ''} style="width:15px;height:15px;" />
             <span><strong>${lo}</strong> — ${IB_LO_DESC[lo]}</span>
           </label>`).join('')}
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-p" onclick="ibGuardarLOs('${actId}', this.closest('[style]'))" style="flex:1;">Guardar</button>
+        <button class="btn btn-p" onclick="ibGuardarLOs('${actId}')" style="flex:1;">Guardar</button>
         <button class="btn btn-s" onclick="this.closest('[style*=fixed]').remove()" style="flex:1;">Cancelar</button>
       </div>
     </div>`;
   document.body.appendChild(div);
 }
 
-async function ibGuardarLOs(actId, modalEl) {
-  const checks = modalEl.querySelectorAll("input[type=checkbox]:checked");
+async function ibSugerirLOs(actId) {
+  const btn = document.getElementById("btn-sugerir-ia");
+  const msg = document.getElementById("los-ia-msg");
+  if (!btn || !msg) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">⟳</span> Analizando con IA…';
+  msg.style.display = "none";
+
+  try {
+    const { data: act } = await sb.from("cas_actividades")
+      .select("titulo,descripcion,reflexion,tipo")
+      .eq("id", actId).single();
+
+    const { data, error } = await sb.functions.invoke("cas-analyzer", {
+      body: { actividad: act }
+    });
+
+    if (error) throw new Error(error.message);
+    if (data.error) throw new Error(data.error);
+
+    const sugeridos = data.los || [];
+    if (sugeridos.length === 0) throw new Error("La IA no pudo determinar LOs para esta actividad");
+
+    // Pre-check suggested LOs (keep existing + add suggestions)
+    document.querySelectorAll("#ib-los-modal .ib-lo-check").forEach(chk => {
+      if (sugeridos.includes(chk.value)) chk.checked = true;
+    });
+
+    msg.style.cssText = "display:block;background:var(--ink-ll);color:var(--ink);border:1px solid var(--ink-l);font-size:12px;padding:7px 10px;border-radius:var(--r-sm);margin-bottom:10px;";
+    msg.textContent = "✨ IA sugiere: " + sugeridos.join(", ") + " — revisa y ajusta si es necesario.";
+  } catch (e) {
+    msg.style.cssText = "display:block;background:var(--red-l);color:var(--red);border:1px solid var(--red-l);font-size:12px;padding:7px 10px;border-radius:var(--r-sm);margin-bottom:10px;";
+    msg.textContent = "Error: " + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "✨ Sugerir etiquetas con IA";
+  }
+}
+
+async function ibGuardarLOs(actId) {
+  const checks = document.querySelectorAll("#ib-los-modal .ib-lo-check:checked");
   const los = Array.from(checks).map(c => c.value);
   const { error } = await sb.from("cas_actividades").update({ los_trabajados: los }).eq("id", actId);
   if (error) { alert("Error: " + error.message); return; }
