@@ -7,18 +7,20 @@
 
 -- Tablas IB opcionales (se crean si no existen)
 CREATE TABLE IF NOT EXISTS public.cas_actividades (
-  id           uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
-  centro_id    uuid        REFERENCES public.centros(id) ON DELETE CASCADE,
-  alumno_id    uuid        REFERENCES public.alumnos(id) ON DELETE CASCADE,
-  titulo       text        NOT NULL,
-  tipo         text        NOT NULL DEFAULT 'creatividad',
-  descripcion  text,
-  reflexion    text,
-  fecha_inicio date,
-  horas        int         DEFAULT 0,
-  estado       text        NOT NULL DEFAULT 'en_curso',
-  created_at   timestamptz DEFAULT now()
+  id             uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  centro_id      uuid        REFERENCES public.centros(id) ON DELETE CASCADE,
+  alumno_id      uuid        REFERENCES public.alumnos(id) ON DELETE CASCADE,
+  titulo         text        NOT NULL,
+  tipo           text        NOT NULL DEFAULT 'creatividad',
+  descripcion    text,
+  reflexion      text,
+  fecha_inicio   date,
+  horas          int         DEFAULT 0,
+  estado         text        NOT NULL DEFAULT 'en_curso',
+  los_trabajados text[]      DEFAULT '{}',
+  created_at     timestamptz DEFAULT now()
 );
+ALTER TABLE public.cas_actividades ADD COLUMN IF NOT EXISTS los_trabajados text[] DEFAULT '{}';
 ALTER TABLE public.cas_actividades ENABLE ROW LEVEL SECURITY;
 DO $pol1$ BEGIN
   CREATE POLICY "centro_isolation" ON public.cas_actividades FOR ALL

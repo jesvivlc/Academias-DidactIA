@@ -337,6 +337,15 @@ async function loadUserProfile(user) {
   const tabRrhh = document.getElementById("tab-rrhh");
   if (tabRrhh) tabRrhh.style.display = (["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
+  const tabIb = document.getElementById("tab-ib");
+  if (tabIb) {
+    const isIbAdmin = role === "admin" || role === "superadmin";
+    const isIbAlumno = role === "familia" || role === "profesional"
+      ? currentUserAlumnos.some(a => a.grupo_horario === "1IB" || a.grupo_horario === "2IB")
+      : false;
+    tabIb.style.display = (isIbAdmin || isIbAlumno) ? "block" : "none";
+  }
+
   // Show app
   document.getElementById("setup").style.display = "none";
   document.getElementById("app-hdr").style.display = "flex";
@@ -404,6 +413,7 @@ function showTab(t) {
   if (t === "incidencias") initIncidenciasPanel();
   if (t === "espacios") loadEspacios();
   if (t === "rrhh") loadRrhhPanel();
+  if (t === "ib") loadIbPanel();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

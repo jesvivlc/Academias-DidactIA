@@ -127,6 +127,7 @@
   <div class="tab" id="tab-espacios" onclick="showTab('espacios')" style="display:none">🏫 Espacios</div>
   <div class="tab" id="tab-users" onclick="showTab('users')" style="display:none">👥 Usuarios</div>
   <div class="tab" id="tab-rrhh" onclick="showTab('rrhh')" style="display:none">👔 RRHH</div>
+  <div class="tab" id="tab-ib" onclick="showTab('ib')" style="display:none">🎓 IB</div>
 </nav>
 
 <div class="main" id="app-main" style="display:none">
@@ -498,6 +499,11 @@
     <div id="rrhh-container"></div>
   </div>
 
+  <!-- IB PANEL -->
+  <div class="panel" id="panel-ib" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
+    <div id="ib-container"></div>
+  </div>
+
 </div>
 
 
@@ -572,6 +578,7 @@
 <script src="js/espacios.js"></script>
 <script src="js/rrhh.js"></script>
 <script src="js/guardias.js"></script>
+<script src="js/ib.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
