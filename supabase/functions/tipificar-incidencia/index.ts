@@ -7,108 +7,277 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// ── Normativa Comunitat Valenciana ──────────────────────────────
-const NORMATIVA_VALENCIANA = `
-NORMATIVA APLICABLE: Decreto 195/2022, de 21 de octubre, del Consell de la Generalitat Valenciana, por el que se establecen los derechos, los deberes y las normas de convivencia en los centros docentes no universitarios sostenidos con fondos públicos.
+interface NormativaEntry {
+  ref: string;
+  paradigma: string;
+  instrucciones: string; // paradigm-specific prompt instructions
+  texto: string;         // full normativa body
+}
+
+// ── Normativas ──────────────────────────────────────────────────
+
+const NORMATIVAS: Record<string, NormativaEntry> = {
+
+  valenciana: {
+    ref: "Decreto 195/2022 de la Comunitat Valenciana",
+    paradigma: "Justicia Restaurativa",
+    instrucciones: `PARADIGMA OBLIGATORIO — Justicia Restaurativa:
+- PROHIBIDO usar los términos "sanción" o "castigo". Usa siempre "medida correctora educativa".
+- El objetivo es la reparación del daño y la restauración de las relaciones, no el castigo.
+- Las medidas deben ser proporcionales, educativas y orientadas a la mejora personal del alumno.
+- Protocolo PREVI obligatorio ante: acoso escolar, ideación suicida o autolesiones con riesgo, violencia de género o dominación sistemática.`,
+    texto: `NORMATIVA: Decreto 195/2022, de 21 de octubre, del Consell de la Generalitat Valenciana, sobre derechos, deberes y normas de convivencia en centros docentes no universitarios sostenidos con fondos públicos.
 
 CONDUCTAS CONTRARIAS A LA CONVIVENCIA (gravedad: leve) — Arts. 30-36:
-- Faltas injustificadas de puntualidad o asistencia a clase
+- Faltas injustificadas de puntualidad o asistencia
 - Perturbaciones leves del funcionamiento normal de las actividades lectivas
-- Falta de respeto leve, en palabra o en obra, hacia cualquier miembro de la comunidad educativa
-- Descuido o mal uso leve del material e instalaciones del centro o de pertenencias ajenas
-- Incumplimiento reiterado de las instrucciones del profesorado u otro personal del centro
-- Uso no autorizado de dispositivos electrónicos durante las actividades lectivas
-- No aportar el material necesario para el desarrollo de las clases de forma reiterada
+- Falta de respeto leve, en palabra u obra, hacia cualquier miembro de la comunidad educativa
+- Descuido o mal uso leve del material, instalaciones o pertenencias ajenas
+- Incumplimiento reiterado de instrucciones del profesorado
+- Uso no autorizado de dispositivos electrónicos durante las clases
 
 MEDIDAS CORRECTORAS EDUCATIVAS para conductas leves:
-- Amonestación oral privada
-- Amonestación escrita con comunicación a la familia
-- Realización de tareas de reflexión sobre la conducta y sus consecuencias
-- Realización de tareas de mediación o de reparación del daño causado
-- Prestación de servicios al centro durante el periodo de recreo (máx. 5 días)
-- Suspensión temporal del derecho al recreo (máx. 2 días)
+- Amonestación oral privada o escrita con comunicación a la familia
+- Tareas de reflexión, mediación o reparación del daño (proporcionales)
+- Prestación de servicios al centro en horario no lectivo (máx. 5 días)
+- Suspensión temporal del recreo (máx. 2 días)
 
-CONDUCTAS GRAVEMENTE PERJUDICIALES PARA LA CONVIVENCIA (gravedad: grave o muy_grave) — Arts. 47-55:
-
+CONDUCTAS GRAVEMENTE PERJUDICIALES (gravedad: grave o muy_grave) — Arts. 47-55:
 GRAVES:
-- Agresión física o psicológica grave o acto de acoso puntual hacia cualquier miembro de la comunidad educativa
+- Agresión física o psicológica grave o acto de acoso puntual
 - Intimidación, amenazas o coacciones
-- Usurpación o daños graves en bienes de la comunidad educativa o de terceros
-- Actuaciones perjudiciales para la salud e integridad personal del alumnado
-- Introducción en el centro de objetos o sustancias peligrosas o perjudiciales para la salud
-- Reiteración en el mismo curso escolar de tres o más conductas contrarias a la convivencia
+- Daños graves en bienes del centro o de terceros
+- Reiteración de tres o más conductas leves en el mismo curso
 
-MUY GRAVES (probablemente requieren Protocolo PREVI):
-- Acoso escolar sistemático (bullying físico, psicológico, verbal o cyberbullying): conductas de intimidación, hostigamiento, humillación o exclusión social reiteradas hacia un alumno
-- Agresión física grave con resultado de lesión o con instrumento potencialmente lesivo
-- Discriminación sistemática por razón de sexo, origen racial o étnico, orientación sexual, identidad de género, religión u otras circunstancias personales
-- Incitación al odio, la violencia o la discriminación hacia personas o colectivos
-- Actos que atenten gravemente contra el derecho a la intimidad o contra el honor: grabación y difusión no consentida de imágenes o sonidos
-- Comportamientos de naturaleza sexual no deseados o que atenten contra la dignidad
+MUY GRAVES (activar protocolo_previ si hay acoso, ideación suicida o violencia de género):
+- Acoso escolar sistemático: bullying físico, psicológico, verbal, cyberbullying o por razón de identidad
+- Agresión física grave con resultado de lesión
+- Discriminación sistemática por cualquier condición personal o social
+- Indicios de ideación suicida o autolesiones con riesgo para la integridad
+- Violencia de género o ejercida con componente de dominación sistemática
+- Grabación y difusión no consentida de imágenes o sonidos
 
 MEDIDAS CORRECTORAS EDUCATIVAS para conductas graves y muy graves:
-- Suspensión del derecho a participar en actividades complementarias y extraescolares
-- Cambio temporal de grupo (1-15 días lectivos), con seguimiento del tutor/a
-- Prestación de servicios a la comunidad educativa en horario no lectivo
-- Suspensión temporal del derecho de asistencia a determinadas clases (máx. 15 días lectivos), con deberes y seguimiento
-- Suspensión temporal del derecho de asistencia al centro (máx. 15 días lectivos) — requiere apertura de expediente disciplinario
-- Cambio de centro docente — requiere resolución de la dirección territorial competente
+- Cambio temporal de grupo con seguimiento tutorial (1-15 días lectivos)
+- Suspensión temporal de asistencia al centro (máx. 15 días lectivos) — requiere apertura de expediente
+- Cambio de centro docente — requiere resolución de la dirección territorial
 
-PROTOCOLO PREVI (Programa de Reducción de la Violencia e Incremento de la Seguridad Escolar):
-Activar (protocolo_previ: true) cuando se detecten indicios de:
-- Acoso escolar en cualquiera de sus formas (bullying, cyberbullying)
-- Violencia física grave o con resultado de lesión
-- Conductas discriminatorias sistemáticas o violencia de género
-- Situaciones que comprometan seriamente la seguridad o integridad del alumnado
-Procedimiento: comunicación inmediata a la dirección → notificación al inspector/a de zona → activación del equipo de orientación y del SAII si procede → seguimiento y evaluación periódica → comunicación a las familias.
-`.trim();
+PROTOCOLOS PREVI OBLIGATORIOS:
+- PREVI-Acoso: bullying físico, psicológico, verbal o cyberbullying confirmado o con indicios fundados
+- PREVI-Suicidio: conducta autolesiva o ideación suicida con riesgo para la integridad del menor
+- PREVI-VdG: violencia de género o con componente de dominación sistemática
+Procedimiento: dirección → inspector/a de zona → equipo de orientación → SAII si procede → familia.`,
+  },
 
-// ── Normativa estatal (fallback) ────────────────────────────────
-const NORMATIVA_ESTATAL = `
-NORMATIVA APLICABLE: Ley Orgánica 2/2006, de 3 de mayo, de Educación (LOE), modificada por la Ley Orgánica 3/2020 (LOMLOE); Real Decreto 732/1995, de 5 de mayo, por el que se establecen los derechos y deberes de los alumnos y las normas de convivencia en los centros.
+  madrid: {
+    ref: "Decreto 32/2019 de la Comunidad de Madrid",
+    paradigma: "Autoridad del Profesor como autoridad pública",
+    instrucciones: `PARADIGMA OBLIGATORIO — Autoridad del Profesor como autoridad pública:
+- El profesorado ostenta autoridad pública; los actos contra el profesorado tienen tratamiento AGRAVADO.
+- Si el agraviado es un/a profesor/a u otro personal del centro, señálalo explícitamente en la tipificación y eleva automáticamente la gravedad al nivel inmediatamente superior.
+- El uso de móvil para grabar o difundir imágenes de miembros de la comunidad educativa está expresamente tipificado como conducta grave o muy grave.
+- Usa la terminología del Decreto 32/2019: "medidas educativas" para conductas leves, "medidas disciplinarias" para graves/muy graves.`,
+    texto: `NORMATIVA: Decreto 32/2019, de 9 de abril, del Consejo de Gobierno de la Comunidad de Madrid, por el que se establece el marco regulador de la convivencia en los centros docentes de la Comunidad de Madrid.
+
+CONDUCTAS PERTURBADORAS DE LA CONVIVENCIA (gravedad: leve):
+- Perturbación leve del normal desarrollo de las actividades lectivas o del centro
+- Faltas de puntualidad o asistencia injustificadas
+- Falta leve de respeto a cualquier miembro de la comunidad educativa
+- Uso de dispositivos móviles u otros aparatos electrónicos sin autorización (expresamente tipificado)
+- Deterioro leve de material o instalaciones
+- Incumplimiento de las instrucciones del profesorado en el ejercicio de sus funciones
+
+MEDIDAS EDUCATIVAS para conductas leves:
+- Amonestación oral o escrita
+- Privación del tiempo de recreo (máx. 5 días)
+- Realización de tareas educativas en el centro fuera del horario lectivo
+- Incorporación a la Sala de Reflexión del centro
+- Compromiso de mejora firmado por el alumno y comunicado a la familia
+
+CONDUCTAS GRAVEMENTE CONTRARIAS A LA CONVIVENCIA (gravedad: grave o muy_grave):
+GRAVES:
+- Actos de indisciplina grave o reiterada perturbación del funcionamiento del centro
+- Falta de respeto grave al profesorado (AGRAVANTE AUTOMÁTICO: cualquier falta al profesorado se considera grave como mínimo)
+- Uso de dispositivo móvil para grabar, fotografiar o difundir imágenes de miembros de la comunidad educativa sin consentimiento
+- Reiteración de conductas leves
+
+MUY GRAVES:
+- Agresión física o moral grave contra cualquier miembro de la comunidad educativa
+- AGRAVANTE ESPECIAL: agresión, amenaza o vejación dirigida a un/a profesor/a u otro personal → calificación automática de MUY GRAVE; puede dar lugar a actuaciones penales por atentado contra la autoridad
+- Acoso escolar en cualquiera de sus formas
+- Discriminación sistemática por cualquier condición personal o social
+- Grabación y difusión de imágenes que atenten contra la dignidad o intimidad
+
+MEDIDAS DISCIPLINARIAS para conductas graves y muy graves (requieren expediente disciplinario):
+- Cambio temporal de grupo
+- Suspensión temporal de asistencia al centro (máx. 30 días lectivos)
+- Cambio de centro docente
+- Si los hechos son constitutivos de delito: comunicación al Ministerio Fiscal y a las Fuerzas y Cuerpos de Seguridad del Estado
+
+PROTOCOLO ANTE SITUACIONES DE VIOLENCIA (protocolo_previ: true):
+Activar ante: acoso escolar, agresión grave, situación que comprometa la integridad del alumno o del personal.
+Pasos: dirección → Inspección Educativa → Unidad de Convivencia de la Comunidad de Madrid → familia → si hay indicios de delito, comunicación a Fuerzas de Seguridad.`,
+  },
+
+  andalucia: {
+    ref: "Decreto 327/2010 de la Junta de Andalucía",
+    paradigma: "Cultura de Paz y Mediación",
+    instrucciones: `PARADIGMA OBLIGATORIO — Cultura de Paz y Mediación:
+- La MEDIACIÓN ESCOLAR es siempre la primera opción antes de proponer cualquier medida disciplinaria. Indícalo explícitamente en las medidas propuestas.
+- El AULA DE CONVIVENCIA es la alternativa educativa a la expulsión del centro; proponla antes de cualquier suspensión.
+- Los COMPROMISOS DE CONVIVENCIA con las familias son herramienta prioritaria; mencionarlos cuando proceda.
+- Las medidas disciplinarias son el último recurso, solo cuando fallan los mecanismos de mediación y convivencia.`,
+    texto: `NORMATIVA: Decreto 327/2010, de 13 de julio, por el que se aprueba el Reglamento Orgánico de los Institutos de Educación Secundaria de la Junta de Andalucía (y Decreto 328/2010 para CEIP). Marco de la Ley 17/2007, de Educación de Andalucía, y el II Plan Andaluz de Convivencia Escolar.
+
+MECANISMOS PRIORITARIOS (usar antes de medidas disciplinarias):
+1. MEDIACIÓN ESCOLAR: proceso voluntario facilitado por el orientador/a o el delegado/a de convivencia. Primera opción ante cualquier conflicto interpersonal.
+2. AULA DE CONVIVENCIA: espacio alternativo donde el alumno realiza trabajo reflexivo con apoyo del equipo de orientación. Alternativa a la expulsión del centro.
+3. COMPROMISOS DE CONVIVENCIA: acuerdos formales centro-familia para mejorar conjuntamente la convivencia del alumno. Incluyen seguimiento periódico.
+
+CONDUCTAS CONTRARIAS A LAS NORMAS DE CONVIVENCIA (gravedad: leve):
+- Perturbación del normal desarrollo de las actividades lectivas
+- Faltas injustificadas de puntualidad o asistencia
+- Trato incorrecto hacia cualquier miembro de la comunidad educativa
+- Deterioro leve de instalaciones o material del centro
+- Incumplimiento de los deberes del alumnado no calificado como grave
+
+MEDIDAS para conductas leves (solo si falla la mediación):
+- Amonestación oral o escrita
+- Tareas fuera del horario lectivo que contribuyan a la mejora de la convivencia
+- Suspensión del derecho a actividades complementarias o extraescolares
+- Incorporación al Aula de Convivencia
+
+CONDUCTAS GRAVEMENTE PERJUDICIALES (gravedad: grave o muy_grave):
+GRAVES:
+- Actos de indisciplina grave o injurias y ofensas graves
+- Actuaciones perjudiciales para la salud o la integridad personal
+- Reiteración de conductas leves en el mismo curso
+
+MUY GRAVES:
+- Agresión física o moral de especial gravedad
+- Acoso escolar o ciberacoso
+- Discriminación sistemática por cualquier condición personal o social
+- Difusión de imágenes o información que atenten contra la intimidad o dignidad
+
+MEDIDAS para conductas graves y muy graves:
+- Tareas fuera del horario lectivo en beneficio de la comunidad educativa
+- Suspensión temporal de asistencia al centro (máx. 30 días) — SIEMPRE ofrecer antes el Aula de Convivencia y los Compromisos de Convivencia
+- Cambio de centro docente
+
+PROTOCOLO ANTE ACOSO Y VIOLENCIA ESCOLAR (protocolo_previ: true):
+Activar ante: acoso escolar confirmado o con indicios fundados, agresión grave, violencia de género o autolesiones con riesgo.
+Pasos: dirección del centro → Servicio de Inspección → Equipo de Orientación Educativa → Delegación Provincial de Educación → si hay delito, comunicación a Fuerzas de Seguridad → familia.`,
+  },
+
+  cataluna: {
+    ref: "Decret 279/2006 i Llei 12/2009 de Catalunya",
+    paradigma: "Corresponsabilitat educativa",
+    instrucciones: `PARADIGMA OBLIGATORI — Corresponsabilitat educativa:
+- La convivència és responsabilitat compartida del centre, la família i l'alumnat.
+- Menciona la CARTA DE COMPROMÍS EDUCATIU com a instrument de col·laboració amb la família quan sigui pertinent.
+- La MEDIACIÓ ESCOLAR és un dret de l'alumnat; oferir-la sempre que sigui viable.
+- Usa "mesures correctores" per a conductes lleus i greus; "mesures sancionadores" estrictament per a conductes molt greus.
+- El Protocol USIC s'activa davant de qualsevol situació de violència entre iguals confirmada.`,
+    texto: `NORMATIVA: Decret 279/2006, de 4 de juliol, sobre drets i deures de l'alumnat i regulació de la convivència als centres educatius no universitaris de Catalunya; Llei 12/2009, del 10 de juliol, d'educació (LEC).
+
+INSTRUMENTS DE CONVIVÈNCIA PRIORITARIS:
+- CARTA DE COMPROMÍS EDUCATIU: document que estableix els drets i deures mutus entre el centre i la família. Instrument central de col·laboració.
+- MEDIACIÓ ESCOLAR: dret reconegut de l'alumnat. Sol·licitable en qualsevol fase del procés.
+- TUTORIA DE CONVIVÈNCIA: sessió de reflexió obligatòria amb el/la tutor/a per a conductes lleus.
+
+CONDUCTES CONTRÀRIES A LES NORMES (gravetat: leve) — Mesures correctores:
+- Pertorbació lleu del funcionament normal de l'aula o del centre
+- Manca de respecte lleu envers qualsevol membre de la comunitat educativa
+- Ús no autoritzat de dispositius electrònics
+- Deteriorament lleu de material o instal·lacions
+- Incompliment de les instruccions del professorat
+
+MESURES CORRECTORES per a conductes lleus:
+- Amonestació oral o escrita
+- Privació del temps d'esbarjo
+- Realització de tasques educatives en horari no lectiu
+- Tutoria de convivència obligatòria
+
+CONDUCTES GREUMENT PERJUDICIALS (gravetat: grave) — Mesures correctores greus:
+- Actes d'indisciplina greu o injúries greus envers membres de la comunitat educativa
+- Danys greus en material o instal·lacions del centre
+- Reiteració de conductes lleus (3 o més en el mateix curs)
+
+CONDUCTES MOLT GREUS (gravetat: muy_grave) — Mesures sancionadores:
+- Agressió física o moral greu
+- Assetjament escolar: bullying, ciberassetjament, assetjament per raó de gènere o LGTBI-fòbia
+- Discriminació sistemàtica per qualsevol condició personal o social
+- Enregistrament i difusió d'imatges sense consentiment que atemptin contra la dignitat
+
+MESURES per a conductes greus i molt greus:
+- Canvi temporal de grup amb seguiment tutorial
+- Suspensió temporal del dret d'assistència al centre (màx. 30 dies lectius) — cal expedient disciplinari
+- Canvi de centre — cal resolució de la Inspecció d'Educació
+
+PROTOCOL USIC I PROTOCOL DE VIOLÈNCIA (protocolo_previ: true):
+Activar davant: assetjament escolar confirmat o amb indicis fonamentats, agressió greu, violència de gènere, ideació suïcida amb risc.
+Passos: direcció del centre → Inspecció d'Educació → EAP (Equip d'Assessorament Psicopedagògic) → Mossos d'Esquadra / Policia Local si hi ha indicis de delicte → família.`,
+  },
+};
+
+const NORMATIVA_ESTATAL: NormativaEntry = {
+  ref: "LOMLOE (LO 3/2020) + Real Decreto 732/1995 + LOPIVI (LO 8/2021)",
+  paradigma: "Marco estatal subsidiario — Coordinador de Bienestar y Protección",
+  instrucciones: `PARADIGMA — Marco estatal subsidiario:
+- Aplicable cuando la comunidad autónoma no ha desarrollado normativa específica o no se ha especificado.
+- La LOPIVI (LO 8/2021) exige la figura del COORDINADOR/A DE BIENESTAR Y PROTECCIÓN en todos los centros.
+- Incluir siempre en las medidas propuestas la notificación al Coordinador/a de Bienestar cuando la conducta afecte a la integridad del menor.
+- Usa "medidas correctoras" para conductas leves y "medidas disciplinarias" para graves/muy graves.`,
+  texto: `NORMATIVA: Ley Orgánica 2/2006, de Educación (LOE), modificada por la LOMLOE (LO 3/2020); Real Decreto 732/1995, de 5 de mayo, sobre derechos y deberes de los alumnos; Ley Orgánica 8/2021, de 4 de junio, de protección integral a la infancia y la adolescencia frente a la violencia (LOPIVI).
+
+FIGURA DEL COORDINADOR/A DE BIENESTAR Y PROTECCIÓN (LOPIVI, art. 35):
+- Obligatorio en todos los centros educativos
+- Coordina las actuaciones de prevención y protección frente a la violencia
+- Debe ser notificado en toda situación de violencia, acoso o riesgo para el menor
+- Obligación de comunicar a los Servicios de Protección de Menores las situaciones de riesgo
 
 CONDUCTAS CONTRARIAS A LAS NORMAS DE CONVIVENCIA DEL CENTRO (gravedad: leve) — Art. 43 RD 732/1995:
 - Las conductas que perturben el normal desarrollo de las actividades de clase
 - Las faltas injustificadas de puntualidad o de asistencia a clase
 - Los actos que perturben el normal funcionamiento del centro
 - Las faltas de respeto, en palabra u obra, al personal del centro y a los compañeros
-- El deterioro leve causado intencionadamente en las dependencias del centro, su material o los objetos y pertenencias de otros miembros de la comunidad educativa
-- El incumplimiento reiterado de las normas de convivencia del centro
+- El deterioro leve causado intencionadamente de las dependencias, material u objetos ajenos
+- El incumplimiento reiterado de las normas de convivencia del Reglamento de Régimen Interior
 
-MEDIDAS CORRECTORAS EDUCATIVAS para conductas leves:
+MEDIDAS CORRECTORAS para conductas leves:
 - Amonestación oral o escrita
-- Realización de tareas que contribuyan a la mejora y reparación de los daños causados
+- Realización de tareas que contribuyan a la mejora y reparación de daños causados
 - Suspensión del derecho a participar en actividades complementarias o extraescolares
 - Cambio de grupo temporal
-- Realización de tareas educativas en horario no lectivo en el centro
 
 CONDUCTAS GRAVEMENTE PERJUDICIALES PARA LA CONVIVENCIA (gravedad: grave o muy_grave) — Arts. 48-49 RD 732/1995:
-
 GRAVES:
-- Los actos de indisciplina, injuria u ofensas graves contra miembros de la comunidad educativa
-- La reiteración en un mismo curso escolar de conductas contrarias a las normas de convivencia
-- La agresión física o psicológica grave, o las amenazas graves contra cualquier miembro de la comunidad educativa
-- Las actuaciones perjudiciales para la salud e integridad personal del alumnado
+- Actos de indisciplina, injuria u ofensas graves contra miembros de la comunidad educativa
+- Agresión física o psicológica grave o amenazas graves
+- Reiteración de conductas leves en el mismo curso escolar
 
 MUY GRAVES:
-- Los actos de agresión grave o que produzcan lesión física o psicológica grave
-- Las conductas de acoso escolar en cualquiera de sus manifestaciones (bullying, cyberbullying)
-- La discriminación y los actos vejatorios por razón de nacimiento, raza, sexo, religión, orientación sexual, discapacidad u otras circunstancias personales
-- La difusión por cualquier medio de imágenes o informaciones que atenten contra la intimidad, el honor o la dignidad de miembros de la comunidad educativa
-- Los daños graves causados intencionadamente en las instalaciones o materiales del centro
-- La suplantación de personalidad en actos de la vida docente y la falsificación o sustracción de documentos académicos
+- Actos de agresión grave que produzcan lesión física o psicológica grave
+- Acoso escolar en cualquiera de sus formas: bullying, cyberbullying
+- Discriminación y actos vejatorios por cualquier condición personal o social
+- Difusión de imágenes o información que atente contra la intimidad, honor o dignidad
+- Daños graves causados intencionadamente en instalaciones o material del centro
 
-MEDIDAS CORRECTORAS EDUCATIVAS para conductas graves y muy graves (requieren expediente disciplinario):
-- Suspensión del derecho de asistencia al centro por un período máximo de treinta días lectivos
+MEDIDAS DISCIPLINARIAS para conductas graves y muy graves (requieren expediente disciplinario):
+- Suspensión del derecho de asistencia al centro (máx. 30 días lectivos)
 - Cambio de centro docente
-- La expulsión definitiva del centro (en centros privados; en centros públicos requiere resolución administrativa)
 
-INDICIOS PARA ACTIVAR PROTOCOLO DE ACOSO ESCOLAR (protocolo_previ: true):
-- Conductas de intimidación, hostigamiento o exclusión social reiterada hacia un alumno
-- Agresiones con resultado de lesión o de impacto psicológico significativo y continuado
-- Situaciones de discriminación sistemática
-Procedimiento: comunicación a la dirección del centro → activación del protocolo anti-acoso del centro → informe al inspector/a de referencia → comunicación a las familias → seguimiento del caso.
-`.trim();
+PROTOCOLO ANTE VIOLENCIA Y ACOSO (protocolo_previ: true):
+Activar ante: acoso escolar, agresión grave, violencia de género, conducta autolesiva o ideación suicida con riesgo, o cualquier situación que comprometa la integridad del menor.
+Pasos: notificación INMEDIATA al Coordinador/a de Bienestar y Protección → dirección del centro → Inspección Educativa → Servicios de Protección de Menores si hay riesgo → Fuerzas de Seguridad si hay indicios de delito → familia.`,
+};
+
+// ── Selector de normativa ───────────────────────────────────────
+
+function getNormativa(ccaa: string | null): NormativaEntry {
+  if (ccaa && NORMATIVAS[ccaa]) return NORMATIVAS[ccaa];
+  return NORMATIVA_ESTATAL;
+}
 
 // ── Edge Function ───────────────────────────────────────────────
 
@@ -139,26 +308,22 @@ serve(async (req) => {
 
     const ccaa = centro?.ccaa ?? null;
     const nombreCentro = centro?.nombre ?? "Centro Educativo";
-    const esValenciana = ccaa === "valenciana";
-    const normativa = esValenciana ? NORMATIVA_VALENCIANA : NORMATIVA_ESTATAL;
-    const normaRef = esValenciana
-      ? "Decreto 195/2022 de la Comunitat Valenciana"
-      : "LOE/LOMLOE y Real Decreto 732/1995";
+    const normativa = getNormativa(ccaa);
+    const fechaHoy = new Date().toLocaleDateString("es-ES", {
+      year: "numeric", month: "long", day: "numeric",
+    });
 
-    const prompt = `Eres un experto en convivencia escolar y orientación educativa con profundo conocimiento de la normativa española vigente. Analiza la descripción de la incidencia y tipifícala rigurosamente.
+    const prompt = `Eres un experto en convivencia escolar y orientación educativa con profundo conocimiento de la normativa española vigente. Analiza la siguiente incidencia escolar y tipifícala rigurosamente según la normativa aplicable al centro.
 
-${normativa}
+${normativa.instrucciones}
 
-PRINCIPIOS IRRENUNCIABLES:
-- PROHIBIDO usar los términos "sanción" o "castigo". Usa siempre "medida correctora educativa".
-- El objetivo de cualquier intervención es la reeducación, la reparación y la restauración de la convivencia.
-- Las medidas deben ser proporcionales a la conducta, educativas y orientadas a la mejora personal del alumno.
-- El informe_borrador debe estar redactado en lenguaje formal y administrativo, como un parte oficial de incidencia.
+${normativa.texto}
 
-CONTEXTO:
+CONTEXTO DEL INFORME:
 - Centro educativo: ${nombreCentro}
-- Normativa de referencia: ${normaRef}
-- Fecha del informe: ${new Date().toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })}
+- Normativa aplicable: ${normativa.ref}
+- Paradigma: ${normativa.paradigma}
+- Fecha: ${fechaHoy}
 
 INCIDENCIA A ANALIZAR:
 ${String(descripcion).trim()}
@@ -166,11 +331,11 @@ ${String(descripcion).trim()}
 Devuelve ÚNICAMENTE un objeto JSON con este formato exacto, sin texto adicional ni bloques de código markdown:
 {
   "gravedad": "leve|grave|muy_grave",
-  "tipificacion": "Artículo y descripción legal de la conducta según la normativa aplicable",
-  "medidas_propuestas": ["Medida correctora educativa 1", "Medida correctora educativa 2"],
-  "informe_borrador": "PARTE DE INCIDENCIA\\n\\nCentro: ${nombreCentro}\\nFecha: [fecha]\\n\\nDESCRIPCIÓN DE LOS HECHOS:\\n[Descripción objetiva y formal de los hechos, sin juicios de valor, en tercera persona]\\n\\nTIPIFICACIÓN:\\nLa conducta descrita se tipifica como [tipificación] según [norma], constituyendo una conducta de gravedad [gravedad].\\n\\nMEDIDAS CORRECTORAS EDUCATIVAS PROPUESTAS:\\n[Lista numerada de las medidas propuestas]\\n\\nSEGUIMIENTO:\\n[Indicaciones sobre la comunicación a la familia, seguimiento tutorial y cualquier protocolo adicional que deba activarse.]\\n\\nFdo.: El/la Jefe/a de Estudios",
+  "tipificacion": "Artículo y descripción legal exacta de la conducta según la normativa aplicable",
+  "medidas_propuestas": ["Medida 1 (ajustada al paradigma de la normativa)", "Medida 2"],
+  "informe_borrador": "PARTE DE INCIDENCIA\\n\\nCentro: ${nombreCentro}\\nFecha: ${fechaHoy}\\nNormativa de referencia: ${normativa.ref}\\n\\nDESCRIPCIÓN DE LOS HECHOS:\\n[Descripción objetiva y formal en tercera persona, sin juicios de valor]\\n\\nTIPIFICACIÓN:\\n[Tipificación legal con referencia al artículo concreto de la normativa aplicable]\\n\\nMEDIDAS PROPUESTAS:\\n[Lista numerada de las medidas, ajustadas al paradigma ${normativa.paradigma}]\\n\\nSEGUIMIENTO:\\n[Indicaciones sobre comunicación a la familia, seguimiento tutorial y protocolos adicionales si procede]\\n\\nFdo.: La Jefatura de Estudios",
   "protocolo_previ": false,
-  "justificacion": "Explicación breve y fundamentada de la tipificación elegida y las medidas propuestas, con referencia al artículo concreto de la normativa"
+  "justificacion": "Explicación breve y fundamentada de la tipificación y las medidas propuestas, con referencia al artículo concreto de la normativa"
 }`;
 
     const geminiRes = await fetch(
@@ -222,21 +387,22 @@ Devuelve ÚNICAMENTE un objeto JSON con este formato exacto, sin texto adicional
       parsed = JSON.parse(match[0]);
     }
 
-    // Validar gravedad
+    // Validar y normalizar campos
     const GRAVEDADES_VALIDAS = ["leve", "grave", "muy_grave"];
     if (!GRAVEDADES_VALIDAS.includes(parsed.gravedad)) parsed.gravedad = "leve";
-
-    // Normalizar medidas (asegurar array)
     if (!Array.isArray(parsed.medidas_propuestas)) parsed.medidas_propuestas = [];
 
-    const result: Record<string, unknown> = { ...parsed, normativa_ref: normaRef };
+    const result: Record<string, unknown> = {
+      ...parsed,
+      normativa_ref: normativa.ref,
+      paradigma: normativa.paradigma,
+    };
 
-    // Alerta urgente visible cuando protocolo_previ = true
     if (parsed.protocolo_previ) {
       result.alerta_urgente =
-        "⚠️ PROTOCOLO PREVI — Activación inmediata requerida. " +
-        "Comunique esta incidencia a la dirección del centro y al servicio de orientación antes de finalizar la jornada. " +
-        "Notifique también al inspector/a de referencia según el procedimiento establecido.";
+        "⚠️ ACTIVAR PROTOCOLO DE ACTUACIÓN INMEDIATA. " +
+        "Notificar a Jefatura de Estudios, Orientación y Coordinador/a de Bienestar " +
+        "antes de finalizar la jornada escolar.";
     }
 
     return new Response(JSON.stringify(result), {
