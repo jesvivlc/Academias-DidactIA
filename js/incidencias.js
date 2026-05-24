@@ -270,6 +270,116 @@ async function eliminarIncidencia(id) {
   else await loadIncidencias();
 }
 
+// ── Tipificar con IA ────────────────────────────────────────────
+
+async function tipificarIncidenciaIA() {
+  var desc = document.getElementById('inc-desc').value.trim();
+  if (!desc || desc.length < 10) {
+    alert('Escribe una descripción de la incidencia antes de tipificar (mínimo 10 caracteres).');
+    return;
+  }
+
+  var btn = document.getElementById('inc-btn-tipificar');
+  if (btn) { btn.textContent = '⟳ Analizando…'; btn.disabled = true; }
+
+  var r = await sb.functions.invoke('tipificar-incidencia', {
+    body: { descripcion: desc, centro_id: ctrId }
+  });
+
+  if (btn) { btn.textContent = '✨ Tipificar con IA'; btn.disabled = false; }
+
+  if (r.error) { alert('Error al tipificar: ' + r.error.message); return; }
+  var data = r.data;
+  if (data && data.error) { alert('Error: ' + (data.message || data.error)); return; }
+
+  _incShowTipModal(data);
+}
+
+function _incShowTipModal(data) {
+  var existing = document.getElementById('inc-tip-modal');
+  if (existing) existing.remove();
+
+  var esc = function(v) {
+    return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+
+  var gravedadBadge = function(g) {
+    if (g === 'muy_grave') return '<span style="background:#fce8e6;color:#b71c1c;border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;">🔴 Muy grave</span>';
+    if (g === 'grave')     return '<span style="background:#fff3e0;color:#e65100;border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;">🟠 Grave</span>';
+    return '<span style="background:#e8f5e9;color:#2e7d32;border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;">🟢 Leve</span>';
+  };
+
+  var alertaBanner = '';
+  if (data.alerta_urgente) {
+    alertaBanner = '<div style="background:#fce8e6;border-left:4px solid #b71c1c;padding:12px 16px;border-radius:8px;margin-bottom:16px;">'
+      + '<strong style="color:#b71c1c;font-size:13px;">⚠️ PROTOCOLO DE ACTUACIÓN INMEDIATA</strong>'
+      + '<div style="color:#a50e0e;font-size:12px;margin-top:4px;">' + esc(data.alerta_urgente) + '</div>'
+      + '</div>';
+  }
+
+  var medidasHtml = '';
+  if (Array.isArray(data.medidas_propuestas) && data.medidas_propuestas.length) {
+    medidasHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Medidas correctoras propuestas</div>'
+      + '<ol style="margin:0;padding-left:20px;font-size:13px;color:#333;line-height:1.7;">'
+      + data.medidas_propuestas.map(function(m) { return '<li>' + esc(m) + '</li>'; }).join('')
+      + '</ol></div>';
+  }
+
+  var informe = (data.informe_borrador || '').replace(/\\n/g, '\n');
+
+  var modal = document.createElement('div');
+  modal.id = 'inc-tip-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+  modal.innerHTML = ''
+    + '<div style="background:#fff;border-radius:12px;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);">'
+    + '  <div style="padding:20px 24px 16px;border-bottom:1px solid #e0e0e0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">'
+    + '    <div>'
+    + '      <div style="font-size:16px;font-weight:600;color:#222;">✨ Tipificación IA</div>'
+    + '      <div style="font-size:11px;color:var(--txt3);margin-top:3px;">' + esc(data.normativa_ref || '') + '</div>'
+    + '      <div style="font-size:11px;color:var(--txt3);">Paradigma: ' + esc(data.paradigma || '') + '</div>'
+    + '    </div>'
+    + '    <button onclick="document.getElementById(\'inc-tip-modal\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;flex-shrink:0;line-height:1;padding:0;">✕</button>'
+    + '  </div>'
+    + '  <div style="padding:20px 24px;">'
+    + alertaBanner
+    + '  <div style="margin-bottom:16px;">'
+    + '    <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Gravedad sugerida</div>'
+    + '    ' + gravedadBadge(data.gravedad) + '</div>'
+    + '  <div style="margin-bottom:16px;">'
+    + '    <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Tipificación legal</div>'
+    + '    <div style="font-size:13px;color:#333;background:#f8f9fa;padding:10px 14px;border-radius:8px;line-height:1.6;">' + esc(data.tipificacion || '—') + '</div>'
+    + '  </div>'
+    + medidasHtml
+    + '  <div style="margin-bottom:16px;">'
+    + '    <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Borrador del informe <span style="font-weight:400;text-transform:none;font-size:11px;">(editable)</span></div>'
+    + '    <textarea id="inc-tip-informe" style="width:100%;min-height:180px;font-size:12px;font-family:monospace;padding:10px;border:1px solid #e0e0e0;border-radius:8px;resize:vertical;box-sizing:border-box;">' + esc(informe) + '</textarea>'
+    + '  </div>'
+    + (data.justificacion ? '<div style="margin-bottom:4px;">'
+    + '  <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Justificación</div>'
+    + '  <div style="font-size:12px;color:#555;line-height:1.6;">' + esc(data.justificacion) + '</div>'
+    + '</div>' : '')
+    + '  </div>'
+    + '  <div style="padding:16px 24px;border-top:1px solid #e0e0e0;display:flex;gap:8px;justify-content:flex-end;">'
+    + '    <button onclick="document.getElementById(\'inc-tip-modal\').remove()" style="padding:8px 18px;border:1px solid #e0e0e0;border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#555;">Cancelar</button>'
+    + '    <button onclick="_incUsarTipificacion(\'' + (data.gravedad || 'leve') + '\')" style="padding:8px 18px;border:none;border-radius:8px;background:var(--ink);color:#fff;cursor:pointer;font-size:13px;font-weight:500;">✓ Usar esta tipificación</button>'
+    + '  </div>'
+    + '</div>';
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+
+function _incUsarTipificacion(gravedad) {
+  var sel = document.getElementById('inc-gravedad');
+  if (sel) sel.value = gravedad;
+  var tipoSel = document.getElementById('inc-tipo');
+  if (tipoSel) tipoSel.value = 'convivencia';
+  var modal = document.getElementById('inc-tip-modal');
+  if (modal) modal.remove();
+}
+
 // ── Notificar familia ───────────────────────────────────────────
 
 async function notificarFamiliaIncidencia(incId, alumnoNombre) {

@@ -361,8 +361,9 @@
         <label class="lbl">Descripción *</label>
         <textarea class="fa" id="inc-desc" placeholder="Describe la incidencia…" style="min-height:80px;"></textarea>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-p" onclick="registrarIncidencia()">⚠️ Registrar</button>
+        <button id="inc-btn-tipificar" onclick="tipificarIncidenciaIA()" style="background:white;border:1px solid var(--ink);color:var(--ink);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:500;">✨ Tipificar con IA</button>
         <div id="inc-msg" style="display:none;font-size:13px;"></div>
       </div>
     </div>
