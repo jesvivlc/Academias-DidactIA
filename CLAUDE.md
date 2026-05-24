@@ -91,7 +91,7 @@ scripts/
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
 | `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre, curso_escolar, trabajo_alumnos, justificante_url, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. `trabajo_alumnos` visible al sustituto; `justificante_url` → Storage bucket `justificantes` |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
-| `incidencias` | centro_id, fecha, tipo, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo por defecto 'convivencia' |
+| `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
@@ -525,7 +525,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Dashboard por rol con contadores live y búsqueda rápida de alumno
 - [x] Gestión de usuarios: invitar, editar, desactivar, reenviar invitación, badges de estado
 - [x] Toggle de módulos por centro (superadmin)
-- [x] Módulo incidencias: formulario, filtros, cierre, eliminación
+- [x] Módulo incidencias: buscador de alumno en tiempo real (autorellena grupo), gravedad, filtro por grupo, CSV, contador en tab, notificación familia
 - [x] Módulo espacios/salas: grid de disponibilidad, reservas, gestión de espacios
 - [x] RRHH: solicitud de ausencias, aprobación (genera sustituciones automáticas), rechazo
 - [x] RRHH: subida de justificantes a Storage, privacidad del sustituto, notificación via Edge Function
@@ -651,6 +651,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-23 17:48` · `806175e` — docs: CLAUDE.md actualización completa estado del proyecto 2026-05-23
 - `2026-05-23 17:5x` · (este commit) — docs: CLAUDE.md actualización completa — roadmap, precios, contenido, RRHH ampliado, n8n patrón común
 - `2026-05-23 17:44` · `bf718d3` — feat: SQL centro demo IES Demo con datos completos para ventas
 - `2026-05-23 12:14` · `1484aab` — feat: n8n alertas plazos IB + tabla plazos_ib

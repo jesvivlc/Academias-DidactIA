@@ -347,7 +347,10 @@
         </div>
         <div>
           <label class="lbl">Alumno (opcional)</label>
-          <input class="fi" id="inc-alumno" placeholder="Nombre del alumno" />
+          <div style="position:relative;">
+            <input class="fi" id="inc-alumno" placeholder="Buscar alumno…" autocomplete="off" oninput="buscarAlumnoInc(this.value)" onfocus="buscarAlumnoInc(this.value)" />
+            <div id="inc-alumno-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;z-index:200;"></div>
+          </div>
         </div>
         <div>
           <label class="lbl">Grupo (opcional)</label>
@@ -364,10 +367,14 @@
       </div>
     </div>
     <div class="card">
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
         <button id="inc-btn-abiertas" onclick="loadIncidencias('abiertas')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Abiertas</button>
         <button id="inc-btn-cerradas" onclick="loadIncidencias('cerradas')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Cerradas</button>
         <button id="inc-btn-todo"     onclick="loadIncidencias('todo')"     style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todas</button>
+        <select id="inc-filtro-grupo" onchange="loadIncidencias()" style="height:32px;font-size:12px;padding:0 8px;border:1px solid #e0e0e0;border-radius:8px;background:white;min-width:130px;cursor:pointer;">
+          <option value="">Todos los grupos</option>
+        </select>
+        <button onclick="exportarIncidenciasCSV()" style="margin-left:auto;background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">⬇ CSV</button>
       </div>
       <div id="inc-lista"></div>
     </div>
