@@ -2,6 +2,7 @@
 var incFiltroActivo  = 'abiertas';
 var _incLastData     = [];
 var _incAlumnosCache = null;
+var _incTipData      = null;  // último resultado de tipificar-incidencia
 
 function initIncidenciasPanel() {
   var fechaInput = document.getElementById('inc-fecha');
@@ -201,13 +202,15 @@ function exportarIncidenciasCSV() {
 // ── Registrar ───────────────────────────────────────────────────
 
 async function registrarIncidencia() {
-  var tipo     = document.getElementById('inc-tipo').value;
-  var gravedad = (document.getElementById('inc-gravedad') || {}).value || 'leve';
-  var desc     = document.getElementById('inc-desc').value.trim();
-  var alumno   = document.getElementById('inc-alumno').value.trim();
-  var grupo    = document.getElementById('inc-grupo').value.trim();
-  var fecha    = document.getElementById('inc-fecha').value;
-  var msg      = document.getElementById('inc-msg');
+  var tipo      = document.getElementById('inc-tipo').value;
+  var gravedad  = (document.getElementById('inc-gravedad') || {}).value || 'leve';
+  var desc      = document.getElementById('inc-desc').value.trim();
+  var alumno    = document.getElementById('inc-alumno').value.trim();
+  var grupo     = document.getElementById('inc-grupo').value.trim();
+  var fecha     = document.getElementById('inc-fecha').value;
+  var msg       = document.getElementById('inc-msg');
+  var informeEl = document.getElementById('inc-informe');
+  var informe   = informeEl ? informeEl.value.trim() : null;
 
   if (!desc) {
     msg.textContent = 'La descripción es obligatoria.';
@@ -220,17 +223,26 @@ async function registrarIncidencia() {
   msg.style.color = 'var(--txt2)';
   msg.style.display = 'block';
 
-  var r = await sb.from('incidencias').insert({
-    centro_id:     ctrId,
-    fecha:         fecha || new Date().toISOString().split('T')[0],
-    tipo:          tipo,
-    gravedad:      gravedad,
-    descripcion:   desc,
-    alumno_nombre: alumno || null,
-    grupo_horario: grupo || null,
+  var payload = {
+    centro_id:      ctrId,
+    fecha:          fecha || new Date().toISOString().split('T')[0],
+    tipo:           tipo,
+    gravedad:       gravedad,
+    descripcion:    desc,
+    alumno_nombre:  alumno || null,
+    grupo_horario:  grupo || null,
     registrado_por: currentUser.id,
-    estado: 'abierta'
-  }).select().single();
+    estado:         'abierta',
+  };
+
+  if (_incTipData) {
+    payload.normativa_ref      = _incTipData.normativa_ref || null;
+    payload.medidas_propuestas = Array.isArray(_incTipData.medidas_propuestas) ? _incTipData.medidas_propuestas : null;
+    payload.protocolo_previ    = _incTipData.protocolo_previ === true;
+  }
+  if (informe) payload.informe_borrador = informe;
+
+  var r = await sb.from('incidencias').insert(payload).select().single();
 
   if (r.error) {
     msg.textContent = 'Error: ' + r.error.message;
@@ -238,20 +250,43 @@ async function registrarIncidencia() {
     return;
   }
 
+  // Limpiar estado IA y sección de informe
+  _incTipData = null;
+  var informeSection = document.getElementById('inc-informe-section');
+  if (informeSection) informeSection.remove();
+
   msg.textContent = '✅ Incidencia registrada';
   msg.style.color = 'var(--ink)';
+  msg.style.display = 'block';
   document.getElementById('inc-desc').value   = '';
   document.getElementById('inc-alumno').value = '';
   document.getElementById('inc-grupo').value  = '';
-  setTimeout(function() { msg.style.display = 'none'; }, 3000);
+  setTimeout(function() { if (msg.style.display !== 'none') msg.style.display = 'none'; }, 5000);
   await loadIncidencias();
 
+  // Auto-notificar jefatura para grave/muy_grave
+  if ((gravedad === 'grave' || gravedad === 'muy_grave') && r.data) {
+    _incNotificarJefatura(r.data.id, msg);
+  }
+
+  // Preguntar por notificación a familia
   if ((gravedad === 'grave' || gravedad === 'muy_grave') && alumno && r.data) {
+    var incId = r.data.id;
     setTimeout(function() {
-      if (confirm('Incidencia ' + gravedad.replace('_', ' ') + ' registrada. ¿Desea notificar ahora a la familia de ' + alumno + '?')) {
-        notificarFamiliaIncidencia(r.data.id, alumno);
+      if (confirm('¿Notificar también a la familia de ' + alumno + '?')) {
+        notificarFamiliaIncidencia(incId, alumno);
       }
-    }, 400);
+    }, 600);
+  }
+}
+
+async function _incNotificarJefatura(incId, msgEl) {
+  var r = await sb.functions.invoke('notify-jefatura', { body: { incidencia_id: incId } });
+  if (r.error) { console.warn('notify-jefatura:', r.error.message); return; }
+  var data = r.data;
+  if (data && data.success && msgEl) {
+    msgEl.textContent = '✅ Registrada · ✉ Jefatura notificada (' + data.enviados + ')';
+    msgEl.style.display = 'block';
   }
 }
 
@@ -296,6 +331,7 @@ async function tipificarIncidenciaIA() {
 }
 
 function _incShowTipModal(data) {
+  _incTipData = data;
   var existing = document.getElementById('inc-tip-modal');
   if (existing) existing.remove();
 
@@ -363,7 +399,7 @@ function _incShowTipModal(data) {
     + '  </div>'
     + '  <div style="padding:16px 24px;border-top:1px solid #e0e0e0;display:flex;gap:8px;justify-content:flex-end;">'
     + '    <button onclick="document.getElementById(\'inc-tip-modal\').remove()" style="padding:8px 18px;border:1px solid #e0e0e0;border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#555;">Cancelar</button>'
-    + '    <button onclick="_incUsarTipificacion(\'' + (data.gravedad || 'leve') + '\')" style="padding:8px 18px;border:none;border-radius:8px;background:var(--ink);color:#fff;cursor:pointer;font-size:13px;font-weight:500;">✓ Usar esta tipificación</button>'
+    + '    <button onclick="_incUsarTipificacion()" style="padding:8px 18px;border:none;border-radius:8px;background:var(--ink);color:#fff;cursor:pointer;font-size:13px;font-weight:500;">✓ Usar esta tipificación</button>'
     + '  </div>'
     + '</div>';
 
@@ -371,13 +407,45 @@ function _incShowTipModal(data) {
   modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
 }
 
-function _incUsarTipificacion(gravedad) {
+function _incUsarTipificacion() {
+  if (!_incTipData) return;
   var sel = document.getElementById('inc-gravedad');
-  if (sel) sel.value = gravedad;
+  if (sel) sel.value = _incTipData.gravedad || 'leve';
   var tipoSel = document.getElementById('inc-tipo');
   if (tipoSel) tipoSel.value = 'convivencia';
+  _incMostrarInformeEnForm(_incTipData);
   var modal = document.getElementById('inc-tip-modal');
   if (modal) modal.remove();
+}
+
+function _incMostrarInformeEnForm(data) {
+  var existing = document.getElementById('inc-informe-section');
+  if (existing) existing.remove();
+  if (!data) return;
+
+  var esc = function(v) { return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var informe = (data.informe_borrador || '').replace(/\\n/g, '\n');
+
+  var previrHtml = '';
+  if (data.protocolo_previ) {
+    previrHtml = '<div style="background:#fce8e6;border-left:4px solid #b71c1c;padding:10px 14px;border-radius:8px;margin-bottom:10px;">'
+      + '<strong style="color:#b71c1c;font-size:12px;">⚠️ PROTOCOLO PREVI ACTIVO</strong>'
+      + '<div style="color:#a50e0e;font-size:12px;margin-top:3px;">' + esc(data.alerta_urgente || 'Notificar a Jefatura y Orientación antes de finalizar la jornada.') + '</div>'
+      + '</div>';
+  }
+
+  var section = document.createElement('div');
+  section.id = 'inc-informe-section';
+  section.style.cssText = 'margin-top:12px;padding:12px 14px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0;';
+  section.innerHTML = previrHtml
+    + '<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;">Informe borrador <span style="font-weight:400;color:var(--txt3);">(IA · editable)</span></div>'
+    + '<textarea id="inc-informe" style="width:100%;min-height:130px;font-size:12px;font-family:monospace;padding:10px;border:1px solid #e0e0e0;border-radius:8px;resize:vertical;box-sizing:border-box;">' + esc(informe) + '</textarea>'
+    + '<div style="font-size:11px;color:var(--txt3);margin-top:5px;">' + esc(data.normativa_ref || '') + (data.paradigma ? ' · ' + esc(data.paradigma) : '') + '</div>';
+
+  var desc = document.getElementById('inc-desc');
+  if (desc && desc.parentElement) {
+    desc.parentElement.insertAdjacentElement('afterend', section);
+  }
 }
 
 // ── Notificar familia ───────────────────────────────────────────
