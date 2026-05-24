@@ -351,6 +351,9 @@ async function loadUserProfile(user) {
     tabIb.style.display = (isIbAdmin || isIbAlumno) ? "block" : "none";
   }
 
+  const tabCom = document.getElementById("tab-comunicados");
+  if (tabCom) tabCom.style.display = "block";
+
   // Show app
   document.getElementById("setup").style.display = "none";
   document.getElementById("app-hdr").style.display = "flex";
@@ -361,6 +364,7 @@ async function loadUserProfile(user) {
   loadAdmin();
   setTimeout(initWelcomeExtras, 400);
   setTimeout(initRealtimeNotifications, 800);
+  setTimeout(_comCheckAndBadge, 1200);
 }
 
 function onCtrChange() {
@@ -419,6 +423,7 @@ function showTab(t) {
   if (t === "espacios") loadEspacios();
   if (t === "rrhh") loadRrhhPanel();
   if (t === "ib") loadIbPanel();
+  if (t === "comunicados") initComunicadosPanel();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

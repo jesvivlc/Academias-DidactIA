@@ -651,6 +651,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-24 22:52` · `68b7a46` — feat: flujo convivencia completo — informe editable + notificación jefatura
 - `2026-05-24 22:33` · `93661d8` — feat: botón Tipificar con IA en módulo incidencias
 - `2026-05-24 21:43` · `e8089d4` — feat: tipificar-incidencia con normativas de todas las CCAA
 - `2026-05-24 21:30` · `67bbe5a` — feat: Edge Function tipificar-incidencia + migración ccaa en centros
