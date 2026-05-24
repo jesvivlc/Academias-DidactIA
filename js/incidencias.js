@@ -6,6 +6,32 @@ var _incAlumnosCache = null;
 function initIncidenciasPanel() {
   var fechaInput = document.getElementById('inc-fecha');
   if (fechaInput) fechaInput.value = new Date().toISOString().split('T')[0];
+
+  // Selección con mousedown+preventDefault: evita blur del input y evita
+  // que los dobles-comillas de JSON.stringify rompan onclick="..."
+  var drop = document.getElementById('inc-alumno-drop');
+  if (drop && !drop._incReady) {
+    drop._incReady = true;
+    drop.addEventListener('mousedown', function(e) {
+      var item = e.target.closest('[data-inc-id]');
+      if (!item) return;
+      e.preventDefault();
+      seleccionarAlumnoInc(item.dataset.incId, item.dataset.incNombre, item.dataset.incGrupo);
+    });
+  }
+
+  // Cerrar dropdown al perder el foco (con delay para no matar el mousedown)
+  var inp = document.getElementById('inc-alumno');
+  if (inp && !inp._incReady) {
+    inp._incReady = true;
+    inp.addEventListener('blur', function() {
+      setTimeout(function() {
+        var d = document.getElementById('inc-alumno-drop');
+        if (d) d.style.display = 'none';
+      }, 150);
+    });
+  }
+
   _incLoadAlumnos();
   loadIncidencias('abiertas');
 }
@@ -45,9 +71,9 @@ function buscarAlumnoInc(q) {
 
   if (!results.length) { drop.style.display = 'none'; return; }
 
+  var esc = function(v) { return String(v || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); };
   drop.innerHTML = results.map(function(a) {
-    return '<div onclick="seleccionarAlumnoInc(' + JSON.stringify(a.id) + ','
-      + JSON.stringify(a.nombre) + ',' + JSON.stringify(a.grupo_horario || '') + ')"'
+    return '<div data-inc-id="' + esc(a.id) + '" data-inc-nombre="' + esc(a.nombre) + '" data-inc-grupo="' + esc(a.grupo_horario || '') + '"'
       + ' style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f5f5f5;"'
       + ' onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'\'">'
       + '<strong>' + a.nombre + '</strong>'
@@ -65,14 +91,6 @@ function seleccionarAlumnoInc(id, nombre, grupo) {
   var drop = document.getElementById('inc-alumno-drop');
   if (drop) drop.style.display = 'none';
 }
-
-document.addEventListener('click', function(e) {
-  var drop = document.getElementById('inc-alumno-drop');
-  var inp  = document.getElementById('inc-alumno');
-  if (drop && inp && !inp.contains(e.target) && !drop.contains(e.target)) {
-    drop.style.display = 'none';
-  }
-});
 
 // ── Contador del tab ────────────────────────────────────────────
 
