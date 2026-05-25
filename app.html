@@ -1298,6 +1298,28 @@
     }
   }
 
+  /* Fix "Recientes" click handlers — mejoras.js genera onclick="askQ("...")" con comillas dobles rotas.
+     El atributo title sí está correctamente escapado, así que leemos de ahí. */
+  (function() {
+    function fixHistorialClicks(container) {
+      if (!container) return;
+      container.querySelectorAll('.sb-item[title]').forEach(function(el) {
+        if (el.dataset.patched) return;
+        el.dataset.patched = '1';
+        el.removeAttribute('onclick');
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', function() {
+          if (typeof askQ === 'function') askQ(el.title);
+        });
+      });
+    }
+    var hist = document.getElementById('sb-historial');
+    if (hist) {
+      new MutationObserver(function() { fixHistorialClicks(hist); })
+        .observe(hist, { childList: true });
+    }
+  })();
+
   /* Sincronizar role-pill (auth.js lo actualiza directamente porque el ID está en el DOM) */
 
 })();
