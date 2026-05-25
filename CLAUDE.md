@@ -67,7 +67,7 @@ js/
   espacios.js           loadEspacios, reservarEspacio
   rrhh.js               loadRrhhPanel, solicitarAusencia, aprobarAusencia, rechazarAusencia
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
-  ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
+  ib.js                 loadIbPanel, _loadCasPanel, _loadEePanel, _loadPlazosPanel, ibSugerirLOs
   comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
 manifest.json                   PWA manifest (sin service worker aún)
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
@@ -93,12 +93,12 @@ scripts/
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
 | `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre, curso_escolar, trabajo_alumnos, justificante_url, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. `trabajo_alumnos` visible al sustituto; `justificante_url` → Storage bucket `justificantes` |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
-| `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, informe_borrador, normativa_ref, medidas_propuestas[], protocolo_previ, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave. Campos IA: `normativa_ref` (decreto aplicado), `medidas_propuestas` (text[]), `protocolo_previ` (bool), `informe_borrador` (texto editable antes de guardar) |
+| `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, informe_borrador, normativa_ref, medidas_propuestas[], protocolo_previ, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave (DEFAULT leve). Campos IA: `normativa_ref`, `medidas_propuestas text[]`, `protocolo_previ bool`, `informe_borrador` |
 | `comunicados` | centro_id, titulo, cuerpo, destinatarios, creado_por, fecha, estado, plantilla, created_at | `destinatarios`: 'todos'/'solo_profesores'/'solo_familias'/'grupo:XXXX'; `estado`: borrador/enviado; `plantilla`: reunion/horario/plazo/null |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
-| `cas_actividades` | centro_id, alumno_id, titulo, tipo, descripcion, reflexion, fecha_inicio, horas, estado, created_at | Actividades CAS del Diploma IB; tipo: creatividad/actividad/servicio; estado: en_curso/completada. Creada en `sql/demo-center.sql` |
+| `cas_actividades` | centro_id, alumno_id, titulo, tipo, descripcion, reflexion, fecha_inicio, horas, estado, los_trabajados text[], created_at | Actividades CAS del Diploma IB; tipo: creatividad/actividad/servicio; estado: en_curso/completada; `los_trabajados` array LO1-LO7, añadido vía ALTER TABLE. Creada en `sql/demo-center.sql` |
 | `extended_essay` | centro_id, alumno_id, titulo, asignatura, supervisor_nombre, estado, fecha_entrega_limite, palabras_actuales, created_at | Extended Essay del Diploma IB; estado: en_proceso/primer_borrador/borrador_final/entregado. Creada en `sql/demo-center.sql` |
 
 ---
@@ -113,7 +113,9 @@ scripts/
 | `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
 | `tipificar-incidencia` | Clasifica incidencia con Gemini 2.5 Flash según normativa CCAA del centro. Recibe `{ descripcion, centro_id }`. Devuelve `{ gravedad, tipo_normativo, medidas, informe_borrador, normativa_ref, paradigma, protocolo_previ, alerta_urgente? }` |
 | `notify-jefatura` | Email de alerta a admins del centro cuando se registra incidencia grave/muy_grave. Recibe `{ incidencia_id }`. Incluye informe borrador, medidas y banner PREVI si aplica |
+| `notify-incidencia` | Notifica a las familias vinculadas al alumno cuando se registra una incidencia grave/muy_grave. Recibe `{ incidencia_id }`. Cadena: `alumnos` (ilike) → `familia_alumno` → `profiles.email`. Email HTML color-coded por gravedad vía Resend |
 | `send-comunicado` | Envía comunicado por email a los destinatarios del centro vía Resend. Recibe `{ comunicado_id }`. Enruta por `destinatarios`: todos/solo_profesores/solo_familias/grupo:XXXX |
+| `cas-analyzer` | Analiza una actividad CAS con Gemini 2.5 Flash y devuelve `{ los: ["LO1","LO3"] }`. Recibe `{ actividad: { titulo, descripcion, reflexion, tipo } }` |
 
 ---
 
@@ -218,6 +220,36 @@ DOMContentLoaded (config.js)
 - Visor de horarios en tabla
 - Estadísticas: nº configs, nº entradas de horario
 
+### Incidencias (incidencias.js)
+- Formulario: tipo (convivencia/material/instalaciones/otro), gravedad (leve/grave/muy_grave), fecha, alumno, grupo, descripción
+- Badge de gravedad en tabla: 🟢 Leve · 🟠 Grave · 🔴 Muy grave
+- Filtros Abiertas / Cerradas / Todas con estado visual activo
+- Botón **📧 Familia** visible en incidencias grave/muy_grave con alumno registrado → llama Edge Function `notify-incidencia`
+- Al registrar incidencia grave/muy_grave: `confirm()` automático para notificar de inmediato
+- `notificarFamiliaIncidencia(incId, alumnoNombre)`: mensajes de error descriptivos por cada caso de fallo
+- Todas las mutaciones filtran por `centro_id` (cerrar, eliminar)
+
+### Módulo IB (ib.js)
+- Tab `🎓 IB` visible para `admin`/`superadmin` siempre; para `familia`/`profesional` solo si tienen alumnos en grupos `1IB`/`2IB`
+- Superadmin center switch: limpia y recarga el panel IB al cambiar de centro
+- Filtro `_ibEsAlumnoReal()`: excluye filas de totales/agregados del import de hojas de cálculo
+
+**Panel CAS** (`_loadCasPanel`):
+- Alumnos de grupos 1IB/2IB con tarjetas colapsables por alumno
+- Badges LO1-LO7 por actividad, con botón "✏️ Editar etiquetas" → modal con checkboxes
+- Botón **✨ Sugerir etiquetas con IA** → llama Edge Function `cas-analyzer` → pre-marca LOs sugeridos
+- Aprobar / Rechazar / Nueva actividad por alumno
+
+**Panel Extended Essay** (`_loadEePanel`):
+- Tabla de alumnos 2IB con semáforo por estado: sin_empezar=🔴, en_proceso=🟡, primer_borrador=🔵, borrador_final=🟣, entregado=🟢
+- Click fila → modal editable con todos los campos del EE
+- Días restantes calculados desde `fecha_entrega_limite`
+
+**Panel Plazos IB** (`_loadPlazosPanel`):
+- Cards con color por urgencia: rojo <7 días, naranja 7-30 días, verde >30 días
+- Botón "Marcar completado" / "Reabrir"; botón "Nuevo plazo" con modal
+- Todas las queries filtran por `centro_id`
+
 ### RRHH — gestión de ausencias (rrhh.js)
 - Tab `👔 RRHH` visible para `profesional`, `admin` y `superadmin`
 - **Vista profesor** (`_renderRrhhProfesor`): formulario solicitud (fecha ini/fin, tipo, motivo), historial propio con badges
@@ -284,12 +316,12 @@ DOMContentLoaded (config.js)
 | `profesores` | ✅ OK | Creada con `rrhh_migration.sql` |
 | `ausencias_profesor` | ✅ OK | Ampliada con `trabajo_alumnos` y `justificante_url` vía ALTER TABLE |
 | `guardias_realizadas` | ✅ OK | Creada con `rrhh_migration.sql` |
-| `incidencias` | ✅ OK | Ampliada con `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` vía `sql/add-incidencias-fields.sql` |
+| `incidencias` | ✅ OK | Añadida `gravedad DEFAULT 'leve'` + campos IA: `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` vía `sql/add-incidencias-fields.sql` |
 | `comunicados` | ✅ OK | Creada con SQL del módulo comunicados (sesión 2026-05-24) |
 | `espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `reservas_espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `plazos_ib` | ✅ OK | Creada con SQL del workflow alertas IB + RLS + índice |
-| `cas_actividades` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
+| `cas_actividades` | ✅ OK | Añadida columna `los_trabajados text[] DEFAULT '{}'` vía ALTER TABLE |
 | `extended_essay` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
 
 ### Storage buckets en Supabase
@@ -316,6 +348,7 @@ DOMContentLoaded (config.js)
 | Incidencias | — | ✅ | ✅ | ✅ |
 | Espacios | — | ✅ (módulo) | ✅ (módulo) | ✅ |
 | RRHH | — | ✅ (vista propia) | ✅ (gestión) | ✅ |
+| IB | ✅ (si hijo en 1IB/2IB) | ✅ (si alumno en 1IB/2IB) | ✅ | ✅ |
 | Comunicados | ✅ (lectura) | ✅ (lectura) | ✅ (envío+lectura) | ✅ |
 | Administración | — | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
@@ -335,6 +368,7 @@ DOMContentLoaded (config.js)
 <script src="js/espacios.js"></script>
 <script src="js/rrhh.js"></script>
 <script src="js/guardias.js"></script>
+<script src="js/ib.js"></script>
 <script src="js/comunicados.js"></script>
 ```
 
@@ -571,11 +605,14 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] n8n Alerta absentismo comedor (L-V 16:00, email a tutores)
 - [x] n8n Alertas plazos IB (L-V 9:00, email a admins con CC superadmin)
 - [x] Centro demo IES Demo con 80 alumnos, horarios, datos IB y 30 días comedor
+- [x] Módulo IB: CAS tracker (LOs, aprobación, IA sugiere etiquetas), Extended Essay (semáforo, edición), Plazos IB (urgencia, marcar completado)
+- [x] Edge Function `cas-analyzer`: análisis de actividades CAS con Gemini → LOs sugeridos
+- [x] ILIA: notificación a familia en incidencias graves — Edge Function `notify-incidencia`, gravedad en formulario, botón 📧 Familia en tabla, sugerencia automática al registrar
+- [x] Incidencias: campo gravedad (leve/grave/muy_grave), badges en tabla, fix centro_id en cerrar/eliminar
 
 ### Próximo sprint — App Familias / Portal familias
 - [ ] **App Familias (PWA separada o tab nuevo)** — onboarding, dashboard hijo, chat con el centro, notificaciones push
 - [ ] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor
-- [ ] **Módulo IB en la app** — gestión de `plazos_ib`, CAS tracker, Extended Essay status (para centros con IB)
 - [ ] **Página de recuperación de contraseña** — UX mejorable; actualmente funciona via hash
 - [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
 
@@ -689,19 +726,37 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-25` · `a4fda47` — feat: ILIA — notificación a familia en incidencias graves
 - `2026-05-24 23:02` · `e755e36` — feat: módulo comunicados internos con envío por email y realtime
 - `2026-05-24 22:52` · `68b7a46` — feat: flujo convivencia completo — informe editable + notificación jefatura
 - `2026-05-24 22:33` · `93661d8` — feat: botón Tipificar con IA en módulo incidencias
 - `2026-05-24 21:43` · `e8089d4` — feat: tipificar-incidencia con normativas de todas las CCAA
 - `2026-05-24 21:30` · `67bbe5a` — feat: Edge Function tipificar-incidencia + migración ccaa en centros
-- `2026-05-24 21:00` · `58e462c` — fix: dropdown alumno incidencias — data-* attrs + mousedown prevDefaut
+- `2026-05-24 21:00` · `58e462c` — fix: dropdown alumno incidencias — data-* attrs + mousedown prevDefault
 - `2026-05-24 20:52` · `059f39a` — feat: mejoras módulo incidencias — buscador alumno, filtro grupo, CSV, contador tab
+- `2026-05-24` — feat: módulo IB (CAS tracker, Extended Essay, Plazos IB, cas-analyzer Edge Function)
 - `2026-05-23 17:48` · `806175e` — docs: CLAUDE.md actualización completa estado del proyecto 2026-05-23
-- `2026-05-23 17:5x` · (este commit) — docs: CLAUDE.md actualización completa — roadmap, precios, contenido, RRHH ampliado, n8n patrón común
 - `2026-05-23 17:44` · `bf718d3` — feat: SQL centro demo IES Demo con datos completos para ventas
 - `2026-05-23 12:14` · `1484aab` — feat: n8n alertas plazos IB + tabla plazos_ib
 - `2026-05-23 12:07` · `52ce5c3` — feat: n8n alerta absentismo comedor
-- `2026-05-23 11:53` · `cd592dc` — feat: n8n informe semanal automático para dirección
+
+### 2026-05-25 — ILIA: notificación a familia en incidencias
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| `a4fda47` | feat | Edge Function `notify-incidencia`: lookup familia vía `alumnos`→`familia_alumno`→`profiles`, email Resend color-coded por gravedad |
+| `a4fda47` | feat | `app.html`: select gravedad (leve/grave/muy_grave) en formulario incidencias |
+| `a4fda47` | feat | `incidencias.js`: badge gravedad en tabla, botón 📧 Familia en grave/muy_grave, confirm automático al registrar, fix centro_id en cerrar/eliminar |
+
+### 2026-05-24 — Módulo IB completo
+
+| Hash | Tipo | Descripción |
+|------|------|-------------|
+| — | feat | `js/ib.js` (nuevo, ~750 líneas): panel CAS con LOs y aprobación, panel EE con semáforo y edición, panel Plazos IB con urgencia |
+| — | feat | `supabase/functions/cas-analyzer/index.ts`: análisis de actividad CAS con Gemini 2.5 Flash → LOs sugeridos |
+| — | feat | `app.html`: tab 🎓 IB + panel IB; `auth.js`: visibilidad por rol y grupos IB, reset en center switch |
+| — | fix | Multi-tenant: todas las queries IB filtran por `centro_id`; `_ibEsAlumnoReal()` excluye filas de totales |
+| — | fix | `cas_actividades`: columna `los_trabajados text[]` añadida vía ALTER TABLE; actualizado `demo-center.sql` |
 
 ### 2026-05-23 — Actualización CLAUDE.md completa
 
