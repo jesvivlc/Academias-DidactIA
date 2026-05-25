@@ -63,10 +63,12 @@ js/
   admin.js              loadAdmin, loadSustituciones, registrarSustitucion, initSustPanel
   mejoras.js            loadDashboard, loadComedorHijos, buscarAlumnoRapido, toggleVoice
   users.js              loadUsersPanel, inviteUser, changeRole, toggleModulo
-  incidencias.js        loadIncidencias, registrarIncidencia, initIncidenciasPanel
+  incidencias.js        loadIncidencias, registrarIncidencia, tipificarIncidenciaIA, initIncidenciasPanel
   espacios.js           loadEspacios, reservarEspacio
   rrhh.js               loadRrhhPanel, solicitarAusencia, aprobarAusencia, rechazarAusencia
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
+  ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
+  comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
 manifest.json                   PWA manifest (sin service worker aún)
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
 scripts/
@@ -79,7 +81,7 @@ scripts/
 
 | Tabla | Campos clave | Notas |
 |-------|-------------|-------|
-| `centros` | id, nombre, modulos_activos[], color_primario, logo_url | Configura tematización y módulos |
+| `centros` | id, nombre, modulos_activos[], color_primario, logo_url, ccaa | `ccaa` determina normativa convivencia: 'valenciana'\|'madrid'\|'andalucia'\|'cataluna'\|NULL (estatal) |
 | `profiles` | id, user_id, full_name, email, rol, centro_id, activo (bool DEFAULT true), created_at | Extiende auth.users. `id = user_id` (ambos = auth UUID). `activo=false` bloquea el login |
 | `info_centro` | centro_id, nombre_config, datos (jsonb), visible_para | Contexto del chatbot |
 | `horarios` | centro_id, dia, hora, profesor, actividad | Tabla legacy — chatbot búsqueda por apellido |
@@ -91,7 +93,8 @@ scripts/
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
 | `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre, curso_escolar, trabajo_alumnos, justificante_url, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. `trabajo_alumnos` visible al sustituto; `justificante_url` → Storage bucket `justificantes` |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
-| `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave |
+| `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, informe_borrador, normativa_ref, medidas_propuestas[], protocolo_previ, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave. Campos IA: `normativa_ref` (decreto aplicado), `medidas_propuestas` (text[]), `protocolo_previ` (bool), `informe_borrador` (texto editable antes de guardar) |
+| `comunicados` | centro_id, titulo, cuerpo, destinatarios, creado_por, fecha, estado, plantilla, created_at | `destinatarios`: 'todos'/'solo_profesores'/'solo_familias'/'grupo:XXXX'; `estado`: borrador/enviado; `plantilla`: reunion/horario/plazo/null |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
@@ -108,6 +111,9 @@ scripts/
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
 | `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
+| `tipificar-incidencia` | Clasifica incidencia con Gemini 2.5 Flash según normativa CCAA del centro. Recibe `{ descripcion, centro_id }`. Devuelve `{ gravedad, tipo_normativo, medidas, informe_borrador, normativa_ref, paradigma, protocolo_previ, alerta_urgente? }` |
+| `notify-jefatura` | Email de alerta a admins del centro cuando se registra incidencia grave/muy_grave. Recibe `{ incidencia_id }`. Incluye informe borrador, medidas y banner PREVI si aplica |
+| `send-comunicado` | Envía comunicado por email a los destinatarios del centro vía Resend. Recibe `{ comunicado_id }`. Enruta por `destinatarios`: todos/solo_profesores/solo_familias/grupo:XXXX |
 
 ---
 
@@ -235,9 +241,32 @@ DOMContentLoaded (config.js)
 - Card "Bolsa de guardias" integrada en `panel-sust`, se recarga al abrir el tab y tras cada registro
 - Helpers: `_guardiaTrimActual()`, `_guardiaTrimDates(trim)`, `_guardiaCursoActual()`
 
+### Incidencias — tipificación IA y flujo convivencia (incidencias.js)
+- Botón **"✨ Tipificar con IA"** junto al formulario de registro: llama Edge Function `tipificar-incidencia`
+- `tipificarIncidenciaIA()`: toma `descripcion` + `centro_id`, invoca la EF, muestra modal con resultado
+- Modal de tipificación: badge de gravedad sugerida · tipificación legal con decreto aplicado · lista de medidas · textarea editable del informe borrador · banner rojo PREVI si `protocolo_previ=true`
+- `_incUsarTipificacion()`: lee de `_incTipData` (estado de módulo) — pre-rellena `gravedad`, `tipo=convivencia`, inyecta sección de informe en el formulario
+- `_incMostrarInformeEnForm(data)`: inserta textarea editable `#inc-informe` tras `#inc-desc` con banner normativa
+- `registrarIncidencia()` ampliado: guarda `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ`; llama `_incNotificarJefatura()` para gravedad ≥ grave
+- `_incNotificarJefatura(incId, msgEl)`: invoca EF `notify-jefatura`, actualiza mensaje de confirmación con `✉ Jefatura notificada (N)`
+- Edge Function `tipificar-incidencia`: 5 normativas CCAA (valenciana/madrid/andalucia/cataluna + estatal fallback), Gemini 2.5 Flash, `temperature: 0.2`, JSON forzado
+- Edge Function `notify-jefatura`: email HTML a todos los admins del centro con tabla completa + medidas + informe + banner PREVI
+
+### Comunicados internos (comunicados.js)
+- Tab **"📢 Comunicados"** visible para todos los roles (siempre activo, sin módulo gate)
+- **Vista admin**: formulario colapsable con título, cuerpo, destinatarios, selector de plantilla
+- 3 plantillas predefinidas: Convocatoria reunión · Modificación horario · Recordatorio plazo
+- `destinatarios`: todos / solo_profesores / solo_familias / grupo:XXXX (dropdown con grupos reales del centro)
+- `enviarComunicado()`: guarda en tabla `comunicados`, llama EF `send-comunicado`, muestra `✅ Enviado a N destinatarios`
+- **Vista todos**: lista de comunicados con fecha, destinatarios, badge "No leído" y modal de detalle
+- **Badge de no leídos**: `_comUpdateTabBadge()` — localStorage key `com_leidos_{userId}_{ctrId}`, actualiza tab a `📢 Comunicados (N)`
+- **Realtime**: `_comInitRealtime()` — suscripción Supabase a INSERT en `comunicados` filtrado por `centro_id`; toast para usuarios que no son el creador
+- `_comCheckAndBadge()`: ejecutado 1200ms tras login — fetch solo de IDs, actualiza badge, inicia realtime
+- EF `send-comunicado`: enruta por `destinatarios`; para `grupo:XXXX` hace join `alumnos→familia_alumno→profiles`; envía un email por destinatario vía Resend
+
 ---
 
-## Estado del proyecto (2026-05-23)
+## Estado del proyecto (2026-05-25)
 
 ### Tablas verificadas en Supabase (proyecto: rflfsbrdmgaidhvbuvwb)
 
@@ -255,7 +284,8 @@ DOMContentLoaded (config.js)
 | `profesores` | ✅ OK | Creada con `rrhh_migration.sql` |
 | `ausencias_profesor` | ✅ OK | Ampliada con `trabajo_alumnos` y `justificante_url` vía ALTER TABLE |
 | `guardias_realizadas` | ✅ OK | Creada con `rrhh_migration.sql` |
-| `incidencias` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
+| `incidencias` | ✅ OK | Ampliada con `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` vía `sql/add-incidencias-fields.sql` |
+| `comunicados` | ✅ OK | Creada con SQL del módulo comunicados (sesión 2026-05-24) |
 | `espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `reservas_espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `plazos_ib` | ✅ OK | Creada con SQL del workflow alertas IB + RLS + índice |
@@ -286,6 +316,7 @@ DOMContentLoaded (config.js)
 | Incidencias | — | ✅ | ✅ | ✅ |
 | Espacios | — | ✅ (módulo) | ✅ (módulo) | ✅ |
 | RRHH | — | ✅ (vista propia) | ✅ (gestión) | ✅ |
+| Comunicados | ✅ (lectura) | ✅ (lectura) | ✅ (envío+lectura) | ✅ |
 | Administración | — | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
 
@@ -304,6 +335,7 @@ DOMContentLoaded (config.js)
 <script src="js/espacios.js"></script>
 <script src="js/rrhh.js"></script>
 <script src="js/guardias.js"></script>
+<script src="js/comunicados.js"></script>
 ```
 
 ---
@@ -526,6 +558,9 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Gestión de usuarios: invitar, editar, desactivar, reenviar invitación, badges de estado
 - [x] Toggle de módulos por centro (superadmin)
 - [x] Módulo incidencias: buscador de alumno en tiempo real (autorellena grupo), gravedad, filtro por grupo, CSV, contador en tab, notificación familia
+- [x] Módulo incidencias — tipificación IA: botón Tipificar con IA, modal con normativa CCAA (5 regiones), informe borrador editable, pre-relleno automático del formulario
+- [x] Módulo incidencias — flujo convivencia: guardar informe/normativa/medidas/PREVI en BD, notificación automática a jefatura (grave/muy_grave) vía Edge Function notify-jefatura
+- [x] Módulo comunicados: formulario admin con 3 plantillas, destinatarios por rol/grupo, envío email vía Resend, badge no leídos, Realtime toast, modal detalle
 - [x] Módulo espacios/salas: grid de disponibilidad, reservas, gestión de espacios
 - [x] RRHH: solicitud de ausencias, aprobación (genera sustituciones automáticas), rechazo
 - [x] RRHH: subida de justificantes a Storage, privacidad del sustituto, notificación via Edge Function
@@ -547,7 +582,6 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 ### Backlog
 - [ ] Vista móvil optimizada (actualmente funcional pero no adaptada)
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
-- [ ] Módulo de comunicados/circulares — editor + envío email a familias por grupo
 - [ ] Estadísticas avanzadas para dirección (dashboard superadmin con métricas cross-centro)
 - [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
 
@@ -598,10 +632,10 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - Reflexión de proceso: aprendizajes, obstáculos, LOs trabajados
 - Reflexión final: evidencias de crecimiento, LOs demostrados, conexión TOK
 
-**3 plantillas de comunicados para centros** (para módulo de comunicados futuro):
-- Circular inicio de trimestre (familias)
-- Aviso actividad extraescolar (familias de un grupo)
-- Comunicado de cierre anticipado (toda la comunidad)
+**3 plantillas de comunicados para centros** (implementadas en `js/comunicados.js`):
+- Convocatoria reunión de inicio de curso (destinatario: familias de un grupo)
+- Aviso modificación de horario (destinatario: familias de un grupo)
+- Recordatorio plazo / último aviso (destinatario: configurable)
 
 **3 incidencias de convivencia de ejemplo** — insertadas en IES Demo para mostrar el módulo:
 - Conflicto verbal en pasillo (2ESO)
@@ -648,9 +682,14 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
+> **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
+> - `sql/add-incidencias-fields.sql` — añade `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` a la tabla `incidencias`
+> - SQL del módulo comunicados (tabla `comunicados` + RLS) — ver mensaje sesión 2026-05-24
+
 ---
 
 ## Registro de cambios recientes
+- `2026-05-24 23:02` · `e755e36` — feat: módulo comunicados internos con envío por email y realtime
 - `2026-05-24 22:52` · `68b7a46` — feat: flujo convivencia completo — informe editable + notificación jefatura
 - `2026-05-24 22:33` · `93661d8` — feat: botón Tipificar con IA en módulo incidencias
 - `2026-05-24 21:43` · `e8089d4` — feat: tipificar-incidencia con normativas de todas las CCAA
