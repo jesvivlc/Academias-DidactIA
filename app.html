@@ -33,7 +33,7 @@
         <label class="setup-label">Contraseña</label>
         <input class="setup-input" id="login-pass" type="password" placeholder="••••••••" />
       </div>
-      <button class="setup-btn" onclick="doLogin()">Entrar →</button>
+      <button class="setup-btn" onclick="doLogin()">Entrar a DidactIA</button>
       <div class="setup-err" id="login-err"></div>
       <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
     </div>
@@ -129,6 +129,7 @@
   <div class="tab" id="tab-rrhh" onclick="showTab('rrhh')" style="display:none">👔 RRHH</div>
   <div class="tab" id="tab-ib" onclick="showTab('ib')" style="display:none">🎓 IB</div>
   <div class="tab" id="tab-comunicados" onclick="showTab('comunicados')" style="display:none">📢 Comunicados</div>
+  <div class="tab" id="tab-avisos" onclick="showTab('avisos')" style="display:none">🔔 Avisos</div>
 </nav>
 
 <div class="main" id="app-main" style="display:none">
@@ -530,6 +531,10 @@
     <div id="com-contenido"></div>
   </div>
 
+  <!-- AVISOS PANEL (familia) -->
+  <div class="panel" id="panel-avisos" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
+  </div>
+
 </div>
 
 
@@ -606,6 +611,7 @@
 <script src="js/guardias.js"></script>
 <script src="js/ib.js"></script>
 <script src="js/comunicados.js"></script>
+<script src="js/familias.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {

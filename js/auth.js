@@ -50,7 +50,13 @@ async function doLogin() {
   errEl.style.display = "none";
   if (!email || !pass) { errEl.textContent = "Rellena email y contraseña."; errEl.style.display = "block"; return; }
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) { errEl.textContent = error.message; errEl.style.display = "block"; return; }
+  if (error) {
+    errEl.textContent = /invalid login|invalid email|user not found/i.test(error.message)
+      ? "No encontramos este correo. Por favor, verifica que sea el mismo que diste en secretaría."
+      : error.message;
+    errEl.style.display = "block";
+    return;
+  }
   await loadUserProfile(data.user);
 }
 
@@ -301,7 +307,7 @@ async function loadUserProfile(user) {
   if (role === "familia") {
     const { data: vinculos } = await sb
       .from("familia_alumno")
-      .select("alumnos(nombre, curso, grupo_horario)")
+      .select("alumnos(id, nombre, curso, grupo_horario)")
       .eq("profile_id", profile.id);
     currentUserAlumnos = vinculos?.map(v => v.alumnos).filter(Boolean) || [];
   }
@@ -321,7 +327,7 @@ async function loadUserProfile(user) {
   // Show comedor tab only if module is active for this centro AND user has right role
   const comedorTab = document.getElementById("tab-comedor");
   const hasComedor = modulosActivos.includes("comedor");
-  if (comedorTab) comedorTab.style.display = (hasComedor && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
+  if (comedorTab) comedorTab.style.display = (hasComedor && (role === "familia" || ["profesional","admin","superadmin"].includes(role))) ? "block" : "none";
 
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (role === "admin" || role === "profesional" || role === "superadmin") ? "block" : "none";
@@ -354,6 +360,9 @@ async function loadUserProfile(user) {
   const tabCom = document.getElementById("tab-comunicados");
   if (tabCom) tabCom.style.display = "block";
 
+  const tabAvisos = document.getElementById("tab-avisos");
+  if (tabAvisos) tabAvisos.style.display = role === "familia" ? "block" : "none";
+
   // Show app
   document.getElementById("setup").style.display = "none";
   document.getElementById("app-hdr").style.display = "flex";
@@ -363,6 +372,7 @@ async function loadUserProfile(user) {
   updateUI();
   loadAdmin();
   setTimeout(initWelcomeExtras, 400);
+  if (role === "familia") setTimeout(initFamiliaView, 300);
   setTimeout(initRealtimeNotifications, 800);
   setTimeout(_comCheckAndBadge, 1200);
 }
@@ -413,7 +423,8 @@ function showTab(t) {
   document.getElementById("panel-"+t).classList.add("active");
   if (t === "admin") loadAdmin();
   if (t === "users") loadUsersPanel();
-  if (t === "comedor") loadComedor();
+  if (t === "comedor") { if (role === "familia") loadFamiliaComedor(); else loadComedor(); }
+  if (t === "avisos") loadAvisos();
   if (t === "sust") {
     initSustPanel();
     var st = document.getElementById("tab-sust");
@@ -496,15 +507,23 @@ function goHome() {
   showTab("chat");
   var msgs = document.getElementById("chat-msgs");
   if (msgs) {
+    var isFam  = role === "familia";
+    var title  = isFam ? "Bienvenido a tu portal familiar" : "Hola, soy DidactIA";
+    var sub    = isFam
+      ? "Toda la información escolar de tus hijos, al instante."
+      : "Tu asistente para <strong id=\"wlc-ctr\">" + ctrName + "</strong>. Puedo responder preguntas sobre horarios, menús, reuniones y mucho más.";
+    var quickQs = isFam
+      ? '<div class="quick-q" onclick="askQ(\'¿Cuándo es la próxima reunión de familias?\')">¿Cuándo es la próxima reunión?</div>' +
+        '<div class="quick-q" onclick="askQ(\'¿Cómo justifico una ausencia de mi hijo?\')">¿Cómo justifico una falta?</div>' +
+        '<div class="quick-q" onclick="askQ(\'¿Qué actividades extraescolares hay?\')">¿Qué extraescolares hay?</div>'
+      : '<div class="quick-q" onclick="askQ(\'¿Cuándo es la próxima reunión de familias?\')">¿Cuándo es la próxima reunión?</div>' +
+        '<div class="quick-q" onclick="askQ(\'¿Cuál es el teléfono de secretaría?\')">¿Cuál es el teléfono de secretaría?</div>' +
+        '<div class="quick-q" onclick="askQ(\'¿Qué actividades extraescolares hay?\')">¿Qué actividades extraescolares hay?</div>';
     msgs.innerHTML = '<div class="welcome" id="welcome">' +
       '<div class="wlc-ico">D</div>' +
-      '<div class="wlc-title">Hola, soy DidactIA</div>' +
-      '<div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">' + ctrName + '</strong>. Puedo responder preguntas sobre horarios, menús, reuniones y mucho más.</div>' +
-      '<div class="quick-qs">' +
-      '<div class="quick-q" onclick="askQ(\'¿Cuándo es la próxima reunión de familias?\')">¿Cuándo es la próxima reunión?</div>' +
-      '<div class="quick-q" onclick="askQ(\'¿Cuál es el teléfono de secretaría?\')">¿Cuál es el teléfono de secretaría?</div>' +
-      '<div class="quick-q" onclick="askQ(\'¿Qué actividades extraescolares hay?\')">¿Qué actividades extraescolares hay?</div>' +
-      '</div>' +
+      '<div class="wlc-title">' + title + '</div>' +
+      '<div class="wlc-sub">' + sub + '</div>' +
+      '<div class="quick-qs">' + quickQs + '</div>' +
       '<div id="role-cards-container" style="display:none;"><div class="role-cards" id="role-cards"></div></div>' +
       '<div id="ficha-centro-container" style="display:none;"><div id="ficha-centro-data" style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;"></div></div>' +
       '<div id="comedor-hijos-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Comedor hoy</div><div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div></div>' +
