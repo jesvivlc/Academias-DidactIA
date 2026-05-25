@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="DidactIA">
   <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 </head>
 <body>
 
@@ -101,38 +102,122 @@
   </div>
 </div>
 
-<!-- APP -->
+<!-- OFF-SCREEN COMPAT: header y tabs originales (auth.js y módulos escriben en sus IDs) -->
 <header class="hdr" id="app-hdr" style="display:none">
-  <div class="brand" onclick="goHome()" style="cursor:pointer;" title="Ir al inicio">
-    <div class="brand-logo" id="app-brand-logo">D</div>
-    <div><div class="brand-name">DidactIA</div><div class="brand-sub">Asistente de centro educativo</div></div>
-  </div>
-  <div class="hdr-r">
-    <div class="ctr-pill">
-      <div class="ctr-dot"></div>
-      <span id="ctr-name-hdr" style="font-size:13px;font-weight:500;color:var(--txt2);">—</span>
-    </div>
-    <div class="role-pill fam" id="role-pill">👨‍👩‍👧 Familia</div>
-    <div class="role-pill fam" id="logout-btn" onclick="doLogout()" style="background:var(--srf2);color:var(--txt3);border-color:var(--bdr);margin-left:4px;">Salir</div>
-  </div>
+  <div class="brand"><div class="brand-logo">D</div></div>
 </header>
-
-<div id="banner-aviso">⚠️ <span id="banner-aviso-txt"></span></div>
 <nav class="tabs" id="app-tabs" style="display:none">
-  <div class="tab active" id="tab-chat" onclick="showTab('chat')">💬 Chatbot</div>
-  <div class="tab" id="tab-comedor" onclick="showTab('comedor')" style="display:none">🍽️ Comedor</div>
-  <div class="tab" id="tab-admin" onclick="showTab('admin')">⚙️ Administración</div>
-  <div class="tab" id="tab-sust" onclick="showTab('sust')" style="display:none">🔄 Sustituciones</div>
-  <div class="tab" id="tab-incidencias" onclick="showTab('incidencias')" style="display:none">⚠️ Incidencias</div>
-  <div class="tab" id="tab-espacios" onclick="showTab('espacios')" style="display:none">🏫 Espacios</div>
-  <div class="tab" id="tab-users" onclick="showTab('users')" style="display:none">👥 Usuarios</div>
-  <div class="tab" id="tab-rrhh" onclick="showTab('rrhh')" style="display:none">👔 RRHH</div>
-  <div class="tab" id="tab-ib" onclick="showTab('ib')" style="display:none">🎓 IB</div>
-  <div class="tab" id="tab-comunicados" onclick="showTab('comunicados')" style="display:none">📢 Comunicados</div>
-  <div class="tab" id="tab-avisos" onclick="showTab('avisos')" style="display:none">🔔 Avisos</div>
+  <div class="tab active" id="tab-chat"        onclick="showTab('chat')">💬 Chatbot</div>
+  <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
+  <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
+  <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
+  <div class="tab" id="tab-incidencias"        onclick="showTab('incidencias')" style="display:none">⚠️ Incidencias</div>
+  <div class="tab" id="tab-espacios"           onclick="showTab('espacios')"    style="display:none">🏫 Espacios</div>
+  <div class="tab" id="tab-users"              onclick="showTab('users')"       style="display:none">👥 Usuarios</div>
+  <div class="tab" id="tab-rrhh"               onclick="showTab('rrhh')"        style="display:none">👔 RRHH</div>
+  <div class="tab" id="tab-ib"                 onclick="showTab('ib')"          style="display:none">🎓 IB</div>
+  <div class="tab" id="tab-comunicados"        onclick="showTab('comunicados')" style="display:none">📢 Comunicados</div>
+  <div class="tab" id="tab-avisos"             onclick="showTab('avisos')"      style="display:none">🔔 Avisos</div>
 </nav>
 
-<div class="main" id="app-main" style="display:none">
+<!-- APP SHELL -->
+<div id="app-shell">
+
+  <!-- TOPBAR -->
+  <div id="app-topbar">
+    <button id="sidebar-toggle-btn" aria-label="Colapsar menú">
+      <i class="ti ti-menu-2"></i>
+    </button>
+    <span id="topbar-title">Chatbot</span>
+    <div class="topbar-right">
+      <div class="topbar-ctr-pill">
+        <div class="topbar-ctr-dot"></div>
+        <span id="ctr-name-hdr">—</span>
+      </div>
+      <div class="topbar-avatar" id="topbar-avatar" title="">U</div>
+    </div>
+  </div>
+
+  <!-- AVISO BANNER -->
+  <div id="banner-aviso">⚠️ <span id="banner-aviso-txt"></span></div>
+
+  <!-- BODY: sidebar + paneles -->
+  <div id="app-body">
+
+    <!-- SIDEBAR -->
+    <nav id="app-sidebar">
+
+      <!-- Logo del centro -->
+      <div class="sb-logo">
+        <div class="brand-logo" id="app-brand-logo" onclick="goHome()" style="cursor:pointer;" title="Ir al inicio">D</div>
+      </div>
+
+      <!-- Navegación -->
+      <div class="sb-nav">
+
+        <div class="sb-group-label">Principal</div>
+        <button class="nav-item active" id="nav-chat" data-tab="chat" onclick="showTab('chat')">
+          <i class="ti ti-robot"></i><span class="nav-item-label">Chatbot</span>
+        </button>
+
+        <div class="sb-group-label">Gestión diaria</div>
+        <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none">
+          <i class="ti ti-replace"></i><span class="nav-item-label">Sustituciones</span>
+          <span class="nav-badge" id="sb-badge-sust" style="display:none">0</span>
+        </button>
+        <button class="nav-item" id="nav-incidencias" data-tab="incidencias" onclick="showTab('incidencias')" style="display:none">
+          <i class="ti ti-alert-triangle"></i><span class="nav-item-label">Incidencias</span>
+          <span class="nav-badge" id="sb-badge-inc" style="display:none">0</span>
+        </button>
+        <button class="nav-item" id="nav-comunicados" data-tab="comunicados" onclick="showTab('comunicados')" style="display:none">
+          <i class="ti ti-speakerphone"></i><span class="nav-item-label">Comunicados</span>
+          <span class="nav-badge" id="sb-badge-com" style="display:none">0</span>
+        </button>
+
+        <div class="sb-group-label">Servicios</div>
+        <button class="nav-item" id="nav-comedor" data-tab="comedor" onclick="showTab('comedor')" style="display:none">
+          <i class="ti ti-tools-kitchen-2"></i><span class="nav-item-label">Comedor</span>
+        </button>
+        <button class="nav-item" id="nav-ib" data-tab="ib" onclick="showTab('ib')" style="display:none">
+          <i class="ti ti-school"></i><span class="nav-item-label">IB</span>
+        </button>
+
+        <div class="sb-group-label">Administración</div>
+        <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none">
+          <i class="ti ti-users"></i><span class="nav-item-label">Usuarios</span>
+        </button>
+        <button class="nav-item" id="nav-rrhh" data-tab="rrhh" onclick="showTab('rrhh')" style="display:none">
+          <i class="ti ti-briefcase"></i><span class="nav-item-label">RRHH</span>
+        </button>
+        <button class="nav-item" id="nav-espacios" data-tab="espacios" onclick="showTab('espacios')" style="display:none">
+          <i class="ti ti-door"></i><span class="nav-item-label">Espacios</span>
+        </button>
+        <button class="nav-item" id="nav-admin" data-tab="admin" onclick="showTab('admin')">
+          <i class="ti ti-settings"></i><span class="nav-item-label">Administración</span>
+        </button>
+
+      </div><!-- /sb-nav -->
+
+      <!-- Footer: usuario + logout -->
+      <div class="sb-footer">
+        <div class="sb-user">
+          <div class="sb-user-avatar" id="sb-user-avatar">U</div>
+          <div class="sb-user-info">
+            <div class="sb-user-name" id="sb-user-name">—</div>
+            <div class="sb-user-role-wrap">
+              <span class="role-pill fam" id="role-pill" style="font-size:10px;padding:2px 7px;">—</span>
+            </div>
+          </div>
+          <button class="sb-logout-btn" id="logout-btn" onclick="doLogout()" title="Cerrar sesión">
+            <i class="ti ti-logout"></i>
+          </button>
+        </div>
+      </div>
+
+    </nav><!-- /app-sidebar -->
+
+    <!-- PANELES (main) -->
+    <div class="main" id="app-main" style="display:none">
 
   <!-- CHAT -->
   <div class="panel active" id="panel-chat">
@@ -535,8 +620,45 @@
   <div class="panel" id="panel-avisos" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
   </div>
 
+</div><!-- /app-main -->
+  </div><!-- /app-body -->
+</div><!-- /app-shell -->
+
+<!-- BOTTOM NAV (solo móvil) -->
+<div id="bottom-nav" style="display:none">
+  <div class="bn-inner">
+    <button class="bn-item active" id="bn-chat" data-tab="chat" onclick="showTab('chat')">
+      <i class="ti ti-robot"></i><span>Chatbot</span>
+    </button>
+    <button class="bn-item" id="bn-sust" data-tab="sust" onclick="showTab('sust')" style="display:none">
+      <i class="ti ti-replace"></i><span>Sustituciones</span>
+      <span class="bn-badge" id="bn-badge-sust">0</span>
+    </button>
+    <button class="bn-item" id="bn-incidencias" data-tab="incidencias" onclick="showTab('incidencias')" style="display:none">
+      <i class="ti ti-alert-triangle"></i><span>Incidencias</span>
+      <span class="bn-badge" id="bn-badge-inc">0</span>
+    </button>
+    <button class="bn-item" id="bn-comedor" data-tab="comedor" onclick="showTab('comedor')" style="display:none">
+      <i class="ti ti-tools-kitchen-2"></i><span>Comedor</span>
+    </button>
+    <button class="bn-item" id="bn-comunicados" data-tab="comunicados" onclick="showTab('comunicados')" style="display:none">
+      <i class="ti ti-speakerphone"></i><span>Comunicados</span>
+      <span class="bn-badge" id="bn-badge-com">0</span>
+    </button>
+    <button class="bn-item" id="bn-mas" onclick="openMasDrawer()">
+      <i class="ti ti-dots"></i><span>Más</span>
+    </button>
+  </div>
 </div>
 
+<!-- MÁS DRAWER (móvil) -->
+<div id="mas-drawer">
+  <div id="mas-backdrop" onclick="closeMasDrawer()"></div>
+  <div id="mas-sheet">
+    <div id="mas-handle"></div>
+    <div class="mas-grid" id="mas-grid"></div>
+  </div>
+</div>
 
 <!-- MODAL: INVITAR USUARIO -->
 <div id="modal-invitar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:16px;">
@@ -617,6 +739,198 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js');
   }
+</script>
+
+<!-- ═══════════════════════════════════════════
+     SIDEBAR CONTROLLER
+     No toca ningún archivo JS de módulos.
+     Parchea window.showTab después de que auth.js lo define.
+═══════════════════════════════════════════ -->
+<script>
+(function () {
+  var TITLES = {
+    chat:'Chatbot', comedor:'Comedor', admin:'Administración',
+    sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
+    users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados'
+  };
+  var MAS_CFG = {
+    ib:        { icon:'ti-school',          label:'IB' },
+    rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
+    espacios:  { icon:'ti-door',            label:'Espacios' },
+    users:     { icon:'ti-users',           label:'Usuarios' },
+    admin:     { icon:'ti-settings',        label:'Administración' }
+  };
+  /* IDs: tab → nav-item sidebar, nav-item bottom-nav */
+  var TAB_MAP = {
+    'tab-chat':        { nav:'nav-chat',        bn:'bn-chat' },
+    'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
+    'tab-admin':       { nav:'nav-admin',        bn:null },
+    'tab-sust':        { nav:'nav-sust',         bn:'bn-sust' },
+    'tab-incidencias': { nav:'nav-incidencias',  bn:'bn-incidencias' },
+    'tab-espacios':    { nav:'nav-espacios',     bn:null },
+    'tab-users':       { nav:'nav-users',        bn:null },
+    'tab-rrhh':        { nav:'nav-rrhh',         bn:null },
+    'tab-ib':          { nav:'nav-ib',           bn:null },
+    'tab-comunicados': { nav:'nav-comunicados',  bn:'bn-comunicados' }
+  };
+  var BADGE_MAP = {
+    'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
+    'tab-incidencias': { sb:'sb-badge-inc',  bn:'bn-badge-inc'  },
+    'tab-comunicados': { sb:'sb-badge-com',  bn:'bn-badge-com'  }
+  };
+
+  /* ── 1. Mostrar shell cuando app-main se hace visible ── */
+  var appMain = document.getElementById('app-main');
+  var appShell = document.getElementById('app-shell');
+  var bottomNav = document.getElementById('bottom-nav');
+
+  new MutationObserver(function () {
+    if (appMain.style.display && appMain.style.display !== 'none') {
+      appShell.style.display = 'flex';
+      if (window.innerWidth <= 768) bottomNav.style.display = 'block';
+      syncAllVisibility();
+      updateUserInfo();
+      buildMasDrawer();
+    }
+  }).observe(appMain, { attributes: true, attributeFilter: ['style'] });
+
+  /* ── 2. Patch showTab ── */
+  var _orig = null;
+  function patchShowTab() {
+    if (typeof showTab === 'function' && !_orig) {
+      _orig = showTab;
+      window.showTab = function (t) {
+        _orig(t);
+        /* actualizar activos en sidebar y bottom nav */
+        document.querySelectorAll('.nav-item[data-tab]').forEach(function (el) {
+          el.classList.toggle('active', el.dataset.tab === t);
+        });
+        document.querySelectorAll('.bn-item[data-tab]').forEach(function (el) {
+          el.classList.toggle('active', el.dataset.tab === t);
+        });
+        document.querySelectorAll('.mas-item[data-tab]').forEach(function (el) {
+          el.classList.toggle('active', el.dataset.tab === t);
+        });
+        var titleEl = document.getElementById('topbar-title');
+        if (titleEl) titleEl.textContent = TITLES[t] || t;
+        closeMasDrawer();
+      };
+    }
+  }
+  patchShowTab(); /* auth.js se carga antes de este script */
+
+  /* ── 3. Sincronizar visibilidad tab → nav-item/bn-item ── */
+  function syncTabItem(tabId) {
+    var tab = document.getElementById(tabId);
+    var cfg = TAB_MAP[tabId];
+    if (!tab || !cfg) return;
+    var visible = tab.style.display !== 'none';
+    var nav = document.getElementById(cfg.nav);
+    if (nav) nav.style.display = visible ? 'flex' : 'none';
+    if (cfg.bn) {
+      var bn = document.getElementById(cfg.bn);
+      if (bn) bn.style.display = visible ? 'flex' : 'none';
+    }
+  }
+  function syncAllVisibility() {
+    Object.keys(TAB_MAP).forEach(syncTabItem);
+  }
+
+  Object.keys(TAB_MAP).forEach(function (tabId) {
+    var tab = document.getElementById(tabId);
+    if (!tab) return;
+    new MutationObserver(function () { syncTabItem(tabId); })
+      .observe(tab, { attributes: true, attributeFilter: ['style'] });
+  });
+
+  /* ── 4. Sincronizar badges tab → sidebar + bottom nav ── */
+  function syncBadge(tabId) {
+    var tab = document.getElementById(tabId);
+    var cfg = BADGE_MAP[tabId];
+    if (!tab || !cfg) return;
+    var text = tab.textContent || '';
+    var m = text.match(/\((\d+)\)/);
+    var n = m ? parseInt(m[1]) : 0;
+    [['sb', false], ['bn', true]].forEach(function (pair) {
+      var key = pair[0], isBn = pair[1];
+      var el = cfg[key] ? document.getElementById(cfg[key]) : null;
+      if (!el) return;
+      if (n > 0) {
+        el.textContent = n;
+        el.style.display = 'inline-flex';
+        if (isBn) el.classList.add('show');
+      } else {
+        el.style.display = 'none';
+        if (isBn) el.classList.remove('show');
+      }
+    });
+  }
+  Object.keys(BADGE_MAP).forEach(function (tabId) {
+    var tab = document.getElementById(tabId);
+    if (!tab) return;
+    new MutationObserver(function () { syncBadge(tabId); })
+      .observe(tab, { childList: true, subtree: true, characterData: true });
+  });
+
+  /* ── 5. Sidebar toggle ── */
+  var sidebar = document.getElementById('app-sidebar');
+  var toggleBtn = document.getElementById('sidebar-toggle-btn');
+  var sbCollapsed = localStorage.getItem('sb_col') === '1';
+  if (sbCollapsed && sidebar) sidebar.classList.add('sb-collapsed');
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function () {
+      sbCollapsed = !sbCollapsed;
+      sidebar.classList.toggle('sb-collapsed', sbCollapsed);
+      localStorage.setItem('sb_col', sbCollapsed ? '1' : '0');
+    });
+  }
+
+  /* ── 6. Más drawer ── */
+  window.openMasDrawer = function () {
+    document.getElementById('mas-drawer').style.display = 'block';
+  };
+  window.closeMasDrawer = function () {
+    document.getElementById('mas-drawer').style.display = 'none';
+  };
+
+  function buildMasDrawer() {
+    var grid = document.getElementById('mas-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    Object.keys(MAS_CFG).forEach(function (t) {
+      var tab = document.getElementById('tab-' + t);
+      if (!tab || tab.style.display === 'none') return;
+      var cfg = MAS_CFG[t];
+      var btn = document.createElement('button');
+      btn.className = 'mas-item';
+      btn.dataset.tab = t;
+      btn.innerHTML = '<i class="ti ' + cfg.icon + '"></i><span>' + cfg.label + '</span>';
+      btn.onclick = function () { showTab(t); };
+      grid.appendChild(btn);
+    });
+  }
+
+  /* ── 7. Rellenar info de usuario en sidebar ── */
+  function updateUserInfo() {
+    /* currentUser es la variable global de auth.js */
+    if (typeof currentUser === 'undefined' || !currentUser) {
+      setTimeout(updateUserInfo, 200);
+      return;
+    }
+    var name = currentUser.full_name || currentUser.email || '—';
+    var initial = name.charAt(0).toUpperCase();
+    var nameEl = document.getElementById('sb-user-name');
+    var avatarEl = document.getElementById('sb-user-avatar');
+    var topbarAv = document.getElementById('topbar-avatar');
+    if (nameEl) nameEl.textContent = name;
+    if (avatarEl) avatarEl.textContent = initial;
+    if (topbarAv) { topbarAv.textContent = initial; topbarAv.title = name; }
+  }
+
+  /* Sincronizar role-pill (auth.js lo actualiza directamente porque el ID está en el DOM) */
+
+})();
 </script>
 </body>
 </html>
