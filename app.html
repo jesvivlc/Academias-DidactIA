@@ -128,13 +128,33 @@
     <button id="sidebar-toggle-btn" aria-label="Colapsar menú">
       <i class="ti ti-menu-2"></i>
     </button>
-    <span id="topbar-title">Chatbot</span>
+    <div class="topbar-page">
+      <span id="topbar-title" class="topbar-page-title">Inicio</span>
+    </div>
+    <div class="topbar-search">
+      <i class="ti ti-search topbar-search-icon"></i>
+      <input class="topbar-search-inp" placeholder="Buscar alumnos, profesores, aulas…" readonly>
+      <span class="topbar-search-kbd">⌘K</span>
+    </div>
     <div class="topbar-right">
-      <div class="topbar-ctr-pill">
-        <div class="topbar-ctr-dot"></div>
-        <span id="ctr-name-hdr">—</span>
+      <div class="topbar-role-switch" id="topbar-role-switch">
+        <button class="topbar-role-btn" id="topbar-role-admin">Admin</button>
+        <button class="topbar-role-btn" id="topbar-role-prof">Profesor</button>
       </div>
-      <div class="topbar-avatar" id="topbar-avatar" title="">U</div>
+      <button class="topbar-icon-btn" title="Asistente IA" onclick="showTab('chat')">
+        <i class="ti ti-sparkles"></i>
+      </button>
+      <button class="topbar-icon-btn" title="Notificaciones">
+        <i class="ti ti-bell"></i>
+      </button>
+      <div class="topbar-divider"></div>
+      <div class="topbar-profile">
+        <div class="topbar-avatar" id="topbar-avatar" title="">U</div>
+        <div class="topbar-profile-meta">
+          <div class="topbar-profile-name" id="topbar-user-name">—</div>
+          <div class="topbar-profile-role" id="topbar-user-role">—</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -147,9 +167,19 @@
     <!-- SIDEBAR -->
     <nav id="app-sidebar">
 
-      <!-- Logo del centro -->
-      <div class="sb-logo">
-        <div class="brand-logo" id="app-brand-logo" onclick="goHome()" style="cursor:pointer;" title="Ir al inicio">D</div>
+      <!-- Brand -->
+      <div class="sb-brand" onclick="goHome()" title="Ir al inicio">
+        <div class="sb-brand-mark">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+            <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
+            <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+            <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
+          </svg>
+        </div>
+        <div class="sb-brand-text">
+          <div class="sb-wordmark">Didact<span class="sb-wordmark-ia">IA</span></div>
+          <div class="sb-school" id="ctr-name-hdr">—</div>
+        </div>
       </div>
 
       <!-- Navegación -->
@@ -157,7 +187,11 @@
 
         <div class="sb-group-label">Principal</div>
         <button class="nav-item active" id="nav-chat" data-tab="chat" onclick="showTab('chat')">
-          <i class="ti ti-robot"></i><span class="nav-item-label">Chatbot</span>
+          <i class="ti ti-home"></i><span class="nav-item-label">Inicio</span>
+        </button>
+        <button class="nav-item" id="nav-asistente" onclick="showTab('chat')">
+          <i class="ti ti-sparkles"></i><span class="nav-item-label">Asistente IA</span>
+          <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
         </button>
 
         <div class="sb-group-label">Gestión diaria</div>
@@ -219,125 +253,283 @@
     <!-- PANELES (main) -->
     <div class="main" id="app-main" style="display:none">
 
-  <!-- CHAT / DASHBOARD — BENTO GRID -->
+  <!-- INICIO + AI RAIL -->
   <div class="panel active" id="panel-chat">
-    <div class="dashboard-bento">
 
-      <!-- ── Métricas (admin/superadmin, ocultas por defecto) ── -->
-      <div class="bento-card metric-card metric-orange col-3 bento-admin-metric" style="display:none"
-           onclick="showTab('sust')" title="Ver sustituciones">
-        <i class="ti ti-replace metric-icon"></i>
-        <div class="metric-number" id="bento-guardias">—</div>
-        <div class="metric-label">Guardias sin cubrir</div>
-      </div>
-      <div class="bento-card metric-card metric-amber col-3 bento-admin-metric" style="display:none">
-        <i class="ti ti-user-off metric-icon"></i>
-        <div class="metric-number" id="bento-ausentes">—</div>
-        <div class="metric-label">Profesores ausentes</div>
-      </div>
-      <div class="bento-card metric-card metric-red col-3 bento-admin-metric" style="display:none"
-           onclick="showTab('incidencias')" title="Ver incidencias">
-        <i class="ti ti-alert-triangle metric-icon"></i>
-        <div class="metric-number" id="bento-incidencias">—</div>
-        <div class="metric-label">Incidencias abiertas</div>
-      </div>
-      <div class="bento-card metric-card metric-blue col-3 bento-admin-metric" style="display:none"
-           onclick="showTab('comunicados')" title="Ver comunicados">
-        <i class="ti ti-speakerphone metric-icon"></i>
-        <div class="metric-number" id="bento-comunicados">—</div>
-        <div class="metric-label">Comunicados</div>
-      </div>
+    <!-- Contenido principal (scrollable) -->
+    <div class="inicio-content" id="inicio-content">
 
-      <!-- ── Welcome banner ── -->
-      <div class="bento-card welcome-banner col-5">
-        <div class="wb-date" id="bento-date">—</div>
-        <div class="wb-greeting" id="bento-greeting">—</div>
-        <div class="wb-name" id="bento-user-name">—</div>
-        <div class="wb-ctr" id="bento-ctr-name">—</div>
-        <!-- Acciones rápidas staff (admin/prof) -->
-        <div class="wb-actions" id="wb-actions-staff" style="display:none">
-          <button class="wb-btn" onclick="showTab('sust')"><i class="ti ti-replace"></i> Sustituciones</button>
-          <button class="wb-btn" onclick="showTab('incidencias')"><i class="ti ti-alert-triangle"></i> Incidencias</button>
-          <button class="wb-btn" onclick="showTab('rrhh')"><i class="ti ti-briefcase"></i> RRHH</button>
-          <button class="wb-btn" onclick="showTab('comunicados')"><i class="ti ti-speakerphone"></i> Comunicados</button>
+      <!-- ── ADMIN / SUPERADMIN ── -->
+      <div id="inicio-admin" style="display:none">
+        <div class="inicio-hdr">
+          <div class="inicio-hdr-left">
+            <h1 class="greeting"><span id="inicio-greeting-txt">Buenos días,</span> <em id="inicio-first-name">—</em></h1>
+            <div class="inicio-subline" id="inicio-subline">—</div>
+          </div>
+          <div class="inicio-hdr-actions">
+            <button class="btn btn-s" onclick="showTab('comunicados')"><i class="ti ti-speakerphone"></i> Comunicado</button>
+            <button class="btn btn-p" onclick="document.getElementById('chat-inp').focus()"><i class="ti ti-sparkles"></i> Preguntar IA</button>
+          </div>
         </div>
-        <!-- Acciones familia -->
+
+        <!-- Stat tiles 4 col -->
+        <div class="inicio-stats">
+          <div class="stat2" data-tone="warning" onclick="showTab('sust')" style="cursor:pointer">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-replace"></i></div>
+            <div class="stat2__num" id="bento-guardias">—</div>
+            <div class="stat2__label">Guardias sin cubrir</div>
+            <div class="stat2__delta">hoy</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,22 12,18 25,24 38,14 50,20 62,12 75,16 88,10 100,14" fill="none" stroke="var(--warning)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+              <polyline points="0,28 0,22 12,18 25,24 38,14 50,20 62,12 75,16 88,10 100,14 100,28" fill="var(--warning)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+          <div class="stat2" data-tone="info">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-user-off"></i></div>
+            <div class="stat2__num" id="bento-ausentes">—</div>
+            <div class="stat2__label">Profesores ausentes</div>
+            <div class="stat2__delta">hoy</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,20 12,16 25,20 38,12 50,18 62,10 75,14 88,8 100,12" fill="none" stroke="var(--info)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+              <polyline points="0,28 0,20 12,16 25,20 38,12 50,18 62,10 75,14 88,8 100,12 100,28" fill="var(--info)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+          <div class="stat2" data-tone="danger" onclick="showTab('incidencias')" style="cursor:pointer">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-alert-triangle"></i></div>
+            <div class="stat2__num" id="bento-incidencias">—</div>
+            <div class="stat2__label">Incidencias abiertas</div>
+            <div class="stat2__delta">estado</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,24 12,20 25,22 38,16 50,18 62,14 75,18 88,12 100,16" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+              <polyline points="0,28 0,24 12,20 25,22 38,16 50,18 62,14 75,18 88,12 100,16 100,28" fill="var(--danger)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+          <div class="stat2" data-tone="success" onclick="showTab('comunicados')" style="cursor:pointer">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-speakerphone"></i></div>
+            <div class="stat2__num" id="bento-comunicados">—</div>
+            <div class="stat2__label">Comunicados</div>
+            <div class="stat2__delta">activos</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,18 12,14 25,16 38,10 50,14 62,8 75,12 88,6 100,10" fill="none" stroke="var(--success)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+              <polyline points="0,28 0,18 12,14 25,16 38,10 50,14 62,8 75,12 88,6 100,10 100,28" fill="var(--success)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Mid: línea del día + atajos -->
+        <div class="inicio-mid">
+          <div class="inicio-card">
+            <div class="card-eyebrow">LÍNEA DEL DÍA</div>
+            <div class="card-title" id="inicio-tl-date">Hoy</div>
+            <div class="tl-list">
+              <div class="tl-item">
+                <div class="tl-dot tl-dot--warning"></div>
+                <div class="tl-body">
+                  <div class="tl-time">08:00 – 09:00</div>
+                  <div class="tl-label">Guardia pendiente — 3º ESO A</div>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-dot tl-dot--info"></div>
+                <div class="tl-body">
+                  <div class="tl-time">09:00 – 10:00</div>
+                  <div class="tl-label">Ausencia aprobada — M. García</div>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-dot tl-dot--success"></div>
+                <div class="tl-body">
+                  <div class="tl-time">10:00 – 11:00</div>
+                  <div class="tl-label">Sustitución cubierta — 2º ESO B</div>
+                </div>
+              </div>
+              <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-body">
+                  <div class="tl-time">12:00 – 13:00</div>
+                  <div class="tl-label">Guardia pendiente — 1º BAC A</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="inicio-card">
+            <div class="card-eyebrow">ATAJOS</div>
+            <div class="card-title">Acciones rápidas</div>
+            <div class="shortcuts-grid">
+              <button class="shortcut-btn" onclick="showTab('sust')"><i class="ti ti-replace"></i><span>Sustituciones</span></button>
+              <button class="shortcut-btn" onclick="showTab('incidencias')"><i class="ti ti-alert-triangle"></i><span>Incidencias</span></button>
+              <button class="shortcut-btn" onclick="showTab('rrhh')"><i class="ti ti-briefcase"></i><span>RRHH</span></button>
+              <button class="shortcut-btn" onclick="showTab('comunicados')"><i class="ti ti-speakerphone"></i><span>Comunicados</span></button>
+              <button class="shortcut-btn" onclick="showTab('comedor')"><i class="ti ti-tools-kitchen-2"></i><span>Comedor</span></button>
+              <button class="shortcut-btn" onclick="showTab('espacios')"><i class="ti ti-door"></i><span>Espacios</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom: búsqueda + historial (mejoras.js controla display) -->
+        <div style="display:contents">
+          <div id="busqueda-alumno-container" style="display:none">
+            <div class="inicio-card">
+              <div class="card-eyebrow">ALUMNOS</div>
+              <div class="card-title" style="margin-bottom:10px">Búsqueda rápida</div>
+              <input class="search-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" oninput="buscarAlumnoRapido(this.value)">
+              <div id="busqueda-alumno-res"></div>
+            </div>
+          </div>
+          <div id="bento-historial-card" style="display:none">
+            <div class="inicio-card">
+              <div id="sb-sec-recientes" class="card-eyebrow" style="display:none">RECIENTES</div>
+              <div id="sb-historial"></div>
+              <div id="sb-sec-acciones" class="card-eyebrow" style="display:none;margin-top:8px">ACCIONES RÁPIDAS</div>
+              <div id="sb-acciones-rol"></div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /#inicio-admin -->
+
+      <!-- ── PROFESOR ── -->
+      <div id="inicio-staff" style="display:none">
+        <div class="inicio-hdr">
+          <div class="inicio-hdr-left">
+            <h1 class="greeting"><span id="inicio-greeting-txt-staff">Buenos días,</span> <em id="inicio-first-name-staff">—</em></h1>
+            <div class="inicio-subline" id="inicio-subline-staff">Profesor</div>
+          </div>
+          <div class="inicio-hdr-actions">
+            <button class="btn btn-s" onclick="showTab('incidencias')"><i class="ti ti-alert-triangle"></i> Incidencias</button>
+            <button class="btn btn-p" onclick="document.getElementById('chat-inp').focus()"><i class="ti ti-sparkles"></i> Preguntar IA</button>
+          </div>
+        </div>
+        <div class="inicio-stats">
+          <div class="stat2" data-tone="info">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-book"></i></div>
+            <div class="stat2__num">5</div>
+            <div class="stat2__label">Clases hoy</div>
+            <div class="stat2__delta">según horario</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,18 20,14 40,20 60,10 80,16 100,12" fill="none" stroke="var(--info)" stroke-width="1.5"/>
+              <polyline points="0,28 0,18 20,14 40,20 60,10 80,16 100,12 100,28" fill="var(--info)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+          <div class="stat2" data-tone="success">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-users"></i></div>
+            <div class="stat2__num">—</div>
+            <div class="stat2__label">Alumnos tutoría</div>
+            <div class="stat2__delta">grupo tutor</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,16 20,12 40,18 60,8 80,14 100,10" fill="none" stroke="var(--success)" stroke-width="1.5"/>
+              <polyline points="0,28 0,16 20,12 40,18 60,8 80,14 100,10 100,28" fill="var(--success)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+          <div class="stat2" data-tone="warning" onclick="showTab('sust')" style="cursor:pointer">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-replace"></i></div>
+            <div class="stat2__num">—</div>
+            <div class="stat2__label">Sustituciones hoy</div>
+            <div class="stat2__delta">pendiente</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,22 20,18 40,22 60,14 80,20 100,16" fill="none" stroke="var(--warning)" stroke-width="1.5"/>
+              <polyline points="0,28 0,22 20,18 40,22 60,14 80,20 100,16 100,28" fill="var(--warning)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+          <div class="stat2" data-tone="info" onclick="showTab('comunicados')" style="cursor:pointer">
+            <div class="stat2__bar"></div>
+            <div class="stat2__icon"><i class="ti ti-speakerphone"></i></div>
+            <div class="stat2__num" id="bento-comunicados-staff">—</div>
+            <div class="stat2__label">Comunicados</div>
+            <div class="stat2__delta">no leídos</div>
+            <svg class="stat2__spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+              <polyline points="0,20 20,16 40,22 60,12 80,18 100,14" fill="none" stroke="var(--info)" stroke-width="1.5"/>
+              <polyline points="0,28 0,20 20,16 40,22 60,12 80,18 100,14 100,28" fill="var(--info)" fill-opacity="0.08" stroke="none"/>
+            </svg>
+          </div>
+        </div>
+      </div><!-- /#inicio-staff -->
+
+      <!-- ── FAMILIA ── -->
+      <div id="inicio-familia" style="display:none">
+        <div class="inicio-hdr">
+          <div class="inicio-hdr-left">
+            <h1 class="greeting"><span id="inicio-greeting-txt-fam">Buenos días,</span> <em id="inicio-first-name-fam">—</em></h1>
+            <div class="inicio-subline">Portal de familias</div>
+          </div>
+        </div>
+        <div id="mis-hijos-container" style="display:none">
+          <div class="bento-card-section-hdr">Mis hijos</div>
+          <div id="mis-hijos-list" class="bento-card-list"></div>
+        </div>
+        <div id="comedor-hijos-container" style="display:none">
+          <div class="bento-card-section-hdr">Comedor hoy</div>
+          <div id="comedor-hijos-list" class="bento-card-list"></div>
+        </div>
         <div class="wb-actions" id="wb-actions-familia" style="display:none">
           <button class="wb-btn" onclick="askQ('¿Cómo justifico una falta de asistencia?')"><i class="ti ti-file-description"></i> Justificar falta</button>
           <button class="wb-btn" onclick="showTab('comunicados')"><i class="ti ti-speakerphone"></i> Comunicados</button>
           <button class="wb-btn" onclick="askQ('¿Cuál es el menú de esta semana?')"><i class="ti ti-tools-kitchen-2"></i> Menú semanal</button>
         </div>
-      </div>
+      </div><!-- /#inicio-familia -->
 
-      <!-- ── Chat widget ── -->
-      <div class="bento-card chatbot-widget col-7">
-        <div class="chat-main">
-          <div class="load-bar" id="load-bar"></div>
-          <div class="chat-msgs" id="chat-msgs">
-            <div class="welcome" id="welcome">
-              <div class="wlc-ico">D</div>
-              <div class="wlc-title">¿En qué puedo ayudarte?</div>
-              <div class="wlc-sub">Pregúntame sobre <strong id="wlc-ctr">tu centro</strong>: horarios, reuniones, menú y más.</div>
-              <div class="quick-qs">
-                <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
-                <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
-                <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
-                <div class="quick-q" onclick="askQ('¿Cuál es el horario de clases de esta semana?')">¿Cuál es el horario de clases?</div>
-              </div>
-            </div>
-          </div>
-          <div class="typing" id="typing">
-            <div class="typ-av">D</div>
-            <div class="dots"><span></span><span></span><span></span></div>
-          </div>
-          <div class="input-area">
-            <div class="inp-wrap">
-              <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
-                onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-            </div>
-            <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
-            <button class="send-btn" id="send-btn" onclick="sendMsg()">
-              <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Familia: Comedor hoy (mejoras.js controla display) ── -->
-      <div class="bento-card col-6" id="comedor-hijos-container" style="display:none">
-        <div class="bento-card-section-hdr">Comedor hoy</div>
-        <div id="comedor-hijos-list" class="bento-card-list"></div>
-      </div>
-
-      <!-- ── Familia: Mis hijos (mejoras.js controla display) ── -->
-      <div class="bento-card col-6" id="mis-hijos-container" style="display:none">
-        <div class="bento-card-section-hdr">Mis hijos</div>
-        <div id="mis-hijos-list" class="bento-card-list"></div>
-      </div>
-
-      <!-- ── Staff: Búsqueda rápida (mejoras.js controla display) ── -->
-      <div class="bento-card col-6" id="busqueda-alumno-container" style="display:none">
-        <div class="bento-card-section-hdr">Búsqueda rápida de alumno</div>
-        <input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…"
-               style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" />
-        <div id="busqueda-alumno-res"></div>
-      </div>
-
-      <!-- ── Staff: Historial + acciones (inline script controla display) ── -->
-      <div class="bento-card col-6" id="bento-historial-card" style="display:none">
-        <div id="sb-sec-recientes" class="bento-card-section-hdr" style="display:none">Recientes</div>
-        <div id="sb-historial"></div>
-        <div id="sb-sec-acciones" class="bento-card-section-hdr" style="display:none;margin-top:8px">Acciones rápidas</div>
-        <div id="sb-acciones-rol"></div>
-      </div>
-
-      <!-- ── Oculto: mejoras.js escribe aquí, sin efecto visual ── -->
+      <!-- Compat: IDs que los módulos JS necesitan sin efecto visual -->
       <div style="display:none;position:absolute;pointer-events:none;left:-9999px">
         <div id="role-cards-container"><div class="role-cards" id="role-cards"></div></div>
         <div id="ficha-centro-container"><div id="ficha-centro-data"></div></div>
+        <div id="wb-actions-staff"></div>
       </div>
 
-    </div>
+    </div><!-- /.inicio-content -->
+
+    <!-- AI RAIL -->
+    <div class="inicio-rail" id="inicio-rail">
+      <div class="rail-hdr">
+        <div class="rail-hdr-logo">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+            <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
+            <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+            <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
+          </svg>
+        </div>
+        <div>
+          <div class="rail-hdr-title">Asistente</div>
+          <div class="rail-hdr-sub">DidactIA · <span id="wlc-ctr">tu centro</span></div>
+        </div>
+      </div>
+      <div class="chat-main">
+        <div class="load-bar" id="load-bar"></div>
+        <div class="chat-msgs" id="chat-msgs">
+          <div class="welcome" id="welcome">
+            <div class="wlc-ico">D</div>
+            <div class="wlc-title">¿En qué puedo ayudarte?</div>
+            <div class="wlc-sub">Pregúntame sobre tu centro: horarios, reuniones, menú y más.</div>
+            <div class="quick-qs">
+              <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
+              <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
+              <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">Actividades extraescolares</div>
+              <div class="quick-q" onclick="askQ('¿Cuál es el horario de clases de esta semana?')">Horario de clases</div>
+            </div>
+          </div>
+        </div>
+        <div class="typing" id="typing">
+          <div class="typ-av">D</div>
+          <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+        <div class="input-area">
+          <div class="inp-wrap">
+            <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
+              onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          </div>
+          <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
+          <button class="send-btn" id="send-btn" onclick="sendMsg()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div><!-- /.inicio-rail -->
+
   </div>
 
   <!-- ADMIN -->
@@ -793,7 +985,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Chatbot', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados'
   };
@@ -965,16 +1157,23 @@
     }
     var name = currentUser.full_name || currentUser.email || '—';
     var initial = name.charAt(0).toUpperCase();
+    var firstName = name.split(' ')[0];
 
-    /* Sidebar */
+    /* Sidebar footer */
     var nameEl = document.getElementById('sb-user-name');
     var avatarEl = document.getElementById('sb-user-avatar');
-    var topbarAv = document.getElementById('topbar-avatar');
     if (nameEl) nameEl.textContent = name;
     if (avatarEl) avatarEl.textContent = initial;
+
+    /* Topbar avatar */
+    var topbarAv = document.getElementById('topbar-avatar');
     if (topbarAv) { topbarAv.textContent = initial; topbarAv.title = name; }
 
-    /* Bento */
+    /* Topbar profile name */
+    var tUN = document.getElementById('topbar-user-name');
+    if (tUN) tUN.textContent = firstName;
+
+    /* Dashboard greeting + role sections */
     updateBentoDashboard();
   }
 
@@ -983,42 +1182,59 @@
     var MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
     var now = new Date();
     var h = now.getHours();
-    var greeting = h < 12 ? 'Buenos días,' : h < 20 ? 'Buenas tardes,' : 'Buenas noches,';
-    var dateStr   = DAYS[now.getDay()] + ' ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
+    var greetingTxt = h < 12 ? 'Buenos días,' : h < 20 ? 'Buenas tardes,' : 'Buenas noches,';
+    var dateStr   = DAYS[now.getDay()] + ', ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
     var firstName = ((currentUser && (currentUser.full_name || currentUser.email)) || '—').split(' ')[0];
     var ctr       = (typeof ctrName !== 'undefined' ? ctrName : '') || '—';
     var r         = (typeof role !== 'undefined' ? role : '') || '';
 
-    /* Texto bento */
-    var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
-    set('bento-date',      dateStr);
-    set('bento-greeting',  greeting);
-    set('bento-user-name', firstName);
-    set('bento-ctr-name',  ctr);
-
-    /* Métricas admin */
-    var isAdmin = r === 'admin' || r === 'superadmin';
-    document.querySelectorAll('.bento-admin-metric').forEach(function(el) {
-      el.style.display = isAdmin ? 'flex' : 'none';
-    });
-
-    /* Acciones en el banner */
-    var isStaff  = isAdmin || r === 'profesional';
+    var isAdmin   = r === 'admin' || r === 'superadmin';
+    var isStaff   = isAdmin || r === 'profesional';
     var isFamilia = r === 'familia';
+
+    /* Greeting texts para cada sección */
+    var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    set('inicio-greeting-txt',       greetingTxt);
+    set('inicio-first-name',         firstName);
+    set('inicio-greeting-txt-staff', greetingTxt);
+    set('inicio-first-name-staff',   firstName);
+    set('inicio-greeting-txt-fam',   greetingTxt);
+    set('inicio-first-name-fam',     firstName);
+    set('inicio-subline', dateStr + ' · ' + ctr);
+    set('inicio-tl-date', DAYS[now.getDay()].charAt(0).toUpperCase() + DAYS[now.getDay()].slice(1) + ', ' + now.getDate() + ' de ' + MONTHS[now.getMonth()]);
+
+    /* Topbar: rol activo */
+    var tUR = document.getElementById('topbar-user-role');
+    if (tUR) tUR.textContent = isAdmin ? 'Admin' : (r === 'profesional' ? 'Profesor' : (isFamilia ? 'Familia' : r));
+    var btnAdmin = document.getElementById('topbar-role-admin');
+    var btnProf  = document.getElementById('topbar-role-prof');
+    if (btnAdmin) btnAdmin.classList.toggle('active', isAdmin);
+    if (btnProf)  btnProf.classList.toggle('active', !isAdmin && isStaff);
+
+    /* Mostrar la sección correcta del inicio */
+    var secAdmin  = document.getElementById('inicio-admin');
+    var secStaff  = document.getElementById('inicio-staff');
+    var secFam    = document.getElementById('inicio-familia');
+    if (secAdmin) secAdmin.style.display  = isAdmin   ? 'contents' : 'none';
+    if (secStaff) secStaff.style.display  = (!isAdmin && isStaff) ? 'contents' : 'none';
+    if (secFam)   secFam.style.display    = isFamilia ? 'contents' : 'none';
+
+    /* Busqueda e historial (solo staff) */
+    var busq = document.getElementById('busqueda-alumno-container');
+    var hist = document.getElementById('bento-historial-card');
+    if (busq) busq.style.display = isStaff ? 'block' : 'none';
+    if (hist) hist.style.display = isStaff ? 'block' : 'none';
+
+    /* Compat: wb-actions (los módulos externos esperan estos IDs) */
     var actStaff = document.getElementById('wb-actions-staff');
     var actFam   = document.getElementById('wb-actions-familia');
-    if (actStaff) actStaff.style.display = isStaff ? 'flex' : 'none';
+    if (actStaff) actStaff.style.display = isStaff   ? 'flex' : 'none';
     if (actFam)   actFam.style.display   = isFamilia ? 'flex' : 'none';
 
-    /* Card historial/acciones */
-    var histCard = document.getElementById('bento-historial-card');
-    if (histCard) histCard.style.display = isStaff ? 'block' : 'none';
-
-    /* Set data-role en panel para CSS future-proofing */
+    /* data-role en panel */
     var panelChat = document.getElementById('panel-chat');
     if (panelChat && r) panelChat.dataset.role = r;
 
-    /* Observers para sincronizar métricas desde role-cards-container (oculto) */
     if (!_bentoObserversSetup) {
       _bentoObserversSetup = true;
       setupBentoMetricSync();
