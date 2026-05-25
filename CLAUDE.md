@@ -119,9 +119,10 @@ scripts/
 
 ## Tokens CSS (css/styles.css)
 
+### Tokens originales (compatibilidad)
 ```css
---bg, --srf, --srf2      fondos (gris claro, blanco, gris muy claro)
---bdr                    borde (#e0e0e0)
+--bg, --srf, --srf2      fondos (aliasados a --paper y --paper-2 en v2)
+--bdr                    borde (aliasado a --line en v2)
 --txt, --txt2, --txt3    texto (oscuro → gris claro)
 --ink, --ink-l, --ink-ll color primario del centro (por defecto azul Google #1a73e8)
 --amb, --amb-l           ámbar (avisos)
@@ -130,7 +131,30 @@ scripts/
 --sh, --sh-lg            sombras
 ```
 
+### Tokens Design System v2 (paleta editorial cálida)
+```css
+--paper:         #FAF9F6   /* fondo principal crema */
+--paper-2:       #F4F2EE   /* fondo sidebar y rail */
+--surface-sunk:  #ECEBE4   /* fondo chips/badges */
+--line:          #E6E3DC   /* borde 1px cálido */
+--line-2:        #D9D5CB   /* borde hover */
+--line-strong:   #C5BFB2   /* borde fuerte */
+--muted:         #787F93   /* texto secundario */
+--muted-2:       #B0B5C4   /* texto terciario */
+--accent:        #C76B3D   /* terracota (IA/brand accent) */
+--accent-soft:   #F3E1D5
+--accent-ink:    #7A3E1F
+--success:       #3F9367   --success-soft: #E3F2EC
+--warning:       #D69540   --warning-soft: #FBF0DC
+--danger:        #C24D2F   --danger-soft:  #FAE6E0
+--info:          #4D6FA8   --info-soft:    #E3EAFA
+--font-display:  "Newsreader", Georgia, serif   /* saludo, títulos, números stat */
+--font-ui:       "Geist", "DM Sans", sans-serif /* todo lo demás */
+```
+
 `applyTheme(colorPrimario, logoUrl)` en `auth.js` sobreescribe `--ink` y derivadas con el color del centro. Se llama en: login, cambio de centro (superadmin), y `goHome()`.
+
+> **Regla crítica:** `--ink` NO es un navy fijo — es el color del centro (sobrescrito por `applyTheme`). En el CSS de diseño usar `--ink` para elementos que deben respetar la tematización por centro (active nav, greeting em, etc.).
 
 ---
 
@@ -143,15 +167,34 @@ DOMContentLoaded (config.js)
       → sb.from("profiles")
       → sb.from("centros")       (superadmin carga todos)
       → applyTheme()
-      → showTab("chat")
+      → ctr-name-hdr ← nombre del centro  (ahora está en .sb-school del sidebar)
+      → showTab("chat")          muestra #panel-chat (Inicio dashboard + AI rail)
           → loadComedor()        si tab comedor activo
           → initSustPanel()      si tab sust activo
           → loadAdmin()          si tab admin activo
       → initWelcomeExtras()      [mejoras.js]
-          → loadDashboard()
+          → loadDashboard()      escribe en #role-cards-container (oculto)
           → loadMisHijos()
           → loadComedorHijos()   solo familia + módulo comedor
+  → Inline script (app.html)
+      → MutationObserver en #app-main → updateUserInfo() → updateBentoDashboard()
+      → updateBentoDashboard():
+          - muestra #inicio-admin / #inicio-staff / #inicio-familia según rol
+          - rellena greeting txt + firstName en cada sección
+          - actualiza topbar: #topbar-user-name, #topbar-user-role, role switch
+          - setupBentoMetricSync(): MutationObserver en #role-cards-container
+            sincroniza #stat-guardias/ausentes/incidencias → #bento-guardias/ausentes/incidencias
 ```
+
+### Arquitectura inline script (app.html — NO es un archivo JS)
+El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. Gestiona:
+- `TITLES` map: tab → título topbar (chat = 'Inicio')
+- `TAB_MAP`: tab ID → nav-item sidebar + bottom nav
+- `BADGE_MAP`: tab → badge sidebar + bottom nav
+- Patch de `window.showTab` para sincronizar nav activo
+- `updateUserInfo()`: popula sidebar footer + topbar avatar + nombre
+- `updateBentoDashboard()`: gestiona secciones de rol del Inicio y topbar
+- `syncBentoMetrics()`: sincroniza métricas desde role-cards-container oculto
 
 ---
 
@@ -266,7 +309,7 @@ DOMContentLoaded (config.js)
 
 ---
 
-## Estado del proyecto (2026-05-25)
+## Estado del proyecto (2026-05-26)
 
 ### Tablas verificadas en Supabase (proyecto: rflfsbrdmgaidhvbuvwb)
 
@@ -545,6 +588,17 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 7. Hacer `git commit` antes de cada deploy
 8. `applyTheme` siempre se llama **después** de `resetChat()` y `updateUI()` para que el DOM esté listo
 
+### Convenciones UI / Design System
+9. **No tocar archivos JS** para cambios de UI — solo `app.html` e `css/styles.css`
+10. **No cambiar IDs existentes** — auth.js, mejoras.js y otros módulos los referencian por ID
+11. Usar `var(--ink)` (NO colores navy fijos) en elementos que deben respetar la tematización por centro
+12. `--ink` es el color del centro sobreescrito por `applyTheme()` — nunca asumir que es azul Google
+13. Los archivos de referencia visual están en `design_handoff_didactia/`:
+    - `VISUAL_FIDELITY.md` — checklist y especificaciones exactas (leer antes de tocar UI)
+    - `screenshots/` — capturas de referencia; el output DEBE parecerse a estas
+    - `reference/DidactIA.html` — prototipo navegable completo
+14. Toda pantalla de UI debe pasar el checklist de la sección 9 de `VISUAL_FIDELITY.md` antes de declararse "hecha"
+
 ---
 
 ## Roadmap
@@ -571,6 +625,21 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] n8n Alerta absentismo comedor (L-V 16:00, email a tutores)
 - [x] n8n Alertas plazos IB (L-V 9:00, email a admins con CC superadmin)
 - [x] Centro demo IES Demo con 80 alumnos, horarios, datos IB y 30 días comedor
+- [x] Design System v2: paleta editorial cálida (oklch), Newsreader serif, tokens CSS completos
+- [x] Layout shell v2: sidebar 248px con SVG brand (navy+D+spark ámbar), topbar con búsqueda+role switch+avatar, bottom nav móvil
+- [x] Inicio admin v2: stat2 tiles (barra lateral 3px, icono soft-tinted, Newsreader 38px, sparkline SVG), timeline, atajos 3×2, AI rail 360px
+
+### En progreso — Redesign visual completo (design_handoff_didactia/)
+- [x] Design tokens v2 + layout shell
+- [x] Logo brand SVG + wordmark sidebar
+- [x] Inicio admin (stat tiles, timeline, AI rail)
+- [ ] Inicio profesor (horario del día, stats distintas)
+- [ ] Alumnos — split tabla/perfil drawer (`02-alumnos.png`)
+- [ ] Asistente IA — pantalla full-screen chat split (`06-chat.png`)
+- [ ] Sustituciones — tabla densa + popover + banner IA (`04-sustituciones.png`)
+- [ ] Incidencias — split lista/detalle con timeline (`05-incidencias.png`)
+
+> **Regla de implementación UI:** NO tocar archivos JS. Solo `app.html` e `css/styles.css`. Mantener TODOS los IDs existentes. Usar `var(--ink)` en lugar de colores navy fijos para respetar tematización.
 
 ### Próximo sprint — App Familias / Portal familias
 - [ ] **App Familias (PWA separada o tab nuevo)** — onboarding, dashboard hijo, chat con el centro, notificaciones push
@@ -689,6 +758,11 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-26 00:53` · `5afc6b3` — feat: inicio admin layout — stat2 tiles, AI rail, sidebar SVG brand, topbar v2
+- `2026-05-26 (este)` · CLAUDE.md — documentación design system v2, arquitectura inline script, roadmap UI redesign
+- `2026-05-25 20:27` · `e9e9652` — feat: design system v2 — warm editorial tokens + layout shell redesign
+- `2026-05-25 19:45` · `4fa987c` — feat: bento grid dashboard with metric cards, welcome banner and chatbot widget
+- `2026-05-25 19:17` · `f404ed6` — feat: redesign dashboard — two-column layout with sidebar panel
 - `2026-05-25 16:57` · `182b449` — feat: migrar navegación a sidebar lateral con topbar y bottom nav móvil
 - `2026-05-25 06:49` · `e93701c` — docs: CLAUDE.md actualización completa 2026-05-25
 - `2026-05-24 23:02` · `e755e36` — feat: módulo comunicados internos con envío por email y realtime
