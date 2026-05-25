@@ -233,16 +233,34 @@ async function buildContext() {
     if (role === "profesional" && currentUserName) {
       const nameParts = currentUserName.split(" ").filter(p => p.length > 2);
       if (nameParts.length > 0) {
-        const { data } = await sb.from("horarios")
-          .select("dia,hora,profesor,actividad")
+        // Intentar primero horarios_grupo (tabla principal con datos importados)
+        const { data: hg } = await sb.from("horarios_grupo")
+          .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,grupo_horario")
           .eq("centro_id", ctrId)
-          .ilike("profesor", `%${nameParts[0]}%`)
-          .order("dia").order("hora")
-          .limit(50);
-        if (data?.length) {
+          .ilike("profesor_nombre", `%${nameParts[0]}%`)
+          .order("dia").order("tramo")
+          .limit(80);
+        if (hg?.length) {
           ctx += "MI HORARIO DE CLASES:\n";
-          data.forEach(h => { ctx += `- ${h.dia} a las ${h.hora}: ${h.actividad} (${h.profesor})\n`; });
+          hg.forEach(h => {
+            const hi = String(h.hora_inicio || "").slice(0,5);
+            const hf = String(h.hora_fin || "").slice(0,5);
+            ctx += `- ${h.dia} ${hi}-${hf}: ${h.actividad_nombre}${h.grupo_horario ? " ("+h.grupo_horario+")" : ""}\n`;
+          });
           ctx += "\n";
+        } else {
+          // Fallback tabla legacy horarios
+          const { data } = await sb.from("horarios")
+            .select("dia,hora,profesor,actividad")
+            .eq("centro_id", ctrId)
+            .ilike("profesor", `%${nameParts[0]}%`)
+            .order("dia").order("hora")
+            .limit(50);
+          if (data?.length) {
+            ctx += "MI HORARIO DE CLASES:\n";
+            data.forEach(h => { ctx += `- ${h.dia} a las ${h.hora}: ${h.actividad} (${h.profesor})\n`; });
+            ctx += "\n";
+          }
         }
       }
     }
@@ -332,10 +350,10 @@ async function sendMsg() {
         "4esoa":["4ºeso a","4 eso a","4esoa","4º eso a","4°eso a"],
         "4esob":["4ºeso b","4 eso b","4esob","4º eso b","4°eso b"],
         "4esoc":["4ºeso c","4 eso c","4esoc","4º eso c","4°eso c"],
-        "1baca":["1ºbac a","1 bac a","1baca","1º bac a","1°bac a","1bach a","1º bach a"],
-        "1bacb":["1ºbac b","1 bac b","1bacb","1º bac b","1°bac b","1bach b"],
-        "2baca":["2ºbac a","2 bac a","2baca","2º bac a","2°bac a","2bach a"],
-        "2bacb":["2ºbac b","2 bac b","2bacb","2º bac b","2°bac b","2bach b"],
+        "1baca":["1ºbac a","1 bac a","1baca","1º bac a","1°bac a","1bach a","1º bach a","1baa","1 baa","1ºbaa"],
+        "1bacb":["1ºbac b","1 bac b","1bacb","1º bac b","1°bac b","1bach b","1bab","1 bab","1ºbab"],
+        "2baca":["2ºbac a","2 bac a","2baca","2º bac a","2°bac a","2bach a","2baa","2 baa","2ºbaa"],
+        "2bacb":["2ºbac b","2 bac b","2bacb","2º bac b","2°bac b","2bach b","2bab","2 bab","2ºbab"],
         "1ib":["1ºib","1 ib","1ib","1º ib","1°ib"],
         "2ib":["2ºib","2 ib","2ib","2º ib","2°ib"],
       };

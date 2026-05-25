@@ -37,8 +37,16 @@ GRUPO_RE = re.compile(
 
 
 def extraer_grupo(actividad):
+    import re as _re
     m = GRUPO_RE.search(actividad)
-    return m.group(1).strip().upper() if m else None
+    if not m:
+        return None
+    g = m.group(1).replace(" ", "").upper()
+    # Normalizar BAA→BACA, BAB→BACB (notación Agora → notación canónica)
+    g = _re.sub(r'^([1-4])BA([AB])$', lambda x: x.group(1) + 'BAC' + x.group(2), g)
+    # Normalizar BI→IB
+    g = _re.sub(r'^([1-4])BI$', lambda x: x.group(1) + 'IB', g)
+    return g
 
 
 def parse_hora(hora_str):

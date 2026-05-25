@@ -35,7 +35,13 @@ const GRUPO_RE = /\b([1-4](?:ESO|BAC|BA[AB]|IB|BI|FPB?|CF[A-Z]*)[\s]?[A-D]?)\b/i
 
 function extraerGrupo(actividad) {
   const m = GRUPO_RE.exec(actividad);
-  return m ? m[1].replace(/\s/g, "").toUpperCase() : "";
+  if (!m) return "";
+  let g = m[1].replace(/\s/g, "").toUpperCase();
+  // Normalizar BAA→BACA, BAB→BACB (notación Agora → notación canónica)
+  g = g.replace(/^([1-4])BA([AB])$/, (_, n, l) => `${n}BAC${l}`);
+  // Normalizar BI→IB (variante de IB usada en algunas celdas)
+  g = g.replace(/^([1-4])BI$/, (_, n) => `${n}IB`);
+  return g;
 }
 
 function parseHora(horaStr) {
