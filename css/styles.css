@@ -691,4 +691,107 @@ body { height:100%; overflow:hidden; }
   .chat-main { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)); }
   #app-topbar { padding-right: 12px; }
   .topbar-ctr-pill { display: none; }
+  /* Dashboard: stack en móvil */
+  .dash-layout { flex-direction: column; overflow-y: auto; }
+  .dash-left { width: 100%; border-right: none; border-bottom: 1px solid var(--bdr); max-height: none; overflow: visible; }
+  .dash-scroll { overflow: visible; padding: 16px 14px 12px; }
+  .dash-right { flex: 1; min-height: 300px; }
+  .dash-right .chat-main { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)); }
+}
+
+/* ── Dashboard Layout ────────────────────────────────── */
+.dash-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  width: 100%;
+}
+
+.dash-left {
+  width: 340px;
+  flex-shrink: 0;
+  background: #f1f5f9;
+  border-right: 1px solid var(--bdr);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dash-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 18px 28px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bdr) transparent;
+}
+.dash-scroll::-webkit-scrollbar { width: 4px; }
+.dash-scroll::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 2px; }
+
+.dash-header {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--bdr);
+}
+.dash-greeting-word {
+  font-size: 12px;
+  color: var(--txt3);
+  font-weight: 500;
+  letter-spacing: .03em;
+  margin-bottom: 2px;
+}
+.dash-user-display {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--txt);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.dash-date-display {
+  font-size: 12px;
+  color: var(--txt3);
+  text-transform: capitalize;
+}
+.dash-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-bottom: 8px;
+}
+
+/* Role cards: una columna en el panel izquierdo */
+#panel-chat .role-cards {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+}
+
+/* sb-item en el contexto del dashboard (historial de preguntas) */
+#panel-chat .sb-item {
+  border-radius: var(--r-sm);
+  margin-right: 0;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+
+/* Columna derecha: chat widget */
+.dash-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  background: var(--srf);
+}
+.dash-right .chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dash-right .welcome {
+  padding: 36px 24px 24px;
+  max-width: 480px;
 }

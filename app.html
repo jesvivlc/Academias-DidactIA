@@ -219,80 +219,90 @@
     <!-- PANELES (main) -->
     <div class="main" id="app-main" style="display:none">
 
-  <!-- CHAT -->
+  <!-- CHAT / DASHBOARD -->
   <div class="panel active" id="panel-chat">
-    <aside class="sidebar">
-      <div class="sb-sec">Preguntas frecuentes</div>
-      <div class="sb-item active" onclick="askQ('¿Cuál es el horario del comedor escolar?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2v5a3 3 0 0 0 6 0V2"/><line x1="8" y1="7" x2="8" y2="14"/></svg></span> Horario del comedor</div>
-      <div class="sb-item" onclick="askQ('¿Cuándo es la próxima reunión de familias?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="5" y1="1.5" x2="5" y2="4.5"/><line x1="11" y1="1.5" x2="11" y2="4.5"/><line x1="2" y1="7" x2="14" y2="7"/></svg></span> Próximas reuniones</div>
-      <div class="sb-item" onclick="askQ('¿Cuál es el horario de atención a familias?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg></span> Horario del centro</div>
-      <div class="sb-item" onclick="askQ('¿Qué actividades extraescolares hay disponibles?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 1 0 6 6"/><path d="M14 8a2 2 0 0 1-2 2"/></svg></span> Extraescolares</div>
-      <div class="sb-item" onclick="askQ('¿Cómo funciona el protocolo de ausencias y justificantes?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="1" width="10" height="14" rx="1.5"/><line x1="5.5" y1="5" x2="10.5" y2="5"/><line x1="5.5" y1="8" x2="10.5" y2="8"/><line x1="5.5" y1="11" x2="8" y2="11"/></svg></span> Justificantes</div>
-      <div class="sb-item" onclick="askQ('¿Cuál es el menú de esta semana?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="11" y2="9"/></svg></span> Menú semanal</div>
-      <div class="sb-sec">Para el profesorado</div>
-      <div class="sb-item" onclick="askQ('¿Cuándo es el próximo claustro?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.8 2.2-5 5-5"/><circle cx="11.5" cy="5" r="2"/><path d="M15 13c0-2.2-1.6-4-3.5-4"/></svg></span> Próximo claustro</div>
-      <div class="sb-item" onclick="askQ('¿Cómo solicito material didáctico?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="12" height="7" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg></span> Solicitar materiales</div>
-      <div class="sb-item" onclick="askQ('¿Cómo registro una incidencia de convivencia?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r=".8" fill="currentColor"/></svg></span> Registrar incidencia</div>
-      <div class="sb-sec">Horarios</div>
-      <div class="sb-item" onclick="askQ('¿Cuál es el horario de clases de esta semana?')"><span style="flex-shrink:0;display:flex;align-items:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="2" x2="5" y2="14"/><line x1="2" y1="6" x2="14" y2="6"/></svg></span> Ver horario de clases</div>
-      <div class="sb-sec" id="sb-sec-recientes" style="display:none;">Recientes</div>
-      <div id="sb-historial"></div>
-      <div class="sb-sec" id="sb-sec-acciones" style="display:none;">Acciones rápidas</div>
-      <div id="sb-acciones-rol"></div>
-    </aside>
-    <div class="chat-main">
-      <div class="load-bar" id="load-bar"></div>
-      <div class="chat-msgs" id="chat-msgs">
-        <div class="welcome" id="welcome">
-          <div class="wlc-ico">D</div>
-          <div class="wlc-title">Hola, soy DidactIA</div>
-          <div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">este centro</strong>. Puedo responder preguntas sobre horarios, menús, reuniones y mucho más.</div>
-          <div class="quick-qs">
-            <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
-            <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
-            <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
+    <div class="dash-layout">
+
+      <!-- Columna izquierda: Dashboard -->
+      <div class="dash-left">
+        <div class="dash-scroll">
+          <div class="dash-header">
+            <div class="dash-greeting-word" id="dash-greeting-word">Bienvenido,</div>
+            <div class="dash-user-display" id="dash-user-name-lbl">—</div>
+            <div class="dash-date-display" id="dash-date-display"></div>
           </div>
 
-          <!-- Tarjetas rápidas -->
-          <div id="role-cards-container" style="display:none;">
+          <!-- Tarjetas por rol (mejoras.js inyecta aquí) -->
+          <div id="role-cards-container" style="display:none">
             <div class="role-cards" id="role-cards"></div>
           </div>
+
           <!-- Ficha Mi Centro -->
-          <div id="ficha-centro-container" style="display:none; margin-top:14px;">
+          <div id="ficha-centro-container" style="display:none;margin-top:16px;">
             <div id="ficha-centro-data" style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;"></div>
           </div>
+
           <!-- Estado comedor hijos -->
-          <div id="comedor-hijos-container" style="display:none; margin-top:14px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Comedor hoy</div>
+          <div id="comedor-hijos-container" style="display:none;margin-top:16px;">
+            <div class="dash-section-label">Comedor hoy</div>
             <div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
+
           <!-- Mis hijos -->
-          <div id="mis-hijos-container" style="display:none; margin-top:14px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Mis hijos</div>
+          <div id="mis-hijos-container" style="display:none;margin-top:16px;">
+            <div class="dash-section-label">Mis hijos</div>
             <div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
           </div>
+
           <!-- Búsqueda rápida alumno -->
-          <div id="busqueda-alumno-container" style="display:none; margin-top:14px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Búsqueda rápida de alumno</div>
+          <div id="busqueda-alumno-container" style="display:none;margin-top:16px;">
+            <div class="dash-section-label">Búsqueda rápida</div>
             <input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" />
             <div id="busqueda-alumno-res"></div>
           </div>
+
+          <!-- Historial y acciones rápidas (gestionados por mejoras.js) -->
+          <div id="sb-sec-recientes" class="dash-section-label" style="display:none;margin-top:20px;">Recientes</div>
+          <div id="sb-historial"></div>
+          <div id="sb-sec-acciones" class="dash-section-label" style="display:none;margin-top:16px;">Acciones rápidas</div>
+          <div id="sb-acciones-rol"></div>
         </div>
       </div>
-      <div class="typing" id="typing">
-        <div class="typ-av">D</div>
-        <div class="dots"><span></span><span></span><span></span></div>
-      </div>
-      <div class="input-area">
-        <div class="inp-wrap">
-          <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
-            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+
+      <!-- Columna derecha: Chat -->
+      <div class="dash-right">
+        <div class="chat-main">
+          <div class="load-bar" id="load-bar"></div>
+          <div class="chat-msgs" id="chat-msgs">
+            <div class="welcome" id="welcome">
+              <div class="wlc-ico">D</div>
+              <div class="wlc-title">¿En qué puedo ayudarte?</div>
+              <div class="wlc-sub">Pregúntame sobre <strong id="wlc-ctr">tu centro</strong>: horarios, reuniones, menú y mucho más.</div>
+              <div class="quick-qs">
+                <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
+                <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
+                <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
+                <div class="quick-q" onclick="askQ('¿Cuál es el horario de clases de esta semana?')">¿Cuál es el horario de clases?</div>
+              </div>
+            </div>
+          </div>
+          <div class="typing" id="typing">
+            <div class="typ-av">D</div>
+            <div class="dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="input-area">
+            <div class="inp-wrap">
+              <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
+                onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+            </div>
+            <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
+            <button class="send-btn" id="send-btn" onclick="sendMsg()">
+              <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </div>
         </div>
-        <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
-        <button class="send-btn" id="send-btn" onclick="sendMsg()">
-          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        </button>
       </div>
+
     </div>
   </div>
 
@@ -791,6 +801,7 @@
       syncAllVisibility();
       updateUserInfo();
       buildMasDrawer();
+      updateDashGreeting();
     }
   }).observe(appMain, { attributes: true, attributeFilter: ['style'] });
 
@@ -911,21 +922,40 @@
     });
   }
 
-  /* ── 7. Rellenar info de usuario en sidebar ── */
+  /* ── 7. Rellenar info de usuario en sidebar y dashboard ── */
   function updateUserInfo() {
-    /* currentUser es la variable global de auth.js */
     if (typeof currentUser === 'undefined' || !currentUser) {
       setTimeout(updateUserInfo, 200);
       return;
     }
     var name = currentUser.full_name || currentUser.email || '—';
     var initial = name.charAt(0).toUpperCase();
+    var firstName = name.split(' ')[0] || '—';
+
     var nameEl = document.getElementById('sb-user-name');
     var avatarEl = document.getElementById('sb-user-avatar');
     var topbarAv = document.getElementById('topbar-avatar');
+    var dashName = document.getElementById('dash-user-name-lbl');
+
     if (nameEl) nameEl.textContent = name;
     if (avatarEl) avatarEl.textContent = initial;
     if (topbarAv) { topbarAv.textContent = initial; topbarAv.title = name; }
+    if (dashName) dashName.textContent = firstName;
+
+    updateDashGreeting();
+  }
+
+  function updateDashGreeting() {
+    var DAYS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    var MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    var now = new Date();
+    var h = now.getHours();
+    var greeting = h < 12 ? 'Buenos días,' : h < 20 ? 'Buenas tardes,' : 'Buenas noches,';
+    var dateStr = DAYS[now.getDay()] + ' ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
+    var grEl = document.getElementById('dash-greeting-word');
+    var dtEl = document.getElementById('dash-date-display');
+    if (grEl) grEl.textContent = greeting;
+    if (dtEl) dtEl.textContent = dateStr;
   }
 
   /* Sincronizar role-pill (auth.js lo actualiza directamente porque el ID está en el DOM) */
