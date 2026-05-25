@@ -15,7 +15,7 @@ CSV_PATH     = r"C:\Users\Bruno\Desktop\DidactIA\scripts\A Horarios profes TODOS
 # ──────────────────────────────────────────────────────────────────────────────
 
 TRAMOS = {
-    "7:55":  None,
+    "7:55":  (0, "07:55", "08:50"),
     "8:50":  (1, "08:50", "09:45"),
     "9:45":  (2, "09:45", "10:40"),
     "10:40": (3, "10:40", "11:35"),
@@ -28,7 +28,12 @@ TRAMOS = {
 
 DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"]
 IGNORAR = {"patio", "comida", "claustro"}
-GRUPO_RE = re.compile(r'\b([1-4](?:ESO|BAC|IB|FPB?|CF[A-Z]*)[\s]?[A-D]?)\b', re.IGNORECASE)
+# BA[AB] cubre notación Agora: 1BAA/1BAB/2BAA/2BAB (Bachillerato A/B)
+# BI cubre variante de IB usada en algunas celdas (1BI, 2BI)
+GRUPO_RE = re.compile(
+    r'\b([1-4](?:ESO|BAC|BA[AB]|IB|BI|FPB?|CF[A-Z]*)[\s]?[A-D]?)\b',
+    re.IGNORECASE
+)
 
 
 def extraer_grupo(actividad):
@@ -110,6 +115,7 @@ def procesar_bloque(bloque):
             if not actividad or any(ig in actividad.lower() for ig in IGNORAR):
                 continue
 
+            grupo_raw = extraer_grupo(actividad) or ""
             registros.append({
                 "centro_id":        CENTRO_ID,
                 "profesor_nombre":  nombre,
@@ -118,7 +124,7 @@ def procesar_bloque(bloque):
                 "hora_fin":         hora_fin + ":00",
                 "tramo":            tramo_num,
                 "actividad_nombre": actividad,
-                "grupo_horario":    extraer_grupo(actividad) or "",
+                "grupo_horario":    grupo_raw.replace(" ", "").upper(),
             })
 
     return nombre, registros
