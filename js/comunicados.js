@@ -54,7 +54,7 @@ function initComunicadosPanel() {
   var c = document.getElementById('com-contenido');
   if (!c) return;
 
-  var isAdmin = currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'superadmin');
+  var isAdmin = role === 'admin' || role === 'superadmin';
 
   var formHtml = '';
   if (isAdmin) {
