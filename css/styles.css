@@ -776,7 +776,7 @@ body { height:100%; overflow:hidden; }
   padding: 7px 10px;
 }
 
-/* Columna derecha: chat widget */
+/* Columna derecha: chat widget (legacy dash-layout, superseded by bento) */
 .dash-right {
   flex: 1;
   display: flex;
@@ -794,4 +794,272 @@ body { height:100%; overflow:hidden; }
 .dash-right .welcome {
   padding: 36px 24px 24px;
   max-width: 480px;
+}
+
+/* ════════════════════════════════════════════════════
+   BENTO DASHBOARD
+════════════════════════════════════════════════════ */
+:root {
+  --bg-app:       #f4f6f8;
+  --shadow-soft:  0 4px 20px rgba(0,0,0,0.03);
+  --radius-lg:    16px;
+  --orange:       #f59e0b;
+  --green-accent: #10b981;
+  --red-accent:   #ef4444;
+}
+
+/* panel-chat becomes a scroll container for the bento */
+#panel-chat.active {
+  overflow-y: auto;
+  align-items: flex-start; /* children keep natural height, not stretched */
+}
+
+/* Bento grid container */
+.dashboard-bento {
+  width: 100%;
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+  padding: 24px;
+  background: var(--bg-app);
+  align-content: start;
+}
+
+/* Column spans */
+.col-3  { grid-column: span 3; }
+.col-4  { grid-column: span 4; }
+.col-5  { grid-column: span 5; }
+.col-6  { grid-column: span 6; }
+.col-7  { grid-column: span 7; }
+.col-8  { grid-column: span 8; }
+.col-12 { grid-column: span 12; }
+
+/* ── Bento card base ── */
+.bento-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--bdr);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+/* ── Metric cards ── */
+.metric-card {
+  padding: 22px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: relative;
+  transition: box-shadow .15s, transform .12s;
+  cursor: pointer;
+}
+.metric-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.09);
+  transform: translateY(-2px);
+}
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.metric-icon {
+  display: block;
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+.metric-number {
+  font-family: 'Inter', 'DM Sans', sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+.metric-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-top: 4px;
+}
+/* Metric colour variants */
+.metric-orange::before           { background: var(--orange); }
+.metric-orange .metric-number,
+.metric-orange .metric-icon      { color: var(--orange); }
+.metric-amber::before            { background: var(--amb); }
+.metric-amber .metric-number,
+.metric-amber .metric-icon       { color: var(--amb); }
+.metric-red::before              { background: var(--red-accent); }
+.metric-red .metric-number,
+.metric-red .metric-icon         { color: var(--red-accent); }
+.metric-blue::before             { background: var(--ink); }
+.metric-blue .metric-number,
+.metric-blue .metric-icon        { color: var(--ink); }
+
+/* ── Welcome banner ── */
+.welcome-banner {
+  padding: 28px;
+  background: var(--ink);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  overflow: hidden;
+  min-height: 200px;
+}
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.15) 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.welcome-banner::after {
+  content: '';
+  position: absolute;
+  top: -50px; right: -50px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+}
+.wb-date {
+  font-size: 11px;
+  opacity: .65;
+  text-transform: capitalize;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+.wb-greeting {
+  font-size: 13px;
+  opacity: .75;
+  margin-bottom: 1px;
+  position: relative;
+  z-index: 1;
+}
+.wb-name {
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1.15;
+  margin-bottom: 3px;
+  position: relative;
+  z-index: 1;
+}
+.wb-ctr {
+  font-size: 12px;
+  opacity: .6;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 20px;
+}
+.wb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  position: relative;
+  z-index: 1;
+}
+.wb-btn {
+  background: rgba(255,255,255,0.13);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background .15s;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+.wb-btn:hover { background: rgba(255,255,255,0.26); }
+.wb-btn i     { font-size: 13px; line-height: 1; }
+
+/* ── Chatbot widget card ── */
+.chatbot-widget {
+  height: 460px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.chatbot-widget .chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.chatbot-widget .chat-msgs {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 16px 18px;
+}
+.chatbot-widget .welcome {
+  padding: 20px 14px 14px;
+  max-width: none;
+}
+.chatbot-widget .wlc-ico   { width:40px;height:40px;border-radius:10px;font-size:17px;margin-bottom:10px; }
+.chatbot-widget .wlc-title { font-size:15px;margin-bottom:5px; }
+.chatbot-widget .wlc-sub   { font-size:12px;margin-bottom:12px; }
+.chatbot-widget .quick-qs  { gap:5px; }
+.chatbot-widget .quick-q   { font-size:12px;padding:7px 13px; }
+
+/* ── Bento card inner elements (comedor/hijos/search/historial) ── */
+.bento-card-section-hdr {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--txt3);
+  padding: 18px 20px 8px;
+}
+.bento-card-list {
+  padding: 0 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#busqueda-alumno-container  { padding: 18px 20px; }
+#bento-historial-card       { padding: 16px 18px; min-height: 80px; }
+#bento-historial-card .sb-item {
+  border-radius: var(--r-sm);
+  margin-right: 0;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+#busqueda-alumno-container .dash-section-label { margin-bottom: 10px; }
+
+/* ── Bento responsive ── */
+@media (max-width: 1200px) {
+  .col-5 { grid-column: span 12; }
+  .col-7 { grid-column: span 12; }
+  .chatbot-widget { height: 400px; }
+}
+@media (max-width: 900px) {
+  .col-3 { grid-column: span 6; }
+  .col-4 { grid-column: span 6; }
+  .col-6 { grid-column: span 12; }
+}
+@media (max-width: 768px) {
+  .dashboard-bento {
+    padding: 12px;
+    gap: 12px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0));
+  }
+  .col-3,.col-4,.col-5,.col-6,.col-7,.col-8 { grid-column: span 12; }
+  .chatbot-widget { height: 360px; }
+  .welcome-banner { min-height: 160px; }
+  .metric-number  { font-size: 32px; }
 }

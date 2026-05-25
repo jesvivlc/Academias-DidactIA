@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DidactIA — Asistente de Centro Educativo</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="css/styles.css">
   <meta name="theme-color" content="#2a3d2b">
@@ -219,65 +219,65 @@
     <!-- PANELES (main) -->
     <div class="main" id="app-main" style="display:none">
 
-  <!-- CHAT / DASHBOARD -->
+  <!-- CHAT / DASHBOARD — BENTO GRID -->
   <div class="panel active" id="panel-chat">
-    <div class="dash-layout">
+    <div class="dashboard-bento">
 
-      <!-- Columna izquierda: Dashboard -->
-      <div class="dash-left">
-        <div class="dash-scroll">
-          <div class="dash-header">
-            <div class="dash-greeting-word" id="dash-greeting-word">Bienvenido,</div>
-            <div class="dash-user-display" id="dash-user-name-lbl">—</div>
-            <div class="dash-date-display" id="dash-date-display"></div>
-          </div>
+      <!-- ── Métricas (admin/superadmin, ocultas por defecto) ── -->
+      <div class="bento-card metric-card metric-orange col-3 bento-admin-metric" style="display:none"
+           onclick="showTab('sust')" title="Ver sustituciones">
+        <i class="ti ti-replace metric-icon"></i>
+        <div class="metric-number" id="bento-guardias">—</div>
+        <div class="metric-label">Guardias sin cubrir</div>
+      </div>
+      <div class="bento-card metric-card metric-amber col-3 bento-admin-metric" style="display:none">
+        <i class="ti ti-user-off metric-icon"></i>
+        <div class="metric-number" id="bento-ausentes">—</div>
+        <div class="metric-label">Profesores ausentes</div>
+      </div>
+      <div class="bento-card metric-card metric-red col-3 bento-admin-metric" style="display:none"
+           onclick="showTab('incidencias')" title="Ver incidencias">
+        <i class="ti ti-alert-triangle metric-icon"></i>
+        <div class="metric-number" id="bento-incidencias">—</div>
+        <div class="metric-label">Incidencias abiertas</div>
+      </div>
+      <div class="bento-card metric-card metric-blue col-3 bento-admin-metric" style="display:none"
+           onclick="showTab('comunicados')" title="Ver comunicados">
+        <i class="ti ti-speakerphone metric-icon"></i>
+        <div class="metric-number" id="bento-comunicados">—</div>
+        <div class="metric-label">Comunicados</div>
+      </div>
 
-          <!-- Tarjetas por rol (mejoras.js inyecta aquí) -->
-          <div id="role-cards-container" style="display:none">
-            <div class="role-cards" id="role-cards"></div>
-          </div>
-
-          <!-- Ficha Mi Centro -->
-          <div id="ficha-centro-container" style="display:none;margin-top:16px;">
-            <div id="ficha-centro-data" style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;"></div>
-          </div>
-
-          <!-- Estado comedor hijos -->
-          <div id="comedor-hijos-container" style="display:none;margin-top:16px;">
-            <div class="dash-section-label">Comedor hoy</div>
-            <div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-          </div>
-
-          <!-- Mis hijos -->
-          <div id="mis-hijos-container" style="display:none;margin-top:16px;">
-            <div class="dash-section-label">Mis hijos</div>
-            <div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-          </div>
-
-          <!-- Búsqueda rápida alumno -->
-          <div id="busqueda-alumno-container" style="display:none;margin-top:16px;">
-            <div class="dash-section-label">Búsqueda rápida</div>
-            <input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" />
-            <div id="busqueda-alumno-res"></div>
-          </div>
-
-          <!-- Historial y acciones rápidas (gestionados por mejoras.js) -->
-          <div id="sb-sec-recientes" class="dash-section-label" style="display:none;margin-top:20px;">Recientes</div>
-          <div id="sb-historial"></div>
-          <div id="sb-sec-acciones" class="dash-section-label" style="display:none;margin-top:16px;">Acciones rápidas</div>
-          <div id="sb-acciones-rol"></div>
+      <!-- ── Welcome banner ── -->
+      <div class="bento-card welcome-banner col-5">
+        <div class="wb-date" id="bento-date">—</div>
+        <div class="wb-greeting" id="bento-greeting">—</div>
+        <div class="wb-name" id="bento-user-name">—</div>
+        <div class="wb-ctr" id="bento-ctr-name">—</div>
+        <!-- Acciones rápidas staff (admin/prof) -->
+        <div class="wb-actions" id="wb-actions-staff" style="display:none">
+          <button class="wb-btn" onclick="showTab('sust')"><i class="ti ti-replace"></i> Sustituciones</button>
+          <button class="wb-btn" onclick="showTab('incidencias')"><i class="ti ti-alert-triangle"></i> Incidencias</button>
+          <button class="wb-btn" onclick="showTab('rrhh')"><i class="ti ti-briefcase"></i> RRHH</button>
+          <button class="wb-btn" onclick="showTab('comunicados')"><i class="ti ti-speakerphone"></i> Comunicados</button>
+        </div>
+        <!-- Acciones familia -->
+        <div class="wb-actions" id="wb-actions-familia" style="display:none">
+          <button class="wb-btn" onclick="askQ('¿Cómo justifico una falta de asistencia?')"><i class="ti ti-file-description"></i> Justificar falta</button>
+          <button class="wb-btn" onclick="showTab('comunicados')"><i class="ti ti-speakerphone"></i> Comunicados</button>
+          <button class="wb-btn" onclick="askQ('¿Cuál es el menú de esta semana?')"><i class="ti ti-tools-kitchen-2"></i> Menú semanal</button>
         </div>
       </div>
 
-      <!-- Columna derecha: Chat -->
-      <div class="dash-right">
+      <!-- ── Chat widget ── -->
+      <div class="bento-card chatbot-widget col-7">
         <div class="chat-main">
           <div class="load-bar" id="load-bar"></div>
           <div class="chat-msgs" id="chat-msgs">
             <div class="welcome" id="welcome">
               <div class="wlc-ico">D</div>
               <div class="wlc-title">¿En qué puedo ayudarte?</div>
-              <div class="wlc-sub">Pregúntame sobre <strong id="wlc-ctr">tu centro</strong>: horarios, reuniones, menú y mucho más.</div>
+              <div class="wlc-sub">Pregúntame sobre <strong id="wlc-ctr">tu centro</strong>: horarios, reuniones, menú y más.</div>
               <div class="quick-qs">
                 <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
                 <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
@@ -301,6 +301,40 @@
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- ── Familia: Comedor hoy (mejoras.js controla display) ── -->
+      <div class="bento-card col-6" id="comedor-hijos-container" style="display:none">
+        <div class="bento-card-section-hdr">Comedor hoy</div>
+        <div id="comedor-hijos-list" class="bento-card-list"></div>
+      </div>
+
+      <!-- ── Familia: Mis hijos (mejoras.js controla display) ── -->
+      <div class="bento-card col-6" id="mis-hijos-container" style="display:none">
+        <div class="bento-card-section-hdr">Mis hijos</div>
+        <div id="mis-hijos-list" class="bento-card-list"></div>
+      </div>
+
+      <!-- ── Staff: Búsqueda rápida (mejoras.js controla display) ── -->
+      <div class="bento-card col-6" id="busqueda-alumno-container" style="display:none">
+        <div class="bento-card-section-hdr">Búsqueda rápida de alumno</div>
+        <input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…"
+               style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" />
+        <div id="busqueda-alumno-res"></div>
+      </div>
+
+      <!-- ── Staff: Historial + acciones (inline script controla display) ── -->
+      <div class="bento-card col-6" id="bento-historial-card" style="display:none">
+        <div id="sb-sec-recientes" class="bento-card-section-hdr" style="display:none">Recientes</div>
+        <div id="sb-historial"></div>
+        <div id="sb-sec-acciones" class="bento-card-section-hdr" style="display:none;margin-top:8px">Acciones rápidas</div>
+        <div id="sb-acciones-rol"></div>
+      </div>
+
+      <!-- ── Oculto: mejoras.js escribe aquí, sin efecto visual ── -->
+      <div style="display:none;position:absolute;pointer-events:none;left:-9999px">
+        <div id="role-cards-container"><div class="role-cards" id="role-cards"></div></div>
+        <div id="ficha-centro-container"><div id="ficha-centro-data"></div></div>
       </div>
 
     </div>
@@ -801,7 +835,6 @@
       syncAllVisibility();
       updateUserInfo();
       buildMasDrawer();
-      updateDashGreeting();
     }
   }).observe(appMain, { attributes: true, attributeFilter: ['style'] });
 
@@ -922,7 +955,9 @@
     });
   }
 
-  /* ── 7. Rellenar info de usuario en sidebar y dashboard ── */
+  /* ── 7. Rellenar info de usuario en sidebar y bento dashboard ── */
+  var _bentoObserversSetup = false;
+
   function updateUserInfo() {
     if (typeof currentUser === 'undefined' || !currentUser) {
       setTimeout(updateUserInfo, 200);
@@ -930,32 +965,103 @@
     }
     var name = currentUser.full_name || currentUser.email || '—';
     var initial = name.charAt(0).toUpperCase();
-    var firstName = name.split(' ')[0] || '—';
 
+    /* Sidebar */
     var nameEl = document.getElementById('sb-user-name');
     var avatarEl = document.getElementById('sb-user-avatar');
     var topbarAv = document.getElementById('topbar-avatar');
-    var dashName = document.getElementById('dash-user-name-lbl');
-
     if (nameEl) nameEl.textContent = name;
     if (avatarEl) avatarEl.textContent = initial;
     if (topbarAv) { topbarAv.textContent = initial; topbarAv.title = name; }
-    if (dashName) dashName.textContent = firstName;
 
-    updateDashGreeting();
+    /* Bento */
+    updateBentoDashboard();
   }
 
-  function updateDashGreeting() {
-    var DAYS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  function updateBentoDashboard() {
+    var DAYS   = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
     var MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
     var now = new Date();
     var h = now.getHours();
     var greeting = h < 12 ? 'Buenos días,' : h < 20 ? 'Buenas tardes,' : 'Buenas noches,';
-    var dateStr = DAYS[now.getDay()] + ' ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
-    var grEl = document.getElementById('dash-greeting-word');
-    var dtEl = document.getElementById('dash-date-display');
-    if (grEl) grEl.textContent = greeting;
-    if (dtEl) dtEl.textContent = dateStr;
+    var dateStr   = DAYS[now.getDay()] + ' ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
+    var firstName = ((currentUser && (currentUser.full_name || currentUser.email)) || '—').split(' ')[0];
+    var ctr       = (typeof ctrName !== 'undefined' ? ctrName : '') || '—';
+    var r         = (typeof role !== 'undefined' ? role : '') || '';
+
+    /* Texto bento */
+    var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    set('bento-date',      dateStr);
+    set('bento-greeting',  greeting);
+    set('bento-user-name', firstName);
+    set('bento-ctr-name',  ctr);
+
+    /* Métricas admin */
+    var isAdmin = r === 'admin' || r === 'superadmin';
+    document.querySelectorAll('.bento-admin-metric').forEach(function(el) {
+      el.style.display = isAdmin ? 'flex' : 'none';
+    });
+
+    /* Acciones en el banner */
+    var isStaff  = isAdmin || r === 'profesional';
+    var isFamilia = r === 'familia';
+    var actStaff = document.getElementById('wb-actions-staff');
+    var actFam   = document.getElementById('wb-actions-familia');
+    if (actStaff) actStaff.style.display = isStaff ? 'flex' : 'none';
+    if (actFam)   actFam.style.display   = isFamilia ? 'flex' : 'none';
+
+    /* Card historial/acciones */
+    var histCard = document.getElementById('bento-historial-card');
+    if (histCard) histCard.style.display = isStaff ? 'block' : 'none';
+
+    /* Set data-role en panel para CSS future-proofing */
+    var panelChat = document.getElementById('panel-chat');
+    if (panelChat && r) panelChat.dataset.role = r;
+
+    /* Observers para sincronizar métricas desde role-cards-container (oculto) */
+    if (!_bentoObserversSetup) {
+      _bentoObserversSetup = true;
+      setupBentoMetricSync();
+    }
+  }
+
+  /* Sincroniza #stat-guardias/#stat-ausentes/#stat-incidencias → tarjetas bento */
+  function syncBentoMetrics() {
+    var map = [
+      ['stat-guardias',    'bento-guardias'],
+      ['stat-ausentes',    'bento-ausentes'],
+      ['stat-incidencias', 'bento-incidencias']
+    ];
+    map.forEach(function(p) {
+      var src = document.getElementById(p[0]);
+      var dst = document.getElementById(p[1]);
+      if (src && dst) {
+        var v = src.textContent.trim();
+        if (v && v !== '—') dst.textContent = v;
+      }
+    });
+    /* Comunicados desde badge del sidebar */
+    var badge = document.getElementById('sb-badge-com');
+    var bentoComEl = document.getElementById('bento-comunicados');
+    if (badge && bentoComEl) {
+      var n = badge.textContent.trim();
+      if (n) bentoComEl.textContent = n;
+    }
+  }
+
+  function setupBentoMetricSync() {
+    var rcc = document.getElementById('role-cards-container');
+    if (rcc) {
+      new MutationObserver(function() {
+        syncBentoMetrics();
+        setTimeout(syncBentoMetrics, 600); /* captura actualizaciones async de mejoras.js */
+      }).observe(rcc, { childList: true, subtree: true, characterData: true });
+    }
+    var comBadge = document.getElementById('sb-badge-com');
+    if (comBadge) {
+      new MutationObserver(syncBentoMetrics)
+        .observe(comBadge, { childList: true, subtree: true, characterData: true });
+    }
   }
 
   /* Sincronizar role-pill (auth.js lo actualiza directamente porque el ID está en el DOM) */
