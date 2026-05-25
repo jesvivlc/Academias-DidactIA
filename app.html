@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DidactIA — Asistente de Centro Educativo</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="css/styles.css">
   <meta name="theme-color" content="#2a3d2b">
@@ -1157,7 +1157,16 @@
     }
     var name = currentUser.full_name || currentUser.email || '—';
     var initial = name.charAt(0).toUpperCase();
-    var firstName = name.split(' ')[0];
+    /* firstName: usa full_name; si solo hay email extrae parte local antes de @ y + */
+    var firstName;
+    if (currentUser.full_name) {
+      firstName = currentUser.full_name.split(' ')[0];
+    } else if (currentUser.email) {
+      var local = currentUser.email.split('@')[0].split('+')[0];
+      firstName = local.charAt(0).toUpperCase() + local.slice(1);
+    } else {
+      firstName = '—';
+    }
 
     /* Sidebar footer */
     var nameEl = document.getElementById('sb-user-name');
@@ -1184,7 +1193,16 @@
     var h = now.getHours();
     var greetingTxt = h < 12 ? 'Buenos días,' : h < 20 ? 'Buenas tardes,' : 'Buenas noches,';
     var dateStr   = DAYS[now.getDay()] + ', ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
-    var firstName = ((currentUser && (currentUser.full_name || currentUser.email)) || '—').split(' ')[0];
+    var _u = currentUser || {};
+    var firstName;
+    if (_u.full_name) {
+      firstName = _u.full_name.split(' ')[0];
+    } else if (_u.email) {
+      var _local = _u.email.split('@')[0].split('+')[0];
+      firstName = _local.charAt(0).toUpperCase() + _local.slice(1);
+    } else {
+      firstName = '—';
+    }
     var ctr       = (typeof ctrName !== 'undefined' ? ctrName : '') || '—';
     var r         = (typeof role !== 'undefined' ? role : '') || '';
 
