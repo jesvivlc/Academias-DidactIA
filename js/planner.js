@@ -43,6 +43,7 @@
   };
 
   async function _loadData() {
+    console.log('[Planner] _loadData inicio — ctrId:', ctrId);
     const [mR, pR, nR] = await Promise.all([
       sb.from('materias').select('*').eq('centro_id', ctrId).order('nombre'),
       sb.from('profesores').select('*').eq('centro_id', ctrId).eq('activo', true).order('nombre'),
@@ -50,6 +51,9 @@
         .select('*, materias(nombre,color), profesores(nombre)')
         .eq('centro_id', ctrId)
     ]);
+    console.log('[Planner] materias:', mR.data, mR.error);
+    console.log('[Planner] profesores:', pR.data, pR.error);
+    console.log('[Planner] necesidades:', nR.data, nR.error);
     _s.materias   = mR.data  || [];
     _s.profesores = pR.data  || [];
     _s.necesidades = (nR.data || []).map(n => ({
