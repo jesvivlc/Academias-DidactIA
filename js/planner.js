@@ -39,11 +39,27 @@
      INIT
   ════════════════════════════════ */
   window.initPlannerPanel = function () {
-    _loadData().then(() => _showPTab(_s.ptab));
+    const wrap = document.getElementById('pt-materias');
+    if (wrap) wrap.innerHTML = '<div class="planner-empty" style="padding:40px 0;text-align:center">Cargando…</div>';
+    _loadData()
+      .then(() => _showPTab(_s.ptab))
+      .catch(err => {
+        console.error('[Planner] error al cargar datos:', err);
+        const el = document.getElementById('pt-materias');
+        if (el) {
+          el.innerHTML =
+            `<div class="planner-empty" style="color:var(--danger)">Error al cargar datos del Planner.<br>
+             Revisa la consola del navegador. Es posible que las tablas de Supabase no estén creadas<br>
+             (ejecuta <code>sql/planner-tables.sql</code> en el SQL Editor).<br>
+             <code style="font-size:11px">${String(err?.message || err)}</code></div>`;
+          el.style.display = 'block';
+        }
+      });
   };
 
   async function _loadData() {
-    console.log('[Planner] _loadData inicio — ctrId:', ctrId);
+    console.log('[Planner] _loadData inicio — ctrId:', ctrId, '| sb:', !!sb);
+    if (!sb) throw new Error('Supabase client (sb) no disponible');
     const [mR, pR, nR] = await Promise.all([
       sb.from('materias').select('*').eq('centro_id', ctrId).order('nombre'),
       sb.from('profesores').select('*').eq('centro_id', ctrId).eq('activo', true).order('nombre'),
@@ -51,9 +67,11 @@
         .select('*, materias(nombre,color), profesores(nombre)')
         .eq('centro_id', ctrId)
     ]);
-    console.log('[Planner] materias:', mR.data, mR.error);
-    console.log('[Planner] profesores:', pR.data, pR.error);
-    console.log('[Planner] necesidades:', nR.data, nR.error);
+    console.log('[Planner] materias:', mR.data, '| error:', mR.error);
+    console.log('[Planner] profesores:', pR.data, '| error:', pR.error);
+    console.log('[Planner] necesidades:', nR.data, '| error:', nR.error);
+    if (mR.error) console.warn('[Planner] materias error — ¿tabla creada en Supabase?', mR.error.message);
+    if (nR.error) console.warn('[Planner] necesidades_lectivas error — ¿tabla creada en Supabase?', nR.error.message);
     _s.materias   = mR.data  || [];
     _s.profesores = pR.data  || [];
     _s.necesidades = (nR.data || []).map(n => ({
