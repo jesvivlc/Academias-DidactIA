@@ -229,6 +229,9 @@
         <button class="nav-item" id="nav-admin" data-tab="admin" onclick="showTab('admin')">
           <i class="ti ti-settings"></i><span class="nav-item-label">Administración</span>
         </button>
+        <button class="nav-item" id="nav-planner" data-tab="planner" onclick="showTab('planner')" style="display:none">
+          <i class="ti ti-calendar-event"></i><span class="nav-item-label">Planner</span>
+        </button>
 
       </div><!-- /sb-nav -->
 
@@ -856,6 +859,24 @@
   <div class="panel" id="panel-avisos" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
   </div>
 
+  <!-- PLANNER PANEL -->
+  <div class="panel" id="panel-planner" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
+    <div class="planner-wrap">
+      <div style="margin-bottom:4px"><div class="card-eyebrow">Herramientas</div></div>
+      <h2 style="font-family:var(--font-display);font-size:26px;font-weight:400;margin:0 0 20px">Planner — Generador de horarios</h2>
+      <div class="planner-tabs">
+        <button class="planner-tab active" data-ptab="materias"    onclick="showPTab('materias')">Materias</button>
+        <button class="planner-tab"        data-ptab="necesidades" onclick="showPTab('necesidades')">Necesidades</button>
+        <button class="planner-tab"        data-ptab="tablero"     onclick="showPTab('tablero')">Tablero</button>
+        <button class="planner-tab"        data-ptab="publicar"    onclick="showPTab('publicar')">Publicar</button>
+      </div>
+      <div class="pt-panel" id="pt-materias"></div>
+      <div class="pt-panel" id="pt-necesidades"></div>
+      <div class="pt-panel" id="pt-tablero"></div>
+      <div class="pt-panel" id="pt-publicar"></div>
+    </div>
+  </div>
+
 </div><!-- /app-main -->
   </div><!-- /app-body -->
 </div><!-- /app-shell -->
@@ -970,6 +991,7 @@
 <script src="js/ib.js"></script>
 <script src="js/comunicados.js"></script>
 <script src="js/familias.js"></script>
+<script src="js/planner.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -987,14 +1009,16 @@
   var TITLES = {
     chat:'Inicio', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
-    users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados'
+    users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
+    planner:'Planner — Generador de horarios'
   };
   var MAS_CFG = {
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
     espacios:  { icon:'ti-door',            label:'Espacios' },
     users:     { icon:'ti-users',           label:'Usuarios' },
-    admin:     { icon:'ti-settings',        label:'Administración' }
+    admin:     { icon:'ti-settings',        label:'Administración' },
+    planner:   { icon:'ti-calendar-event',  label:'Planner' }
   };
   /* IDs: tab → nav-item sidebar, nav-item bottom-nav */
   var TAB_MAP = {
@@ -1050,6 +1074,7 @@
         var titleEl = document.getElementById('topbar-title');
         if (titleEl) titleEl.textContent = TITLES[t] || t;
         closeMasDrawer();
+        if (t === 'planner' && typeof initPlannerPanel === 'function') initPlannerPanel();
       };
     }
   }
@@ -1252,6 +1277,10 @@
     /* data-role en panel */
     var panelChat = document.getElementById('panel-chat');
     if (panelChat && r) panelChat.dataset.role = r;
+
+    /* Planner — solo admin/superadmin */
+    var np = document.getElementById('nav-planner');
+    if (np) np.style.display = isAdmin ? 'flex' : 'none';
 
     if (!_bentoObserversSetup) {
       _bentoObserversSetup = true;

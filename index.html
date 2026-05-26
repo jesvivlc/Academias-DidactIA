@@ -234,8 +234,10 @@ h2 em{font-style:italic}
 .diferencial{
   background:#0e2a4a;
   padding:72px 6vw;
-  display:flex;align-items:center;justify-content:space-between;
-  gap:40px;flex-wrap:wrap;
+  display:grid;
+  grid-template-columns:1.1fr 1fr;
+  gap:64px;
+  align-items:center;
 }
 .diferencial-quote{
   font-family:'Playfair Display',serif;
@@ -541,7 +543,10 @@ h2 em{font-style:italic}
   .modulos-wrap{grid-template-columns:1fr}
   .pasos{grid-template-columns:1fr 1fr}
   .nav-links{display:none}
-  .diferencial{flex-direction:column}
+  .diferencial{grid-template-columns:1fr}
+  .lp-transform-vis{display:none}
+  .lp-modules-intro{grid-template-columns:1fr!important}
+  .lp-orbital{display:none}
 }
 .contacto-left h2{margin-bottom:12px}
 .contacto-left .s-sub{margin-bottom:32px}
@@ -602,6 +607,79 @@ footer{
 .footer-links{display:flex;gap:24px}
 .footer-links a{font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;transition:color .2s}
 .footer-links a:hover{color:rgba(255,255,255,0.7)}
+
+/* ── DIFERENCIAL — visual transformación ── */
+.diferencial-text{display:flex;flex-direction:column;gap:24px}
+.lp-transform-vis{display:flex;flex-direction:column;align-items:center;gap:14px}
+.lp-before,.lp-after{
+  width:100%;background:var(--white);border:1px solid var(--bdr);
+  border-radius:12px;padding:16px;
+  box-shadow:0 4px 24px rgba(13,27,42,.10);
+}
+.lp-before{transform:rotate(-1.5deg)}
+.lp-after{transform:rotate(1deg)}
+.lp-card-eyebrow{
+  font-size:9.5px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--txt3);margin-bottom:10px;
+}
+.lp-sched{
+  display:grid;grid-template-columns:68px repeat(5,1fr);
+  gap:2px;font-size:8px;
+}
+.lp-sched-hdr{text-align:center;padding:3px 2px;font-weight:600;color:var(--txt3)}
+.lp-sched-name{
+  padding:4px 3px;font-weight:500;color:var(--txt2);font-size:9px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.lp-sched-cell{border-radius:3px;padding:4px 2px;text-align:center;font-size:8px}
+.lp-sched-cell.c{background:var(--blue-l);color:var(--blue)}
+.lp-sched-cell.f{background:var(--off);color:var(--txt3)}
+.lp-before-files{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.lp-before-file{
+  font-size:9px;padding:2px 8px;border-radius:100px;
+  background:var(--off);border:1px solid var(--bdr);color:var(--txt3);
+}
+.lp-transform-arrow{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--amber);color:var(--navy);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.lp-after .chat-msgs{display:flex;flex-direction:column;gap:8px}
+.lp-after .msg-u{
+  align-self:flex-end;background:var(--navy);color:white;
+  padding:7px 11px;border-radius:10px 10px 2px 10px;font-size:11.5px;max-width:88%;
+}
+.lp-after .msg-b{
+  align-self:flex-start;background:var(--off);border:1px solid var(--bdr);color:var(--txt2);
+  padding:7px 11px;border-radius:2px 10px 10px 10px;font-size:11.5px;max-width:94%;line-height:1.5;
+}
+
+/* ── MÓDULOS — intro + orbital ── */
+.lp-modules-intro{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:64px;align-items:center;margin-bottom:64px;
+}
+.lp-orbital{
+  position:relative;aspect-ratio:1;
+  width:100%;max-width:420px;margin:0 auto;
+}
+.lp-orbital__chip{
+  position:absolute;
+  background:var(--white);border:1px solid var(--bdr);
+  border-radius:9px;padding:7px 11px;
+  display:flex;align-items:center;gap:7px;
+  font-size:12px;font-weight:500;color:var(--navy);
+  box-shadow:0 2px 12px rgba(13,27,42,.08);
+  white-space:nowrap;z-index:3;
+}
+.lp-orbital__num{
+  width:20px;height:20px;border-radius:50%;
+  background:var(--off);color:var(--txt2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9.5px;font-weight:700;flex-shrink:0;
+}
+.lp-orbital__chip[data-feat="primary"] .lp-orbital__num{background:var(--blue-l);color:var(--blue)}
+.lp-orbital__chip[data-feat="spark"] .lp-orbital__num{background:var(--amber-l);color:#92400e}
 
 /* ── ANIMACIONES ── */
 .reveal{
@@ -707,12 +785,69 @@ footer{
 
 <!-- DIFERENCIAL -->
 <div class="diferencial">
-  <div class="diferencial-quote reveal">
-    Las plataformas de gestión<br>organizan el centro.<br>
-    DidactIA lo hace <em>hablar.</em>
+  <div class="diferencial-text">
+    <div class="diferencial-quote reveal">
+      Las plataformas de gestión<br>organizan el centro.<br>
+      DidactIA lo hace <em>hablar.</em>
+    </div>
+    <div class="diferencial-sub reveal reveal-delay-1">
+      Un chat inteligente que responde en lenguaje natural a directores, profesores y familias. Sin formación, sin manuales.
+    </div>
   </div>
-  <div class="diferencial-sub reveal reveal-delay-1">
-    Un chat inteligente que responde en lenguaje natural a directores, profesores y familias. Sin formación, sin manuales.
+
+  <!-- Visual de transformación -->
+  <div class="lp-transform-vis reveal reveal-delay-2">
+
+    <!-- Tarjeta Antes: horarios en Excel -->
+    <div class="lp-before">
+      <div class="lp-card-eyebrow">Antes</div>
+      <div class="lp-sched">
+        <div class="lp-sched-hdr"></div>
+        <div class="lp-sched-hdr">L</div>
+        <div class="lp-sched-hdr">M</div>
+        <div class="lp-sched-hdr">X</div>
+        <div class="lp-sched-hdr">J</div>
+        <div class="lp-sched-hdr">V</div>
+        <div class="lp-sched-name">M. González</div>
+        <div class="lp-sched-cell c">Mat</div>
+        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell c">Mat</div>
+        <div class="lp-sched-cell c">Mat</div>
+        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-name">C. Serrano</div>
+        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell c">Len</div>
+        <div class="lp-sched-cell c">Len</div>
+        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell c">Len</div>
+        <div class="lp-sched-name">A. Martínez</div>
+        <div class="lp-sched-cell c">Ing</div>
+        <div class="lp-sched-cell c">Ing</div>
+        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell c">Ing</div>
+        <div class="lp-sched-cell f">—</div>
+      </div>
+      <div class="lp-before-files">
+        <span class="lp-before-file">horarios_2025.xlsx</span>
+        <span class="lp-before-file">guardias.xlsx</span>
+        <span class="lp-before-file">+ 4 archivos</span>
+      </div>
+    </div>
+
+    <!-- Flecha ámbar -->
+    <div class="lp-transform-arrow">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 5v14M5 15l7 7 7-7"/></svg>
+    </div>
+
+    <!-- Tarjeta Después: chat exchange -->
+    <div class="lp-after">
+      <div class="lp-card-eyebrow">Ahora</div>
+      <div class="chat-msgs">
+        <div class="msg-u">¿Quién está libre ahora?</div>
+        <div class="msg-b"><strong style="color:var(--navy)">3 libres ahora (10:42)</strong><br>M. González · C. Serrano · A. Martínez</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -747,9 +882,59 @@ footer{
 
 <!-- MÓDULOS -->
 <section id="modulos">
-  <div class="s-eyebrow reveal">Lo que incluye</div>
-  <h2 class="reveal">Cinco módulos.<br><em>Un solo acceso.</em></h2>
-  <p class="s-sub reveal">Diseñados para resolver los problemas más frecuentes en la gestión diaria de cualquier centro.</p>
+
+  <!-- Intro 2 columnas: texto + orbital -->
+  <div class="lp-modules-intro">
+    <div>
+      <div class="s-eyebrow reveal">Lo que incluye</div>
+      <h2 class="reveal">Cinco módulos.<br><em>Un solo acceso.</em></h2>
+      <p class="s-sub reveal" style="margin-bottom:0">Diseñados para resolver los problemas más frecuentes en la gestión diaria de cualquier centro.</p>
+    </div>
+
+    <!-- Orbital visual -->
+    <div class="lp-orbital reveal reveal-delay-1">
+      <!-- Anillos + líneas en SVG -->
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <!-- Anillo exterior -->
+        <circle cx="50" cy="50" r="46" fill="none" stroke="#d8e2f0" stroke-width="0.7" stroke-dasharray="3,3"/>
+        <!-- Anillo interior -->
+        <circle cx="50" cy="50" r="29" fill="none" stroke="#d8e2f0" stroke-width="0.7" stroke-dasharray="2,3"/>
+        <!-- Líneas desde centro a chips -->
+        <line x1="50" y1="50" x2="14" y2="13" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="14" y2="87" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="86" y2="13" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="86" y2="87" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="92" y2="50" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
+      </svg>
+
+      <!-- Logo DidactIA en el centro (104×104) -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:104px;height:104px;z-index:2">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+          <rect width="100" height="100" rx="22" fill="#0e2a4a"/>
+          <text x="50" y="58" text-anchor="middle" font-family="Geist,-apple-system,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+          <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#e8a020"/>
+        </svg>
+      </div>
+
+      <!-- Chips -->
+      <div class="lp-orbital__chip" data-feat="primary" style="top:7%;left:3%">
+        <span class="lp-orbital__num">01</span>Chat IA
+      </div>
+      <div class="lp-orbital__chip" data-feat="spark" style="bottom:7%;left:3%">
+        <span class="lp-orbital__num">02</span>Guardias
+      </div>
+      <div class="lp-orbital__chip" style="top:7%;right:3%">
+        <span class="lp-orbital__num">03</span>Comedor
+      </div>
+      <div class="lp-orbital__chip" style="bottom:7%;right:3%">
+        <span class="lp-orbital__num">04</span>Admin
+      </div>
+      <div class="lp-orbital__chip" style="top:50%;right:3%;transform:translateY(-50%)">
+        <span class="lp-orbital__num">05</span>App PWA
+      </div>
+    </div>
+  </div>
+
   <div class="modulos-wrap">
     <div class="modulo-list">
       <div class="modulo-item active reveal" onclick="selectModulo(0,this)">
