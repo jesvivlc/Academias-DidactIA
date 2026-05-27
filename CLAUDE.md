@@ -69,6 +69,9 @@ js/
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
   ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
   comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
+  planner.js            initPlannerPanel, _generarHorario (CSP), plannerPublicar, drag & drop tablero
+sql/
+  planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
 manifest.json                   PWA manifest (sin service worker aún)
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
 scripts/
@@ -95,6 +98,11 @@ scripts/
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
 | `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, informe_borrador, normativa_ref, medidas_propuestas[], protocolo_previ, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave. Campos IA: `normativa_ref` (decreto aplicado), `medidas_propuestas` (text[]), `protocolo_previ` (bool), `informe_borrador` (texto editable antes de guardar) |
 | `comunicados` | centro_id, titulo, cuerpo, destinatarios, creado_por, fecha, estado, plantilla, created_at | `destinatarios`: 'todos'/'solo_profesores'/'solo_familias'/'grupo:XXXX'; `estado`: borrador/enviado; `plantilla`: reunion/horario/plazo/null |
+| `materias` | centro_id, nombre, color | Materias del Planner; `color` hex para fichas del tablero |
+| `aulas` | centro_id, nombre, tipo, capacidad | Aulas reservables en el Planner |
+| `disponibilidad_profesor` | profesor_id, dia_semana, tramo_horario, estado | Restricciones de disponibilidad para el CSP |
+| `necesidades_lectivas` | centro_id, grupo_horario, materia_id, profesor_id, horas_semanales, tipo_aula_requerida | Input del generador: X horas/sem de materia Y con prof Z para grupo G |
+| `horario_generado` | centro_id, grupo_horario, materia_id, profesor_id, aula_id, dia_semana, tramo_horario, es_fijo | Output del CSP antes de publicar; UNIQUE(profesor_id,dia,tramo) y UNIQUE(grupo,dia,tramo) |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
@@ -307,9 +315,30 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - `_comCheckAndBadge()`: ejecutado 1200ms tras login — fetch solo de IDs, actualiza badge, inicia realtime
 - EF `send-comunicado`: enruta por `destinatarios`; para `grupo:XXXX` hace join `alumnos→familia_alumno→profiles`; envía un email por destinatario vía Resend
 
+### Planner — generador de horarios (planner.js)
+- Tab **"Planner"** visible solo para `admin` y `superadmin`; nav-item controlado desde `updateBentoDashboard()` en el inline script de app.html
+- **4 sub-paneles** (pill tabs): Materias · Necesidades · Tablero · Publicar
+- **Materias (CRUD)**: formulario inline con nombre + color picker; lista con dot de color, actualización de color y borrado
+- **Necesidades lectivas (CRUD)**: grupo horario + materia + profesor + horas/semana; tabla resumen con borrado por fila
+- **Motor CSP backtracking** (`_generarHorario`):
+  - Expande necesidades en sesiones individuales, ordena más-restringidas primero (más horas → antes)
+  - Construye `teacherBusy` desde horarios de otros grupos ya generados (cross-group conflict prevention)
+  - `_resolverCSP()` recursivo: itera DIAS × TRAMOS; coloca, recursa, deshace si falla (backtracking clásico)
+  - `_esValido()`: ① slot ocupado para el grupo ② profesor ocupado en otro grupo ese tramo ③ misma materia no dos veces el mismo día
+  - Si no hay solución → alert informativo con sugerencias de resolución
+- **Tablero drag & drop**: CSS Grid 6 cols (hora + L/M/X/J/V) × 8 filas (tramos 08:00–16:00); fichas `.class-card` con borde izquierdo de color por materia; zona libre para quitar sesiones
+  - Drag handlers: `plannerDragStart/End/Over/Leave/Drop/DropPool` — validación cross-group en destino, intercambio swap entre slots ocupados
+  - `.planner-cell.drag-over` (verde) / `.drag-error` (rojo) feedback visual en tiempo real
+- **Publicar**: estadísticas (grupos, sesiones, necesidades), aviso de sobreescritura, botón que:
+  1. Elimina `horarios_grupo` de los grupos afectados para el `centro_id`
+  2. Inserta filas con `hora_inicio`, `hora_fin`, `actividad_nombre`, `profesor_nombre`, `aula: ''`
+  3. El chatbot y sustituciones usan el nuevo horario inmediatamente
+- **Tablas en Supabase**: `materias`, `aulas`, `disponibilidad_profesor`, `necesidades_lectivas`, `horario_generado` — ver `sql/planner-tables.sql`
+- **XSS**: `_esc()` en todos los `innerHTML` con datos de usuario
+
 ---
 
-## Estado del proyecto (2026-05-26)
+## Estado del proyecto (2026-05-27)
 
 ### Tablas verificadas en Supabase (proyecto: rflfsbrdmgaidhvbuvwb)
 
@@ -367,6 +396,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 | Comunicados | ✅ (lectura) | ✅ (lectura) | ✅ (envío+lectura) | ✅ |
 | Administración | — | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
+| Planner | — | — | ✅ | ✅ |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
@@ -384,6 +414,8 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 <script src="js/rrhh.js"></script>
 <script src="js/guardias.js"></script>
 <script src="js/comunicados.js"></script>
+<script src="js/familias.js"></script>
+<script src="js/planner.js"></script>
 ```
 
 ---
@@ -760,11 +792,16 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
 > - `sql/add-incidencias-fields.sql` — añade `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` a la tabla `incidencias`
 > - SQL del módulo comunicados (tabla `comunicados` + RLS) — ver mensaje sesión 2026-05-24
+>
+> **Migraciones ejecutadas** (ya en producción):
+> - `sql/planner-tables.sql` — tablas planner + RLS + índices ✅ ejecutado 2026-05-27
 
 ---
 
 ## Registro de cambios recientes
-- `2026-05-26 06:55` · `255a1b2` — feat: DidactIA Planner — generador de horarios con CSP + drag & drop
+- `2026-05-27` · `d2c9486` — docs: marcar tablas planner como verificadas en Supabase
+- `2026-05-27` · SQL ejecutado en Supabase — tablas planner activas en producción (rflfsbrdmgaidhvbuvwb)
+- `2026-05-26 06:55` · `255a1b2` — feat: DidactIA Planner — generador de horarios con CSP + drag & drop (app.html + planner.js + planner-tables.sql + landing index.html)
 - `2026-05-26 01:07` · `3415272` — fix: patch Recientes click handlers via MutationObserver
 - `2026-05-26 00:59` · `d5fb03e` — fix: tipografía, barra stat tiles y greeting — fidelidad visual 01-inicio-admin
 - `2026-05-26 00:56` · `5847af7` — docs: CLAUDE.md actualización 2026-05-26 — design system v2, roadmap UI, convenciones UI
