@@ -1701,6 +1701,8 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 .planner-cell      { background: var(--srf); min-height: 80px; padding: 4px; position: relative; transition: background .1s; }
 .planner-cell.drag-over  { background: var(--success-soft); outline: 2px solid var(--success); outline-offset: -2px; }
 .planner-cell.drag-error { background: var(--danger-soft);  outline: 2px solid var(--danger);  outline-offset: -2px; }
+.planner-break-row  { font-style: italic; font-size: 10px; color: var(--muted-2); }
+.planner-break-cell { background: var(--surface-sunk); grid-column: span 5; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); font-style: italic; padding: 5px; min-height: 24px; }
 
 /* Fichas arrastrables */
 .class-card       { border-left: 4px solid var(--ink); border-radius: 6px; background: var(--srf); box-shadow: var(--sh); padding: 7px 8px; cursor: grab; height: calc(100% - 8px); display: flex; flex-direction: column; justify-content: center; gap: 3px; user-select: none; }

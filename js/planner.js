@@ -5,19 +5,20 @@
   'use strict';
 
   const DIAS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes'];
-  const TRAMOS = [1, 2, 3, 4, 5, 6, 7, 8];
-  const TRAMOS_HORA = {
-    1: '08:00–09:00', 2: '09:00–10:00', 3: '10:00–11:00', 4: '11:00–12:00',
-    5: '12:00–13:00', 6: '13:00–14:00', 7: '14:00–15:00', 8: '15:00–16:00'
-  };
-  const HORA_INICIO = {
-    1: '08:00', 2: '09:00', 3: '10:00', 4: '11:00',
-    5: '12:00', 6: '13:00', 7: '14:00', 8: '15:00'
-  };
-  const HORA_FIN = {
-    1: '09:00', 2: '10:00', 3: '11:00', 4: '12:00',
-    5: '13:00', 6: '14:00', 7: '15:00', 8: '16:00'
-  };
+
+  /* Tramos por defecto (horario Agora Lledó) — se usan si el centro no tiene tramos_centro */
+  const TRAMOS_DEFAULT = [
+    { numero:1,  hora_inicio:'08:50', hora_fin:'09:45', nombre:'',       es_descanso:false },
+    { numero:2,  hora_inicio:'09:45', hora_fin:'10:40', nombre:'',       es_descanso:false },
+    { numero:3,  hora_inicio:'10:40', hora_fin:'11:35', nombre:'',       es_descanso:false },
+    { numero:4,  hora_inicio:'11:35', hora_fin:'12:00', nombre:'Recreo', es_descanso:true  },
+    { numero:5,  hora_inicio:'12:00', hora_fin:'12:55', nombre:'',       es_descanso:false },
+    { numero:6,  hora_inicio:'12:55', hora_fin:'13:50', nombre:'',       es_descanso:false },
+    { numero:7,  hora_inicio:'13:50', hora_fin:'14:45', nombre:'',       es_descanso:false },
+    { numero:8,  hora_inicio:'14:45', hora_fin:'15:10', nombre:'Comida', es_descanso:true  },
+    { numero:9,  hora_inicio:'15:10', hora_fin:'16:05', nombre:'',       es_descanso:false },
+    { numero:10, hora_inicio:'16:05', hora_fin:'17:00', nombre:'',       es_descanso:false },
+  ];
 
   function _esc(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -29,6 +30,7 @@
     profesores:     [],
     necesidades:    [],
     grupos:         [],
+    tramos:         [],   // cargado de tramos_centro; fallback a TRAMOS_DEFAULT
     disponibilidad: {},   // profesor_id → Set<"dia_tramo">
     schedule:       {},   // grupo → dia → String(tramo) → slot
     auditLog:       {},   // grupo → string[]
@@ -37,6 +39,25 @@
     dragData:       null,
     ptab:           'materias'
   };
+
+  /* ── Helpers dinámicos de tramos ── */
+  function _allTramos()   { return [..._s.tramos].sort(function (a, b) { return a.numero - b.numero; }); }
+  function _claseTramos() { return _allTramos().filter(function (t) { return !t.es_descanso; }); }
+  function _tramoNums()   { return _claseTramos().map(function (t) { return t.numero; }); }
+  function _tramoLabel(n) {
+    var t = _s.tramos.find(function (x) { return x.numero === n; });
+    if (!t) return 'T' + n;
+    var lbl = t.hora_inicio.slice(0, 5) + '–' + t.hora_fin.slice(0, 5);
+    return t.nombre ? lbl + ' (' + t.nombre + ')' : lbl;
+  }
+  function _horaInicio(n) {
+    var t = _s.tramos.find(function (x) { return x.numero === n; });
+    return t ? t.hora_inicio.slice(0, 5) : '08:00';
+  }
+  function _horaFin(n) {
+    var t = _s.tramos.find(function (x) { return x.numero === n; });
+    return t ? t.hora_fin.slice(0, 5) : '09:00';
+  }
 
   /* ════════════════════════════════
      INIT
@@ -60,13 +81,13 @@
   };
 
   /* ════════════════════════════════
-     CARGA DE DATOS (V2: nuevas columnas + disponibilidad)
+     CARGA DE DATOS
   ════════════════════════════════ */
   async function _loadData() {
     console.log('[Planner V2] _loadData — ctrId:', ctrId, '| sb:', !!sb);
     if (!sb) throw new Error('Supabase client (sb) no disponible');
 
-    const [mR, pR, nR] = await Promise.all([
+    const [mR, pR, nR, tR] = await Promise.all([
       sb.from('materias')
         .select('id,nombre,color,carga_cognitiva,tipo_dinamica,centro_id,created_at')
         .eq('centro_id', ctrId).order('nombre'),
@@ -75,14 +96,19 @@
         .eq('centro_id', ctrId).or('activo.is.null,activo.eq.true').order('nombre'),
       sb.from('necesidades_lectivas')
         .select('*, materias(nombre,color,carga_cognitiva,tipo_dinamica), profesores(nombre,afinidad_metodologica)')
-        .eq('centro_id', ctrId)
+        .eq('centro_id', ctrId),
+      sb.from('tramos_centro')
+        .select('id,numero,hora_inicio,hora_fin,nombre,es_descanso')
+        .eq('centro_id', ctrId).order('numero')
     ]);
 
     console.log('[Planner V2] materias:', mR.data, '| error:', mR.error && mR.error.message);
     console.log('[Planner V2] profesores:', pR.data, '| error:', pR.error && pR.error.message);
     console.log('[Planner V2] necesidades:', nR.data, '| error:', nR.error && nR.error.message);
+    console.log('[Planner V2] tramos:', tR.data, '| error:', tR.error && tR.error.message);
     if (mR.error) console.warn('[Planner V2] materias — ¿columnas V2 añadidas?', mR.error.message);
     if (nR.error) console.warn('[Planner V2] necesidades_lectivas — ¿tabla existente con columnas V2?', nR.error.message);
+    if (tR.error) console.warn('[Planner V2] tramos_centro no disponible — usando defaults:', tR.error.message);
 
     _s.materias   = mR.data || [];
     _s.profesores = pR.data || [];
@@ -96,6 +122,11 @@
         afinidad_metodologica: (n.profesores && n.profesores.afinidad_metodologica) || 'tradicional'
       });
     });
+
+    /* Tramos: usar DB si existen, si no usar TRAMOS_DEFAULT */
+    _s.tramos = (tR.data && tR.data.length)
+      ? tR.data
+      : TRAMOS_DEFAULT.map(function (t) { return Object.assign({}, t); });
 
     _s.grupos = [...new Set(_s.necesidades.map(function (n) { return n.grupo_horario; }))].sort();
     if (!_s.currentGrupo && _s.grupos.length) _s.currentGrupo = _s.grupos[0];
@@ -131,6 +162,7 @@
     if (tab === 'necesidades') _renderNecesidades();
     if (tab === 'tablero')     _renderTablero();
     if (tab === 'publicar')    _renderPublicar();
+    if (tab === 'tramos')      _renderTramos();
   }
 
   /* ════════════════════════════════
@@ -162,7 +194,7 @@
         '<input type="color" value="' + _esc(m.color) + '" title="Cambiar color"' +
         ' onchange="plannerUpdateColor(\'' + m.id + '\',this.value)"' +
         ' style="width:28px;height:28px;border:1px solid var(--line);border-radius:6px;cursor:pointer;padding:2px">' +
-        '<button class="icon-btn-sm" onclick="plannerDeleteMateria(\'' + m.id + '\')">✕</button>' +
+        '<button class="icon-btn-sm" onclick="plannerDeleteMateria(\'' + m.id + '\')">&#x2715;</button>' +
         '</div>';
     }).join('');
 
@@ -270,22 +302,35 @@
         '<td>' + _esc(n.profesor_nombre) + '</td>' +
         '<td style="text-align:center;font-weight:500">' + n.horas_semanales + '</td>' +
         '<td>' + bloqueBadge + '</td>' +
-        '<td><button class="icon-btn-sm" onclick="plannerDeleteNec(\'' + n.id + '\')">✕</button></td>' +
+        '<td><button class="icon-btn-sm" onclick="plannerDeleteNec(\'' + n.id + '\')">&#x2715;</button></td>' +
         '</tr>';
     }).join('');
+
+    const LOMLOE_HELP = 'La co-docencia LOMLOE permite que dos profesores impartan clase juntos en el mismo aula y tramo. ' +
+      'Asigna el mismo bloque a dos necesidades lectivas para que el Planner las coloque siempre juntas.';
 
     el.innerHTML =
       '<div class="planner-section-hdr">' +
         '<div><div class="card-eyebrow">Configuración</div>' +
         '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Necesidades lectivas</h3></div>' +
       '</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:20px">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">' +
         '<input id="pn-grupo" class="planner-input" placeholder="Grupo (ej: 1ESOA)" style="width:130px">' +
         '<select id="pn-materia" class="planner-select">' + (matOpts || '<option value="">— sin materias —</option>') + '</select>' +
         '<select id="pn-profesor" class="planner-select">' + (profOpts || '<option value="">— sin profesores —</option>') + '</select>' +
         '<input id="pn-horas" type="number" min="1" max="10" value="3" class="planner-input" style="width:70px" placeholder="H/sem">' +
-        '<select id="pn-bloque" class="planner-select" title="Bloque interdisciplinar LOMLOE">' + bloqueOpts + '</select>' +
+        '<span style="display:inline-flex;align-items:center;gap:4px">' +
+          '<select id="pn-bloque" class="planner-select" title="' + _esc(LOMLOE_HELP) + '">' + bloqueOpts + '</select>' +
+          '<button type="button" title="' + _esc(LOMLOE_HELP) + '"' +
+          ' style="background:none;border:1px solid var(--line);border-radius:50%;width:18px;height:18px;font-size:11px;' +
+          'cursor:help;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0">' +
+          'ⓘ</button>' +
+        '</span>' +
         '<button class="btn-ink" onclick="plannerAddNec()">+ Añadir</button>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--info);background:var(--info-soft);border-left:3px solid var(--info);' +
+      'padding:8px 12px;border-radius:6px;margin-bottom:16px;line-height:1.5">' +
+        '<strong>ⓘ Bloque LOMLOE:</strong> ' + _esc(LOMLOE_HELP) +
       '</div>' +
       (_s.necesidades.length === 0
         ? '<div class="planner-empty">No hay necesidades definidas. Añade la primera.</div>'
@@ -318,6 +363,135 @@
   };
 
   /* ════════════════════════════════
+     TRAMOS — CRUD + guardado en tramos_centro
+  ════════════════════════════════ */
+  function _renderTramos() {
+    var el = document.getElementById('pt-tramos');
+    if (!el) return;
+
+    var isDefault = _s.tramos.every(function (t) { return !t.id; });
+
+    var headerRow =
+      '<div class="planner-list-row" style="font-size:11px;color:var(--muted);font-weight:600;' +
+      'border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:6px">' +
+        '<span style="min-width:32px">Nº</span>' +
+        '<span style="min-width:80px">Inicio</span>' +
+        '<span style="min-width:80px">Fin</span>' +
+        '<span style="flex:1">Nombre</span>' +
+        '<span style="width:72px"></span>' +
+        '<span style="width:28px"></span>' +
+      '</div>';
+
+    var rows = _allTramos().map(function (t) {
+      var descBadge = t.es_descanso
+        ? '<span style="font-size:10px;color:var(--muted);background:var(--surface-sunk);' +
+          'padding:1px 6px;border-radius:4px;white-space:nowrap">Descanso</span>'
+        : '<span style="width:72px"></span>';
+      return '<div class="planner-list-row">' +
+        '<span style="min-width:32px;font-weight:600;color:var(--muted);font-size:13px">' + t.numero + '</span>' +
+        '<span style="min-width:80px;font-size:13px">' + _esc(t.hora_inicio.slice(0, 5)) + '</span>' +
+        '<span style="min-width:80px;font-size:13px">' + _esc(t.hora_fin.slice(0, 5)) + '</span>' +
+        '<span style="flex:1;font-size:13px">' + _esc(t.nombre || '—') + '</span>' +
+        descBadge +
+        '<button class="icon-btn-sm" onclick="plannerDeleteTramo(' + t.numero + ')">&#x2715;</button>' +
+        '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="planner-section-hdr">' +
+        '<div><div class="card-eyebrow">Configuración</div>' +
+        '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Tramos horarios del centro</h3></div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">' +
+        'Define los tramos del día incluyendo recreos. Los tramos marcados como “Descanso” ' +
+        'se muestran en el tablero pero no se asignan clases.' +
+      '</div>' +
+      (isDefault
+        ? '<div style="font-size:12px;color:var(--muted);background:var(--warning-soft);border-left:3px solid var(--warning);' +
+          'padding:8px 12px;border-radius:6px;margin-bottom:14px">' +
+          '⚠ Usando tramos por defecto (Agora Lledó). Guarda para personalizarlos.' +
+          '</div>'
+        : '') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">' +
+        '<input id="pt-num" type="number" min="1" max="20" class="planner-input" placeholder="Nº" style="width:64px" title="Número de tramo (define el orden)">' +
+        '<input id="pt-ini" type="time" class="planner-input" style="width:110px" title="Hora inicio">' +
+        '<input id="pt-fin" type="time" class="planner-input" style="width:110px" title="Hora fin">' +
+        '<input id="pt-nom" class="planner-input" placeholder="Nombre (ej: Recreo)" style="width:150px">' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer;white-space:nowrap">' +
+          '<input type="checkbox" id="pt-desc"> Descanso' +
+        '</label>' +
+        '<button class="btn-ink" onclick="plannerAddTramo()">Añadir</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">' +
+        '<button class="btn-ink" style="background:var(--success)" onclick="plannerSaveTramos()">✓ Guardar tramos en el centro</button>' +
+        '<button onclick="plannerResetTramos()" style="font-size:12px;padding:5px 12px;border:1px solid var(--line);' +
+        'border-radius:6px;background:none;cursor:pointer;color:var(--muted);font-family:var(--font-ui)">' +
+        'Restablecer por defecto</button>' +
+        '<div id="pt-tramos-msg" style="font-size:13px"></div>' +
+      '</div>' +
+      '<div class="planner-list">' + headerRow + (rows || '<div class="planner-empty">Sin tramos. Añade el primero.</div>') + '</div>';
+  }
+
+  window.plannerAddTramo = function () {
+    var num  = parseInt(document.getElementById('pt-num') && document.getElementById('pt-num').value || 0);
+    var ini  = (document.getElementById('pt-ini') && document.getElementById('pt-ini').value || '').trim();
+    var fin  = (document.getElementById('pt-fin') && document.getElementById('pt-fin').value || '').trim();
+    var nom  = (document.getElementById('pt-nom') && document.getElementById('pt-nom').value || '').trim();
+    var desc = !!(document.getElementById('pt-desc') && document.getElementById('pt-desc').checked);
+    if (!num || !ini || !fin) { alert('Rellena número, hora inicio y hora fin.'); return; }
+    if (_s.tramos.find(function (t) { return t.numero === num; })) {
+      alert('Ya existe un tramo con el número ' + num + '. Elímina el existente primero.'); return;
+    }
+    _s.tramos.push({ numero: num, hora_inicio: ini, hora_fin: fin, nombre: nom, es_descanso: desc });
+    _renderTramos();
+  };
+
+  window.plannerDeleteTramo = function (numero) {
+    _s.tramos = _s.tramos.filter(function (t) { return t.numero !== numero; });
+    _renderTramos();
+  };
+
+  window.plannerResetTramos = function () {
+    if (!confirm('¿Restablecer los tramos por defecto? Se perderán los cambios no guardados.')) return;
+    _s.tramos = TRAMOS_DEFAULT.map(function (t) { return Object.assign({}, t); });
+    _renderTramos();
+  };
+
+  window.plannerSaveTramos = function () {
+    var msgEl = document.getElementById('pt-tramos-msg');
+    var btns  = document.querySelectorAll('[onclick="plannerSaveTramos()"]');
+    btns.forEach(function (b) { b.disabled = true; b.textContent = 'Guardando…'; });
+
+    (async function () {
+      try {
+        var del = await sb.from('tramos_centro').delete().eq('centro_id', ctrId);
+        if (del.error) throw del.error;
+        if (_s.tramos.length) {
+          var rows = _s.tramos.map(function (t) {
+            return {
+              centro_id:   ctrId,
+              numero:      t.numero,
+              hora_inicio: t.hora_inicio.slice(0, 5),
+              hora_fin:    t.hora_fin.slice(0, 5),
+              nombre:      t.nombre || null,
+              es_descanso: !!t.es_descanso
+            };
+          });
+          var ins = await sb.from('tramos_centro').insert(rows);
+          if (ins.error) throw ins.error;
+        }
+        await _loadData();
+        _showPTab('tramos');
+        var msg2 = document.getElementById('pt-tramos-msg');
+        if (msg2) msg2.innerHTML = '<span style="color:var(--success)">✓ Tramos guardados — ' + _s.tramos.length + ' tramos activos.</span>';
+      } catch (err) {
+        btns.forEach(function (b) { b.disabled = false; b.textContent = '✓ Guardar tramos en el centro'; });
+        if (msgEl) msgEl.innerHTML = '<span style="color:var(--danger)">Error: ' + _esc(err && err.message ? err.message : String(err)) + '</span>';
+      }
+    })();
+  };
+
+  /* ════════════════════════════════
      MOTOR CSP V2 — NEUROEDUCATIVO
   ════════════════════════════════ */
 
@@ -347,27 +521,28 @@
   function _esHardValido(sess, dia, tramo, sched, teacherBusy) {
     const key   = String(tramo);
     const dtKey = dia + '_' + key;
+    const TNUMS = _tramoNums();
 
     /* HC-1: slot ya ocupado para el grupo */
     if (sched[dia][key]) return false;
 
-    /* HC-2: misma materia no dos veces el mismo día (comprueba todas las materias del bloque) */
+    /* HC-2: misma materia no dos veces el mismo día */
     const materiaIds = sess.type === 'codoce'
       ? sess.necs.map(function (n) { return n.materia_id; })
       : [sess.materia_id];
-    for (var t = 0; t < TRAMOS.length; t++) {
-      const s = sched[dia][String(TRAMOS[t])];
+    for (var t = 0; t < TNUMS.length; t++) {
+      const s = sched[dia][String(TNUMS[t])];
       if (s && materiaIds.indexOf(s.materia_id) !== -1) return false;
     }
 
-    /* HC-3: disponibilidad + ocupación en otros grupos — todos los profesores implicados */
+    /* HC-3: disponibilidad + ocupación en otros grupos */
     const profIds = sess.type === 'codoce'
       ? sess.necs.map(function (n) { return n.profesor_id; }).filter(Boolean)
       : (sess.profesor_id ? [sess.profesor_id] : []);
     for (var i = 0; i < profIds.length; i++) {
       const pid = profIds[i];
-      if (teacherBusy[pid] && teacherBusy[pid].has(dtKey))      return false;  /* ocupado otro grupo */
-      if (_s.disponibilidad[pid] && _s.disponibilidad[pid].has(dtKey)) return false;  /* no disponible */
+      if (teacherBusy[pid] && teacherBusy[pid].has(dtKey))           return false;
+      if (_s.disponibilidad[pid] && _s.disponibilidad[pid].has(dtKey)) return false;
     }
 
     return true;
@@ -380,8 +555,9 @@
     var tr      = parseInt(tramo);
     var carga   = sess.carga_cognitiva  || 'media';
     var din     = sess.tipo_dinamica    || 'estatica';
-    var isFirst = tr === TRAMOS[0];
-    var isLast  = tr === TRAMOS[TRAMOS.length - 1];
+    var TNUMS   = _tramoNums();
+    var isFirst = tr === TNUMS[0];
+    var isLast  = tr === TNUMS[TNUMS.length - 1];
 
     var prev1 = sched[dia] && sched[dia][String(tr - 1)];
     var prev2 = sched[dia] && sched[dia][String(tr - 2)];
@@ -391,7 +567,6 @@
       score -= 15;
       reasons.push('penalización -15: carga alta en hora ' + (isFirst ? 'inicial' : 'final'));
     }
-    /* SC-1b: carga baja o motriz en hora extrema → favorable (sin penalización) */
     if ((isFirst || isLast) && (carga === 'baja' || din === 'motriz')) {
       reasons.push('óptimo: ' + (carga === 'baja' ? 'carga baja' : 'dinámica motriz') + ' en hora extrema');
     }
@@ -414,17 +589,15 @@
       score -= 10;
       reasons.push('penalización -10: dinámica "' + din + '" repetida consecutivamente');
     }
-
-    /* SC-3b: alternación motriz tras estática → favorable */
     if (prev1 && prev1.tipo_dinamica === 'estatica' && din === 'motriz') {
       reasons.push('favorable: actividad motriz rompe sedentarismo');
     }
 
-    /* SC-4: distribución semanal — muchas cargas altas en el mismo día → -10 */
+    /* SC-4: muchas cargas altas en el mismo día → -10 */
     if (carga === 'alta') {
       var altasHoy = 0;
-      for (var t = 0; t < TRAMOS.length; t++) {
-        var s = sched[dia] && sched[dia][String(TRAMOS[t])];
+      for (var t = 0; t < TNUMS.length; t++) {
+        var s = sched[dia] && sched[dia][String(TNUMS[t])];
         if (s && s.carga_cognitiva === 'alta') altasHoy++;
       }
       if (altasHoy >= 2) {
@@ -440,7 +613,7 @@
 
   /* ── Construir entrada del log de auditoría ── */
   function _buildAuditEntry(sess, dia, tramo, score, reasons) {
-    var tramoLabel = TRAMOS_HORA[tramo] || ('T' + tramo);
+    var tramoLabel = _tramoLabel(tramo);
     var matLabel   = sess.type === 'codoce'
       ? sess.necs.map(function (n) { return n.materia_nombre; }).join(' + ')
       : (sess.materia_nombre || '?');
@@ -522,12 +695,13 @@
     if (idx >= sessions.length) return sched;
 
     var sess       = sessions[idx];
+    var TNUMS      = _tramoNums();
     var candidates = [];
 
     for (var di = 0; di < DIAS.length; di++) {
       var dia = DIAS[di];
-      for (var ti = 0; ti < TRAMOS.length; ti++) {
-        var tramo = TRAMOS[ti];
+      for (var ti = 0; ti < TNUMS.length; ti++) {
+        var tramo = TNUMS[ti];
         if (_esHardValido(sess, dia, tramo, sched, teacherBusy)) {
           var scored = _scoreSoft(sess, dia, tramo, sched);
           candidates.push({ dia: dia, tramo: tramo, score: scored.score, reasons: scored.reasons });
@@ -535,7 +709,6 @@
       }
     }
 
-    /* Ordenar de mayor a menor puntuación (best-first) */
     candidates.sort(function (a, b) { return b.score - a.score; });
 
     for (var ci = 0; ci < candidates.length; ci++) {
@@ -547,14 +720,13 @@
       _unplaceSession(sess, c.dia, key, sched, teacherBusy, auditLog);
     }
 
-    return null; /* sin solución por este camino */
+    return null;
   }
 
   /* ── Expandir necesidades en sesiones individuales + co-docencia ── */
   function _buildSessions(grupo) {
     var necs = _s.necesidades.filter(function (n) { return n.grupo_horario === grupo; });
 
-    /* Agrupar bloques co-docencia LOMLOE */
     var bloqueMap  = {};
     var individual = [];
     necs.forEach(function (n) {
@@ -568,7 +740,6 @@
 
     var sessions = [];
 
-    /* Sesiones co-docencia: una por hora del bloque */
     Object.keys(bloqueMap).forEach(function (bid) {
       var bloque = bloqueMap[bid];
       var horas  = Math.min.apply(null, bloque.map(function (n) { return n.horas_semanales; }));
@@ -587,7 +758,6 @@
       }
     });
 
-    /* Sesiones individuales: una por hora */
     individual.forEach(function (n) {
       for (var i = 0; i < n.horas_semanales; i++) {
         sessions.push({
@@ -604,7 +774,6 @@
       }
     });
 
-    /* MRV heuristic: más horas → más restrictiva → primero */
     sessions.sort(function (a, b) { return (b.horas_semanales || 0) - (a.horas_semanales || 0); });
     return sessions;
   }
@@ -627,8 +796,9 @@
   /* ── Calcular puntuación global (media de todas las sesiones) ── */
   function _calcGlobalScore(sched) {
     var total = 0, count = 0;
+    var TNUMS = _tramoNums();
     DIAS.forEach(function (d) {
-      TRAMOS.forEach(function (t) {
+      TNUMS.forEach(function (t) {
         var slot = sched[d] && sched[d][String(t)];
         if (slot && typeof slot.puntuacion === 'number') {
           total += slot.puntuacion;
@@ -673,7 +843,6 @@
             '</div>' +
           '</div>');
 
-    /* Restaurar banner de puntuación si ya había horario generado */
     if (_s.currentGrupo && typeof _s.globalScore[_s.currentGrupo] === 'number') {
       _mostrarPuntuacion(_s.currentGrupo, _s.globalScore[_s.currentGrupo]);
     }
@@ -690,8 +859,13 @@
       return '<div class="planner-hdr-cell">' + d.charAt(0).toUpperCase() + d.slice(1) + '</div>';
     }).join('');
 
-    var rows = TRAMOS.map(function (tramo) {
-      var key   = String(tramo);
+    var rows = _allTramos().map(function (t) {
+      if (t.es_descanso) {
+        var breakLbl = (t.nombre || 'Descanso') + ' · ' + t.hora_inicio.slice(0, 5) + '–' + t.hora_fin.slice(0, 5);
+        return '<div class="planner-row-label planner-break-row">' + _esc(breakLbl) + '</div>' +
+          '<div class="planner-break-cell">' + _esc(t.nombre || 'Descanso') + '</div>';
+      }
+      var key   = String(t.numero);
       var cells = DIAS.map(function (dia) {
         var slot = _s.schedule[g] && _s.schedule[g][dia] && _s.schedule[g][dia][key];
         var card = '';
@@ -721,7 +895,7 @@
           ' ondragover="plannerDragOver(event)" ondragleave="plannerDragLeave(event)"' +
           ' ondrop="plannerDrop(event,\'' + _esc(g) + '\')">' + card + '</div>';
       }).join('');
-      return '<div class="planner-row-label">' + _esc(TRAMOS_HORA[tramo]) + '</div>' + cells;
+      return '<div class="planner-row-label">' + _esc(_tramoLabel(t.numero)) + '</div>' + cells;
     }).join('');
 
     return '<div class="planner-grid" id="planner-grid" style="grid-template-columns:100px repeat(5,1fr)">' +
@@ -847,12 +1021,13 @@
       if (btn) { btn.disabled = false; btn.textContent = '✨ Generar con IA'; }
 
       if (!result) {
+        var tnums = _tramoNums();
         alert(
           'No se encontró solución con las restricciones actuales.\n\n' +
           'Comprueba:\n' +
           '• Disponibilidad de profesores (todos los tramos pueden estar bloqueados)\n' +
           '• Co-docencia: ambos profesores deben tener tramos libres coincidentes\n' +
-          '• Total de horas ≤ ' + DIAS.length + ' días × ' + TRAMOS.length + ' tramos = ' + (DIAS.length * TRAMOS.length) + ' máx. por grupo'
+          '• Total de horas ≤ ' + DIAS.length + ' días × ' + tnums.length + ' tramos = ' + (DIAS.length * tnums.length) + ' máx. por grupo'
         );
         return;
       }
@@ -860,11 +1035,11 @@
       _s.schedule[g]    = result;
       _s.globalScore[g] = _calcGlobalScore(result);
       _guardarHorarioGenerado(g, result);
-      _renderTablero(); /* _renderTablero llama a _mostrarPuntuacion si el score existe */
+      _renderTablero();
     }, 40);
   };
 
-  /* ── Guardar horario_generado en Supabase (incluye log_auditoria) ── */
+  /* ── Guardar horario_generado en Supabase ── */
   async function _guardarHorarioGenerado(grupo, sched) {
     await sb.from('horario_generado').delete().eq('centro_id', ctrId).eq('grupo_horario', grupo);
     var rows = [];
@@ -948,7 +1123,6 @@
     var srcSlot = _s.schedule[srcGrupo] && _s.schedule[srcGrupo][srcDia] && _s.schedule[srcGrupo][srcDia][srcTramo];
     if (!srcSlot) return;
 
-    /* Verificar conflicto: algún profesor del slot origen ocupa el destino en otro grupo */
     var srcProfIds = srcSlot.codocente_prof_ids && srcSlot.codocente_prof_ids.length
       ? srcSlot.codocente_prof_ids : (srcSlot.profesor_id ? [srcSlot.profesor_id] : []);
     var conflict = false;
@@ -971,7 +1145,6 @@
       _s.schedule[grupo][tgtDia][tgtTramo] = srcSlot;
       delete _s.schedule[srcGrupo][srcDia][srcTramo];
     } else {
-      /* Intercambio: verificar conflicto inverso */
       var tgtProfIds = tgtSlot.codocente_prof_ids && tgtSlot.codocente_prof_ids.length
         ? tgtSlot.codocente_prof_ids : (tgtSlot.profesor_id ? [tgtSlot.profesor_id] : []);
       var conflict2 = false;
@@ -1068,8 +1241,8 @@
             grupo_horario:    grupo,
             dia:              dia,
             tramo:            tr,
-            hora_inicio:      HORA_INICIO[tr],
-            hora_fin:         HORA_FIN[tr],
+            hora_inicio:      _horaInicio(tr),
+            hora_fin:         _horaFin(tr),
             actividad_nombre: slot.materia_nombre,
             profesor_nombre:  slot.profesor_nombre,
             aula:             ''
