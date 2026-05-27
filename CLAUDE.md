@@ -334,6 +334,11 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 | `plazos_ib` | ✅ OK | Creada con SQL del workflow alertas IB + RLS + índice |
 | `cas_actividades` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
 | `extended_essay` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
+| `materias` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `aulas` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `disponibilidad_profesor` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `necesidades_lectivas` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `horario_generado` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
 
 ### Storage buckets en Supabase
 
@@ -628,6 +633,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Design System v2: paleta editorial cálida (oklch), Newsreader serif, tokens CSS completos
 - [x] Layout shell v2: sidebar 248px con SVG brand (navy+D+spark ámbar), topbar con búsqueda+role switch+avatar, bottom nav móvil
 - [x] Inicio admin v2: stat2 tiles (barra lateral 3px, icono soft-tinted, Newsreader 38px, sparkline SVG), timeline, atajos 3×2, AI rail 360px
+- [x] Planner — generador de horarios: motor CSP backtracking, tablero drag & drop, CRUD materias/necesidades, publicación en horarios_grupo (solo admin/superadmin)
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
@@ -758,6 +764,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-26 06:55` · `255a1b2` — feat: DidactIA Planner — generador de horarios con CSP + drag & drop
 - `2026-05-26 01:07` · `3415272` — fix: patch Recientes click handlers via MutationObserver
 - `2026-05-26 00:59` · `d5fb03e` — fix: tipografía, barra stat tiles y greeting — fidelidad visual 01-inicio-admin
 - `2026-05-26 00:56` · `5847af7` — docs: CLAUDE.md actualización 2026-05-26 — design system v2, roadmap UI, convenciones UI
