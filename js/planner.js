@@ -72,7 +72,7 @@
         .eq('centro_id', ctrId).order('nombre'),
       sb.from('profesores')
         .select('id,nombre,activo,centro_id,afinidad_metodologica')
-        .eq('centro_id', ctrId).eq('activo', true).order('nombre'),
+        .eq('centro_id', ctrId).or('activo.is.null,activo.eq.true').order('nombre'),
       sb.from('necesidades_lectivas')
         .select('*, materias(nombre,color,carga_cognitiva,tipo_dinamica), profesores(nombre,afinidad_metodologica)')
         .eq('centro_id', ctrId)
