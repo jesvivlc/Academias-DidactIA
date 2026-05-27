@@ -31,6 +31,12 @@
     necesidades:    [],
     grupos:         [],
     tramos:         [],   // cargado de tramos_centro; fallback a TRAMOS_DEFAULT
+    dictarResultado:    null,  // resultado parseado por la IA
+    dictarConfirmados:  {},    // { 'mat_0': true, 'nec_1': false, ... }
+    dictarAudioBase64:  null,
+    dictarAudioMime:    null,
+    dictarRecognition:  null,
+    dictarRecognizing:  false,
     disponibilidad: {},   // profesor_id → Set<"dia_tramo">
     schedule:       {},   // grupo → dia → String(tramo) → slot
     auditLog:       {},   // grupo → string[]
@@ -163,6 +169,7 @@
     if (tab === 'tablero')     _renderTablero();
     if (tab === 'publicar')    _renderPublicar();
     if (tab === 'tramos')      _renderTramos();
+    if (tab === 'dictar')      _renderDictar();
   }
 
   /* ════════════════════════════════
@@ -1272,5 +1279,410 @@
       }
     })();
   };
+
+  /* ════════════════════════════════
+     DICTAR — Entrada voz/texto/audio → IA → Planner
+  ════════════════════════════════ */
+  function _renderDictar() {
+    var el = document.getElementById('pt-dictar');
+    if (!el) return;
+
+    var hayResultado = !!_s.dictarResultado;
+
+    var micBtn =
+      '<button id="dictar-mic-btn" onclick="plannerDictarToggleVoz()" ' +
+      'style="padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:' +
+      (_s.dictarRecognizing ? 'var(--danger-soft)' : 'var(--paper-2)') +
+      ';cursor:pointer;font-family:var(--font-ui);font-size:13px;display:flex;align-items:center;gap:6px">' +
+      (_s.dictarRecognizing
+        ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--danger);display:inline-block"></span> Detener'
+        : '🎙️ Dictar por voz') +
+      '</button>';
+
+    var resultHtml = '';
+    if (hayResultado) {
+      var r = _s.dictarResultado;
+
+      var matRows = (r.materias || []).map(function (m, i) {
+        var key = 'mat_' + i;
+        var checked = _s.dictarConfirmados[key] !== false;
+        return '<div class="planner-list-row" style="gap:10px">' +
+          '<input type="checkbox" id="dc-' + key + '"' + (checked ? ' checked' : '') +
+          ' onchange="plannerDictarToggle(\'' + key + '\')" style="accent-color:var(--accent)">' +
+          '<label for="dc-' + key + '" style="flex:1;cursor:pointer">' +
+          '<strong>' + _esc(m.nombre) + '</strong>' +
+          ' <span style="font-size:11px;color:var(--muted)">' + _esc(m.horas_semanales || '') + 'h/sem · ' +
+          _esc(m.carga_cognitiva || 'media') + ' · ' + _esc(m.tipo_dinamica || 'estatica') + '</span>' +
+          (m.es_optativa ? ' <span style="font-size:10px;color:var(--info);background:var(--info-soft);padding:1px 5px;border-radius:4px">optativa</span>' : '') +
+          '</label></div>';
+      }).join('');
+
+      var necRows = (r.necesidades || []).map(function (n, i) {
+        var key = 'nec_' + i;
+        var checked = _s.dictarConfirmados[key] !== false;
+        return '<div class="planner-list-row" style="gap:10px">' +
+          '<input type="checkbox" id="dc-' + key + '"' + (checked ? ' checked' : '') +
+          ' onchange="plannerDictarToggle(\'' + key + '\')" style="accent-color:var(--accent)">' +
+          '<label for="dc-' + key + '" style="flex:1;cursor:pointer">' +
+          '<strong>' + _esc(n.grupo) + '</strong> — ' + _esc(n.materia) + ' con ' + _esc(n.profesor) +
+          ' <span style="font-size:11px;color:var(--muted)">(' + _esc(n.horas) + 'h)</span>' +
+          '</label></div>';
+      }).join('');
+
+      var restrRows = (r.restricciones_profesor || []).map(function (rp, i) {
+        var key = 'rp_' + i;
+        var checked = _s.dictarConfirmados[key] !== false;
+        return '<div class="planner-list-row" style="gap:10px">' +
+          '<input type="checkbox" id="dc-' + key + '"' + (checked ? ' checked' : '') +
+          ' onchange="plannerDictarToggle(\'' + key + '\')" style="accent-color:var(--accent)">' +
+          '<label for="dc-' + key + '" style="flex:1;cursor:pointer">' +
+          _esc(rp.profesor) + ': <em>' + _esc(rp.tipo) + '</em>' +
+          (rp.detalle ? ' — ' + _esc(rp.detalle) : '') +
+          '</label></div>';
+      }).join('');
+
+      var preguntas = r.preguntas || [];
+      var pregHtml = preguntas.length
+        ? '<div style="margin-top:14px;padding:12px;background:var(--warning-soft);border-left:3px solid var(--warning);border-radius:6px">' +
+          '<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px">Preguntas de la IA:</div>' +
+          preguntas.map(function (p) {
+            return '<div style="font-size:13px;color:var(--txt);margin-bottom:4px">• ' + _esc(p) + '</div>';
+          }).join('') + '</div>'
+        : '';
+
+      resultHtml =
+        '<div style="margin-top:20px;border:1px solid var(--line);border-radius:10px;overflow:hidden">' +
+        '<div style="background:var(--paper-2);padding:12px 16px;border-bottom:1px solid var(--line);' +
+        'display:flex;align-items:center;justify-content:space-between">' +
+          '<span style="font-size:14px;font-weight:600;color:var(--txt)">Resultado del análisis IA</span>' +
+          '<div style="display:flex;gap:8px">' +
+            '<button onclick="plannerDictarRefinir()" style="font-size:12px;padding:4px 10px;border:1px solid var(--line);' +
+            'border-radius:6px;background:none;cursor:pointer;color:var(--muted);font-family:var(--font-ui)">✏️ Refinar</button>' +
+            '<button class="btn-ink" onclick="plannerDictarAplicar()">✓ Aplicar al Planner</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="padding:16px;display:flex;flex-direction:column;gap:16px">' +
+        (matRows ? '<div><div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Materias detectadas</div>' + matRows + '</div>' : '') +
+        (necRows ? '<div><div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Necesidades lectivas</div>' + necRows + '</div>' : '') +
+        (restrRows ? '<div><div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Restricciones de profesores</div>' + restrRows + '</div>' : '') +
+        pregHtml +
+        '</div></div>';
+    }
+
+    el.innerHTML =
+      '<div class="planner-section-hdr">' +
+        '<div><div class="card-eyebrow">Entrada inteligente</div>' +
+        '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Dictar restricciones al Planner</h3></div>' +
+      '</div>' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">' +
+        'Describe las necesidades horarias del centro en lenguaje natural, por voz o por texto. ' +
+        'La IA extraerá materias, necesidades lectivas y restricciones de profesores.' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">' +
+        micBtn +
+        '<label style="padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper-2);' +
+        'cursor:pointer;font-size:13px;font-family:var(--font-ui);display:flex;align-items:center;gap:6px">' +
+          '📎 Subir audio' +
+          '<input type="file" accept="audio/*" style="display:none" onchange="plannerDictarSubirAudio(this)">' +
+        '</label>' +
+        '<div id="dictar-audio-badge" style="font-size:12px;color:var(--success)"></div>' +
+      '</div>' +
+      '<textarea id="dictar-texto" class="planner-input"' +
+      ' placeholder="Escribe o dicta aquí. Ej: María García no puede dar clase la primera hora. Matemáticas 2ESOA 4h con Juan Pérez…"' +
+      ' style="width:100%;min-height:110px;resize:vertical;font-family:var(--font-ui);font-size:13px;' +
+      'line-height:1.55;padding:10px 12px;box-sizing:border-box;margin-top:4px"></textarea>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">' +
+        '<button class="btn-ink" id="dictar-analizar-btn" onclick="plannerDictarAnalizar()">✨ Analizar con IA</button>' +
+        '<div id="dictar-status" style="font-size:13px;color:var(--muted)"></div>' +
+      '</div>' +
+      resultHtml;
+  }
+
+  window.plannerDictarToggleVoz = function () {
+    var SpeechRecog = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecog) {
+      alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.'); return;
+    }
+    if (_s.dictarRecognizing && _s.dictarRecognition) {
+      _s.dictarRecognition.stop(); return;
+    }
+    var recog = new SpeechRecog();
+    recog.lang           = 'es-ES';
+    recog.continuous     = true;
+    recog.interimResults = true;
+    _s.dictarRecognition = recog;
+    var base = (document.getElementById('dictar-texto') && document.getElementById('dictar-texto').value) || '';
+
+    recog.onstart = function () {
+      _s.dictarRecognizing = true;
+      _renderDictar();
+    };
+    recog.onresult = function (e) {
+      var interim = '', final_ = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final_ += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      if (final_) base += (base ? ' ' : '') + final_;
+      var el = document.getElementById('dictar-texto');
+      if (el) el.value = base + (interim ? ' ' + interim : '');
+    };
+    recog.onerror = function (e) {
+      console.error('[Dictar] voz error:', e.error);
+      _s.dictarRecognizing = false; _s.dictarRecognition = null;
+      _renderDictar();
+    };
+    recog.onend = function () {
+      _s.dictarRecognizing = false; _s.dictarRecognition = null;
+      _renderDictar();
+    };
+    recog.start();
+  };
+
+  window.plannerDictarSubirAudio = function (input) {
+    if (!input.files || !input.files[0]) return;
+    var file  = input.files[0];
+    var badge = document.getElementById('dictar-audio-badge');
+    if (badge) badge.textContent = '⏳ Leyendo…';
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var parts = ev.target.result.split(',');
+      _s.dictarAudioBase64 = parts[1];
+      _s.dictarAudioMime   = file.type || 'audio/webm';
+      if (badge) badge.textContent = '✓ ' + file.name;
+    };
+    reader.onerror = function () {
+      if (badge) badge.textContent = '';
+      alert('Error al leer el archivo de audio.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.plannerDictarToggle = function (key) {
+    var cb = document.getElementById('dc-' + key);
+    if (cb) _s.dictarConfirmados[key] = cb.checked;
+  };
+
+  window.plannerDictarAnalizar = function () {
+    var texto = (document.getElementById('dictar-texto') && document.getElementById('dictar-texto').value || '').trim();
+    if (!texto && !_s.dictarAudioBase64) {
+      alert('Escribe un texto o adjunta un audio antes de analizar.'); return;
+    }
+    var btn    = document.getElementById('dictar-analizar-btn');
+    var status = document.getElementById('dictar-status');
+    if (btn)    { btn.disabled = true; btn.textContent = '⏳ Analizando…'; }
+    if (status) status.textContent = '';
+
+    var payload = { centro_id: ctrId };
+    if (texto)                payload.texto        = texto;
+    if (_s.dictarAudioBase64) payload.audio_base64 = _s.dictarAudioBase64;
+    if (_s.dictarAudioMime)   payload.mime_type    = _s.dictarAudioMime;
+
+    sb.functions.invoke('parse-restricciones', { body: payload })
+      .then(function (res) {
+        if (btn) { btn.disabled = false; btn.textContent = '✨ Analizar con IA'; }
+        if (res.error) {
+          if (status) status.innerHTML = '<span style="color:var(--danger)">Error: ' + _esc(String(res.error)) + '</span>';
+          return;
+        }
+        var data = res.data;
+        if (!data || data.error) {
+          if (status) status.innerHTML = '<span style="color:var(--danger)">Error IA: ' + _esc(data && data.error ? data.error : 'Sin respuesta') + '</span>';
+          return;
+        }
+        _s.dictarResultado   = data;
+        _s.dictarConfirmados = {};
+        _renderDictar();
+        var st2 = document.getElementById('dictar-status');
+        if (st2) st2.innerHTML =
+          '<span style="color:var(--success)">✓ Análisis completado — ' +
+          (data.materias || []).length + ' materias, ' +
+          (data.necesidades || []).length + ' necesidades, ' +
+          (data.restricciones_profesor || []).length + ' restricciones.</span>';
+      })
+      .catch(function (err) {
+        if (btn)    { btn.disabled = false; btn.textContent = '✨ Analizar con IA'; }
+        if (status) status.innerHTML = '<span style="color:var(--danger)">Error: ' + _esc(err && err.message ? err.message : String(err)) + '</span>';
+      });
+  };
+
+  window.plannerDictarAplicar = async function () {
+    if (!_s.dictarResultado) return;
+    var r   = _s.dictarResultado;
+    var btn = document.querySelector('#pt-dictar .btn-ink[onclick="plannerDictarAplicar()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Aplicando…'; }
+
+    try {
+      var bloqueMap = {};
+      var matIdMap  = {};
+
+      var confirmedMats = (r.materias || []).filter(function (m, i) {
+        return _s.dictarConfirmados['mat_' + i] !== false;
+      });
+
+      for (var mi = 0; mi < confirmedMats.length; mi++) {
+        var m = confirmedMats[mi];
+        var existente = _s.materias.find(function (x) {
+          return x.nombre.toLowerCase() === m.nombre.toLowerCase();
+        });
+        if (existente) {
+          matIdMap[m.nombre] = existente.id;
+        } else {
+          var color = '#' + Math.floor(Math.random() * 0xAAAAAA + 0x555555).toString(16);
+          var ins = await sb.from('materias').insert({
+            centro_id:       ctrId,
+            nombre:          m.nombre,
+            color:           color,
+            carga_cognitiva: m.carga_cognitiva || 'media',
+            tipo_dinamica:   m.tipo_dinamica   || 'estatica'
+          }).select('id').single();
+          if (ins.error) throw ins.error;
+          matIdMap[m.nombre] = ins.data.id;
+        }
+        if (m.es_optativa && m.grupo_optativas && !bloqueMap[m.grupo_optativas]) {
+          bloqueMap[m.grupo_optativas] = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID() : String(Date.now() + mi);
+        }
+      }
+
+      var confirmedNecs = (r.necesidades || []).filter(function (n, i) {
+        return _s.dictarConfirmados['nec_' + i] !== false;
+      });
+
+      for (var ni = 0; ni < confirmedNecs.length; ni++) {
+        var n = confirmedNecs[ni];
+        var matId = matIdMap[n.materia];
+        if (!matId) {
+          var existMat = _s.materias.find(function (x) {
+            return x.nombre.toLowerCase() === n.materia.toLowerCase();
+          });
+          if (existMat) matId = existMat.id;
+        }
+        if (!matId) continue;
+
+        var profId = null;
+        var profMatch = _s.profesores.find(function (p) {
+          return p.nombre && p.nombre.toLowerCase().indexOf(n.profesor.toLowerCase()) !== -1;
+        });
+        if (profMatch) profId = profMatch.id;
+
+        var bloqueId = null;
+        var matEntry = (r.materias || []).find(function (x) {
+          return x.nombre === n.materia && x.es_optativa && x.grupo_optativas;
+        });
+        if (matEntry && bloqueMap[matEntry.grupo_optativas]) {
+          bloqueId = bloqueMap[matEntry.grupo_optativas];
+        }
+
+        var necIns = await sb.from('necesidades_lectivas').insert({
+          centro_id:                  ctrId,
+          grupo_horario:              n.grupo.toUpperCase(),
+          materia_id:                 matId,
+          profesor_id:                profId,
+          horas_semanales:            n.horas || 1,
+          bloque_interdisciplinar_id: bloqueId
+        });
+        if (necIns.error && necIns.error.code !== '23505') throw necIns.error;
+      }
+
+      var confirmedRestr = (r.restricciones_profesor || []).filter(function (rp, i) {
+        return _s.dictarConfirmados['rp_' + i] !== false;
+      });
+
+      for (var ri = 0; ri < confirmedRestr.length; ri++) {
+        var rp = confirmedRestr[ri];
+        var rpProf = _s.profesores.find(function (p) {
+          return p.nombre && p.nombre.toLowerCase().indexOf(rp.profesor.toLowerCase()) !== -1;
+        });
+        if (!rpProf) continue;
+
+        var dias   = _parseDiasDetalle(rp.detalle);
+        var trNums = _parseTramoDetalle(rp.tipo, rp.detalle);
+        var tnums  = _tramoNums();
+
+        if (rp.tipo === 'no_primera_hora') {
+          trNums = [tnums[0]];
+          if (!dias.length) dias = DIAS.slice();
+        } else if (rp.tipo === 'no_ultima_hora') {
+          trNums = [tnums[tnums.length - 1]];
+          if (!dias.length) dias = DIAS.slice();
+        } else {
+          if (!dias.length) dias = DIAS.slice();
+        }
+
+        for (var di = 0; di < dias.length; di++) {
+          for (var ti = 0; ti < trNums.length; ti++) {
+            var dispIns = await sb.from('disponibilidad_profesor').upsert({
+              profesor_id:   rpProf.id,
+              dia_semana:    dias[di],
+              tramo_horario: trNums[ti],
+              estado:        'no_disponible'
+            }, { onConflict: 'profesor_id,dia_semana,tramo_horario' });
+            if (dispIns.error) console.warn('[Dictar] disponibilidad:', dispIns.error.message);
+          }
+        }
+      }
+
+      await _loadData();
+      _s.dictarResultado   = null;
+      _s.dictarConfirmados = {};
+      _s.dictarAudioBase64 = null;
+      _s.dictarAudioMime   = null;
+      _showPTab('dictar');
+      var st3 = document.getElementById('dictar-status');
+      if (st3) st3.innerHTML = '<span style="color:var(--success)">✓ Datos aplicados correctamente al Planner.</span>';
+
+    } catch (err) {
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Aplicar al Planner'; }
+      alert('Error al aplicar: ' + (err && err.message ? err.message : String(err)));
+    }
+  };
+
+  window.plannerDictarRefinir = function () {
+    var prev = _s.dictarResultado;
+    _s.dictarResultado   = null;
+    _s.dictarConfirmados = {};
+    _renderDictar();
+    if (prev && prev.preguntas && prev.preguntas.length) {
+      var el = document.getElementById('dictar-texto');
+      if (el && el.value) {
+        el.value += '\n\n[Aclaraciones pendientes]\n' + prev.preguntas.map(function (q) {
+          return '- ' + q;
+        }).join('\n');
+      }
+    }
+  };
+
+  function _parseDiasDetalle(detalle) {
+    if (!detalle) return [];
+    var txt  = detalle.toLowerCase();
+    var dias = [];
+    if (txt.indexOf('lunes')   !== -1) dias.push('lunes');
+    if (txt.indexOf('martes')  !== -1) dias.push('martes');
+    if (txt.indexOf('mi') !== -1 && (txt.indexOf('miérc') !== -1 || txt.indexOf('mierc') !== -1)) dias.push('miércoles');
+    if (txt.indexOf('jueves')  !== -1) dias.push('jueves');
+    if (txt.indexOf('viernes') !== -1) dias.push('viernes');
+    return dias;
+  }
+
+  function _parseTramoDetalle(tipo, detalle) {
+    if (!detalle) return [];
+    var txt  = detalle.toLowerCase();
+    var nums = [];
+    var tnums = _tramoNums();
+    var tramoMatches = txt.match(/tramo\s*(\d+)/gi) || [];
+    tramoMatches.forEach(function (m) {
+      var n = parseInt(m.replace(/\D/g, ''));
+      if (tnums.indexOf(n) !== -1 && nums.indexOf(n) === -1) nums.push(n);
+    });
+    if (!nums.length) {
+      var numMatches = txt.match(/\b([1-9]|10)\b/g) || [];
+      numMatches.forEach(function (m) {
+        var n = parseInt(m);
+        if (tnums.indexOf(n) !== -1 && nums.indexOf(n) === -1) nums.push(n);
+      });
+    }
+    return nums;
+  }
 
 })();
