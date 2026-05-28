@@ -57,7 +57,7 @@ async function _renderRrhhProfesor() {
         '<div class="card-ico b">📋</div>' +
         '<div><div class="card-title">Nueva solicitud de ausencia</div></div>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">' +
         '<div><label class="lbl">Fecha inicio *</label>' +
           '<input class="fi" type="date" id="rrhh-fecha-ini" value="' + hoy + '" /></div>' +
         '<div><label class="lbl">Fecha fin *</label>' +

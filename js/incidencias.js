@@ -369,7 +369,7 @@ function _incShowTipModal(data) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
 
   modal.innerHTML = ''
-    + '<div style="background:#fff;border-radius:12px;max-width:680px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);">'
+    + '<div style="background:#fff;border-radius:12px;max-width:min(680px,calc(100vw - 24px));width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);">'
     + '  <div style="padding:20px 24px 16px;border-bottom:1px solid #e0e0e0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">'
     + '    <div>'
     + '      <div style="font-size:16px;font-weight:600;color:#222;">✨ Tipificación IA</div>'

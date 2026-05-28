@@ -365,7 +365,7 @@ function initRealtimeNotifications() {
 
 function showToast(msg) {
   var toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);max-width:90vw;text-align:center;';
+  toast.style.cssText = 'position:fixed;bottom:calc(72px + env(safe-area-inset-bottom,0));left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);max-width:90vw;text-align:center;';
   toast.textContent = '🔔 ' + msg;
   document.body.appendChild(toast);
   setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 5000);

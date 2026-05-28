@@ -585,7 +585,7 @@
       </div>
     </div>
     <div class="card">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
         <div>
           <label class="lbl">Profesor ausente</label>
           <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
@@ -624,7 +624,7 @@
         <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
         <div id="sust-msg" style="display:none;font-size:13px;"></div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;margin-top:14px;">
+      <div id="sust-filter-bar" style="display:flex;gap:8px;margin-bottom:12px;margin-top:14px;">
         <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')"    style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
         <button id="sust-btn-semana" onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
         <button id="sust-btn-todo"   onclick="loadSustituciones('todo')"   style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
@@ -655,7 +655,7 @@
     </div>
     <div class="card">
       <div class="card-hdr"><div class="card-ico o">⚠️</div><div><div class="card-title">Registrar nueva incidencia</div></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
         <div>
           <label class="lbl">Tipo</label>
           <select class="fi" id="inc-tipo">
@@ -740,7 +740,7 @@
         <div class="pg-hdr">
           <div>
             <div class="pg-title">Comedor escolar</div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <div id="comedor-date-nav" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
               <button onclick="changeComedorFecha(-1)" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">← Anterior</button>
               <div id="comedor-fecha" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:#202124;"></div>
               <button onclick="changeComedorFecha(1)" id="btn-comedor-sig" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">Siguiente →</button>
@@ -750,7 +750,7 @@
         </div>
 
         <!-- Resumen del día -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-top:6px;">
           <div class="stat" style="background:var(--ink);color:#fff;">
             <div class="stat-n" id="total-comensales" style="color:#fff;">—</div>
             <div class="stat-l" style="color:rgba(255,255,255,0.7);">Total hoy</div>

@@ -295,7 +295,7 @@ body { font-family: var(--font-ui); font-size: 13.5px; line-height: 1.5; backgro
 
   /* Input area móvil */
   .input-area { padding:10px 12px; gap:7px; }
-  .chat-inp { font-size:15px; } /* 15px evita zoom en iOS */
+  .chat-inp { font-size:16px; } /* 16px previene zoom en iOS — umbral es <16px */
   .send-btn { width:42px; height:42px; }
   .mic-btn { width:42px; height:42px; }
 
@@ -1992,3 +1992,105 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 .tool-btn-confirm:hover   { opacity: .85; }
 .tool-btn-confirm:disabled,
 .tool-btn-cancel:disabled { opacity: .45; cursor: default; }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE FIXES — comprehensive pass (2026-05-29)
+   Cubre: filtros, modales, grids, charts, safe-area,
+   planner, toasts, tablas con scroll.
+   ══════════════════════════════════════════════════════ */
+
+/* ── Filtro de sustituciones: scroll horizontal en lugar de wrap ── */
+#sust-filter-bar {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-wrap: nowrap !important;
+  padding-bottom: 2px;
+}
+#sust-filter-bar::-webkit-scrollbar { display: none; }
+#sust-filter-bar button { flex-shrink: 0; }
+
+/* ── Tablas con overflow horizontal ── */
+.tbl-wrap          { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.guardias-tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── CMI charts: width constraint siempre ── */
+.cmi-chart-wrap { max-width: 100%; width: 100%; box-sizing: border-box; }
+
+/* ── Modales HTML (app.html): clamp en small phones via CSS !important ── */
+@media (max-width: 480px) {
+  #modal-invitar > div,
+  #modal-editar > div {
+    max-width: calc(100vw - 24px) !important;
+    padding: 18px 16px !important;
+  }
+
+  /* Incidencias modal generado por JS — targetable por ID */
+  #inc-tip-modal > div {
+    max-width: calc(100vw - 24px) !important;
+    padding: 16px 14px !important;
+  }
+
+  /* CMI metrics: 2 columnas en teléfonos pequeños */
+  .cmi-metrics { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Inicio stats: 1 columna en 480px */
+  .inicio-stats { grid-template-columns: 1fr !important; }
+
+  /* Planner hora más corta */
+  .planner-ml-hora { min-width: 60px; font-size: 10px; }
+
+  /* Topbar: título más corto */
+  #topbar-title { font-size: 15px; }
+}
+
+@media (max-width: 768px) {
+  /* Planner: padding reducido en móvil */
+  .planner-wrap { padding: 14px 12px; }
+  .planner-tabs { gap: 4px; padding-bottom: 14px; margin-bottom: 16px; }
+
+  /* Filtros incidencias: asegurar que pills no se cortan */
+  #panel-incidencias .card > div[style*="flex"] {
+    flex-wrap: wrap;
+  }
+
+  /* Comedor date nav: botones se expanden */
+  #comedor-date-nav button { flex: 1; min-width: 0; white-space: nowrap; }
+  #comedor-date-nav #comedor-fecha { min-width: 80px; }
+
+  /* Panel sust y panel comedor: contenido interno con padding correcto */
+  #panel-sust .card,
+  #panel-incidencias .card,
+  #panel-comedor > div > div { padding: 16px 14px; }
+
+  /* Guardias tabla: scroll horizontal */
+  #bolsa-guardias-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Espacios tabla: scroll horizontal */
+  #espacios-tabla-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Planner tablero zona libre: text ajustado */
+  .unassigned-pool { padding: 10px 12px; }
+
+  /* Analytics: padding interior en móvil */
+  #analytics-container { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0)); }
+
+  /* Users tabla: scroll horizontal */
+  #users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #users-table-wrap .tbl { min-width: 480px; }
+
+  /* RRHH tabla: scroll horizontal */
+  #rrhh-lista-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Comunicados form: ancho completo en móvil */
+  #com-form-wrap .card { padding: 14px; }
+
+  /* Tool confirm card: ancho completo en móvil */
+  .tool-confirm-card { max-width: 100%; }
+
+  /* Chat input: mínimo 44px táctil */
+  .chat-inp { min-height: 44px; }
+
+  /* Send/mic button: mínimo 44px */
+  .send-btn, .mic-btn { min-width: 44px; min-height: 44px; }
+}
