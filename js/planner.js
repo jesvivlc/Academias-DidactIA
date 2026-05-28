@@ -842,7 +842,8 @@
       (_s.grupos.length === 0
         ? '<div class="planner-empty">Define necesidades lectivas primero (pestaña Necesidades).</div>'
         : '<div id="planner-tablero-body">' +
-            '<div style="overflow-x:auto">' + _buildGrid() + '</div>' +
+            '<div class="planner-grid-outer">' + _buildGrid() + '</div>' +
+            _buildMobileList() +
             '<div class="unassigned-pool" id="planner-pool"' +
             ' ondragover="plannerDragOver(event)" ondragleave="plannerDragLeave(event)" ondrop="plannerDropPool(event)">' +
             '<div class="card-eyebrow" style="margin-bottom:6px">Zona libre — arrastra aquí para quitar una sesión</div>' +
@@ -907,6 +908,38 @@
 
     return '<div class="planner-grid" id="planner-grid" style="grid-template-columns:100px repeat(5,1fr)">' +
       '<div class="planner-hdr-cell planner-hdr-hora">Hora</div>' + hdrs + rows + '</div>';
+  }
+
+  function _buildMobileList() {
+    var g = _s.currentGrupo;
+    if (!g || !_s.schedule[g]) return '<div class="planner-mobile-list"></div>';
+
+    var DIA_LABELS = { lunes:'Lunes', martes:'Martes', 'miércoles':'Miércoles', jueves:'Jueves', viernes:'Viernes' };
+    var tramos = _claseTramos();
+
+    var html = DIAS.map(function (dia) {
+      var rows = tramos.map(function (t) {
+        var key = String(t.numero);
+        var s = (_s.schedule[g][dia] || {})[key];
+        if (!s) return '';
+        var color = s.materia_color || 'var(--muted)';
+        return '<div class="planner-ml-row">' +
+          '<span class="planner-ml-hora">' + _esc(_tramoLabel(t.numero)) + '</span>' +
+          '<span class="planner-ml-card" style="border-left-color:' + _esc(color) + '">' +
+            '<span class="planner-ml-mat">' + _esc(s.materia_nombre || '—') + '</span>' +
+            (s.profesor_nombre ? '<span class="planner-ml-prof">' + _esc(s.profesor_nombre) + '</span>' : '') +
+          '</span>' +
+        '</div>';
+      }).join('');
+
+      if (!rows) return '';
+      return '<div class="planner-ml-day">' +
+        '<div class="planner-ml-day-hdr">' + _esc(DIA_LABELS[dia] || dia) + '</div>' +
+        rows +
+      '</div>';
+    }).join('');
+
+    return '<div class="planner-mobile-list">' + html + '</div>';
   }
 
   /* ── Banner de puntuación neuroeducativa ── */

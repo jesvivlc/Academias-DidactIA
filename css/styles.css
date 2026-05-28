@@ -1837,3 +1837,89 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
   0%,100% { opacity:.5; }
   50%      { opacity:1; }
 }
+
+/* ============================================================
+   MOBILE RESPONSIVE — max-width 768px
+   ============================================================ */
+
+/* Planner grid wrapper — desktop: scrollable; mobile: hidden */
+.planner-grid-outer {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Planner mobile list — hidden on desktop, shown on mobile */
+.planner-mobile-list { display: none; }
+
+@media (max-width: 768px) {
+  /* Planner: hide grid, show list */
+  .planner-grid-outer  { display: none; }
+  .planner-mobile-list { display: block; padding-bottom: 12px; }
+
+  .planner-ml-day { margin-bottom: 14px; }
+  .planner-ml-day-hdr {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    padding: 4px 0 6px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+  }
+  .planner-ml-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .planner-ml-hora {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 72px;
+    padding-top: 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .planner-ml-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--muted);
+    border-radius: var(--r-sm);
+    padding: 6px 10px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .planner-ml-mat  { font-size: 13px; font-weight: 600; color: var(--txt); }
+  .planner-ml-prof { font-size: 11px; color: var(--muted); }
+
+  /* Forms — min 44px touch targets, font-size 16px prevents iOS zoom */
+  .fi,
+  .fa,
+  input[type="text"],
+  input[type="email"],
+  input[type="date"],
+  input[type="number"],
+  input[type="password"],
+  select,
+  textarea,
+  .planner-input,
+  .planner-select {
+    min-height: 44px !important;
+    font-size: 16px !important;
+  }
+
+  /* Analytics charts — shorter on mobile */
+  .cmi-chart-wrap     { height: 130px !important; }
+  .cmi-chart-wrap--sm { height: 110px !important; }
+
+  /* CMI panel spacing */
+  .cmi-hdr  { padding: 14px 16px 10px; }
+  .cmi-grid { padding: 0 12px 12px; gap: 10px; }
+  .cmi-card { padding: 14px 14px 10px; }
+  .cmi-multicentro { margin: 0 12px 14px; padding: 14px 16px; }
+}
