@@ -6,6 +6,7 @@
 <title>DidactIA — Asistente de Centro Educativo</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="css/styles.css">
   <meta name="theme-color" content="#2a3d2b">
   <meta name="mobile-web-app-capable" content="yes">
@@ -119,6 +120,7 @@
   <div class="tab" id="tab-comunicados"        onclick="showTab('comunicados')" style="display:none">📢 Comunicados</div>
   <div class="tab" id="tab-avisos"             onclick="showTab('avisos')"      style="display:none">🔔 Avisos</div>
   <div class="tab" id="tab-planner"           onclick="showTab('planner')"     style="display:none">📅 Planner</div>
+  <div class="tab" id="tab-analytics"        onclick="showTab('analytics')"   style="display:none">📊 Analytics</div>
 </nav>
 
 <!-- APP SHELL -->
@@ -232,6 +234,9 @@
         </button>
         <button class="nav-item" id="nav-planner" data-tab="planner" onclick="showTab('planner')" style="display:none">
           <i class="ti ti-calendar-event"></i><span class="nav-item-label">Planner</span>
+        </button>
+        <button class="nav-item" id="nav-analytics" data-tab="analytics" onclick="showTab('analytics')" style="display:none">
+          <i class="ti ti-chart-bar"></i><span class="nav-item-label">Analytics</span>
         </button>
 
       </div><!-- /sb-nav -->
@@ -860,6 +865,11 @@
   <div class="panel" id="panel-avisos" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
   </div>
 
+  <!-- ANALYTICS PANEL -->
+  <div class="panel" id="panel-analytics" style="flex-direction:column;overflow-y:auto;background:var(--bg);padding:0;">
+    <div id="analytics-container"></div>
+  </div>
+
   <!-- PLANNER PANEL -->
   <div class="panel" id="panel-planner" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
     <div class="planner-wrap">
@@ -997,6 +1007,7 @@
 <script src="js/comunicados.js"></script>
 <script src="js/familias.js"></script>
 <script src="js/planner.js"></script>
+<script src="js/analytics.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1015,7 +1026,8 @@
     chat:'Inicio', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
-    planner:'Planner — Generador de horarios'
+    planner:'Planner — Generador de horarios',
+    analytics:'Analytics — Cuadro de Mando'
   };
   var MAS_CFG = {
     ib:        { icon:'ti-school',          label:'IB' },
@@ -1023,7 +1035,8 @@
     espacios:  { icon:'ti-door',            label:'Espacios' },
     users:     { icon:'ti-users',           label:'Usuarios' },
     admin:     { icon:'ti-settings',        label:'Administración' },
-    planner:   { icon:'ti-calendar-event',  label:'Planner' }
+    planner:   { icon:'ti-calendar-event',  label:'Planner' },
+    analytics: { icon:'ti-chart-bar',       label:'Analytics' }
   };
   /* IDs: tab → nav-item sidebar, nav-item bottom-nav */
   var TAB_MAP = {
@@ -1037,7 +1050,8 @@
     'tab-rrhh':        { nav:'nav-rrhh',         bn:null },
     'tab-ib':          { nav:'nav-ib',           bn:null },
     'tab-comunicados': { nav:'nav-comunicados',  bn:'bn-comunicados' },
-    'tab-planner':     { nav:'nav-planner',      bn:null }
+    'tab-planner':     { nav:'nav-planner',      bn:null },
+    'tab-analytics':   { nav:'nav-analytics',    bn:null }
   };
   var BADGE_MAP = {
     'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
@@ -1080,7 +1094,8 @@
         var titleEl = document.getElementById('topbar-title');
         if (titleEl) titleEl.textContent = TITLES[t] || t;
         closeMasDrawer();
-        if (t === 'planner' && typeof initPlannerPanel === 'function') initPlannerPanel();
+        if (t === 'planner'   && typeof initPlannerPanel   === 'function') initPlannerPanel();
+        if (t === 'analytics' && typeof initAnalyticsPanel === 'function') initAnalyticsPanel();
       };
     }
   }
@@ -1284,9 +1299,13 @@
     var panelChat = document.getElementById('panel-chat');
     if (panelChat && r) panelChat.dataset.role = r;
 
-    /* Planner — solo admin/superadmin */
+    /* Planner + Analytics — solo admin/superadmin */
     var np = document.getElementById('nav-planner');
     if (np) np.style.display = isAdmin ? 'flex' : 'none';
+    var na = document.getElementById('nav-analytics');
+    if (na) na.style.display = isAdmin ? 'flex' : 'none';
+    var ta = document.getElementById('tab-analytics');
+    if (ta) ta.style.display = isAdmin ? '' : 'none';
 
     if (!_bentoObserversSetup) {
       _bentoObserversSetup = true;
