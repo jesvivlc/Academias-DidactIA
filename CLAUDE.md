@@ -115,7 +115,7 @@ scripts/
 
 | Función | Propósito |
 |---------|-----------|
-| `chat` | Proxy a Gemini 2.5 Flash. Recibe `{ contents: [...] }` en formato Gemini |
+| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor` |
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
 | `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
@@ -209,7 +209,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 
 ## Módulos implementados
 
-### Chatbot (chat.js)
+### Chatbot — Agente ejecutor (chat.js + EF chat)
 - Contexto inyectado: info_centro, horario del usuario, hijos vinculados
 - Resolución directa (sin Gemini) para consultas de horario de alumno/grupo/profesor
 - Búsqueda fuzzy de alumnos por nombre con deduplicación por tokens exactos
@@ -217,6 +217,14 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - Detección de guardias/profesores libres en tiempo real
 - Historial conversacional (últimos 10 mensajes) enviado a Gemini
 - Control de acceso por rol en el system prompt
+- **Agente ejecutor** (admin/profesional/superadmin): Gemini function calling con 5 herramientas
+  - `crear_sustitucion` — INSERT en `sustituciones` (requiere confirmación)
+  - `crear_incidencia` — INSERT en `incidencias` (requiere confirmación)
+  - `consultar_profesor_libre` — SELECT en `horarios_grupo` (auto-ejecuta, sin confirmación)
+  - `registrar_ausencia_profesor` — INSERT en `ausencias_profesor` estado pendiente (requiere confirmación)
+  - `avisar_comedor` — UPSERT `asistencia_comedor` se_queda=false (requiere confirmación)
+- **Flujo de confirmación**: respuesta `{type:"tool_call"}` → `_showToolCard()` renderiza card con parámetros → usuario confirma/cancela → `window._confirmTool()` envía `confirm_tool/confirm_args/pending_contents` a la EF → resultado final como texto
+- `READ_ONLY = Set(["consultar_profesor_libre"])` — herramientas de solo lectura se auto-ejecutan sin mostrar card
 
 ### Comedor (comedor.js)
 - Vista día: lista de asistencia con toggle por alumno, filtros, navegación por fechas
@@ -801,6 +809,15 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-29` · Supabase deploy — EF `chat` desplegada con function calling (5 herramientas agente ejecutor)
+- `2026-05-29 00:26` · `fc4c6a1` — fix: móvil — Planner en drawer Más + selector de centro para superadmin
+- `2026-05-29 00:19` · `636e534` — fix: revisión completa móvil — 24 issues cubiertos
+- `2026-05-29 00:11` · `5d7cf08` — feat: chatbot agente ejecutor — function calling con confirmación UI
+- `2026-05-29 00:02` · `ad12d40` — fix: mobile responsive — planner list view, forms 44px, analytics charts, comunicados en drawer Más
+- `2026-05-28 14:47` · `bf2a3fc` — feat: CMI Analytics — Cuadro de Mando Integral con alertas predictivas
+- `2026-05-28 14:22` · `48d624b` — feat: Planner — H-MRV-SA UI connection (progreso, variantes, diagnóstico)
+- `2026-05-28 06:48` · `02420d1` — feat: motor H-MRV-SA — TimetableSolver + DidactIAPlanner (motor puro)
+- `2026-05-28 01:06` · `48c18e2` — docs: CLAUDE.md — tab Dictar + Edge Function parse-restricciones documentados
 - `2026-05-28 01:06` · `a44a77a` — feat: Planner — tab Dictar con IA multimodal (voz/texto/audio)
 - `2026-05-28 00:48` · `90bb22b` — feat: planner — tooltip LOMLOE + configuración de tramos horarios
 - `2026-05-28 01:05` · `a44a77a` — feat: Planner — tab Dictar con IA multimodal (voz/texto/audio) + Edge Function parse-restricciones desplegada
