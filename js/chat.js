@@ -568,7 +568,7 @@ async function sendMsg() {
 
   const canUseTool = role === "admin" || role === "profesional" || role === "superadmin";
   const toolInstr = canUseTool
-    ? `\nAdemás de responder preguntas, PUEDES REALIZAR ACCIONES en el sistema: registrar sustituciones, incidencias, ausencias de profesores, consultar profesores libres y avisar al comedor. Cuando el usuario solicite una acción, usa la herramienta adecuada. Si faltan datos imprescindibles, pregunta solo lo estrictamente necesario (una pregunta a la vez). Las acciones de escritura siempre se confirman con el usuario antes de ejecutar.`
+    ? `\nTienes herramientas activas para ejecutar acciones directas: crear_sustitucion, crear_incidencia, registrar_ausencia_profesor, consultar_profesor_libre, avisar_comedor. REGLAS CRÍTICAS: (1) Cuando el usuario pida una de estas acciones, LLAMA A LA HERRAMIENTA INMEDIATAMENTE — no preguntes si puedes, no pidas confirmación textual, no digas que no puedes hacerlo. (2) El sistema muestra automáticamente una tarjeta de confirmación al usuario antes de ejecutar — tú no necesitas confirmar nada. (3) Si faltan datos imprescindibles (fecha, grupo, nombre del profesor), haz UNA SOLA pregunta concisa para obtenerlos. (4) Nunca respondas "no tengo capacidad para" o "no puedo" si tienes la herramienta correspondiente.`
     : "";
 
   const sys = `Eres DidactIA, el asistente inteligente de ${ctrName}. Puedes responder preguntas sobre el centro Y realizar acciones directamente en el sistema.
@@ -585,24 +585,20 @@ ${role === "superadmin" || role === "admin"
 CONTEXTO EN TIEMPO REAL:
 ${ctx}${horarioGrupoCtx}`;
 
-  // Construir historial Gemini con system prompt en el primer mensaje
+  // Construir historial Gemini — system prompt va en systemInstruction (campo separado)
   const geminiContents = [];
   const prevMsgs = history.slice(0, -1).slice(-10);
   const lastMsg = history[history.length - 1];
-  if (prevMsgs.length === 0) {
-    geminiContents.push({ role:"user", parts:[{ text: sys + "\n\nPregunta: " + lastMsg.content }] });
-  } else {
-    for (let i = 0; i < prevMsgs.length; i++) {
-      const msg = prevMsgs[i];
-      const isFirst = i === 0;
-      const txt = isFirst && msg.role === "user" ? sys + "\n\nPregunta: " + msg.content : msg.content;
-      geminiContents.push({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: txt }]
-      });
-    }
-    geminiContents.push({ role:"user", parts:[{ text: lastMsg.content }] });
+  for (const msg of prevMsgs) {
+    geminiContents.push({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }]
+    });
   }
+  geminiContents.push({ role: "user", parts: [{ text: lastMsg.content }] });
+
+  // Guardar para el flujo de confirmación de herramientas
+  window._lastSystemPrompt = sys;
 
   try {
     const res = await fetch(API, {
@@ -614,6 +610,7 @@ ${ctx}${horarioGrupoCtx}`;
       },
       body: JSON.stringify({
         contents: geminiContents,
+        system_prompt: sys,
         centro_id: ctrId,
         role,
         user_name: currentUserName,
@@ -690,13 +687,13 @@ function _showToolCard(tool, args, pendingContents) {
       '</div>' +
     '</div>';
 
-  window._pendingTool = { tool, args, pendingContents };
+  window._pendingTool = { tool, args, pendingContents, systemPrompt: window._lastSystemPrompt };
   addMsg("bot", cardHtml);
 }
 
 window._confirmTool = async function() {
   if (!window._pendingTool) return;
-  const { tool, args, pendingContents } = window._pendingTool;
+  const { tool, args, pendingContents, systemPrompt } = window._pendingTool;
   window._pendingTool = null;
 
   const card = document.getElementById("tool-confirm-card");
@@ -721,6 +718,7 @@ window._confirmTool = async function() {
         confirm_tool: tool,
         confirm_args: args,
         pending_contents: pendingContents,
+        system_prompt: systemPrompt,
         centro_id: ctrId,
         role,
         user_name: currentUserName,

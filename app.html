@@ -144,7 +144,7 @@
         <button class="topbar-role-btn" id="topbar-role-admin">Admin</button>
         <button class="topbar-role-btn" id="topbar-role-prof">Profesor</button>
       </div>
-      <button class="topbar-icon-btn" title="Asistente IA" onclick="showTab('chat')">
+      <button class="topbar-icon-btn" title="Asistente IA" onclick="showTab('chat');setTimeout(function(){var ci=document.getElementById('chat-inp');if(ci)ci.focus();},80)">
         <i class="ti ti-sparkles"></i>
       </button>
       <button class="topbar-icon-btn" title="Notificaciones">
@@ -192,7 +192,7 @@
         <button class="nav-item active" id="nav-chat" data-tab="chat" onclick="showTab('chat')">
           <i class="ti ti-home"></i><span class="nav-item-label">Inicio</span>
         </button>
-        <button class="nav-item" id="nav-asistente" onclick="showTab('chat')">
+        <button class="nav-item" id="nav-asistente" onclick="showTab('chat');setTimeout(function(){var ci=document.getElementById('chat-inp');if(ci)ci.focus();},80)">
           <i class="ti ti-sparkles"></i><span class="nav-item-label">Asistente IA</span>
           <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
         </button>

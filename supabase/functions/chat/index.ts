@@ -105,8 +105,12 @@ async function callGemini(
   apiKey: string,
   contents: unknown[],
   withTools: boolean,
+  systemInstruction?: string,
 ): Promise<Response> {
   const payload: Record<string, unknown> = { contents };
+  if (systemInstruction) {
+    payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+  }
   if (withTools) {
     payload.tools = [{ functionDeclarations: TOOL_DECLARATIONS }];
     payload.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
@@ -263,6 +267,7 @@ serve(async (req) => {
     const body = await req.json();
     const {
       contents,
+      system_prompt,
       centro_id,
       role,
       user_name,
@@ -272,6 +277,7 @@ serve(async (req) => {
       pending_contents,
     } = body as {
       contents?: unknown[];
+      system_prompt?: string;
       centro_id?: string;
       role?: string;
       user_name?: string;
@@ -306,7 +312,7 @@ serve(async (req) => {
         { role: "user",  parts: [{ functionResponse: { name: confirm_tool, response: { result: toolResult } } }] },
       ];
 
-      const geminiRes = await callGemini(apiKey, contentsWithResult, false);
+      const geminiRes = await callGemini(apiKey, contentsWithResult, false, system_prompt);
       const geminiData = await geminiRes.json();
       const text =
         geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? toolResult;
@@ -319,7 +325,7 @@ serve(async (req) => {
     const canUseTool =
       role === "admin" || role === "profesional" || role === "superadmin";
 
-    const geminiRes = await callGemini(apiKey, contents, canUseTool);
+    const geminiRes = await callGemini(apiKey, contents, canUseTool, system_prompt);
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
       throw new Error(`Gemini ${geminiRes.status}: ${errText.slice(0, 300)}`);
@@ -351,7 +357,7 @@ serve(async (req) => {
           { role: "model", parts: [{ functionCall: { name, args } }] },
           { role: "user",  parts: [{ functionResponse: { name, response: { result: toolResult } } }] },
         ];
-        const geminiRes2 = await callGemini(apiKey, contentsWithResult, false);
+        const geminiRes2 = await callGemini(apiKey, contentsWithResult, false, system_prompt);
         const geminiData2 = await geminiRes2.json();
         const text =
           geminiData2.candidates?.[0]?.content?.parts?.[0]?.text ?? toolResult;
