@@ -1685,4 +1685,318 @@
     return nums;
   }
 
+  /* ════════════════════════════════
+     H-MRV-SA MOTOR
+     Fase 1 — Greedy MRV + LCV
+     Fase 2 — Simulated Annealing (SWAP / RELOCATE)
+     Fase 3 — 3 variantes Pareto (Web Workers paralelos)
+  ════════════════════════════════ */
+
+  const WORKER_LOGIC = `
+'use strict';
+class TimetableSolver {
+  constructor(cfg) {
+    this.groups    = cfg.groups;
+    this.teachers  = cfg.teachers;
+    this.blocks    = cfg.blocks;
+    this.numTramos = cfg.numTramos || 8;
+    this.timeout   = cfg.timeout  || 30000;
+    this.weights   = cfg.weights;
+    this.variantId = cfg.variantId;
+    this.auditLog  = [];
+    this.startTime = Date.now();
+    this.finalCost = 0;
+    this.schedule         = new Map();
+    this.teacherOccupancy = new Map();
+    this.groupOccupancy   = new Map();
+    this.previousSchedule = cfg.previousSchedule
+      ? new Map(Object.entries(cfg.previousSchedule)) : new Map();
+    this.groups.forEach(function(g) { this.groupOccupancy.set(g.id, new Set()); }.bind(this));
+    this.teachers.forEach(function(t) {
+      this.teacherOccupancy.set(t.id, new Set());
+      t.unavailableSlots = new Set(t.unavailableSlots || []);
+    }.bind(this));
+  }
+
+  getValidSlots(block) {
+    var total = 5 * this.numTramos;
+    var gOcc  = this.groupOccupancy.get(block.groupId) || new Set();
+    var valid = [];
+    for (var s = 0; s < total; s++) {
+      if (gOcc.has(s)) continue;
+      var conflict = false;
+      for (var i = 0; i < block.teacherIds.length; i++) {
+        var tid  = block.teacherIds[i];
+        var tOcc = this.teacherOccupancy.get(tid);
+        if (tOcc && tOcc.has(s)) { conflict = true; break; }
+        var teacher = null;
+        for (var j = 0; j < this.teachers.length; j++) {
+          if (this.teachers[j].id === tid) { teacher = this.teachers[j]; break; }
+        }
+        if (teacher && teacher.unavailableSlots.has(s)) { conflict = true; break; }
+      }
+      if (!conflict) valid.push(s);
+    }
+    return valid;
+  }
+
+  getValidSlotsLCV(block, pending) {
+    var raw = this.getValidSlots(block);
+    if (raw.length <= 1 || !pending.length) return raw;
+    var self_ = this;
+    return raw.slice().sort(function(sa, sb) {
+      var sumA = 0, sumB = 0;
+      for (var pi = 0; pi < pending.length; pi++) {
+        var dom = pending[pi]._domain || [];
+        for (var di = 0; di < dom.length; di++) {
+          if (dom[di] !== sa) sumA++;
+          if (dom[di] !== sb) sumB++;
+        }
+      }
+      return sumB - sumA;
+    });
+  }
+
+  assignBlock(block, slot) {
+    this.schedule.set(block.id, slot);
+    var g = this.groupOccupancy.get(block.groupId);
+    if (!g) { g = new Set(); this.groupOccupancy.set(block.groupId, g); }
+    g.add(slot);
+    for (var i = 0; i < block.teacherIds.length; i++) {
+      var t = this.teacherOccupancy.get(block.teacherIds[i]);
+      if (!t) { t = new Set(); this.teacherOccupancy.set(block.teacherIds[i], t); }
+      t.add(slot);
+    }
+  }
+
+  removeBlock(block) {
+    var slot = this.schedule.get(block.id);
+    if (slot === undefined) return;
+    this.schedule.delete(block.id);
+    var g = this.groupOccupancy.get(block.groupId);
+    if (g) g.delete(slot);
+    for (var i = 0; i < block.teacherIds.length; i++) {
+      var t = this.teacherOccupancy.get(block.teacherIds[i]);
+      if (t) t.delete(slot);
+    }
+  }
+
+  constructInitialSolution() {
+    var pending = this.blocks.slice().sort(function(a, b) {
+      var ap = a.teacherIds.length > 1 ? 2 : (a.isOptative ? 1 : 0);
+      var bp = b.teacherIds.length > 1 ? 2 : (b.isOptative ? 1 : 0);
+      return bp - ap;
+    });
+    var assigned = 0;
+    while (pending.length > 0) {
+      for (var i = 0; i < pending.length; i++) pending[i]._domain = this.getValidSlots(pending[i]);
+      pending.sort(function(a, b) { return a._domain.length - b._domain.length; });
+      var block = pending.shift();
+      if (!block._domain.length) {
+        self.postMessage({ type: 'error', variantId: this.variantId, blockId: block.id,
+          message: 'Sin slots: "' + block.subjectName + '" (grupo ' + block.groupId + ')',
+          suggestion: 'Reduce horas semanales o revisa disponibilidad del profesor.' });
+        continue;
+      }
+      var slots = this.getValidSlotsLCV(block, pending);
+      this.assignBlock(block, slots[0]);
+      assigned++;
+      this.auditLog.push('[C1] ' + block.subjectName + '/' + block.groupId +
+        ' -> slot ' + slots[0] +
+        ' (d' + Math.floor(slots[0] / this.numTramos) +
+        ' t' + (slots[0] % this.numTramos) + ')');
+      if (assigned % 20 === 0)
+        self.postMessage({ type: 'progress', variantId: this.variantId,
+          phase: 1, assigned: assigned, total: this.blocks.length });
+    }
+  }
+
+  calculateCost() {
+    var w = this.weights, nt = this.numTramos, cost = 0;
+    var byGD = new Map();
+    var schedule = this.schedule, blocks = this.blocks;
+    schedule.forEach(function(slot, bid) {
+      var b = null;
+      for (var i = 0; i < blocks.length; i++) { if (blocks[i].id === bid) { b = blocks[i]; break; } }
+      if (!b) return;
+      var key = b.groupId + '_' + Math.floor(slot / nt);
+      if (!byGD.has(key)) byGD.set(key, []);
+      byGD.get(key).push({ b: b, tram: slot % nt });
+    });
+    byGD.forEach(function(slots) {
+      slots.sort(function(a, x) { return a.tram - x.tram; });
+      for (var i = 0; i < slots.length; i++) {
+        var b = slots[i].b;
+        if (b.cognitiveLoad === 'alta' && (i === 0 || i === slots.length - 1))
+          cost += 40 * w.cognitiveLoad;
+        if (i > 0 && b.cognitiveLoad === 'alta' && slots[i-1].b.cognitiveLoad === 'alta')
+          cost += 100 * w.cognitiveLoad;
+        if (b.dynamicType === 'estatica') {
+          var streak = 1;
+          for (var j = i - 1; j >= 0 && slots[j].b.dynamicType === 'estatica'; j--) streak++;
+          if (streak > 5) cost += 50 * w.alternation;
+        }
+      }
+    });
+    var byTD = new Map();
+    schedule.forEach(function(slot, bid) {
+      var b = null;
+      for (var i = 0; i < blocks.length; i++) { if (blocks[i].id === bid) { b = blocks[i]; break; } }
+      if (!b) return;
+      for (var i = 0; i < b.teacherIds.length; i++) {
+        var key = b.teacherIds[i] + '_' + Math.floor(slot / nt);
+        if (!byTD.has(key)) byTD.set(key, []);
+        byTD.get(key).push(slot % nt);
+      }
+    });
+    byTD.forEach(function(tramos) {
+      tramos.sort(function(a, b) { return a - b; });
+      if (tramos.length > 1) {
+        var gap = tramos[tramos.length - 1] - tramos[0] - tramos.length + 1;
+        if (gap > 0) cost += gap * 25 * w.equity;
+      }
+    });
+    if (w.minimumChange > 0) {
+      var prevSched = this.previousSchedule;
+      schedule.forEach(function(slot, bid) {
+        var prev = prevSched.get(bid);
+        if (prev !== undefined && prev !== slot) cost += 500 * w.minimumChange;
+      });
+    }
+    return cost;
+  }
+
+  optimize() {
+    var T = 1000.0, alpha = 0.995, T_min = 0.01, iter = 0;
+    var cost = this.calculateCost();
+    var blocks = this.blocks;
+    var assigned = blocks.filter(function(b) { return this.schedule.has(b.id); }.bind(this));
+    if (!assigned.length) return;
+    while (T > T_min && (Date.now() - this.startTime) < this.timeout) {
+      iter++;
+      if (Math.random() < 0.6 && assigned.length >= 2) {
+        var byG = {};
+        for (var ai = 0; ai < assigned.length; ai++) {
+          var b_ = assigned[ai];
+          if (!byG[b_.groupId]) byG[b_.groupId] = [];
+          byG[b_.groupId].push(b_);
+        }
+        var gs = Object.keys(byG).filter(function(g) { return byG[g].length >= 2; });
+        if (!gs.length) { T *= alpha; continue; }
+        var gId = gs[Math.floor(Math.random() * gs.length)];
+        var gb  = byG[gId];
+        var i1  = Math.floor(Math.random() * gb.length);
+        var i2  = (i1 + 1 + Math.floor(Math.random() * (gb.length - 1))) % gb.length;
+        var b1  = gb[i1], b2 = gb[i2];
+        var s1  = this.schedule.get(b1.id), s2 = this.schedule.get(b2.id);
+        this.removeBlock(b1); this.removeBlock(b2);
+        var v1 = this.getValidSlots(b1).indexOf(s2) !== -1;
+        var v2 = this.getValidSlots(b2).indexOf(s1) !== -1;
+        if (v1 && v2) {
+          this.assignBlock(b1, s2); this.assignBlock(b2, s1);
+          var nc = this.calculateCost(), d = nc - cost;
+          if (d < 0 || Math.random() < Math.exp(-d / T)) { cost = nc; }
+          else {
+            this.removeBlock(b1); this.removeBlock(b2);
+            this.assignBlock(b1, s1); this.assignBlock(b2, s2);
+          }
+        } else { this.assignBlock(b1, s1); this.assignBlock(b2, s2); }
+      } else {
+        var b = assigned[Math.floor(Math.random() * assigned.length)];
+        var os = this.schedule.get(b.id);
+        this.removeBlock(b);
+        var v = this.getValidSlots(b);
+        if (!v.length) { this.assignBlock(b, os); T *= alpha; continue; }
+        var ns = v[Math.floor(Math.random() * v.length)];
+        this.assignBlock(b, ns);
+        var nc2 = this.calculateCost(), d2 = nc2 - cost;
+        if (d2 < 0 || Math.random() < Math.exp(-d2 / T)) { cost = nc2; }
+        else { this.removeBlock(b); this.assignBlock(b, os); }
+      }
+      T *= alpha;
+      if (iter % 500 === 0)
+        self.postMessage({ type: 'progress', variantId: this.variantId, phase: 2,
+          T: parseFloat(T.toFixed(3)), cost: Math.round(cost), iter: iter });
+    }
+    this.finalCost = cost;
+  }
+
+  generateReport() {
+    var nt = this.numTramos, out = [], blocks = this.blocks;
+    this.schedule.forEach(function(slot, bid) {
+      var b = null;
+      for (var i = 0; i < blocks.length; i++) { if (blocks[i].id === bid) { b = blocks[i]; break; } }
+      if (!b) return;
+      out.push({ blockId: bid, slot: slot, groupId: b.groupId, subjectId: b.subjectId,
+        subjectName: b.subjectName, teacherIds: b.teacherIds, materia_color: b.materia_color,
+        cognitiveLoad: b.cognitiveLoad, dynamicType: b.dynamicType,
+        dayIdx: Math.floor(slot / nt), tramoIdx: slot % nt });
+    });
+    var score = Math.max(0, Math.min(100, Math.round(100 - this.finalCost / 50)));
+    return { schedule: out, score: score,
+      auditLog: this.auditLog.slice(-100), finalCost: Math.round(this.finalCost) };
+  }
+}
+
+self.onmessage = function(e) {
+  var cfg    = e.data;
+  var solver = new TimetableSolver(cfg);
+  solver.constructInitialSolution();
+  self.postMessage({ type: 'progress', variantId: cfg.variantId, phase: 3, label: 'Optimizando...' });
+  solver.optimize();
+  self.postMessage({ type: 'completed', variantId: cfg.variantId, result: solver.generateReport() });
+};
+`;
+
+  /* ── DidactIAPlanner: 3 variantes Pareto en Workers paralelos ── */
+  const DidactIAPlanner = {
+    VARIANTS: [
+      { id: 'A', label: 'Máxima Equidad',
+        weights: { cognitiveLoad: 0.3, equity: 2.0, minimumChange: 0.0, alternation: 0.5 } },
+      { id: 'B', label: 'Neuroeducativa',
+        weights: { cognitiveLoad: 2.0, equity: 0.5, minimumChange: 0.0, alternation: 1.5 } },
+      { id: 'C', label: 'Mínimo Cambio',
+        weights: { cognitiveLoad: 0.5, equity: 0.5, minimumChange: 3.0, alternation: 0.5 } }
+    ],
+
+    generateTimetable: function (config, callbacks) {
+      var blob    = new Blob([WORKER_LOGIC], { type: 'application/javascript' });
+      var blobUrl = URL.createObjectURL(blob);
+      var results = {};
+      var done    = 0;
+      var total   = DidactIAPlanner.VARIANTS.length;
+
+      DidactIAPlanner.VARIANTS.forEach(function (v) {
+        var worker = new Worker(blobUrl);
+        var cfg    = Object.assign({}, config, { variantId: v.id, weights: v.weights });
+        worker.postMessage(cfg);
+
+        worker.onmessage = function (e) {
+          var msg = e.data;
+          if (msg.type === 'progress' || msg.type === 'error') {
+            if (callbacks.onProgress) callbacks.onProgress(v.id, msg);
+          } else if (msg.type === 'completed') {
+            results[v.id] = Object.assign({ label: v.label }, msg.result);
+            worker.terminate();
+            if (++done === total) {
+              URL.revokeObjectURL(blobUrl);
+              if (callbacks.onComplete) callbacks.onComplete(results);
+            }
+          }
+        };
+
+        worker.onerror = function (err) {
+          if (callbacks.onError) callbacks.onError(v.id, err.message || String(err));
+          worker.terminate();
+          if (++done === total) {
+            URL.revokeObjectURL(blobUrl);
+            if (callbacks.onComplete) callbacks.onComplete(results);
+          }
+        };
+      });
+    }
+  };
+
+  window.DidactIAPlanner = DidactIAPlanner;
+
 })();
