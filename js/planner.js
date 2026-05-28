@@ -1001,49 +1001,260 @@
     _renderTablero();
   };
 
-  /* ── Generar con barra de progreso animada ── */
-  window.plannerGenerar = function () {
-    var g   = _s.currentGrupo;
-    if (!g) return;
-    var btn = document.getElementById('planner-gen-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Iniciando…'; }
+  /* ── Transformar datos de _s al formato que espera DidactIAPlanner ── */
+  function _buildPlannerConfig() {
+    var claseT   = _claseTramos();
+    var numT     = claseT.length;
+    var DIAS_IDX = { 'lunes': 0, 'martes': 1, 'miércoles': 2, 'jueves': 3, 'viernes': 4 };
 
-    var steps    = [
-      'Cargando disponibilidad…',
-      'Aplicando hard constraints…',
-      'Evaluando carga cognitiva…',
-      'Resolviendo co-docencia LOMLOE…',
-      'Optimizando soft constraints…',
-      'Buscando solución óptima…'
-    ];
-    var stepIdx  = 0;
-    var interval = setInterval(function () {
-      stepIdx = (stepIdx + 1) % steps.length;
-      if (btn) btn.textContent = '⏳ ' + steps[stepIdx];
-    }, 700);
-
-    setTimeout(function () {
-      clearInterval(interval);
-      var result = _generarHorario(g);
-      if (btn) { btn.disabled = false; btn.textContent = '✨ Generar con IA'; }
-
-      if (!result) {
-        var tnums = _tramoNums();
-        alert(
-          'No se encontró solución con las restricciones actuales.\n\n' +
-          'Comprueba:\n' +
-          '• Disponibilidad de profesores (todos los tramos pueden estar bloqueados)\n' +
-          '• Co-docencia: ambos profesores deben tener tramos libres coincidentes\n' +
-          '• Total de horas ≤ ' + DIAS.length + ' días × ' + tnums.length + ' tramos = ' + (DIAS.length * tnums.length) + ' máx. por grupo'
-        );
-        return;
+    var teachers = _s.profesores.map(function (p) {
+      var unavail = [];
+      var dispSet = _s.disponibilidad[p.id];
+      if (dispSet) {
+        dispSet.forEach(function (key) {
+          var sep  = key.lastIndexOf('_');
+          var dia  = key.slice(0, sep);
+          var tNum = parseInt(key.slice(sep + 1));
+          var dIdx = DIAS_IDX[dia];
+          var tIdx = -1;
+          for (var ci = 0; ci < claseT.length; ci++) {
+            if (claseT[ci].numero === tNum) { tIdx = ci; break; }
+          }
+          if (dIdx >= 0 && tIdx >= 0) unavail.push(dIdx * numT + tIdx);
+        });
       }
+      return { id: p.id, nombre: p.nombre, unavailableSlots: unavail };
+    });
 
-      _s.schedule[g]    = result;
-      _s.globalScore[g] = _calcGlobalScore(result);
-      _guardarHorarioGenerado(g, result);
-      _renderTablero();
-    }, 40);
+    var groups = _s.grupos.map(function (g) { return { id: g }; });
+
+    var bloqueProcessed = {};
+    var blocks = [];
+    _s.necesidades.forEach(function (n) {
+      if (n.bloque_interdisciplinar_id) {
+        var bid = n.bloque_interdisciplinar_id;
+        if (bloqueProcessed[bid]) return;
+        bloqueProcessed[bid] = true;
+        var grp  = _s.necesidades.filter(function (x) { return x.bloque_interdisciplinar_id === bid; });
+        var hrs  = Math.min.apply(null, grp.map(function (x) { return x.horas_semanales; }));
+        var tIds = grp.map(function (x) { return x.profesor_id; }).filter(Boolean);
+        for (var i = 0; i < hrs; i++) {
+          blocks.push({ id: 'blq_' + bid + '_' + i, groupId: grp[0].grupo_horario,
+            subjectId: grp[0].materia_id,
+            subjectName: grp.map(function (x) { return x.materia_nombre; }).join(' + '),
+            teacherIds: tIds, cognitiveLoad: grp[0].carga_cognitiva || 'media',
+            dynamicType: grp[0].tipo_dinamica || 'estatica', isOptative: true,
+            bloque_interdisciplinar_id: bid, materia_color: grp[0].materia_color || '#1a56db' });
+        }
+      } else {
+        for (var j = 0; j < n.horas_semanales; j++) {
+          blocks.push({ id: n.id + '_' + j, groupId: n.grupo_horario,
+            subjectId: n.materia_id, subjectName: n.materia_nombre,
+            teacherIds: n.profesor_id ? [n.profesor_id] : [],
+            cognitiveLoad: n.carga_cognitiva || 'media',
+            dynamicType: n.tipo_dinamica || 'estatica', isOptative: false,
+            bloque_interdisciplinar_id: null, materia_color: n.materia_color || '#1a56db' });
+        }
+      }
+    });
+
+    return { groups: groups, teachers: teachers, blocks: blocks, numTramos: numT, timeout: 25000 };
+  }
+
+  /* ── Panel de progreso en tiempo real ── */
+  function _renderProgresoPanel() {
+    var el = document.getElementById('pt-tablero');
+    if (!el) return;
+    _s.plannerProgress = {
+      A: { pct: 0, label: 'Iniciando…', log: [] },
+      B: { pct: 0, label: 'Iniciando…', log: [] },
+      C: { pct: 0, label: 'Iniciando…', log: [] }
+    };
+
+    var cards = DidactIAPlanner.VARIANTS.map(function (v) {
+      return '<div style="padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--paper-2)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<span style="font-size:13px;font-weight:600;color:var(--txt)">' + _esc(v.id) + ' — ' + _esc(v.label) + '</span>' +
+          '<span id="prog-pct-' + v.id + '" style="font-size:12px;color:var(--muted)">0%</span>' +
+        '</div>' +
+        '<div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:6px">' +
+          '<div id="prog-bar-' + v.id + '" style="height:5px;width:0%;background:var(--accent);border-radius:3px;transition:width .25s"></div>' +
+        '</div>' +
+        '<div id="prog-lbl-' + v.id + '" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+          'Iniciando…</div>' +
+      '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="planner-section-hdr"><div>' +
+        '<div class="card-eyebrow">Motor H-MRV-SA</div>' +
+        '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Generando horario…</h3>' +
+      '</div></div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:14px">' +
+        '3 variantes Pareto ejecutándose en paralelo (Equidad · Neuroeducativa · Mínimo cambio)' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">' + cards + '</div>' +
+      '<div id="prog-log" style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;' +
+        'font-size:11px;font-family:monospace;color:var(--muted);min-height:44px;' +
+        'background:var(--paper-2);white-space:pre-line">Esperando log…</div>' +
+      '<div id="prog-errors"></div>';
+  }
+
+  function _updateProgresoPanel(variantId, msg) {
+    var p = _s.plannerProgress && _s.plannerProgress[variantId];
+    if (!p) return;
+
+    if (msg.type === 'error') {
+      var errBox = document.getElementById('prog-errors');
+      if (errBox) {
+        errBox.innerHTML +=
+          '<div style="margin-top:8px;padding:10px 14px;background:var(--danger-soft);' +
+          'border-left:3px solid var(--danger);border-radius:6px;font-size:12px">' +
+          '<strong>⚠ ' + _esc(variantId) + ':</strong> ' + _esc(msg.message || '') +
+          (msg.suggestion ? '<br><span style="color:var(--info)">→ ' + _esc(msg.suggestion) + '</span>' : '') +
+          '</div>';
+      }
+      return;
+    }
+
+    if (msg.phase === 1 && msg.total) {
+      p.pct   = Math.round((msg.assigned / msg.total) * 50);
+      p.label = 'Construyendo base… (' + msg.assigned + '/' + msg.total + ')';
+    } else if (msg.phase === 2 && msg.T !== undefined) {
+      p.pct   = 50 + Math.round((1 - Math.min(msg.T, 1000) / 1000) * 48);
+      p.label = 'SA T=' + msg.T + '  coste=' + (msg.cost || '?');
+    } else if (msg.phase === 3) {
+      p.pct   = 98;
+      p.label = msg.label || 'Finalizando…';
+    }
+
+    var bar = document.getElementById('prog-bar-' + variantId);
+    var pct = document.getElementById('prog-pct-' + variantId);
+    var lbl = document.getElementById('prog-lbl-' + variantId);
+    if (bar) bar.style.width = p.pct + '%';
+    if (pct) pct.textContent = p.pct + '%';
+    if (lbl) lbl.textContent = p.label;
+
+    p.log.push(variantId + ': ' + p.label);
+    if (p.log.length > 2) p.log.shift();
+
+    var allLog = [];
+    var prog = _s.plannerProgress;
+    ['A', 'B', 'C'].forEach(function (v) { if (prog[v]) allLog = allLog.concat(prog[v].log); });
+    var logEl = document.getElementById('prog-log');
+    if (logEl) logEl.textContent = allLog.slice(-3).join('\n');
+  }
+
+  /* ── Cards de selección de variante ── */
+  function _renderVariantCards(results) {
+    var el = document.getElementById('pt-tablero');
+    if (!el) return;
+    _s.plannerVariantResults = results;
+
+    var DESCS = {
+      A: 'Optimiza la equidad del profesorado minimizando huecos y distribuyendo la carga uniformemente.',
+      B: 'Prioriza criterios neuroeducativos: evita carga alta consecutiva y en horario extremo.',
+      C: 'Minimiza los cambios respecto al horario anterior, ideal para ajustes puntuales.'
+    };
+
+    var cards = DidactIAPlanner.VARIANTS.map(function (v) {
+      var r = results[v.id];
+      if (!r) return '<div style="flex:1;min-width:180px;padding:20px;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:13px">Sin resultado</div>';
+      var score   = r.score || 0;
+      var scColor = score >= 80 ? 'var(--success)' : score >= 60 ? 'var(--warning)' : 'var(--danger)';
+      return '<div style="flex:1;min-width:180px;border:1px solid var(--line);border-radius:10px;overflow:hidden">' +
+        '<div style="padding:12px 14px;background:var(--paper-2);border-bottom:1px solid var(--line)">' +
+          '<div class="card-eyebrow">Variante ' + _esc(v.id) + '</div>' +
+          '<div style="font-size:15px;font-weight:600;margin:2px 0 0">' + _esc(v.label) + '</div>' +
+        '</div>' +
+        '<div style="padding:14px">' +
+          '<div style="font-size:36px;font-weight:700;color:' + scColor + ';font-family:var(--font-display);line-height:1">' + score + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);margin-bottom:10px">/ 100 puntos neuroeducativos</div>' +
+          '<div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:12px">' + _esc(DESCS[v.id] || '') + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">' + ((r.schedule || []).length) + ' sesiones generadas</div>' +
+          '<button class="btn-ink" style="width:100%" onclick="plannerElegirVariante(\'' + _esc(v.id) + '\')">Usar esta variante</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="planner-section-hdr">' +
+        '<div><div class="card-eyebrow">Generador H-MRV-SA</div>' +
+          '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Elige una variante</h3>' +
+        '</div>' +
+        '<button onclick="plannerGenerar()" style="font-size:12px;padding:5px 14px;border:1px solid var(--line);' +
+          'border-radius:6px;background:none;cursor:pointer;font-family:var(--font-ui);color:var(--muted)">&#x21ba; Regenerar</button>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:14px">' +
+        'Tres optimizaciones distintas. Elige la que mejor encaje con la logística de tu centro.' +
+      '</div>' +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap">' + cards + '</div>';
+  }
+
+  /* ── Aplicar variante elegida al tablero ── */
+  window.plannerElegirVariante = function (variantId) {
+    var results = _s.plannerVariantResults;
+    if (!results || !results[variantId]) return;
+    var r      = results[variantId];
+    var claseT = _claseTramos();
+    var profNombre = {};
+    _s.profesores.forEach(function (p) { profNombre[p.id] = p.nombre; });
+
+    _s.schedule    = {};
+    _s.auditLog    = {};
+    _s.globalScore = {};
+
+    (r.schedule || []).forEach(function (item) {
+      var grupo    = item.groupId;
+      var dia      = DIAS[item.dayIdx];
+      var tramoObj = claseT[item.tramoIdx];
+      if (!dia || !tramoObj) return;
+      var key = String(tramoObj.numero);
+
+      if (!_s.schedule[grupo]) {
+        _s.schedule[grupo] = {};
+        DIAS.forEach(function (d) { _s.schedule[grupo][d] = {}; });
+      }
+      _s.schedule[grupo][dia][key] = {
+        materia_nombre:  item.subjectName,
+        materia_color:   item.materia_color || '#1a56db',
+        profesor_nombre: (item.teacherIds || []).map(function (tid) { return profNombre[tid] || tid; }).join(' + '),
+        puntuacion:      r.score,
+        es_codoce:       (item.teacherIds || []).length > 1,
+        log_auditoria:   null,
+        carga_cognitiva: item.cognitiveLoad,
+        tipo_dinamica:   item.dynamicType
+      };
+    });
+
+    var gruposHorario = Object.keys(_s.schedule);
+    gruposHorario.forEach(function (g) {
+      _s.globalScore[g] = r.score;
+      _s.auditLog[g]    = r.auditLog || [];
+      _guardarHorarioGenerado(g, _s.schedule[g]);
+    });
+
+    if (!_s.currentGrupo && gruposHorario.length) _s.currentGrupo = gruposHorario[0];
+    _s.plannerVariantResults = null;
+    _showPTab('tablero');
+  };
+
+  /* ── Generar horario con H-MRV-SA ── */
+  window.plannerGenerar = async function () {
+    if (!_s.necesidades.length) {
+      alert('Define necesidades lectivas primero (pestaña Necesidades).'); return;
+    }
+    await _loadData();
+    var config = _buildPlannerConfig();
+    if (!config.blocks.length) {
+      alert('No hay bloques que generar. Revisa las necesidades lectivas.'); return;
+    }
+    _renderProgresoPanel();
+    DidactIAPlanner.generateTimetable(config, {
+      onProgress: function (vid, msg) { _updateProgresoPanel(vid, msg); },
+      onComplete: function (results)  { _renderVariantCards(results); },
+      onError:    function (vid, err) { _updateProgresoPanel(vid, { type: 'error', message: err }); }
+    });
   };
 
   /* ── Guardar horario_generado en Supabase ── */
