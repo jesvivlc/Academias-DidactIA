@@ -689,6 +689,31 @@ body { height:100%; overflow:hidden; }
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0));
 }
 #mas-handle { width: 36px; height: 4px; background: var(--bdr); border-radius: 2px; margin: 10px auto 12px; }
+#mas-centro-wrap {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 16px 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+.mas-ctr-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#mas-centro-wrap .ctr-sel {
+  width: 100%;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-2);
+  background: var(--paper-2);
+  color: var(--txt);
+  min-height: 44px;
+}
 .mas-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 8px 8px; }
 .mas-item {
   display: flex;

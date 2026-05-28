@@ -928,6 +928,7 @@
   <div id="mas-backdrop" onclick="closeMasDrawer()"></div>
   <div id="mas-sheet">
     <div id="mas-handle"></div>
+    <div id="mas-centro-wrap"></div>
     <div class="mas-grid" id="mas-grid"></div>
   </div>
 </div>
@@ -1303,6 +1304,8 @@
     /* Planner + Analytics — solo admin/superadmin */
     var np = document.getElementById('nav-planner');
     if (np) np.style.display = isAdmin ? 'flex' : 'none';
+    var tp = document.getElementById('tab-planner');
+    if (tp) tp.style.display = isAdmin ? '' : 'none';
     var na = document.getElementById('nav-analytics');
     if (na) na.style.display = isAdmin ? 'flex' : 'none';
     var ta = document.getElementById('tab-analytics');

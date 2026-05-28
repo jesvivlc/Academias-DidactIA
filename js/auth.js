@@ -268,26 +268,39 @@ async function loadUserProfile(user) {
       sel.className = "ctr-sel";
       sel.id = "super-ctr-sel";
       sel.innerHTML = allCentros.map(c => `<option value="${c.id}" data-n="${c.nombre}">${c.nombre}</option>`).join("");
-      sel.onchange = async function() {
-        ctrId = this.value;
-        ctrName = this.options[this.selectedIndex].dataset.n;
-        // Reload modulos for selected centro
+      const _applyCentro = async (id, name) => {
+        ctrId = id;
+        ctrName = name;
+        // Sync both selects
+        const ds = document.getElementById("super-ctr-sel");
+        const ms = document.getElementById("mas-ctr-sel");
+        if (ds) ds.value = id;
+        if (ms) ms.value = id;
         const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
         modulosActivos = ctr?.modulos_activos || [];
-        // Update comedor tab visibility
         const cTab = document.getElementById("tab-comedor");
         if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
         const eTab = document.getElementById("tab-espacios");
         if (eTab) eTab.style.display = modulosActivos.includes("espacios") ? "block" : "none";
         history = []; resetChat(); updateUI(); loadAdmin();
         applyTheme(ctr?.color_primario, ctr?.logo_url);
-        // Limpiar panel IB para forzar recarga con el nuevo centro_id
         const ibCont = document.getElementById("ib-container");
         if (ibCont) ibCont.innerHTML = "";
         const ibPanel = document.getElementById("panel-ib");
         if (ibPanel && ibPanel.classList.contains("active")) loadIbPanel();
       };
+      sel.onchange = function() { _applyCentro(this.value, this.options[this.selectedIndex].dataset.n); };
       hdrRight.replaceWith(sel);
+      // Mirror selector in mobile MAS drawer
+      const masWrap = document.getElementById("mas-centro-wrap");
+      if (masWrap) {
+        const mobiSel = sel.cloneNode(true);
+        mobiSel.id = "mas-ctr-sel";
+        mobiSel.onchange = function() { _applyCentro(this.value, this.options[this.selectedIndex].dataset.n); };
+        masWrap.innerHTML = '<div class="mas-ctr-label">Centro activo</div>';
+        masWrap.appendChild(mobiSel);
+        masWrap.style.display = "flex";
+      }
     } else {
       hdrRight.textContent = ctrName;
     }
