@@ -302,6 +302,7 @@ function addMsg(r, html) {
 
 async function sendMsg() {
   if (busy) return;
+  let _sustData = null;
   const inp = document.getElementById("chat-inp");
   const txt = inp.value.trim(); if (!txt) return;
   inp.value = ""; inp.style.height = "auto";
@@ -390,7 +391,6 @@ async function sendMsg() {
     }
 
     // 1c. Búsqueda por nombre de profesor en horarios_grupo
-    let _sustData = null;
     if (!grupoTarget) {
       const STOPWORDS_PROF = new Set([
         "que","tiene","tienen","hay","clase","clases","horario","cual","cuando","donde","como","para",
