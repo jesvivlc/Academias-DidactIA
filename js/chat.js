@@ -608,9 +608,39 @@ async function sendMsg() {
     document.getElementById("chat-inp").focus();
     return;
   } else if (respuestaHorarioDirecta && esConsultaSustitucion) {
-    horarioGrupoCtx += "\n\nHORARIO ENCONTRADO PARA LA SUSTITUCIÓN:\n" +
-      respuestaHorarioDirecta.replace(/<[^>]+>/g,"") +
-      "\nUsa estos datos para llamar a crear_sustitucion con el grupo y tramo correctos.";
+    // filasFiltradas y diaFinal son const dentro del for — se recuperan de window._ultimoProfesor
+    const _prof      = window._ultimoProfesor;
+    const _filas     = _prof ? _prof.filas : [];
+    const _nombre    = _prof ? _prof.nombre : "";
+    const { dia: _diaFinal, hora: _hora } = extractDiaHora(txt);
+    const diaFinalSust = _diaFinal || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
+
+    // Encontrar la clase exacta en el tramo indicado
+    const claseTarget = _filas.find(r =>
+      r.dia === diaFinalSust && horaMatchesSlot(_hora, r.hora_inicio, r.hora_fin)
+    ) || _filas.filter(r => r.dia === diaFinalSust).sort((a,b) => a.tramo - b.tramo)[0];
+
+    // Calcular fecha real del día indicado
+    const _daysMap = {"lunes":1,"martes":2,"miercoles":3,"jueves":4,"viernes":5};
+    const _target = _daysMap[diaFinalSust];
+    let fechaCalculada = null;
+    if (_target) {
+      const _hoy = new Date();
+      const _hoyDay = _hoy.getDay() || 7;
+      let _diff = _target - _hoyDay;
+      if (_diff <= 0) _diff += 7;
+      const _d = new Date(_hoy);
+      _d.setDate(_hoy.getDate() + _diff);
+      fechaCalculada = _d.toISOString().split('T')[0];
+    }
+
+    horarioGrupoCtx += `\n\nDATOS YA RESUELTOS PARA SUSTITUCIÓN — USA ESTOS DIRECTAMENTE EN crear_sustitucion:\n` +
+      `- profesor_ausente: ${_nombre}\n` +
+      `- fecha: ${fechaCalculada || diaFinalSust}\n` +
+      `- tramo: ${claseTarget ? claseTarget.tramo : ""}\n` +
+      `- grupo_horario: ${claseTarget ? (claseTarget.grupo_horario || "") : ""}\n` +
+      `- actividad: ${claseTarget ? claseTarget.actividad_nombre : ""}\n` +
+      `NO PIDAS MÁS DATOS AL USUARIO. Llama a crear_sustitucion inmediatamente con estos valores.`;
     respuestaHorarioDirecta = null;
     // Continúa hacia Gemini con el contexto inyectado
   }
