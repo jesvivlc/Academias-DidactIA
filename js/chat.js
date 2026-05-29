@@ -378,8 +378,15 @@ async function sendMsg() {
 
     // 1c. Búsqueda por nombre de profesor en horarios_grupo
     if (!grupoTarget) {
-      const STOPWORDS_PROF = new Set(["que","tiene","hay","clase","horario","cual","cuando","donde","como","para","lunes","martes","miercoles","jueves","viernes","hoy","ahora","mañana","manana","dime","de","del","el","la","los","las"]);
-      const palabrasProf = txt.replace(/[¿?¡!.,;:]/g,"").split(/\s+/).filter(p => p.length >= 3 && !STOPWORDS_PROF.has(p.toLowerCase()));
+      const STOPWORDS_PROF = new Set([
+        "que","tiene","tienen","hay","clase","clases","horario","cual","cuando","donde","como","para",
+        "lunes","martes","miercoles","jueves","viernes","sabado","hoy","ahora","manana","dime",
+        "de","del","el","la","los","las","una","uno","este","esta","sus","quien","da","dan",
+        "son","es","y","o","a","en","al","con","por","sin","mas","dia","semana","semanal"
+      ]);
+      // normalizeText elimina tildes → "qué"→"que", "cuál"→"cual", etc. quedan cubiertos por stopwords
+      const palabrasProf = normalizeText(txt).replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
+        .filter(p => p.length >= 3 && !STOPWORDS_PROF.has(p));
       for (const palabra of palabrasProf) {
         const { data: profRows } = await sb.from("horarios_grupo")
           .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
@@ -387,8 +394,11 @@ async function sendMsg() {
           .ilike("profesor_nombre", `%${palabra}%`)
           .limit(50);
         if (!profRows?.length) continue;
-        // Filtro JS: el nombre debe contener TODAS las palabras buscadas como tokens exactos
-        const filasFiltradas = profRows.filter(r => _tokenMatch(r.profesor_nombre, palabrasProf));
+        // Matching tolerante: normaliza + prefijos para diminutivos (Salva→Salvador, Pili→Pilar)
+        const filasFiltradas = profRows.filter(r => {
+          const tokens = normalizeText(r.profesor_nombre).split(/[\s,]+/).filter(t => t.length > 0);
+          return palabrasProf.every(p => tokens.some(t => t === p || t.startsWith(p) || p.startsWith(t)));
+        });
         if (!filasFiltradas.length) continue;
         const profNombre = filasFiltradas[0].profesor_nombre;
         const { dia: diaProf } = extractDiaHora(txt);
