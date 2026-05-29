@@ -404,29 +404,24 @@ async function sendMsg() {
       const palabrasProf = normalizeText(txt).replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS_PROF.has(p));
       for (const palabra of palabrasProf) {
-        console.log("🔍 palabrasProf:", palabrasProf, "| buscando:", palabra);
         const { data: profRows } = await sb.from("horarios_grupo")
           .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
           .eq("centro_id", ctrId)
           .ilike("profesor_nombre", `%${palabra}%`)
           .limit(50);
         if (!profRows?.length) continue;
-        console.log("📋 profRows encontrados:", profRows.map(r => r.profesor_nombre));
         // Matching tolerante: normaliza + prefijos para diminutivos (Salva→Salvador, Pili→Pilar)
         const filasFiltradas = profRows.filter(r => {
           const tokens = normalizeText(r.profesor_nombre).split(/[\s,]+/).filter(t => t.length > 0);
           return palabrasProf.every(p => tokens.some(t => t === p || t.startsWith(p) || p.startsWith(t)));
         });
         if (!filasFiltradas.length) continue;
-        console.log("✅ filasFiltradas:", filasFiltradas.map(r => r.profesor_nombre));
         const profNombre = filasFiltradas[0].profesor_nombre;
         window._ultimoProfesor = { nombre: profNombre, filas: filasFiltradas };
         const { dia: diaProf } = extractDiaHora(txt);
         const diaFinal = diaProf || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
-        console.log("📅 diaProf:", diaProf, "| diaFinal:", diaFinal, "| hora:", extractDiaHora(txt).hora);
         if (diaFinal) {
           const clasesDia = filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
-          console.log("📚 clasesDia:", clasesDia.length, clasesDia.map(r => r.dia + " T" + r.tramo));
           if (clasesDia.length) {
             let html = `<p><strong>${profNombre}</strong> — horario del ${diaFinal}:</p><ul>`;
             for (const c of clasesDia) {
@@ -457,7 +452,6 @@ async function sendMsg() {
           }
           respuestaHorarioDirecta = html;
         }
-        console.log("📝 respuestaHorarioDirecta set:", !!respuestaHorarioDirecta, "| horarioGrupoCtx:", horarioGrupoCtx.slice(0,100));
         break;
       }
     }
@@ -644,8 +638,7 @@ async function sendMsg() {
     respuestaHorarioDirecta = null;
     // Continúa hacia Gemini con el contexto inyectado
   }
-  console.log("🧠 horarioGrupoCtx tras else-if:", horarioGrupoCtx.slice(0, 200));
-  console.log("🎯 esConsultaSustitucion:", esConsultaSustitucion);
+
 
   const ctx = await buildContext();
   // Current date info for the chatbot
