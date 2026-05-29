@@ -323,7 +323,8 @@ async function sendMsg() {
 
   // Detectar consulta de horario: keywords explícitas O mensaje con día+hora
   const tieneDiaHora = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|ahora)\b/i.test(txt) && /\b(\d{1,2}[:.h]\d{2}|\d{1,2}\s*[ap]m|ahora)\b/i.test(txt);
-  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene/i.test(txt) || tieneDiaHora;
+  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene|sustituci[oó]n/i.test(txt) || tieneDiaHora;
+  const esConsultaSustitucion = /sustituci[oó]n/i.test(txt);
 
   // Detectar consulta de guardias/profesores libres
   const esConsultaGuardia = /libre|disponible|guardia|sin clase|no tiene clase|quién puede|quien puede|puede cubrir|puede sustituir/i.test(txt);
@@ -591,10 +592,13 @@ async function sendMsg() {
   }
 
   // Respuesta directa sin Gemini si ya tenemos la clase exacta
-  if (respuestaHorarioDirecta) {
+  if (respuestaHorarioDirecta && !esConsultaSustitucion) {
     document.getElementById("typing").classList.remove("show");
     history.push({ role:"assistant", content: respuestaHorarioDirecta });
     addMsg("bot", respuestaHorarioDirecta);
+  } else if (respuestaHorarioDirecta && esConsultaSustitucion) {
+    horarioGrupoCtx += "\n\nHORARIO ENCONTRADO PARA LA SUSTITUCIÓN:\n" + respuestaHorarioDirecta.replace(/<[^>]+>/g,"") + "\nUsa estos datos para llamar a crear_sustitucion con el grupo y tramo correctos.";
+    respuestaHorarioDirecta = null;
     busy = false;
     document.getElementById("send-btn").disabled = false;
     document.getElementById("load-bar").classList.remove("show");
