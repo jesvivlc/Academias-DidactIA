@@ -614,6 +614,8 @@ async function sendMsg() {
     respuestaHorarioDirecta = null;
     // Continúa hacia Gemini con el contexto inyectado
   }
+  console.log("🧠 horarioGrupoCtx tras else-if:", horarioGrupoCtx.slice(0, 200));
+  console.log("🎯 esConsultaSustitucion:", esConsultaSustitucion);
 
   const ctx = await buildContext();
   // Current date info for the chatbot
