@@ -591,13 +591,13 @@ WHERE al.centro_id = cid
 
 -- 9. AUSENCIAS PROFESOR (5, mix de estados) ──────────────────
 INSERT INTO public.ausencias_profesor
-  (centro_id,profile_id,fecha,fecha_fin,tipo,motivo,estado,tramo,trimestre,curso_escolar)
+  (centro_id,profile_id,fecha,fecha_fin,tipo,motivo,estado,trimestre,curso_escolar)
 VALUES
-  (cid,demo_pid,CURRENT_DATE-10,CURRENT_DATE-8, 'baja_medica',  'Gastroenteritis aguda',        'aprobada',  1,3,'2024-2025'),
-  (cid,demo_pid,CURRENT_DATE-5, CURRENT_DATE-5, 'permiso',      'Nacimiento hijo',              'aprobada',  1,3,'2024-2025'),
-  (cid,demo_pid,CURRENT_DATE-2, CURRENT_DATE-2, 'asunto_propio','Gestión administrativa',        'rechazada', 1,3,'2024-2025'),
-  (cid,demo_pid,CURRENT_DATE,   CURRENT_DATE+2, 'formacion',    'Curso IB Category 1 — Valencia','pendiente', 1,3,'2024-2025'),
-  (cid,demo_pid,CURRENT_DATE+5, CURRENT_DATE+5, 'sindical',     'Reunión comité de empresa',    'pendiente', 1,3,'2024-2025');
+  (cid,demo_pid,CURRENT_DATE-10,CURRENT_DATE-8, 'baja_medica',  'Gastroenteritis aguda',        'aprobada',  3,'2024-2025'),
+  (cid,demo_pid,CURRENT_DATE-5, CURRENT_DATE-5, 'permiso',      'Nacimiento hijo',              'aprobada',  3,'2024-2025'),
+  (cid,demo_pid,CURRENT_DATE-2, CURRENT_DATE-2, 'asunto_propio','Gestión administrativa',        'rechazada', 3,'2024-2025'),
+  (cid,demo_pid,CURRENT_DATE,   CURRENT_DATE+2, 'formacion',    'Curso IB Category 1 — Valencia','pendiente', 3,'2024-2025'),
+  (cid,demo_pid,CURRENT_DATE+5, CURRENT_DATE+5, 'sindical',     'Reunión comité de empresa',    'pendiente', 3,'2024-2025');
 
 -- 10. PLAZOS IB (3) ──────────────────────────────────────────
 INSERT INTO public.plazos_ib
