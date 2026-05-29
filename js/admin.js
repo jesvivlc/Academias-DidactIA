@@ -249,7 +249,10 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
 
   const ahora = new Date();
   const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
-  const dia = diasNombre[ahora.getDay()];
+  // Usar la fecha del formulario si está disponible (puede ser un día futuro/pasado)
+  const fechaFormVal = document.getElementById("sust-fecha")?.value;
+  const fechaForm = fechaFormVal ? new Date(fechaFormVal + "T12:00:00") : ahora;
+  const dia = diasNombre[fechaForm.getDay()];
 
   let horaRef = String(ahora.getHours()).padStart(2,"0") + ":" + String(ahora.getMinutes()).padStart(2,"0");
   if (tramoOverride && tramoData[tramoOverride]) {

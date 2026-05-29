@@ -376,13 +376,18 @@ function _renderAusenciasAdminLista() {
 }
 
 async function aprobarAusencia(id) {
-  if (!confirm("¿Aprobar esta ausencia?\nSe generarán automáticamente los tramos sin cubrir en Sustituciones.")) return;
-
   var ausencia = null;
   for (var i = 0; i < _rrhhAusencias.length; i++) {
     if (_rrhhAusencias[i].id === id) { ausencia = _rrhhAusencias[i]; break; }
   }
   if (!ausencia) return;
+
+  if (ausencia.estado === "aprobada") {
+    alert("Esta ausencia ya estaba aprobada. Las sustituciones ya fueron generadas.");
+    return;
+  }
+
+  if (!confirm("¿Aprobar esta ausencia?\nSe generarán automáticamente los tramos sin cubrir en Sustituciones.")) return;
 
   var upd = await sb.from("ausencias_profesor")
     .update({ estado: "aprobada", aprobada_por: currentUser.id })

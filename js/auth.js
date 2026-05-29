@@ -260,8 +260,18 @@ async function loadUserProfile(user) {
   // Superadmin: load all centros and let them pick
   if (role === "superadmin") {
     const { data: allCentros } = await sb.from("centros").select("id,nombre,modulos_activos,color_primario,logo_url").order("nombre");
-    ctrId = allCentros?.[0]?.id || null;
-    ctrName = allCentros?.[0]?.nombre || "Todos los centros";
+
+    if (!allCentros?.length) {
+      document.getElementById("setup").style.display = "none";
+      document.getElementById("app-hdr").style.display = "flex";
+      document.getElementById("app-main").style.display = "flex";
+      const main = document.getElementById("app-main");
+      if (main) main.innerHTML = '<div style="padding:60px 24px;text-align:center;color:var(--txt3);font-size:15px;">No hay centros configurados.<br>Crea el primer centro desde el panel de Supabase.</div>';
+      return;
+    }
+
+    ctrId = allCentros[0].id;
+    ctrName = allCentros[0].nombre;
     modulosActivos = allCentros?.[0]?.modulos_activos || [];
     setTimeout(() => applyTheme(allCentros?.[0]?.color_primario, allCentros?.[0]?.logo_url), 100);
     // Build centro selector for superadmin
@@ -353,11 +363,11 @@ async function loadUserProfile(user) {
 
   const tabIb = document.getElementById("tab-ib");
   if (tabIb) {
-    const isIbAdmin = role === "admin" || role === "superadmin";
-    const isIbAlumno = role === "familia" || role === "profesional"
+    const isIbStaff = ["admin","superadmin","profesional"].includes(role);
+    const isIbFamilia = role === "familia"
       ? currentUserAlumnos.some(a => a.grupo_horario === "1IB" || a.grupo_horario === "2IB")
       : false;
-    tabIb.style.display = (isIbAdmin || isIbAlumno) ? "block" : "none";
+    tabIb.style.display = (isIbStaff || isIbFamilia) ? "block" : "none";
   }
 
   const tabCom = document.getElementById("tab-comunicados");

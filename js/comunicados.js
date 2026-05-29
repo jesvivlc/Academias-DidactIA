@@ -128,7 +128,7 @@ async function loadComunicados() {
 async function _loadComLista() {
   var r = await sb.from('comunicados').select('*')
     .eq('centro_id', ctrId)
-    .order('created_at', { ascending: false }).limit(100);
+    .order('created_at', { ascending: false }).limit(500);
 
   var lista = document.getElementById('com-lista');
   if (!lista) return;
@@ -364,7 +364,7 @@ function _comShowToast(text) {
 async function _comCheckAndBadge() {
   var r = await sb.from('comunicados').select('id')
     .eq('centro_id', ctrId)
-    .order('created_at', { ascending: false }).limit(100);
+    .order('created_at', { ascending: false }).limit(500);
   if (!r.error && r.data) {
     _comLastData = r.data;
     _comUpdateTabBadge();
