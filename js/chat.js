@@ -838,7 +838,10 @@ window._confirmTool = async function() {
       body: JSON.stringify({
         confirm_tool: tool,
         confirm_args: args,
-        pending_contents: pendingContents,
+        pending_contents: pendingContents || history.slice(-6).map(m => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: typeof m.content === "string" ? m.content.replace(/<[^>]+>/g,"") : "" }]
+        })),
         system_prompt: systemPrompt,
         centro_id: ctrId,
         role,
