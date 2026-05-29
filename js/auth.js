@@ -64,6 +64,7 @@ async function doLogin() {
 let regCentroId = null; // centro verified in step 1
 let regRol = "familia";
 let selectedAlumnos = new Set();
+let _regPass = null; // contraseña en variable de módulo, no en window
 
 function onRolChange() {
   const rolEl = document.getElementById("reg-rol");
@@ -150,8 +151,9 @@ async function doRegisterStep1() {
       </div>`).join("");
   }
 
-  // Store name/email/pass for step 2
-  window._regData = { name, email, pass };
+  // Store name/email for step 2 — pass en variable de módulo, no en window
+  _regPass = pass;
+  window._regData = { name, email };
 }
 
 function toggleAlumno(id) {
@@ -169,9 +171,10 @@ function toggleAlumno(id) {
 }
 
 async function doRegisterStep2(skip = false) {
-  const { name, email, pass } = window._regData || {};
+  const { name, email } = window._regData || {};
   const alumnosIds = skip ? [] : [...selectedAlumnos];
-  await finishRegister(name, email, pass, alumnosIds);
+  await finishRegister(name, email, _regPass, alumnosIds);
+  _regPass = null;
 }
 
 async function finishRegister(name, email, pass, alumnosIds) {

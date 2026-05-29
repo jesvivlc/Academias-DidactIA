@@ -61,7 +61,7 @@ async function loadDashboard() {
       + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + '<div class="quick-q" onclick="askQ(\'¿Cómo funciona el protocolo de ausencias y justificantes?\')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Justificar falta</div>'
-      + (currentUserAlumnos && currentUserAlumnos[0] ? '<div class="quick-q" onclick="askQ(\'¿Qué clase tiene ' + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + ' ahora?\')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Ver horario de ' + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + '</div>' : "")
+      + (currentUserAlumnos && currentUserAlumnos[0] ? '<div class="quick-q" onclick="askQ(' + JSON.stringify("¿Qué clase tiene " + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + " ahora?") + ')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Ver horario de ' + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + '</div>' : "")
       + '</div>'
       + '</div>';
 
@@ -181,7 +181,7 @@ function loadMisHijos() {
     var meta = (a.curso || "") + (a.grupo_horario ? " · " + a.grupo_horario : "");
     html += "<div style=\"padding:9px 12px;background:var(--srf2);border:1.5px solid var(--bdr);border-radius:var(--r-sm);display:flex;align-items:center;gap:10px;\">";
     html += "<div style=\"flex:1;\"><div style=\"font-size:13px;font-weight:500;\">" + nombre + "</div><div style=\"font-size:11px;color:var(--txt3);\">" + meta + "</div></div>";
-    html += "<button class=\"btn btn-s\" style=\"font-size:11px;padding:4px 10px;\" onclick=\"askQ('¿Qué clase tiene " + primerApellido + " ahora?')\">📅 Horario</button>";
+    html += "<button class=\"btn btn-s\" style=\"font-size:11px;padding:4px 10px;\" onclick=\"askQ(" + JSON.stringify("¿Qué clase tiene " + primerApellido + " ahora?") + ")\">📅 Horario</button>";
     html += "</div>";
   }
   list.innerHTML = html;
@@ -228,7 +228,7 @@ function buscarAlumnoRapido(q) {
       html += "<div style=\"padding:9px 12px;background:var(--srf2);border:1px solid var(--bdr);border-radius:var(--r-sm);display:flex;align-items:center;gap:10px;margin-top:4px;\">";
       html += "<span style=\"flex:1;font-weight:500;font-size:13px;\">" + a.nombre + "</span>";
       html += "<span style=\"font-size:11px;color:var(--txt3);\">" + meta + "</span>";
-      html += "<button class=\"btn btn-s\" style=\"font-size:11px;padding:3px 8px;\" onclick=\"askQ('¿Qué clase tiene " + primerApellido + " ahora?')\">Horario</button>";
+      html += "<button class=\"btn btn-s\" style=\"font-size:11px;padding:3px 8px;\" onclick=\"askQ(" + JSON.stringify("¿Qué clase tiene " + primerApellido + " ahora?") + ")\">Horario</button>";
       html += "</div>";
     }
     res.innerHTML = html;

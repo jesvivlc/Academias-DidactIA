@@ -463,7 +463,7 @@ async function guardarCambiosUsuario() {
     if (updates.rol) {
       try {
         const { data: { session } } = await sb.auth.getSession();
-        await fetch("https://rflfsbrdmgaidhvbuvwb.supabase.co/functions/v1/notify-role", {
+        await fetch(`${SB_URL}/functions/v1/notify-role`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
           body: JSON.stringify({ profileId: _editingProfile.id, newRol })
@@ -530,7 +530,7 @@ async function changeRole(profileId, newRol) {
   if (error) { alert("Error al cambiar el rol: " + error.message); return; }
   try {
     const { data: { session } } = await sb.auth.getSession();
-    await fetch("https://rflfsbrdmgaidhvbuvwb.supabase.co/functions/v1/notify-role", {
+    await fetch(`${SB_URL}/functions/v1/notify-role`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
       body: JSON.stringify({ profileId, newRol })

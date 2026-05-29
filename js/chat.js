@@ -268,6 +268,13 @@ async function buildContext() {
   return ctx;
 }
 
+function _sanitizeReply(html) {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\bon\w+\s*=/gi, 'data-x=')
+    .replace(/javascript\s*:/gi, '');
+}
+
 function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight,120)+"px"; }
 function handleKey(e) { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
 function askQ(t) { document.getElementById("chat-inp").value = t; sendMsg(); }
@@ -614,7 +621,8 @@ ${ctx}${horarioGrupoCtx}`;
       body: JSON.stringify({ contents: geminiContents })
     });
     const d = await res.json();
-    const reply = d.candidates?.[0]?.content?.parts?.[0]?.text || d.text || "Lo siento, no pude procesar tu consulta.";
+    const raw   = d.candidates?.[0]?.content?.parts?.[0]?.text || d.text || "Lo siento, no pude procesar tu consulta.";
+    const reply = _sanitizeReply(raw);
     history.push({ role:"assistant", content:reply });
     document.getElementById("typing").classList.remove("show");
     addMsg("bot", reply);
