@@ -222,6 +222,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - **Búsqueda de profesor tolerante**: `normalizeText()` antes de filtrar stopwords (tildes), prefijos para diminutivos (`Salva` → `Salvador`). `STOPWORDS_PROF` con 50+ términos incluyendo ordinales, términos de sustitución y partículas
 - **Contexto entre turnos** (`window._ultimoProfesor`): al encontrar un profesor guarda `{nombre, filas}`. Si el siguiente mensaje no resuelve ningún profesor pero menciona un día/tramo, reutiliza el último profesor encontrado
 - **`extractDiaHora` con ordinales**: detecta tramos por nombre ("tercera hora" → `10:40`, "cuarta" → `12:00`, etc.) además de horas numéricas y expresiones "a las X"
+- **Flujo sustitución inteligente** (`esConsultaSustitucion`): "sustitución" activa `esConsultaHorario` → busca horario del profesor mencionado → en lugar de mostrarlo, inyecta el horario en `horarioGrupoCtx` → Gemini llama a `crear_sustitucion` con grupo y tramo ya resueltos sin pedir datos manualmente
 - **Agente ejecutor** (admin/profesional/superadmin): Gemini function calling con 5 herramientas
   - `crear_sustitucion` — INSERT en `sustituciones` (requiere confirmación)
   - `crear_incidencia` — INSERT en `incidencias` (requiere confirmación)
@@ -852,9 +853,10 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
-- `2026-05-29 21:50` · `ce6663a` — feat: chatbot — sustitucion activa esConsultaHorario + inyecta contexto horario a Gemini
-- `2026-05-29 21:48` · `3f5c9da` — docs: CLAUDE.md actualización 2026-05-29 noche — chatbot contexto profesor + bugs RRHH/incidencias
-- `2026-05-29` · (este) — docs: CLAUDE.md actualización 2026-05-29 noche — chatbot contexto profesor + bugs RRHH/incidencias
+- `2026-05-29` · (este) — docs: CLAUDE.md actualización — flujo sustitución inteligente documentado
+- `2026-05-29` · `a3ec38f` — fix: sustitucion busca horario profesor automaticamente (CLAUDE.md)
+- `2026-05-29` · `ce6663a` — feat: chatbot — sustitucion activa esConsultaHorario + inyecta contexto horario a Gemini
+- `2026-05-29` · `3f5c9da` — docs: CLAUDE.md actualización 2026-05-29 noche — chatbot contexto profesor + bugs RRHH/incidencias
 - `2026-05-29` · `19d25e4` — fix: contexto profesor entre turnos + tramos ordinales + stopwords (CLAUDE.md)
 - `2026-05-29` · `4c024f0` — feat: chatbot — detectar tramos ordinales en extractDiaHora (tercera hora → 10:40)
 - `2026-05-29` · `383f2a9` — feat: chatbot — guardar contexto último profesor entre turnos (_ultimoProfesor)
