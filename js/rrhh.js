@@ -448,7 +448,7 @@ async function _crearSustituciones(ausencia, profesorNombre) {
     .select("tramo, hora_inicio, hora_fin, grupo_horario, dia")
     .eq("centro_id", ctrId)
     .in("dia", diasNeeded)
-    .eq("profesor_nombre", profesorNombre);
+    .ilike("profesor_nombre", profesorNombre);
 
   var tramosPorDia = {};
   (tramosResult.data || []).forEach(function(t) {
@@ -456,8 +456,7 @@ async function _crearSustituciones(ausencia, profesorNombre) {
     tramosPorDia[t.dia].push(t);
   });
 
-  var obs = (AUSENCIA_TIPOS[ausencia.tipo] || ausencia.tipo || "Ausencia") +
-    (ausencia.motivo ? " — " + ausencia.motivo : "");
+  var obs = AUSENCIA_TIPOS[ausencia.tipo] || ausencia.tipo || "Ausencia";
 
   var inserts = [];
   dateRange.forEach(function(entry) {
@@ -470,7 +469,7 @@ async function _crearSustituciones(ausencia, profesorNombre) {
         tramo:              t.tramo,
         grupo_horario:      t.grupo_horario,
         profesor_ausente:   profesorNombre,
-        profesor_sustituto: "",
+        profesor_sustituto: null,
         observaciones:      obs,
         cubierta:           false,
         creado_por:         currentUser.id

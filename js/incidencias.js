@@ -1,8 +1,9 @@
 // ── MÓDULO INCIDENCIAS ──
-var incFiltroActivo  = 'abiertas';
-var _incLastData     = [];
-var _incAlumnosCache = null;
-var _incTipData      = null;  // último resultado de tipificar-incidencia
+var incFiltroActivo      = 'abiertas';
+var _incLastData         = [];
+var _incAlumnosCache     = null;
+var _incAlumnosCacheCtrid = null;
+var _incTipData          = null;  // último resultado de tipificar-incidencia
 
 function initIncidenciasPanel() {
   var fechaInput = document.getElementById('inc-fecha');
@@ -40,11 +41,12 @@ function initIncidenciasPanel() {
 // ── Buscador de alumno ──────────────────────────────────────────
 
 async function _incLoadAlumnos() {
-  if (_incAlumnosCache) { _incPopulateGrupoFilter(); return; }
+  if (_incAlumnosCache && _incAlumnosCacheCtrid === ctrId) { _incPopulateGrupoFilter(); return; }
   var r = await sb.from('alumnos').select('id,nombre,grupo_horario')
     .eq('centro_id', ctrId).order('nombre');
   if (!r.error && r.data) {
     _incAlumnosCache = r.data;
+    _incAlumnosCacheCtrid = ctrId;
     _incPopulateGrupoFilter();
   }
 }

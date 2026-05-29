@@ -261,7 +261,11 @@ async function enviarComunicado() {
   var dest   = destEl ? destEl.value : 'todos';
   if (dest === 'grupo_especifico') {
     var gVal = ((document.getElementById('com-grupo-val') || {}).value || '').trim();
-    dest = gVal ? 'grupo:' + gVal : 'todos';
+    if (!gVal) {
+      if (msg) { msg.textContent = 'Indica el nombre del grupo.'; msg.style.color = 'var(--red)'; msg.style.display = 'block'; }
+      return;
+    }
+    dest = 'grupo:' + gVal;
   }
   var msg = document.getElementById('com-msg');
 

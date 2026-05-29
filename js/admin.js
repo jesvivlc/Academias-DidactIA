@@ -146,10 +146,13 @@ async function loadSustituciones(filtro) {
 
   const { data, error } = await query;
 
-  // Actualizar contador en el tab
+  // Actualizar contador en el tab (solo pendientes sin cubrir)
   if (filtro === 'hoy') {
     const tabSust = document.getElementById("tab-sust");
-    if (tabSust) tabSust.textContent = (data && data.length) ? `🔄 Sustituciones (${data.length})` : '🔄 Sustituciones';
+    if (tabSust) {
+      const sinCubrir = data ? data.filter(s => !s.cubierta).length : 0;
+      tabSust.textContent = sinCubrir > 0 ? `🔄 Sustituciones (${sinCubrir})` : '🔄 Sustituciones';
+    }
   }
 
   if (error || !data || !data.length) {
@@ -322,7 +325,7 @@ async function eliminarSustitucion(id) {
   if (error) {
     alert("Error al eliminar: " + error.message);
   } else {
-    await loadSustituciones();
+    await loadSustituciones(sustFiltroActivo);
   }
 }
 

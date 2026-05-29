@@ -138,8 +138,9 @@ function renderUsersTable() {
         ? `<button title="Desactivar" onclick="desactivarUsuario('${u.id}','${name}')" style="${BTN}color:var(--txt2);">⏸</button>`
         : `<button title="Reactivar"  onclick="reactivarUsuario('${u.id}')"             style="${BTN}color:var(--txt2);">▶</button>`
     );
-    const delBtn = isSelf ? ""
-      : `<button title="Eliminar" onclick="deleteUser('${u.id}','${name}')" style="${BTN}color:var(--red);">🗑️</button>`;
+    // Eliminar solo usuarios pendientes (sin sesión activa en auth.users)
+    const delBtn = isSelf || u.email_confirmed_at ? ""
+      : `<button title="Eliminar invitación pendiente" onclick="deleteUser('${u.id}','${name}')" style="${BTN}color:var(--red);">🗑️</button>`;
 
     const centroCel = isSuperadmin ? `<td style="font-size:12px;color:var(--txt3);">${u.centro_nombre || "—"}</td>` : "";
 
@@ -518,7 +519,7 @@ async function reenviarInvitacion(email, nombre, centroId, rol) {
 }
 
 async function deleteUser(profileId, name) {
-  if (!confirm(`¿Eliminar al usuario "${name}"?\nEsta acción no se puede deshacer.`)) return;
+  if (!confirm(`¿Eliminar la invitación pendiente de "${name}"?\nEl usuario nunca aceptó la invitación y no tiene sesión activa.`)) return;
   const { error } = await sb.from("profiles").delete().eq("id", profileId);
   if (error) alert("Error: " + error.message);
   else await loadUsers();
