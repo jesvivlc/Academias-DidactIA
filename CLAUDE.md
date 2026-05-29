@@ -849,6 +849,10 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-29 21:47` · `4c024f0` — feat: chatbot — detectar tramos ordinales en extractDiaHora (tercera hora → 10:40)
+- `2026-05-29 21:45` · `383f2a9` — feat: chatbot — guardar contexto último profesor entre turnos (_ultimoProfesor)
+- `2026-05-29 21:44` · `ab16a70` — fix: chatbot — ampliar STOPWORDS_PROF con términos de sustitución y ordinales
+- `2026-05-29 21:18` · `db97149` — docs: CLAUDE.md — marcar migraciones bugs-prod-2026-05-29 como ejecutadas en Supabase
 - `2026-05-29 20:54` · `89d1cda` — fix: 2 bugs producción Agora — RRHH ausencias + incidencias convivencia
 - `2026-05-29 21:xx` · (este) — fix: 2 bugs producción — ausencias_profesor.tramo DROP NOT NULL + columnas IA en incidencias + profesor_sustituto null
 - `2026-05-29 20:48` · `d3bbb4b` — fix: chatbot — búsqueda profesor tolerante a tildes, stopwords y diminutivos (Salva→Salvador)
