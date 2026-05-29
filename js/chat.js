@@ -382,7 +382,10 @@ async function sendMsg() {
         "que","tiene","tienen","hay","clase","clases","horario","cual","cuando","donde","como","para",
         "lunes","martes","miercoles","jueves","viernes","sabado","hoy","ahora","manana","dime",
         "de","del","el","la","los","las","una","uno","este","esta","sus","quien","da","dan",
-        "son","es","y","o","a","en","al","con","por","sin","mas","dia","semana","semanal"
+        "son","es","y","o","a","en","al","con","por","sin","mas","dia","semana","semanal",
+        "quiero","quieres","pon","poner","ponme","ponerle","ponle","sustitucion","sustituciones",
+        "tercera","primera","segunda","cuarta","quinta","sexta","septima","hora","tramo",
+        "proximo","proxima","siguiente","toca","toque","asignatura","materia","libre"
       ]);
       // normalizeText elimina tildes → "qué"→"que", "cuál"→"cual", etc. quedan cubiertos por stopwords
       const palabrasProf = normalizeText(txt).replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
