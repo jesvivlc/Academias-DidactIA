@@ -852,6 +852,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-29 21:50` · `ce6663a` — feat: chatbot — sustitucion activa esConsultaHorario + inyecta contexto horario a Gemini
+- `2026-05-29 21:48` · `3f5c9da` — docs: CLAUDE.md actualización 2026-05-29 noche — chatbot contexto profesor + bugs RRHH/incidencias
 - `2026-05-29` · (este) — docs: CLAUDE.md actualización 2026-05-29 noche — chatbot contexto profesor + bugs RRHH/incidencias
 - `2026-05-29` · `19d25e4` — fix: contexto profesor entre turnos + tramos ordinales + stopwords (CLAUDE.md)
 - `2026-05-29` · `4c024f0` — feat: chatbot — detectar tramos ordinales en extractDiaHora (tercera hora → 10:40)
