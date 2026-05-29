@@ -219,6 +219,9 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - Detección de guardias/profesores libres en tiempo real
 - Historial conversacional (últimos 10 mensajes) enviado a Gemini
 - Control de acceso por rol en el system prompt
+- **Búsqueda de profesor tolerante**: `normalizeText()` antes de filtrar stopwords (tildes), prefijos para diminutivos (`Salva` → `Salvador`). `STOPWORDS_PROF` con 50+ términos incluyendo ordinales, términos de sustitución y partículas
+- **Contexto entre turnos** (`window._ultimoProfesor`): al encontrar un profesor guarda `{nombre, filas}`. Si el siguiente mensaje no resuelve ningún profesor pero menciona un día/tramo, reutiliza el último profesor encontrado
+- **`extractDiaHora` con ordinales**: detecta tramos por nombre ("tercera hora" → `10:40`, "cuarta" → `12:00`, etc.) además de horas numéricas y expresiones "a las X"
 - **Agente ejecutor** (admin/profesional/superadmin): Gemini function calling con 5 herramientas
   - `crear_sustitucion` — INSERT en `sustituciones` (requiere confirmación)
   - `crear_incidencia` — INSERT en `incidencias` (requiere confirmación)
@@ -849,16 +852,14 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
-- `2026-05-29 21:47` · `4c024f0` — feat: chatbot — detectar tramos ordinales en extractDiaHora (tercera hora → 10:40)
-- `2026-05-29 21:45` · `383f2a9` — feat: chatbot — guardar contexto último profesor entre turnos (_ultimoProfesor)
-- `2026-05-29 21:44` · `ab16a70` — fix: chatbot — ampliar STOPWORDS_PROF con términos de sustitución y ordinales
-- `2026-05-29 21:18` · `db97149` — docs: CLAUDE.md — marcar migraciones bugs-prod-2026-05-29 como ejecutadas en Supabase
-- `2026-05-29 20:54` · `89d1cda` — fix: 2 bugs producción Agora — RRHH ausencias + incidencias convivencia
-- `2026-05-29 21:xx` · (este) — fix: 2 bugs producción — ausencias_profesor.tramo DROP NOT NULL + columnas IA en incidencias + profesor_sustituto null
-- `2026-05-29 20:48` · `d3bbb4b` — fix: chatbot — búsqueda profesor tolerante a tildes, stopwords y diminutivos (Salva→Salvador)
-- `2026-05-29 20:42` · `455da25` — fix: eliminar ausencias_profesor.tramo — columna huérfana del diseño original
-- `2026-05-29 20:40` · `c107f02` — fix: ausencias_profesor.tramo NOT NULL — módulo rediseñado, tramo ya es opcional
-- `2026-05-29` · (este) — docs: CLAUDE.md actualización — Classroom dashboard, chatbot fix, auditoría, backlog P0/P1
+- `2026-05-29` · (este) — docs: CLAUDE.md actualización 2026-05-29 noche — chatbot contexto profesor + bugs RRHH/incidencias
+- `2026-05-29` · `19d25e4` — fix: contexto profesor entre turnos + tramos ordinales + stopwords (CLAUDE.md)
+- `2026-05-29` · `4c024f0` — feat: chatbot — detectar tramos ordinales en extractDiaHora (tercera hora → 10:40)
+- `2026-05-29` · `383f2a9` — feat: chatbot — guardar contexto último profesor entre turnos (_ultimoProfesor)
+- `2026-05-29` · `ab16a70` — fix: chatbot — ampliar STOPWORDS_PROF (50+ términos: sustitución, ordinales, partículas)
+- `2026-05-29` · `db97149` — docs: CLAUDE.md — migraciones bugs-prod-2026-05-29 ejecutadas en Supabase
+- `2026-05-29` · `89d1cda` — fix: 2 bugs producción Agora — ausencias_profesor.tramo DROP NOT NULL + columnas IA incidencias + profesor_sustituto null (admin.js)
+- `2026-05-29` · `d3bbb4b` — fix: chatbot — búsqueda profesor tolerante a tildes, stopwords y diminutivos (Salva→Salvador)
 - `2026-05-29` · `b96172d` — merge: integrar cambios del PC de casa + sanitizeReply en chat agente
 - `2026-05-29` · `6ace69a` — fix: 5 edge cases — selector sustitutos usa fecha formulario, guard re-aprobación, tab IB para profesional, límite comunicados 500, superadmin sin centros muestra mensaje
 - `2026-05-29` · `f1e1582` — fix: 4 issues de seguridad — contraseña en _regPass, SB_URL en notify-role, sanitizeReply Gemini, JSON.stringify en onclick alumnos
