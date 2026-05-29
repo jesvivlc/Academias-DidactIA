@@ -706,11 +706,14 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Analytics CMI: Cuadro de Mando Integral con 6 KPIs, gráficos Chart.js, alertas predictivas psicosociales via EF `alerta-psicosocial`
 - [x] Mobile responsive: 24 issues cubiertos — modales, formularios, safe-area toasts, iOS zoom (16px inputs), touch targets 44px, tabla overflow-x, bottom nav clearance
 - [x] Mobile nav: Planner en drawer Más móvil, selector de centro para superadmin en drawer Más
+- [x] Dashboard Classroom-style: banners por rol, métricas pill, grid de módulos con color por módulo, sidebar active con tint de color por módulo (`--nav-color`)
+- [x] Chatbot agente ejecutor — fix crítico: `systemInstruction` en Gemini API, `toolInstr` con instrucción de ejecución inmediata (sin pedir confirmación textual), `system_prompt` propagado al flujo de confirmación
+- [x] Auditoría técnica (`docs/auditoria-app.md`): 12 módulos, 11 EFs, 4 workflows n8n, deuda técnica P0/P1/P2, seguridad
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
 - [x] Logo brand SVG + wordmark sidebar
-- [x] Inicio admin (stat tiles, timeline, AI rail)
+- [x] Inicio admin (Classroom-style: banner ink, metrics pills, modules grid con colores)
 - [ ] Inicio profesor (horario del día, stats distintas)
 - [ ] Alumnos — split tabla/perfil drawer (`02-alumnos.png`)
 - [ ] Asistente IA — pantalla full-screen chat split (`06-chat.png`)
@@ -727,6 +730,9 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
 
 ### Backlog
+- [ ] **P0 seguridad:** `disponibilidad_profesor` query en `planner.js` no filtra por `centro_id` → fuga cross-tenant. Añadir `.eq("centro_id", ctrId)` a esa query
+- [ ] **P0 deploy:** EF `chat` necesita redespliegue tras cambios (systemInstruction). Requiere `npx supabase login` → `npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
+- [ ] **P1 versionar EFs:** `invite-user`, `notify-role`, `notify-sustitucion` existen en producción pero no están en el repo (`supabase/functions/`)
 - [ ] Ejecutar `sql/alertas-predictivas.sql` en Supabase para activar tabla `alertas_predictivas` (Analytics CMI)
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
 - [ ] Estadísticas avanzadas cross-centro para superadmin
@@ -841,12 +847,16 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-05-29` · (este) — docs: CLAUDE.md actualización — Classroom dashboard, chatbot fix, auditoría, backlog P0/P1
 - `2026-05-29` · `b96172d` — merge: integrar cambios del PC de casa + sanitizeReply en chat agente
 - `2026-05-29` · `6ace69a` — fix: 5 edge cases — selector sustitutos usa fecha formulario, guard re-aprobación, tab IB para profesional, límite comunicados 500, superadmin sin centros muestra mensaje
 - `2026-05-29` · `f1e1582` — fix: 4 issues de seguridad — contraseña en _regPass, SB_URL en notify-role, sanitizeReply Gemini, JSON.stringify en onclick alumnos
 - `2026-05-29` · `70960c3` — fix: 8 bugs moderados — RRHH (privacidad motivo, null sustituto, ilike nombre), admin (badge sin cubrir, filtro al eliminar), incidencias (cache por ctrId), comunicados (grupo vacío), usuarios (eliminar solo pendientes)
 - `2026-05-29` · `d7c654a` — fix: 5 bugs críticos — comedor (horaActual, toggleAsistencia fecha, filtro grupo, histórico limit), guardias (ilike wildcards)
-- `2026-05-29 12:35` · `449da65` — docs: CLAUDE.md actualización completa 2026-05-29 — analytics, planner V2, agente, móvil
+- `2026-05-29 01:16` · `449da65` — docs: auditoría técnica exhaustiva — módulos, EFs, n8n, seguridad, deuda técnica
+- `2026-05-29 01:01` · `f87dcf8` — fix: chatbot agente ejecutor — systemInstruction + toolInstr sin confirmación
+- `2026-05-29 00:51` · `5ce7a90` — feat: dashboard Classroom-style — module cards, metrics pills, sidebar tint
+- `2026-05-29 00:37` · `f892da7` — docs: CLAUDE.md actualización completa 2026-05-29
 - `2026-05-29 00:29` · `d23d852` — docs: CLAUDE.md — chatbot agente ejecutor + deploy EF chat
 - `2026-05-29` · Supabase deploy — EF `chat` desplegada con function calling (5 herramientas)
 - `2026-05-29 00:26` · `fc4c6a1` — fix: móvil — Planner en drawer Más + selector de centro para superadmin
