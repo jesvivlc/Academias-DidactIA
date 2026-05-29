@@ -436,6 +436,8 @@ async function sendMsg() {
               fecha: _dd.toISOString().split('T')[0],
               tramo: _ct.tramo,
               grupo_horario: _ct.grupo_horario || "",
+              hora_inicio: String(_ct.hora_inicio || "").slice(0,5),
+              hora_fin: String(_ct.hora_fin || "").slice(0,5),
               observaciones: ""
             };
           }

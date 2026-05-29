@@ -134,13 +134,15 @@ async function executeTool(
 
   switch (tool) {
     case "crear_sustitucion": {
-      const { fecha, tramo, grupo_horario, profesor_ausente, observaciones } = args;
+      const { fecha, tramo, grupo_horario, profesor_ausente, observaciones, hora_inicio, hora_fin } = args;
       const { error } = await sb.from("sustituciones").insert({
         centro_id,
         fecha: fecha || hoy,
         tramo: String(tramo),
         grupo_horario,
         profesor_ausente,
+        hora_inicio: hora_inicio || "",
+        hora_fin: hora_fin || "",
         observaciones: observaciones || "",
         cubierta: false,
         creado_por: user_id,
