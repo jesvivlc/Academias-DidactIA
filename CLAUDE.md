@@ -382,7 +382,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 | `profesores` | ✅ OK | Creada con `rrhh_migration.sql` |
 | `ausencias_profesor` | ✅ OK | Ampliada con `trabajo_alumnos` y `justificante_url` vía ALTER TABLE |
 | `guardias_realizadas` | ✅ OK | Creada con `rrhh_migration.sql` |
-| `incidencias` | ✅ OK | Ampliada con `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` vía `sql/add-incidencias-fields.sql` |
+| `incidencias` | ⚠️ PENDIENTE | Faltan columnas IA: ejecutar `sql/add-incidencias-fields.sql` en Supabase |
 | `comunicados` | ✅ OK | Creada con SQL del módulo comunicados (sesión 2026-05-24) |
 | `espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `reservas_espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
@@ -836,17 +836,23 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
+> - `sql/fix-bugs-prod-2026-05-29.sql` — **ejecutar ESTE** (combina los dos de abajo) ⚠️ bloqueante producción
+>   - `sql/fix-ausencias-tramo-nullable.sql` — `ausencias_profesor.tramo DROP NOT NULL` ⚠️ pendiente
+>   - `sql/add-incidencias-fields.sql` — columnas IA en incidencias ⚠️ pendiente
 > - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` para módulo Analytics CMI ⚠️ pendiente
 >
 > **Migraciones ejecutadas** (ya en producción):
 > - `sql/planner-tables.sql` — tablas planner + RLS + índices ✅ ejecutado 2026-05-27
-> - `sql/add-incidencias-fields.sql` — campos IA en incidencias ✅
 > - Tabla `comunicados` + RLS ✅
 > - Tablas RRHH (`profesores`, `ausencias_profesor`, `guardias_realizadas`) ✅
 
 ---
 
 ## Registro de cambios recientes
+- `2026-05-29 21:xx` · (este) — fix: 2 bugs producción — ausencias_profesor.tramo DROP NOT NULL + columnas IA en incidencias + profesor_sustituto null
+- `2026-05-29 20:48` · `d3bbb4b` — fix: chatbot — búsqueda profesor tolerante a tildes, stopwords y diminutivos (Salva→Salvador)
+- `2026-05-29 20:42` · `455da25` — fix: eliminar ausencias_profesor.tramo — columna huérfana del diseño original
+- `2026-05-29 20:40` · `c107f02` — fix: ausencias_profesor.tramo NOT NULL — módulo rediseñado, tramo ya es opcional
 - `2026-05-29` · (este) — docs: CLAUDE.md actualización — Classroom dashboard, chatbot fix, auditoría, backlog P0/P1
 - `2026-05-29` · `b96172d` — merge: integrar cambios del PC de casa + sanitizeReply en chat agente
 - `2026-05-29` · `6ace69a` — fix: 5 edge cases — selector sustitutos usa fecha formulario, guard re-aprobación, tab IB para profesional, límite comunicados 500, superadmin sin centros muestra mensaje

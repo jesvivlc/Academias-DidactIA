@@ -213,7 +213,7 @@ async function registrarSustitucion() {
     tramo: parseInt(tramo),
     grupo_horario: grupo || null,
     profesor_ausente: ausente,
-    profesor_sustituto: sustituto,
+    profesor_sustituto: sustituto || null,
     observaciones: obs || null,
     creado_por: currentUser.id
   });
