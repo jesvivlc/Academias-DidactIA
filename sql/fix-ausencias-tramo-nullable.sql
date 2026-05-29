@@ -1,11 +1,6 @@
--- Fix: ausencias_profesor.tramo pasó a ser opcional cuando el módulo se rediseñó
--- de registro por-tramo a ausencias multi-día con fecha_fin/tipo/estado.
--- La columna existe desde rrhh_migration.sql con NOT NULL sin DEFAULT.
-ALTER TABLE public.ausencias_profesor
-  ALTER COLUMN tramo DROP NOT NULL;
-
--- Verifica el resultado:
--- SELECT column_name, is_nullable, column_default
--- FROM information_schema.columns
--- WHERE table_schema = 'public' AND table_name = 'ausencias_profesor'
--- ORDER BY ordinal_position;
+-- ausencias_profesor.tramo fue añadida en el diseño original (por-tramo).
+-- El módulo se rediseñó a ausencias multi-día (fecha/fecha_fin). _crearSustituciones
+-- obtiene los tramos de horarios_grupo al aprobar — nunca los lee de ausencias_profesor.
+-- La columna no se escribe ni se lee: se elimina.
+ALTER TABLE public.ausencias_profesor DROP COLUMN IF EXISTS tramo;
+NOTIFY pgrst, 'reload schema';
