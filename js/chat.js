@@ -390,6 +390,7 @@ async function sendMsg() {
     }
 
     // 1c. Búsqueda por nombre de profesor en horarios_grupo
+    let _sustData = null;
     if (!grupoTarget) {
       const STOPWORDS_PROF = new Set([
         "que","tiene","tienen","hay","clase","clases","horario","cual","cuando","donde","como","para",
@@ -403,7 +404,6 @@ async function sendMsg() {
       // normalizeText elimina tildes → "qué"→"que", "cuál"→"cual", etc. quedan cubiertos por stopwords
       const palabrasProf = normalizeText(txt).replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS_PROF.has(p));
-      let _sustData = null;
       for (const palabra of palabrasProf) {
         const { data: profRows } = await sb.from("horarios_grupo")
           .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
