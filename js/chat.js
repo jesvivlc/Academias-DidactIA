@@ -404,18 +404,21 @@ async function sendMsg() {
       const palabrasProf = normalizeText(txt).replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS_PROF.has(p));
       for (const palabra of palabrasProf) {
+        console.log("🔍 palabrasProf:", palabrasProf, "| buscando:", palabra);
         const { data: profRows } = await sb.from("horarios_grupo")
           .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
           .eq("centro_id", ctrId)
           .ilike("profesor_nombre", `%${palabra}%`)
           .limit(50);
         if (!profRows?.length) continue;
+        console.log("📋 profRows encontrados:", profRows.map(r => r.profesor_nombre));
         // Matching tolerante: normaliza + prefijos para diminutivos (Salva→Salvador, Pili→Pilar)
         const filasFiltradas = profRows.filter(r => {
           const tokens = normalizeText(r.profesor_nombre).split(/[\s,]+/).filter(t => t.length > 0);
           return palabrasProf.every(p => tokens.some(t => t === p || t.startsWith(p) || p.startsWith(t)));
         });
         if (!filasFiltradas.length) continue;
+        console.log("✅ filasFiltradas:", filasFiltradas.map(r => r.profesor_nombre));
         const profNombre = filasFiltradas[0].profesor_nombre;
         window._ultimoProfesor = { nombre: profNombre, filas: filasFiltradas };
         const { dia: diaProf } = extractDiaHora(txt);
