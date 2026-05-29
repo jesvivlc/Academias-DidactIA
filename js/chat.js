@@ -34,6 +34,17 @@ function extractDiaHora(txt) {
   if (!hora) { m = q.match(/\b(\d{1,2})\s*pm\b/); if (m) { let hh=parseInt(m[1],10); if(hh<12)hh+=12; hora=String(hh).padStart(2,"0")+":00"; } }
   if (!hora) { m = q.match(/\ba\s+las\s+(\d{1,2})[:.h]?(\d{2})?h?\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+(m[2]||"00"); } }
   if (!hora) { m = q.match(/\b(\d{1,2})[:.](\d{2})h?\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+m[2]; } }
+  // Detectar tramos ordinales → hora de inicio
+  if (!hora) {
+    const tramoHoras = {
+      "primera":"08:50","segunda":"09:45","tercera":"10:40",
+      "cuarta":"12:00","quinta":"12:55","sexta":"13:50",
+      "septima":"15:10","octava":"16:05"
+    };
+    for (const [ordinal, horaInicio] of Object.entries(tramoHoras)) {
+      if (new RegExp(`\\b${ordinal}\\b`).test(q)) { hora = horaInicio; break; }
+    }
+  }
   return { dia, hora };
 }
 
