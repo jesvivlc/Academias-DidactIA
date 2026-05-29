@@ -308,6 +308,7 @@ async function sendMsg() {
 
   // Contexto conversacional: recordar último día/hora preguntado
   if (!window._ultimoDiaHora) window._ultimoDiaHora = { dia: null, hora: null };
+  if (window._ultimoProfesor === undefined) window._ultimoProfesor = null;
 
   // Detectar consulta de horario: keywords explícitas O mensaje con día+hora
   const tieneDiaHora = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|ahora)\b/i.test(txt) && /\b(\d{1,2}[:.h]\d{2}|\d{1,2}\s*[ap]m|ahora)\b/i.test(txt);
@@ -404,6 +405,7 @@ async function sendMsg() {
         });
         if (!filasFiltradas.length) continue;
         const profNombre = filasFiltradas[0].profesor_nombre;
+        window._ultimoProfesor = { nombre: profNombre, filas: filasFiltradas };
         const { dia: diaProf } = extractDiaHora(txt);
         const diaFinal = diaProf || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
         if (diaFinal) {
@@ -439,6 +441,27 @@ async function sendMsg() {
           respuestaHorarioDirecta = html;
         }
         break;
+      }
+    }
+
+    // Reutilizar último profesor si no se encontró ninguno
+    if (!respuestaHorarioDirecta && !grupoTarget && window._ultimoProfesor) {
+      const profNombre = window._ultimoProfesor.nombre;
+      const filasFiltradas = window._ultimoProfesor.filas;
+      const { dia: diaProf } = extractDiaHora(txt);
+      const diaFinal = diaProf || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
+      if (diaFinal) {
+        const clasesDia = filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
+        if (clasesDia.length) {
+          let html = `<p><strong>${profNombre}</strong> — horario del ${diaFinal}:</p><ul>`;
+          for (const c of clasesDia) {
+            const hi = String(c.hora_inicio || "").slice(0,5);
+            const hf = String(c.hora_fin || "").slice(0,5);
+            html += `<li><strong>${hi}–${hf}:</strong> ${c.actividad_nombre} (${c.grupo_horario})</li>`;
+          }
+          html += "</ul>";
+          respuestaHorarioDirecta = html;
+        }
       }
     }
 
