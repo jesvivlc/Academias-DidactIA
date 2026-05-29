@@ -403,6 +403,7 @@ async function sendMsg() {
       // normalizeText elimina tildes → "qué"→"que", "cuál"→"cual", etc. quedan cubiertos por stopwords
       const palabrasProf = normalizeText(txt).replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS_PROF.has(p));
+      let _sustData = null;
       for (const palabra of palabrasProf) {
         const { data: profRows } = await sb.from("horarios_grupo")
           .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
@@ -418,8 +419,27 @@ async function sendMsg() {
         if (!filasFiltradas.length) continue;
         const profNombre = filasFiltradas[0].profesor_nombre;
         window._ultimoProfesor = { nombre: profNombre, filas: filasFiltradas };
-        const { dia: diaProf } = extractDiaHora(txt);
+        const { dia: diaProf, hora } = extractDiaHora(txt);
         const diaFinal = diaProf || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
+        if (esConsultaSustitucion && diaFinal) {
+          const _ct = filasFiltradas.find(r =>
+            r.dia === diaFinal && horaMatchesSlot(hora, r.hora_inicio, r.hora_fin)
+          ) || filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo)[0];
+          const _dm = {"lunes":1,"martes":2,"miercoles":3,"jueves":4,"viernes":5};
+          const _t = _dm[diaFinal];
+          if (_t && _ct) {
+            const _hoy = new Date(), _hd = _hoy.getDay() || 7;
+            let _df = _t - _hd; if (_df <= 0) _df += 7;
+            const _dd = new Date(_hoy); _dd.setDate(_hoy.getDate() + _df);
+            _sustData = {
+              profesor_ausente: profNombre,
+              fecha: _dd.toISOString().split('T')[0],
+              tramo: _ct.tramo,
+              grupo_horario: _ct.grupo_horario || "",
+              observaciones: ""
+            };
+          }
+        }
         if (diaFinal) {
           const clasesDia = filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
           if (clasesDia.length) {
@@ -636,9 +656,17 @@ async function sendMsg() {
       `- actividad: ${claseTarget ? claseTarget.actividad_nombre : ""}\n` +
       `NO PIDAS MÁS DATOS AL USUARIO. Llama a crear_sustitucion inmediatamente con estos valores.`;
     respuestaHorarioDirecta = null;
-    // Continúa hacia Gemini con el contexto inyectado
   }
 
+  if (_sustData) {
+    document.getElementById("typing").classList.remove("show");
+    _showToolCard("crear_sustitucion", _sustData, null);
+    busy = false;
+    document.getElementById("send-btn").disabled = false;
+    document.getElementById("load-bar").classList.remove("show");
+    document.getElementById("chat-inp").focus();
+    return;
+  }
 
   const ctx = await buildContext();
   // Current date info for the chatbot
