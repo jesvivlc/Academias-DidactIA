@@ -144,6 +144,7 @@ async function executeTool(
         hora_inicio: hora_inicio || "",
         hora_fin: hora_fin || "",
         observaciones: observaciones || "",
+        profesor_sustituto: null,
         cubierta: false,
         creado_por: user_id,
       });
