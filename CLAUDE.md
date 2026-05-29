@@ -382,7 +382,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 | `profesores` | ✅ OK | Creada con `rrhh_migration.sql` |
 | `ausencias_profesor` | ✅ OK | Ampliada con `trabajo_alumnos` y `justificante_url` vía ALTER TABLE |
 | `guardias_realizadas` | ✅ OK | Creada con `rrhh_migration.sql` |
-| `incidencias` | ⚠️ PENDIENTE | Faltan columnas IA: ejecutar `sql/add-incidencias-fields.sql` en Supabase |
+| `incidencias` | ✅ OK | Ampliada con `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` vía `sql/add-incidencias-fields.sql` |
 | `comunicados` | ✅ OK | Creada con SQL del módulo comunicados (sesión 2026-05-24) |
 | `espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
 | `reservas_espacios` | ✅ OK | Creada con SQL del CLAUDE.md (sesión anterior) |
@@ -836,19 +836,20 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `sql/fix-bugs-prod-2026-05-29.sql` — **ejecutar ESTE** (combina los dos de abajo) ⚠️ bloqueante producción
->   - `sql/fix-ausencias-tramo-nullable.sql` — `ausencias_profesor.tramo DROP NOT NULL` ⚠️ pendiente
->   - `sql/add-incidencias-fields.sql` — columnas IA en incidencias ⚠️ pendiente
 > - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` para módulo Analytics CMI ⚠️ pendiente
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `sql/fix-bugs-prod-2026-05-29.sql` — `ausencias_profesor.tramo DROP NOT NULL` + columnas IA incidencias ✅ ejecutado 2026-05-29
 > - `sql/planner-tables.sql` — tablas planner + RLS + índices ✅ ejecutado 2026-05-27
+> - `sql/add-incidencias-fields.sql` — campos IA en incidencias ✅ ejecutado 2026-05-29
+> - `sql/fix-ausencias-tramo-nullable.sql` — `ausencias_profesor.tramo DROP NOT NULL` ✅ ejecutado 2026-05-29
 > - Tabla `comunicados` + RLS ✅
 > - Tablas RRHH (`profesores`, `ausencias_profesor`, `guardias_realizadas`) ✅
 
 ---
 
 ## Registro de cambios recientes
+- `2026-05-29 20:54` · `89d1cda` — fix: 2 bugs producción Agora — RRHH ausencias + incidencias convivencia
 - `2026-05-29 21:xx` · (este) — fix: 2 bugs producción — ausencias_profesor.tramo DROP NOT NULL + columnas IA en incidencias + profesor_sustituto null
 - `2026-05-29 20:48` · `d3bbb4b` — fix: chatbot — búsqueda profesor tolerante a tildes, stopwords y diminutivos (Salva→Salvador)
 - `2026-05-29 20:42` · `455da25` — fix: eliminar ausencias_profesor.tramo — columna huérfana del diseño original
