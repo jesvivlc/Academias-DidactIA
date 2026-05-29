@@ -300,26 +300,31 @@ serve(async (req) => {
 
     /* ── Path A: tool confirmation ── */
     if (confirm_tool && confirm_args && pending_contents) {
-      const toolResult = await executeTool(
-        confirm_tool,
-        confirm_args,
-        sb,
-        centro_id ?? "",
-        user_id ?? "",
-        user_name ?? "",
-      );
+      try {
+        const toolResult = await executeTool(
+          confirm_tool,
+          confirm_args,
+          sb,
+          centro_id ?? "",
+          user_id ?? "",
+          user_name ?? "",
+        );
 
-      const contentsWithResult = [
-        ...pending_contents,
-        { role: "model", parts: [{ functionCall: { name: confirm_tool, args: confirm_args } }] },
-        { role: "user",  parts: [{ functionResponse: { name: confirm_tool, response: { result: toolResult } } }] },
-      ];
+        const contentsWithResult = [
+          ...pending_contents,
+          { role: "model", parts: [{ functionCall: { name: confirm_tool, args: confirm_args } }] },
+          { role: "user",  parts: [{ functionResponse: { name: confirm_tool, response: { result: toolResult } } }] },
+        ];
 
-      const geminiRes = await callGemini(apiKey, contentsWithResult, false, system_prompt);
-      const geminiData = await geminiRes.json();
-      const text =
-        geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? toolResult;
-      return jsonRes({ type: "text", text });
+        const geminiRes = await callGemini(apiKey, contentsWithResult, false, system_prompt);
+        const geminiData = await geminiRes.json();
+        const text =
+          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? toolResult;
+        return jsonRes({ type: "text", text });
+      } catch (e) {
+        console.error("[Path A] confirm_tool error:", confirm_tool, JSON.stringify(confirm_args), e);
+        throw e;
+      }
     }
 
     /* ── Path B: normal chat ── */
