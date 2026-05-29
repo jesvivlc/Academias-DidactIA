@@ -423,8 +423,10 @@ async function sendMsg() {
         window._ultimoProfesor = { nombre: profNombre, filas: filasFiltradas };
         const { dia: diaProf } = extractDiaHora(txt);
         const diaFinal = diaProf || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
+        console.log("📅 diaProf:", diaProf, "| diaFinal:", diaFinal, "| hora:", extractDiaHora(txt).hora);
         if (diaFinal) {
           const clasesDia = filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
+          console.log("📚 clasesDia:", clasesDia.length, clasesDia.map(r => r.dia + " T" + r.tramo));
           if (clasesDia.length) {
             let html = `<p><strong>${profNombre}</strong> — horario del ${diaFinal}:</p><ul>`;
             for (const c of clasesDia) {
@@ -455,6 +457,7 @@ async function sendMsg() {
           }
           respuestaHorarioDirecta = html;
         }
+        console.log("📝 respuestaHorarioDirecta set:", !!respuestaHorarioDirecta, "| horarioGrupoCtx:", horarioGrupoCtx.slice(0,100));
         break;
       }
     }
