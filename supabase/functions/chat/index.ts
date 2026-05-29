@@ -143,7 +143,7 @@ async function executeTool(
         profesor_ausente,
         observaciones: observaciones || "",
         cubierta: false,
-        creado_por: user_name || user_id,
+        creado_por: user_id,
       });
       if (error) throw new Error(`Error al registrar sustitución: ${error.message}`);
       return `✅ Sustitución registrada para ${grupo_horario} el ${fecha} en el tramo ${tramo}.`;
