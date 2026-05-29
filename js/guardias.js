@@ -107,7 +107,7 @@ async function registrarGuardiaEnBD(nombreSustituto, fecha, tramo, grupoHorario)
     const { data: p } = await sb.from("profiles")
       .select("id")
       .eq("centro_id", ctrId)
-      .ilike("full_name", nombreSustituto)
+      .ilike("full_name", `%${nombreSustituto}%`)
       .limit(1);
     if (!p || !p[0]) return;
     const trim  = _guardiaTrimActual();

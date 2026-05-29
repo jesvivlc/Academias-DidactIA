@@ -16,12 +16,13 @@ function changeComedorFecha(delta) {
 }
 
 async function loadComedor() {
-  const today = new Date(comedorFecha);
+  const today = new Date(comedorFecha + "T12:00:00");
+  const ahora = new Date();
   const diasSinTilde = ["Domingo","Lunes","Martes","Miercoles","Jueves","Viernes","Sabado"];
   const diasConTilde = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
   const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   const fechaStr = comedorFecha;
-  const horaActual = today.getHours() * 100 + today.getMinutes();
+  const horaActual = ahora.getHours() * 100 + ahora.getMinutes();
   const diaActual = diasSinTilde[today.getDay()];
 
   document.getElementById("comedor-fecha").textContent =
@@ -76,6 +77,7 @@ async function loadComedor() {
     alumno_id: a.id,
     nombre: a.nombre,
     curso: a.curso,
+    grupo_horario: a.grupo_horario || null,
     se_queda: asistMap[a.id]?.se_queda ?? false,
     plaza_fija: asistMap[a.id]?.plaza_fija ?? false,
     db_id: asistMap[a.id]?.id ?? null
@@ -129,7 +131,6 @@ function renderComedorList() {
 }
 
 async function toggleAsistencia(alumnoId, seQueda) {
-  const today = new Date().toISOString().split("T")[0];
   const alumno = comedorData.find(a => a.alumno_id === alumnoId);
   if (!alumno) return;
 
@@ -140,7 +141,7 @@ async function toggleAsistencia(alumnoId, seQueda) {
     await sb.from("asistencia_comedor").update({ se_queda: seQueda, updated_at: new Date().toISOString() }).eq("id", alumno.db_id);
   } else {
     const { data } = await sb.from("asistencia_comedor").insert({
-      centro_id: ctrId, alumno_id: alumnoId, fecha: today,
+      centro_id: ctrId, alumno_id: alumnoId, fecha: comedorFecha,
       se_queda: seQueda, plaza_fija: false, registrado_por: profile?.id
     }).select().single();
     if (data) alumno.db_id = data.id;
@@ -194,7 +195,8 @@ async function loadComedorHistorico() {
     .select("fecha,se_queda,plaza_fija")
     .eq("centro_id", ctrId)
     .gte("fecha", fechaDesde)
-    .order("fecha", { ascending: false });
+    .order("fecha", { ascending: false })
+    .limit(50000);
 
   if (error || !data) {
     if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--txt3);padding:20px;">Error al cargar el histórico.</td></tr>';
