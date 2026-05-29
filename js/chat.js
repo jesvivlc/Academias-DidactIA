@@ -573,13 +573,18 @@ async function sendMsg() {
     ? `\nCUANDO HAY UN HORARIO EN EL CONTEXTO: Debes listar TODAS las clases que aparecen, una por línea, con su hora y asignatura. No resumas, no omitas ninguna, no digas "entre otras". Si el contexto tiene 4 clases, muestra las 4.`
     : "";
 
-  const sys = `Eres DidactIA, el asistente virtual exclusivo de ${ctrName}.
+  const canUseTool = role === "admin" || role === "profesional" || role === "superadmin";
+  const toolInstr = canUseTool
+    ? `\nTienes herramientas activas para ejecutar acciones directas: crear_sustitucion, crear_incidencia, registrar_ausencia_profesor, consultar_profesor_libre, avisar_comedor. REGLAS CRÍTICAS: (1) Cuando el usuario pida una de estas acciones, LLAMA A LA HERRAMIENTA INMEDIATAMENTE — no preguntes si puedes, no pidas confirmación textual, no digas que no puedes hacerlo. (2) El sistema muestra automáticamente una tarjeta de confirmación al usuario antes de ejecutar — tú no necesitas confirmar nada. (3) Si faltan datos imprescindibles (fecha, grupo, nombre del profesor), haz UNA SOLA pregunta concisa para obtenerlos. (4) Nunca respondas "no tengo capacidad para" o "no puedo" si tienes la herramienta correspondiente.`
+    : "";
+
+  const sys = `Eres DidactIA, el asistente inteligente de ${ctrName}. Puedes responder preguntas sobre el centro Y realizar acciones directamente en el sistema.
 Hoy es ${fechaHoy}. Mañana es ${diaManana}. Usa esta información para responder preguntas sobre fechas sin pedirle al usuario que las especifique.
 Conoces perfectamente al usuario con el que hablas: se llama ${currentUserName} y es ${rolDesc[role] || role}.
 NO le pidas que se identifique — ya sabes quién es. Dirígete a él por su nombre cuando sea natural.
 Si pregunta por su horario, el de su hijo, o información personal, responde directamente con los datos que tienes.
 Solo respondes con información de ESTE centro. Si no tienes algo, sugiere contactar con secretaría.
-Responde en español, de forma amable. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.${instruccionHorario}
+Responde en español, de forma amable y concisa. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.${instruccionHorario}${toolInstr}
 ${role === "superadmin" || role === "admin"
   ? "Este usuario es administrador del centro. Puede consultar listados de alumnos por nombre, grupo o curso, y datos académicos (horarios, grupos, asistencia). No compartas datos de contacto privados de familias (teléfonos, emails) a menos que el usuario los pida explícitamente para una gestión concreta."
   : "No reveles información confidencial de otros alumnos o profesores a usuarios que no deban verla."}
@@ -587,30 +592,22 @@ ${role === "superadmin" || role === "admin"
 CONTEXTO EN TIEMPO REAL:
 ${ctx}${horarioGrupoCtx}`;
 
+  // Construir historial Gemini — system prompt va en systemInstruction (campo separado)
+  const geminiContents = [];
+  const prevMsgs = history.slice(0, -1).slice(-10);
+  const lastMsg = history[history.length - 1];
+  for (const msg of prevMsgs) {
+    geminiContents.push({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }]
+    });
+  }
+  geminiContents.push({ role: "user", parts: [{ text: lastMsg.content }] });
+
+  // Guardar para el flujo de confirmación de herramientas
+  window._lastSystemPrompt = sys;
+
   try {
-    // Formato Gemini: historial completo con system prompt en el primer mensaje
-    const geminiContents = [];
-    // Construir historial: todos los turnos anteriores excepto el último
-    const prevMsgs = history.slice(0, -1).slice(-10); // Limitar a últimos 10 mensajes para evitar contextos gigantes
-    const lastMsg = history[history.length - 1];
-    // Primer mensaje lleva el system prompt pegado
-    if (prevMsgs.length === 0) {
-      // Primera pregunta: system + pregunta juntos
-      geminiContents.push({ role:"user", parts:[{ text: sys + "\n\nPregunta: " + lastMsg.content }] });
-    } else {
-      // Historial previo
-      for (let i = 0; i < prevMsgs.length; i++) {
-        const msg = prevMsgs[i];
-        const isFirst = i === 0;
-        const txt = isFirst && msg.role === "user" ? sys + "\n\nPregunta: " + msg.content : msg.content;
-        geminiContents.push({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: txt }]
-        });
-      }
-      // Último mensaje (la pregunta actual)
-      geminiContents.push({ role:"user", parts:[{ text: lastMsg.content }] });
-    }
     const res = await fetch(API, {
       method:"POST",
       headers:{
@@ -618,14 +615,28 @@ ${ctx}${horarioGrupoCtx}`;
         "Authorization": `Bearer ${ANON_KEY}`,
         "apikey": ANON_KEY
       },
-      body: JSON.stringify({ contents: geminiContents })
+      body: JSON.stringify({
+        contents: geminiContents,
+        system_prompt: sys,
+        centro_id: ctrId,
+        role,
+        user_name: currentUserName,
+        user_id: currentUser ? currentUser.id : "",
+      })
     });
     const d = await res.json();
-    const raw   = d.candidates?.[0]?.content?.parts?.[0]?.text || d.text || "Lo siento, no pude procesar tu consulta.";
-    const reply = _sanitizeReply(raw);
-    history.push({ role:"assistant", content:reply });
     document.getElementById("typing").classList.remove("show");
-    addMsg("bot", reply);
+
+    if (d.error) {
+      addMsg("bot", "<p>Error: " + d.error.replace(/</g,"&lt;") + "</p>");
+    } else if (d.type === "tool_call") {
+      _showToolCard(d.tool, d.args, d.pending_contents);
+    } else {
+      const raw   = d.text || d.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude procesar tu consulta.";
+      const reply = _sanitizeReply(raw);
+      history.push({ role:"assistant", content:reply });
+      addMsg("bot", reply);
+    }
   } catch(e) {
     document.getElementById("typing").classList.remove("show");
     addMsg("bot","<p>Error de conexión. Por favor, inténtalo de nuevo.</p>");
@@ -634,3 +645,114 @@ ${ctx}${horarioGrupoCtx}`;
   document.getElementById("load-bar").classList.remove("show");
   document.getElementById("chat-inp").focus();
 }
+
+/* ══════════════════════════════════════════════
+   AGENTE — Tool confirmation UI
+   ══════════════════════════════════════════════ */
+
+const _TOOL_META = {
+  crear_sustitucion:           { icon:"🔄", title:"Registrar sustitución" },
+  crear_incidencia:            { icon:"⚠️",  title:"Registrar incidencia" },
+  registrar_ausencia_profesor: { icon:"📋", title:"Solicitar ausencia" },
+  avisar_comedor:              { icon:"🍽️", title:"Avisar no comedor" },
+};
+
+const _PARAM_META = {
+  fecha:"Fecha", tramo:"Tramo", grupo_horario:"Grupo",
+  profesor_ausente:"Profesor ausente", observaciones:"Observaciones",
+  alumno_nombre:"Alumno", tipo:"Tipo", gravedad:"Gravedad",
+  descripcion:"Descripción", profesor_nombre:"Profesor",
+  fecha_inicio:"Fecha inicio", fecha_fin:"Fecha fin",
+};
+
+function _showToolCard(tool, args, pendingContents) {
+  const meta = _TOOL_META[tool] || { icon:"🔧", title: tool };
+
+  const paramRows = Object.entries(args || {})
+    .filter(function(e){ return e[1] !== undefined && e[1] !== ""; })
+    .map(function(e){
+      const label = _PARAM_META[e[0]] || e[0];
+      const val = String(e[1]).replace(/</g,"&lt;");
+      return '<div class="tool-param">' +
+        '<span class="tool-param-lbl">' + label + '</span>' +
+        '<strong class="tool-param-val">' + val + '</strong>' +
+      '</div>';
+    }).join("");
+
+  const cardHtml =
+    '<div class="tool-confirm-card" id="tool-confirm-card">' +
+      '<div class="tool-confirm-hdr">' +
+        '<span class="tool-confirm-icon">' + meta.icon + '</span>' +
+        '<div>' +
+          '<div class="tool-confirm-title">' + meta.title + '</div>' +
+          '<div class="tool-confirm-sub">Confirma los datos antes de ejecutar</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tool-confirm-params">' + paramRows + '</div>' +
+      '<div class="tool-confirm-btns">' +
+        '<button class="tool-btn-cancel" onclick="window._cancelTool()">Cancelar</button>' +
+        '<button class="tool-btn-confirm" onclick="window._confirmTool()">Confirmar</button>' +
+      '</div>' +
+    '</div>';
+
+  window._pendingTool = { tool, args, pendingContents, systemPrompt: window._lastSystemPrompt };
+  addMsg("bot", cardHtml);
+}
+
+window._confirmTool = async function() {
+  if (!window._pendingTool) return;
+  const { tool, args, pendingContents, systemPrompt } = window._pendingTool;
+  window._pendingTool = null;
+
+  const card = document.getElementById("tool-confirm-card");
+  if (card) {
+    const btns = card.querySelector(".tool-confirm-btns");
+    if (btns) btns.innerHTML = '<span style="font-size:13px;color:var(--muted)">Ejecutando…</span>';
+  }
+
+  busy = true;
+  document.getElementById("load-bar").classList.add("show");
+  document.getElementById("send-btn").disabled = true;
+
+  try {
+    const res = await fetch(API, {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization": `Bearer ${ANON_KEY}`,
+        "apikey": ANON_KEY
+      },
+      body: JSON.stringify({
+        confirm_tool: tool,
+        confirm_args: args,
+        pending_contents: pendingContents,
+        system_prompt: systemPrompt,
+        centro_id: ctrId,
+        role,
+        user_name: currentUserName,
+        user_id: currentUser ? currentUser.id : "",
+      })
+    });
+    const d = await res.json();
+    const reply = d.text || (d.error ? "Error: " + d.error : "Acción ejecutada.");
+    history.push({ role:"assistant", content:reply });
+    addMsg("bot", reply);
+  } catch(e) {
+    addMsg("bot", "<p>Error al ejecutar la acción. Por favor, inténtalo de nuevo.</p>");
+  }
+
+  busy = false;
+  document.getElementById("load-bar").classList.remove("show");
+  document.getElementById("send-btn").disabled = false;
+  document.getElementById("chat-inp").focus();
+};
+
+window._cancelTool = function() {
+  window._pendingTool = null;
+  const card = document.getElementById("tool-confirm-card");
+  if (card) {
+    const bbl = card.closest(".msg-bbl");
+    if (bbl) bbl.innerHTML = '<p style="color:var(--muted);font-style:italic;font-size:13px">Acción cancelada.</p>';
+  }
+  addMsg("bot", "<p>De acuerdo, acción cancelada. ¿Puedo ayudarte con algo más?</p>");
+};

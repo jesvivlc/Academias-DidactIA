@@ -69,6 +69,11 @@ js/
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
   ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
   comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
+  familias.js           (stub — portal familias, pendiente)
+  planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab
+  analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales
+sql/
+  planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
 manifest.json                   PWA manifest (sin service worker aún)
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
 scripts/
@@ -95,6 +100,11 @@ scripts/
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
 | `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, informe_borrador, normativa_ref, medidas_propuestas[], protocolo_previ, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave. Campos IA: `normativa_ref` (decreto aplicado), `medidas_propuestas` (text[]), `protocolo_previ` (bool), `informe_borrador` (texto editable antes de guardar) |
 | `comunicados` | centro_id, titulo, cuerpo, destinatarios, creado_por, fecha, estado, plantilla, created_at | `destinatarios`: 'todos'/'solo_profesores'/'solo_familias'/'grupo:XXXX'; `estado`: borrador/enviado; `plantilla`: reunion/horario/plazo/null |
+| `materias` | centro_id, nombre, color | Materias del Planner; `color` hex para fichas del tablero |
+| `aulas` | centro_id, nombre, tipo, capacidad | Aulas reservables en el Planner |
+| `disponibilidad_profesor` | profesor_id, dia_semana, tramo_horario, estado | Restricciones de disponibilidad para el CSP |
+| `necesidades_lectivas` | centro_id, grupo_horario, materia_id, profesor_id, horas_semanales, tipo_aula_requerida | Input del generador: X horas/sem de materia Y con prof Z para grupo G |
+| `horario_generado` | centro_id, grupo_horario, materia_id, profesor_id, aula_id, dia_semana, tramo_horario, es_fijo | Output del CSP antes de publicar; UNIQUE(profesor_id,dia,tramo) y UNIQUE(grupo,dia,tramo) |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
@@ -107,13 +117,14 @@ scripts/
 
 | Función | Propósito |
 |---------|-----------|
-| `chat` | Proxy a Gemini 2.5 Flash. Recibe `{ contents: [...] }` en formato Gemini |
+| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor` |
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
 | `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
 | `tipificar-incidencia` | Clasifica incidencia con Gemini 2.5 Flash según normativa CCAA del centro. Recibe `{ descripcion, centro_id }`. Devuelve `{ gravedad, tipo_normativo, medidas, informe_borrador, normativa_ref, paradigma, protocolo_previ, alerta_urgente? }` |
 | `notify-jefatura` | Email de alerta a admins del centro cuando se registra incidencia grave/muy_grave. Recibe `{ incidencia_id }`. Incluye informe borrador, medidas y banner PREVI si aplica |
 | `send-comunicado` | Envía comunicado por email a los destinatarios del centro vía Resend. Recibe `{ comunicado_id }`. Enruta por `destinatarios`: todos/solo_profesores/solo_familias/grupo:XXXX |
+| `parse-restricciones` | Analiza texto libre y/o audio con Gemini 2.5 Flash multimodal. Recibe `{ texto?, audio_base64?, mime_type?, centro_id }`. Devuelve `{ materias[], restricciones_profesor[], restricciones_materia[], necesidades[], preguntas[] }`. Contexto del centro (profesores y materias existentes) inyectado para matching exacto de nombres. |
 
 ---
 
@@ -200,7 +211,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 
 ## Módulos implementados
 
-### Chatbot (chat.js)
+### Chatbot — Agente ejecutor (chat.js + EF chat)
 - Contexto inyectado: info_centro, horario del usuario, hijos vinculados
 - Resolución directa (sin Gemini) para consultas de horario de alumno/grupo/profesor
 - Búsqueda fuzzy de alumnos por nombre con deduplicación por tokens exactos
@@ -208,6 +219,14 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - Detección de guardias/profesores libres en tiempo real
 - Historial conversacional (últimos 10 mensajes) enviado a Gemini
 - Control de acceso por rol en el system prompt
+- **Agente ejecutor** (admin/profesional/superadmin): Gemini function calling con 5 herramientas
+  - `crear_sustitucion` — INSERT en `sustituciones` (requiere confirmación)
+  - `crear_incidencia` — INSERT en `incidencias` (requiere confirmación)
+  - `consultar_profesor_libre` — SELECT en `horarios_grupo` (auto-ejecuta, sin confirmación)
+  - `registrar_ausencia_profesor` — INSERT en `ausencias_profesor` estado pendiente (requiere confirmación)
+  - `avisar_comedor` — UPSERT `asistencia_comedor` se_queda=false (requiere confirmación)
+- **Flujo de confirmación**: respuesta `{type:"tool_call"}` → `_showToolCard()` renderiza card con parámetros → usuario confirma/cancela → `window._confirmTool()` envía `confirm_tool/confirm_args/pending_contents` a la EF → resultado final como texto
+- `READ_ONLY = Set(["consultar_profesor_libre"])` — herramientas de solo lectura se auto-ejecutan sin mostrar card
 
 ### Comedor (comedor.js)
 - Vista día: lista de asistencia con toggle por alumno, filtros, navegación por fechas
@@ -307,9 +326,40 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - `_comCheckAndBadge()`: ejecutado 1200ms tras login — fetch solo de IDs, actualiza badge, inicia realtime
 - EF `send-comunicado`: enruta por `destinatarios`; para `grupo:XXXX` hace join `alumnos→familia_alumno→profiles`; envía un email por destinatario vía Resend
 
+### Planner — generador de horarios (planner.js)
+- Tab **"Planner"** visible solo para `admin` y `superadmin`; `#tab-planner` y `#nav-planner` sincronizados en `updateBentoDashboard()` para que aparezca en el drawer Más móvil
+- **6 sub-paneles** (pill tabs): Materias · Necesidades · Tablero · Publicar · Tramos · Dictar
+- **Materias (CRUD)**: formulario inline con nombre + color picker; lista con dot de color, actualización de color y borrado
+- **Necesidades lectivas (CRUD)**: grupo horario + materia + profesor + horas/semana; tabla resumen con borrado por fila
+- **Motor CSP backtracking** (`_generarHorario`):
+  - Expande necesidades en sesiones individuales, ordena más-restringidas primero (más horas → antes)
+  - Construye `teacherBusy` desde horarios de otros grupos ya generados (cross-group conflict prevention)
+  - `_resolverCSP()` recursivo: itera DIAS × TRAMOS; coloca, recursa, deshace si falla (backtracking clásico)
+  - `_esValido()`: ① slot ocupado para el grupo ② profesor ocupado en otro grupo ese tramo ③ misma materia no dos veces el mismo día
+  - Si no hay solución → alert informativo con sugerencias de resolución
+- **Tablero drag & drop**: CSS Grid 6 cols (hora + L/M/X/J/V) × 8 filas (tramos 08:00–16:00); fichas `.class-card` con borde izquierdo de color por materia; zona libre para quitar sesiones
+  - Drag handlers: `plannerDragStart/End/Over/Leave/Drop/DropPool` — validación cross-group en destino, intercambio swap entre slots ocupados
+  - `.planner-cell.drag-over` (verde) / `.drag-error` (rojo) feedback visual en tiempo real
+- **Publicar**: estadísticas (grupos, sesiones, necesidades), aviso de sobreescritura, botón que:
+  1. Elimina `horarios_grupo` de los grupos afectados para el `centro_id`
+  2. Inserta filas con `hora_inicio`, `hora_fin`, `actividad_nombre`, `profesor_nombre`, `aula: ''`
+  3. El chatbot y sustituciones usan el nuevo horario inmediatamente
+- **Tab Dictar**: entrada voz (Web Speech API, es-ES, continuo) + texto + archivo audio (FileReader base64). Llama Edge Function `parse-restricciones`. Panel de resultados con checkboxes por ítem (materias/necesidades/restricciones). Botón "Aplicar" crea registros en Supabase: materias nuevas, necesidades_lectivas, disponibilidad_profesor. Soporte de optativas LOMLOE (agrupa por `bloque_interdisciplinar_id`). Botón "Refinar" recupera preguntas de la IA y limpia el resultado.
+- **Motor H-MRV-SA** (`TimetableSolver`): hibridación Heurísticas + MRV (Minimum Remaining Values) + Simulated Annealing. Genera múltiples variantes Pareto, UI de progreso en tiempo real, diagnóstico de conflictos.
+- **Tablas en Supabase**: `materias`, `aulas`, `disponibilidad_profesor`, `necesidades_lectivas`, `horario_generado` — ver `sql/planner-tables.sql`
+- **XSS**: `_esc()` en todos los `innerHTML` con datos de usuario
+
+### Analytics — Cuadro de Mando Integral (analytics.js)
+- Tab **"Analytics"** visible solo para `admin` y `superadmin`
+- **CMI tiles**: 6 KPIs en tiempo real — guardias sin cubrir, ausencias activas, incidencias abiertas, comensales hoy, ocupación espacios, usuarios activos
+- **Gráficos Chart.js**: línea de tendencia de incidencias (30 días), barras de guardias por profesor (trimestre), dona de distribución de tipos de ausencia
+- **Alertas predictivas psicosociales**: análisis automático de patrones anómalos (picos de absentismo, acumulación de incidencias por grupo/alumno, profesor con exceso de guardias). Llama Edge Function `alerta-psicosocial`
+- **Edge Function `alerta-psicosocial`**: recibe `{centro_id}`, analiza últimos 30 días de datos de tres tablas, devuelve array de alertas con `nivel` (verde/amarillo/rojo), `mensaje` y `accion_sugerida`. Requiere tabla `alertas_predictivas` (pendiente ejecutar `sql/alertas-predictivas.sql`)
+- **Tabla `alertas_predictivas`**: `centro_id, tipo, nivel, mensaje, datos_json, leida, created_at` — **pendiente ejecutar SQL en Supabase**
+
 ---
 
-## Estado del proyecto (2026-05-26)
+## Estado del proyecto (2026-05-29)
 
 ### Tablas verificadas en Supabase (proyecto: rflfsbrdmgaidhvbuvwb)
 
@@ -334,6 +384,11 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 | `plazos_ib` | ✅ OK | Creada con SQL del workflow alertas IB + RLS + índice |
 | `cas_actividades` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
 | `extended_essay` | ✅ OK | Creada en `sql/demo-center.sql` con IF NOT EXISTS |
+| `materias` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `aulas` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `disponibilidad_profesor` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `necesidades_lectivas` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
+| `horario_generado` | ✅ OK | Creada con `sql/planner-tables.sql` — módulo Planner |
 
 ### Storage buckets en Supabase
 
@@ -362,6 +417,8 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 | Comunicados | ✅ (lectura) | ✅ (lectura) | ✅ (envío+lectura) | ✅ |
 | Administración | — | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
+| Planner | — | — | ✅ | ✅ |
+| Analytics CMI | — | — | ✅ | ✅ |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
@@ -379,6 +436,9 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 <script src="js/rrhh.js"></script>
 <script src="js/guardias.js"></script>
 <script src="js/comunicados.js"></script>
+<script src="js/familias.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/analytics.js"></script>
 ```
 
 ---
@@ -628,6 +688,12 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Design System v2: paleta editorial cálida (oklch), Newsreader serif, tokens CSS completos
 - [x] Layout shell v2: sidebar 248px con SVG brand (navy+D+spark ámbar), topbar con búsqueda+role switch+avatar, bottom nav móvil
 - [x] Inicio admin v2: stat2 tiles (barra lateral 3px, icono soft-tinted, Newsreader 38px, sparkline SVG), timeline, atajos 3×2, AI rail 360px
+- [x] Planner — generador de horarios: motor CSP backtracking + H-MRV-SA, tablero drag & drop, CRUD materias/necesidades, publicación en horarios_grupo (solo admin/superadmin)
+- [x] Planner V2: tooltip LOMLOE co-docencia, sistema de tramos configurables (`tramos_centro`), tab Dictar con IA multimodal (voz/texto/audio), Edge Function `parse-restricciones`
+- [x] Chatbot agente ejecutor: Gemini function calling con 5 herramientas (crear_sustitucion, crear_incidencia, consultar_profesor_libre, registrar_ausencia_profesor, avisar_comedor), tarjeta de confirmación UI, EF desplegada
+- [x] Analytics CMI: Cuadro de Mando Integral con 6 KPIs, gráficos Chart.js, alertas predictivas psicosociales via EF `alerta-psicosocial`
+- [x] Mobile responsive: 24 issues cubiertos — modales, formularios, safe-area toasts, iOS zoom (16px inputs), touch targets 44px, tabla overflow-x, bottom nav clearance
+- [x] Mobile nav: Planner en drawer Más móvil, selector de centro para superadmin en drawer Más
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
@@ -649,9 +715,9 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
 
 ### Backlog
-- [ ] Vista móvil optimizada (actualmente funcional pero no adaptada)
+- [ ] Ejecutar `sql/alertas-predictivas.sql` en Supabase para activar tabla `alertas_predictivas` (Analytics CMI)
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
-- [ ] Estadísticas avanzadas para dirección (dashboard superadmin con métricas cross-centro)
+- [ ] Estadísticas avanzadas cross-centro para superadmin
 - [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
 
 ---
@@ -752,17 +818,37 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `sql/add-incidencias-fields.sql` — añade `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ` a la tabla `incidencias`
-> - SQL del módulo comunicados (tabla `comunicados` + RLS) — ver mensaje sesión 2026-05-24
+> - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` para módulo Analytics CMI ⚠️ pendiente
+>
+> **Migraciones ejecutadas** (ya en producción):
+> - `sql/planner-tables.sql` — tablas planner + RLS + índices ✅ ejecutado 2026-05-27
+> - `sql/add-incidencias-fields.sql` — campos IA en incidencias ✅
+> - Tabla `comunicados` + RLS ✅
+> - Tablas RRHH (`profesores`, `ausencias_profesor`, `guardias_realizadas`) ✅
 
 ---
 
 ## Registro de cambios recientes
+- `2026-05-29 12:35` · (este) — docs: CLAUDE.md actualización completa 2026-05-29 — analytics, planner V2, agente, móvil
+- `2026-05-29 00:29` · `d23d852` — docs: CLAUDE.md — chatbot agente ejecutor + deploy EF chat
+- `2026-05-29` · Supabase deploy — EF `chat` desplegada con function calling (5 herramientas)
+- `2026-05-29 00:26` · `fc4c6a1` — fix: móvil — Planner en drawer Más + selector de centro para superadmin
+- `2026-05-29 00:19` · `636e534` — fix: revisión completa móvil — 24 issues cubiertos
+- `2026-05-29 00:11` · `5d7cf08` — feat: chatbot agente ejecutor — function calling con confirmación UI
+- `2026-05-29 00:02` · `ad12d40` — fix: mobile responsive — planner list view, forms 44px, analytics charts, comunicados en drawer Más
+- `2026-05-28 14:47` · `bf2a3fc` — feat: CMI Analytics — Cuadro de Mando Integral con alertas predictivas
+- `2026-05-28 14:22` · `48d624b` — feat: Planner — H-MRV-SA UI connection (progreso, variantes, diagnóstico)
+- `2026-05-28 06:48` · `02420d1` — feat: motor H-MRV-SA — TimetableSolver + DidactIAPlanner (motor puro)
+- `2026-05-28 01:06` · `a44a77a` — feat: Planner — tab Dictar con IA multimodal (voz/texto/audio) + EF parse-restricciones desplegada
+- `2026-05-28 00:48` · `90bb22b` — feat: planner — tooltip LOMLOE + configuración de tramos horarios
+- `2026-05-28 00:20` · `42e700b` — fix: planner — incluir profesores con activo=null en query
+- `2026-05-27 23:59` · `eb4b0eb` — design: landing page — animaciones con propósito, anti-patterns eliminados, CSS premium
+- `2026-05-27 23:45` · `54827f4` — docs: CLAUDE.md actualización 2026-05-27 — módulo Planner completo
+- `2026-05-27` · SQL ejecutado en Supabase — tablas planner activas en producción (rflfsbrdmgaidhvbuvwb)
+- `2026-05-26 06:55` · `255a1b2` — feat: DidactIA Planner — generador de horarios con CSP + drag & drop
 - `2026-05-26 01:07` · `3415272` — fix: patch Recientes click handlers via MutationObserver
 - `2026-05-26 00:59` · `d5fb03e` — fix: tipografía, barra stat tiles y greeting — fidelidad visual 01-inicio-admin
-- `2026-05-26 00:56` · `5847af7` — docs: CLAUDE.md actualización 2026-05-26 — design system v2, roadmap UI, convenciones UI
 - `2026-05-26 00:53` · `5afc6b3` — feat: inicio admin layout — stat2 tiles, AI rail, sidebar SVG brand, topbar v2
-- `2026-05-26 (este)` · CLAUDE.md — documentación design system v2, arquitectura inline script, roadmap UI redesign
 - `2026-05-25 20:27` · `e9e9652` — feat: design system v2 — warm editorial tokens + layout shell redesign
 - `2026-05-25 19:45` · `4fa987c` — feat: bento grid dashboard with metric cards, welcome banner and chatbot widget
 - `2026-05-25 19:17` · `f404ed6` — feat: redesign dashboard — two-column layout with sidebar panel

@@ -23,18 +23,42 @@
   --bdr:#d8e2f0;
   --r:8px;
   --rl:14px;
+
+  /* ── Easing curves (Emil-style physics) ── */
+  --ease-expo:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-std:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
 }
+
 html{scroll-behavior:smooth}
-body{font-family:'Geist',sans-serif;font-size:16px;line-height:1.65;color:var(--txt);background:var(--white);-webkit-font-smoothing:antialiased}
+body{
+  font-family:'Geist',sans-serif;font-size:16px;line-height:1.65;
+  color:var(--txt);background:var(--white);-webkit-font-smoothing:antialiased;
+}
 
 /* ── NAV ── */
 nav{
   position:fixed;top:0;left:0;right:0;z-index:100;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 6vw;height:68px;
-  background:rgba(255,255,255,0.96);
-  backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--bdr);
+  background:rgba(255,255,255,0.94);
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border-bottom:1px solid transparent;
+  animation:nav-in 0.7s var(--ease-expo) both;
+  transition:
+    border-color 0.3s var(--ease-std),
+    box-shadow   0.3s var(--ease-std),
+    background   0.3s var(--ease-std);
+}
+nav.is-scrolled{
+  border-bottom-color:var(--bdr);
+  box-shadow:0 1px 28px rgba(13,27,42,0.07);
+}
+@keyframes nav-in{
+  from{transform:translateY(-100%);opacity:0}
+  to{transform:translateY(0);opacity:1}
 }
 .nav-logo{
   display:flex;align-items:center;gap:10px;
@@ -56,27 +80,47 @@ nav{
 }
 .nav-links a{
   font-size:14px;color:var(--txt2);text-decoration:none;
-  transition:color .2s;
+  transition:color 0.2s var(--ease-std);
+  position:relative;
+}
+.nav-links a::after{
+  content:'';
+  position:absolute;bottom:-2px;left:0;right:0;height:1px;
+  background:var(--navy);transform:scaleX(0);transform-origin:right;
+  transition:transform 0.25s var(--ease-expo);
 }
 .nav-links a:hover{color:var(--navy)}
+.nav-links a:hover::after{transform:scaleX(1);transform-origin:left}
 .nav-right{display:flex;align-items:center;gap:12px}
 .nav-login{
   font-size:14px;color:var(--txt2);text-decoration:none;
   padding:8px 16px;border-radius:var(--r);
-  transition:color .2s;
+  transition:color 0.2s var(--ease-std);
 }
 .nav-login:hover{color:var(--navy)}
 .nav-cta{
   background:var(--navy);color:var(--white);
   padding:9px 22px;border-radius:var(--r);
   font-size:14px;font-weight:500;text-decoration:none;
-  transition:background .2s,transform .15s;
+  transition:
+    background 0.2s var(--ease-std),
+    transform  0.2s var(--ease-expo),
+    box-shadow 0.2s var(--ease-std);
 }
-.nav-cta:hover{background:var(--blue);transform:translateY(-1px)}
+.nav-cta:hover{
+  background:var(--blue);
+  transform:translateY(-1px);
+  box-shadow:0 4px 14px rgba(26,86,219,0.32);
+}
+.nav-cta:active{
+  transform:translateY(0) scale(0.97);
+  transition-duration:0.1s;
+}
 
 /* ── HERO ── */
 .hero{
   min-height:100vh;
+  min-height:100dvh;
   display:grid;grid-template-columns:1fr 1fr;
   align-items:center;gap:0;
   padding:100px 6vw 80px;
@@ -88,9 +132,19 @@ nav{
   background:var(--off);
   clip-path:polygon(8% 0,100% 0,100% 100%,0% 100%);
   z-index:0;
+  transition:opacity 0.5s var(--ease-std);
 }
 .hero-left{position:relative;z-index:1;padding-right:6vw}
 .hero-right{position:relative;z-index:1}
+
+/* Hero mock floating animation */
+.hero-right{
+  animation:float 6s ease-in-out infinite;
+}
+@keyframes float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-10px)}
+}
 
 .hero-eyebrow{
   display:inline-flex;align-items:center;gap:8px;
@@ -100,7 +154,10 @@ nav{
 }
 .hero-eyebrow::before{
   content:'';width:24px;height:2px;background:var(--blue);
+  transition:width 0.4s var(--ease-expo);
 }
+.hero-eyebrow:hover::before{width:36px}
+
 h1{
   font-family:'Playfair Display',serif;
   font-size:clamp(40px,4.5vw,62px);
@@ -112,32 +169,68 @@ h1{
 h1 em{font-style:italic;color:var(--blue)}
 .hero-sub{
   font-size:17px;color:var(--txt2);
-  line-height:1.7;font-weight:300;
+  line-height:1.72;font-weight:300;
   max-width:480px;margin-bottom:40px;
 }
 .hero-divider{
   width:48px;height:3px;
   background:var(--amber);
   margin-bottom:32px;
+  transform-origin:left;
 }
+/* Divider grows when visible */
+.hero-divider.visible{
+  animation:grow-divider 0.7s var(--ease-expo) forwards;
+}
+@keyframes grow-divider{
+  from{width:0;opacity:0}
+  to{width:48px;opacity:1}
+}
+
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:48px}
+
 .btn-primary{
   background:var(--navy);color:var(--white);
   padding:14px 28px;border-radius:var(--r);
   font-size:14px;font-weight:500;text-decoration:none;
   display:inline-flex;align-items:center;gap:8px;
-  transition:all .2s;
   border:2px solid var(--navy);
+  transition:
+    background   0.2s var(--ease-std),
+    border-color 0.2s var(--ease-std),
+    transform    0.2s var(--ease-expo),
+    box-shadow   0.2s var(--ease-std);
 }
-.btn-primary:hover{background:var(--blue);border-color:var(--blue);transform:translateY(-2px)}
+.btn-primary:hover{
+  background:var(--blue);
+  border-color:var(--blue);
+  transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(26,86,219,0.28);
+}
+.btn-primary:active{
+  transform:translateY(0) scale(0.98);
+  transition-duration:0.1s;
+}
+/* Arrow nudge on hover */
+.btn-arrow{
+  display:inline-flex;
+  transition:transform 0.25s var(--ease-expo);
+}
+.btn-primary:hover .btn-arrow{transform:translateX(4px)}
+
 .btn-outline{
   background:transparent;color:var(--navy);
   padding:14px 28px;border-radius:var(--r);
   font-size:14px;font-weight:500;text-decoration:none;
   border:2px solid var(--bdr);
-  transition:all .2s;
+  transition:
+    border-color 0.2s var(--ease-std),
+    background   0.2s var(--ease-std),
+    transform    0.2s var(--ease-expo);
 }
-.btn-outline:hover{border-color:var(--navy)}
+.btn-outline:hover{border-color:var(--navy);background:rgba(14,42,74,0.03)}
+.btn-outline:active{transform:scale(0.98);transition-duration:0.1s}
+
 .hero-trust{
   display:flex;align-items:center;gap:16px;
   padding-top:32px;border-top:1px solid var(--bdr);
@@ -148,14 +241,19 @@ h1 em{font-style:italic;color:var(--blue)}
   background:var(--white);border:1px solid var(--bdr);
   padding:5px 12px;border-radius:100px;
   font-size:12px;font-weight:500;color:var(--txt2);
+  transition:border-color 0.2s var(--ease-std),color 0.2s var(--ease-std);
 }
+.trust-chip:hover{border-color:var(--navy);color:var(--navy)}
 
 /* Hero mockup */
 .hero-mock{
   background:var(--white);
   border-radius:var(--rl);
   border:1px solid var(--bdr);
-  box-shadow:0 8px 48px rgba(13,27,42,0.10),0 2px 8px rgba(13,27,42,0.06);
+  box-shadow:
+    0 12px 56px rgba(13,27,42,0.12),
+    0 2px 8px rgba(13,27,42,0.06),
+    0 0 0 1px rgba(255,255,255,0.8) inset;
   overflow:hidden;
 }
 .mock-bar{
@@ -205,11 +303,13 @@ h1 em{font-style:italic;color:var(--blue)}
   width:34px;height:34px;border-radius:8px;
   background:var(--navy);display:flex;align-items:center;
   justify-content:center;cursor:pointer;flex-shrink:0;
+  transition:background 0.15s var(--ease-std);
 }
+.mock-send:hover{background:var(--blue)}
 .mock-send svg{width:16px;height:16px;fill:none;stroke:white;stroke-width:2}
 
 /* ── SECCIÓN GENÉRICA ── */
-section{padding:96px 6vw}
+section{padding:100px 6vw}
 .s-eyebrow{
   font-size:11px;font-weight:500;letter-spacing:0.12em;
   text-transform:uppercase;color:var(--blue);
@@ -226,14 +326,14 @@ h2{
 h2 em{font-style:italic}
 .s-sub{
   font-size:17px;color:var(--txt2);
-  font-weight:300;line-height:1.7;
+  font-weight:300;line-height:1.72;
   max-width:560px;
 }
 
 /* ── DIFERENCIAL ── */
 .diferencial{
   background:#0e2a4a;
-  padding:72px 6vw;
+  padding:80px 6vw;
   display:grid;
   grid-template-columns:1.1fr 1fr;
   gap:64px;
@@ -252,7 +352,7 @@ h2 em{font-style:italic}
 }
 .diferencial-sub{
   font-size:15px;color:rgba(255,255,255,0.5);
-  max-width:280px;line-height:1.6;
+  max-width:280px;line-height:1.7;
   border-left:2px solid var(--amber);
   padding-left:16px;
 }
@@ -269,14 +369,30 @@ h2 em{font-style:italic}
 }
 .problema-card{
   background:var(--white);padding:32px;
-  transition:background .2s;
+  transition:background 0.2s var(--ease-std);
+  position:relative;
 }
 .problema-card:hover{background:#fafbff}
+/* Subtle top accent on hover */
+.problema-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--blue);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform 0.3s var(--ease-expo);
+}
+.problema-card:hover::before{transform:scaleX(1)}
+
+/* p-num: functional metadata label, not decorative giant */
 .p-num{
-  font-family:'Playfair Display',serif;
-  font-size:40px;color:var(--bdr);
-  line-height:1;margin-bottom:20px;
+  font-family:'Geist',sans-serif;
+  font-size:10px;
   font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--txt3);
+  margin-bottom:16px;
+  line-height:1;
 }
 .problema-card h3{
   font-size:16px;font-weight:500;
@@ -295,18 +411,35 @@ h2 em{font-style:italic}
   border-radius:var(--r);
   cursor:pointer;
   border:1px solid transparent;
-  transition:all .2s;
+  position:relative;
+  overflow:hidden;
+  transition:
+    background    0.2s var(--ease-std),
+    border-color  0.2s var(--ease-std),
+    box-shadow    0.2s var(--ease-std),
+    transform     0.2s var(--ease-expo);
+}
+/* Left accent bar */
+.modulo-item::before{
+  content:'';
+  position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--blue);
+  border-radius:0 2px 2px 0;
+  transform:scaleY(0);transform-origin:top;
+  transition:transform 0.25s var(--ease-expo);
 }
 .modulo-item:hover,.modulo-item.active{
   background:var(--white);
   border-color:var(--bdr);
   box-shadow:0 2px 16px rgba(13,27,42,0.06);
 }
+.modulo-item.active::before{transform:scaleY(1)}
 .modulo-item.active .m-num{color:var(--blue)}
 .m-num{
   font-size:11px;font-weight:500;color:var(--txt3);
   letter-spacing:0.08em;text-transform:uppercase;
-  margin-bottom:8px;transition:color .2s;
+  margin-bottom:8px;
+  transition:color 0.2s var(--ease-std);
 }
 .modulo-item h3{
   font-size:17px;font-weight:500;color:var(--navy);
@@ -328,7 +461,14 @@ h2 em{font-style:italic}
 .mock-screen{
   display:none;flex-direction:column;height:100%;
 }
-.mock-screen.active{display:flex}
+.mock-screen.active{
+  display:flex;
+  animation:screen-in 0.3s var(--ease-expo) both;
+}
+@keyframes screen-in{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:translateY(0)}
+}
 .mock-topbar{
   background:#0e2a4a;padding:14px 20px;
   display:flex;align-items:center;justify-content:space-between;
@@ -376,7 +516,9 @@ h2 em{font-style:italic}
   display:flex;align-items:center;justify-content:space-between;
   background:var(--white);border:1px solid var(--bdr);
   border-radius:var(--r);padding:12px 16px;margin-bottom:8px;
+  transition:border-color 0.15s var(--ease-std);
 }
+.mock-role-row:hover{border-color:#b3c4d8}
 .mock-role-left{display:flex;align-items:center;gap:10px}
 .mock-role-name{font-size:14px;font-weight:500;color:#0e2a4a}
 .mock-role-email{font-size:12px;color:var(--txt3)}
@@ -422,13 +564,25 @@ h2 em{font-style:italic}
   margin-bottom:24px;
   background:var(--navy);
   position:relative;z-index:1;
+  transition:
+    transform    0.3s var(--ease-spring),
+    border-color 0.2s var(--ease-std),
+    background   0.2s var(--ease-std);
+}
+.paso:hover .paso-n{
+  transform:scale(1.1);
+  border-color:rgba(255,255,255,0.4);
 }
 .paso.highlight .paso-n{
   background:var(--amber);border-color:var(--amber);
   color:var(--navy);
+  box-shadow:0 0 0 4px rgba(232,160,32,0.2);
+}
+.paso.highlight:hover .paso-n{
+  box-shadow:0 0 0 6px rgba(232,160,32,0.25);
 }
 .paso h3{font-size:15px;font-weight:500;color:var(--white);margin-bottom:8px}
-.paso p{font-size:14px;color:rgba(255,255,255,0.45);line-height:1.6}
+.paso p{font-size:14px;color:rgba(255,255,255,0.45);line-height:1.65}
 
 /* ── PRECIOS ── */
 .precios-grid{
@@ -442,15 +596,23 @@ h2 em{font-style:italic}
   border-radius:var(--rl);
   padding:36px;
   position:relative;
-  transition:transform .2s,box-shadow .2s;
+  transition:
+    transform    0.25s var(--ease-expo),
+    box-shadow   0.25s var(--ease-std),
+    border-color 0.25s var(--ease-std);
 }
 .precio-card:hover{
-  transform:translateY(-3px);
-  box-shadow:0 8px 32px rgba(13,27,42,0.08);
+  transform:translateY(-5px);
+  box-shadow:0 16px 48px rgba(13,27,42,0.10);
+  border-color:#c0cedf;
 }
 .precio-card.featured{
   border-color:#0e2a4a;border-width:2px;
   background:#0e2a4a;
+}
+.precio-card.featured:hover{
+  box-shadow:0 16px 48px rgba(13,27,42,0.25);
+  border-color:#1a3d6b;
 }
 .precio-badge{
   position:absolute;top:-13px;left:28px;
@@ -501,19 +663,25 @@ h2 em{font-style:italic}
   margin-top:32px;padding:13px;
   border-radius:var(--r);
   font-size:14px;font-weight:500;
-  text-decoration:none;transition:all .2s;
+  text-decoration:none;
+  transition:
+    background    0.2s var(--ease-std),
+    border-color  0.2s var(--ease-std),
+    transform     0.15s var(--ease-expo);
 }
+.precio-cta:active{transform:scale(0.98);transition-duration:0.1s}
 .precio-card:not(.featured) .precio-cta{
   border:1.5px solid var(--bdr);color:var(--navy);
 }
 .precio-card:not(.featured) .precio-cta:hover{
-  border-color:var(--navy);
+  border-color:var(--navy);background:rgba(14,42,74,0.03);
 }
 .precio-card.featured .precio-cta{
   background:var(--amber);color:var(--navy);
 }
 .precio-card.featured .precio-cta:hover{
   background:#d4901c;
+  box-shadow:0 4px 16px rgba(232,160,32,0.4);
 }
 
 /* FUNDAE */
@@ -526,7 +694,11 @@ h2 em{font-style:italic}
   padding:24px 28px;
   display:flex;gap:20px;align-items:flex-start;
 }
-.fundae-icon{font-size:28px;flex-shrink:0;margin-top:2px}
+.fundae-icon{
+  flex-shrink:0;margin-top:2px;
+  color:var(--amber);
+  display:flex;align-items:center;justify-content:center;
+}
 .fundae h3{font-size:15px;font-weight:500;color:var(--navy);margin-bottom:6px}
 .fundae p{font-size:14px;color:var(--txt2);line-height:1.65}
 
@@ -534,19 +706,6 @@ h2 em{font-style:italic}
 .contacto-grid{
   display:grid;grid-template-columns:5fr 7fr;
   gap:80px;align-items:start;
-}
-@media(max-width:768px){
-  .contacto-grid{grid-template-columns:1fr}
-  .hero{grid-template-columns:1fr}
-  .hero::before{display:none}
-  .hero-right{display:none}
-  .modulos-wrap{grid-template-columns:1fr}
-  .pasos{grid-template-columns:1fr 1fr}
-  .nav-links{display:none}
-  .diferencial{grid-template-columns:1fr}
-  .lp-transform-vis{display:none}
-  .lp-modules-intro{grid-template-columns:1fr!important}
-  .lp-orbital{display:none}
 }
 .contacto-left h2{margin-bottom:12px}
 .contacto-left .s-sub{margin-bottom:32px}
@@ -558,7 +717,13 @@ h2 em{font-style:italic}
   width:40px;height:40px;border-radius:10px;
   background:var(--blue-l);
   display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;font-size:16px;
+  flex-shrink:0;
+  color:var(--blue);
+  transition:background 0.2s var(--ease-std),transform 0.2s var(--ease-spring);
+}
+.c-dato:hover .c-icon{
+  background:#d2e3fb;
+  transform:scale(1.08);
 }
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 @media(max-width:600px){.form-row{grid-template-columns:1fr}}
@@ -573,23 +738,37 @@ h2 em{font-style:italic}
   border:1.5px solid var(--bdr);border-radius:var(--r);
   font-size:14px;font-family:inherit;color:var(--txt);
   background:var(--white);outline:none;
-  transition:border-color .2s,box-shadow .2s;
+  transition:
+    border-color 0.2s var(--ease-std),
+    box-shadow   0.2s var(--ease-std);
   appearance:none;
 }
 .fg input:focus,.fg select:focus,.fg textarea:focus{
   border-color:var(--navy);
-  box-shadow:0 0 0 3px rgba(13,27,42,0.06);
+  box-shadow:0 0 0 3px rgba(14,42,74,0.07);
 }
 .fg textarea{height:110px;resize:vertical}
 .form-submit{
   width:100%;background:var(--navy);color:var(--white);
   padding:14px;border:none;border-radius:var(--r);
   font-size:14px;font-weight:500;font-family:inherit;
-  cursor:pointer;transition:all .2s;
+  cursor:pointer;
+  transition:
+    background 0.2s var(--ease-std),
+    transform  0.2s var(--ease-expo),
+    box-shadow 0.2s var(--ease-std);
   display:flex;align-items:center;justify-content:center;gap:8px;
   letter-spacing:0.02em;
 }
-.form-submit:hover{background:var(--blue)}
+.form-submit:hover{
+  background:var(--blue);
+  transform:translateY(-1px);
+  box-shadow:0 6px 20px rgba(26,86,219,0.28);
+}
+.form-submit:active{
+  transform:translateY(0) scale(0.98);
+  transition-duration:0.1s;
+}
 .form-submit svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
 
 /* ── FOOTER ── */
@@ -605,7 +784,11 @@ footer{
   font-style:italic;
 }
 .footer-links{display:flex;gap:24px}
-.footer-links a{font-size:13px;color:rgba(255,255,255,0.3);text-decoration:none;transition:color .2s}
+.footer-links a{
+  font-size:13px;color:rgba(255,255,255,0.3);
+  text-decoration:none;
+  transition:color 0.2s var(--ease-std);
+}
 .footer-links a:hover{color:rgba(255,255,255,0.7)}
 
 /* ── DIFERENCIAL — visual transformación ── */
@@ -615,9 +798,12 @@ footer{
   width:100%;background:var(--white);border:1px solid var(--bdr);
   border-radius:12px;padding:16px;
   box-shadow:0 4px 24px rgba(13,27,42,.10);
+  transition:transform 0.3s var(--ease-std),box-shadow 0.3s var(--ease-std);
 }
 .lp-before{transform:rotate(-1.5deg)}
 .lp-after{transform:rotate(1deg)}
+.lp-before:hover{transform:rotate(-1.5deg) translateY(-3px);box-shadow:0 8px 32px rgba(13,27,42,.15)}
+.lp-after:hover{transform:rotate(1deg) translateY(-3px);box-shadow:0 8px 32px rgba(13,27,42,.15)}
 .lp-card-eyebrow{
   font-size:9.5px;font-weight:600;letter-spacing:.12em;
   text-transform:uppercase;color:var(--txt3);margin-bottom:10px;
@@ -643,6 +829,11 @@ footer{
   width:36px;height:36px;border-radius:50%;
   background:var(--amber);color:var(--navy);
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  animation:pulse-amber 2.8s ease-in-out infinite;
+}
+@keyframes pulse-amber{
+  0%,100%{box-shadow:0 0 0 0 rgba(232,160,32,0.45)}
+  50%{box-shadow:0 0 0 8px rgba(232,160,32,0)}
 }
 .lp-after .chat-msgs{display:flex;flex-direction:column;gap:8px}
 .lp-after .msg-u{
@@ -663,6 +854,14 @@ footer{
   position:relative;aspect-ratio:1;
   width:100%;max-width:420px;margin:0 auto;
 }
+/* Orbital rings spin slowly */
+.lp-orbital > svg{
+  animation:spin-slow 40s linear infinite;
+  transform-origin:50% 50%;
+}
+@keyframes spin-slow{
+  to{transform:rotate(360deg)}
+}
 .lp-orbital__chip{
   position:absolute;
   background:var(--white);border:1px solid var(--bdr);
@@ -671,6 +870,15 @@ footer{
   font-size:12px;font-weight:500;color:var(--navy);
   box-shadow:0 2px 12px rgba(13,27,42,.08);
   white-space:nowrap;z-index:3;
+  transition:
+    box-shadow   0.2s var(--ease-std),
+    transform    0.2s var(--ease-spring),
+    border-color 0.2s var(--ease-std);
+}
+.lp-orbital__chip:hover{
+  box-shadow:0 4px 20px rgba(13,27,42,.14);
+  transform:translateY(-2px);
+  border-color:#c0cedf;
 }
 .lp-orbital__num{
   width:20px;height:20px;border-radius:50%;
@@ -681,21 +889,63 @@ footer{
 .lp-orbital__chip[data-feat="primary"] .lp-orbital__num{background:var(--blue-l);color:var(--blue)}
 .lp-orbital__chip[data-feat="spark"] .lp-orbital__num{background:var(--amber-l);color:#92400e}
 
-/* ── ANIMACIONES ── */
+/* ── ANIMACIONES REVEAL ── */
 .reveal{
-  opacity:0;transform:translateY(28px);
-  transition:opacity .65s ease,transform .65s ease;
+  opacity:0;transform:translateY(14px);
+  transition:
+    opacity   0.55s var(--ease-expo),
+    transform 0.55s var(--ease-expo);
+  will-change:transform,opacity;
 }
-.reveal.visible{opacity:1;transform:none}
-.reveal-delay-1{transition-delay:.1s}
-.reveal-delay-2{transition-delay:.2s}
-.reveal-delay-3{transition-delay:.3s}
+.reveal.visible{
+  opacity:1;transform:translateY(0);
+  will-change:auto;
+}
+.reveal-delay-1{transition-delay:0.06s}
+.reveal-delay-2{transition-delay:0.12s}
+.reveal-delay-3{transition-delay:0.18s}
+
+/* ── PREFERS-REDUCED-MOTION ── */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:0.001ms!important;
+    scroll-behavior:auto!important;
+  }
+  .reveal{opacity:1;transform:none}
+  .hero-right{animation:none}
+  .lp-orbital > svg{animation:none}
+  .lp-transform-arrow{animation:none}
+  .hero-divider.visible{animation:none;width:48px;opacity:1}
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .contacto-grid{grid-template-columns:1fr}
+  .hero{grid-template-columns:1fr;min-height:auto;padding-top:120px;padding-bottom:60px}
+  .hero::before{display:none}
+  .hero-right{display:none}
+  .hero-left{padding-right:0}
+  .modulos-wrap{grid-template-columns:1fr}
+  .pasos{grid-template-columns:1fr 1fr}
+  .nav-links{display:none}
+  .diferencial{grid-template-columns:1fr}
+  .lp-transform-vis{display:none}
+  .lp-modules-intro{grid-template-columns:1fr!important}
+  .lp-orbital{display:none}
+  nav{animation:none}
+}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
+<!-- Scroll sentinel for nav state -->
+<div id="scroll-sentinel" style="position:absolute;top:80px;left:0;width:1px;height:1px;pointer-events:none;aria-hidden:true"></div>
+
 <!-- NAV -->
-<nav>
+<nav id="main-nav">
   <a href="#" class="nav-logo" style="display:flex;align-items:center">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto">
       <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#0e2a4a;letter-spacing:-3px}.ti{fill:#1a56db}.sa{fill:#e8a020}</style></defs>
@@ -729,7 +979,9 @@ footer{
     <div class="hero-actions reveal reveal-delay-3">
       <a href="#contacto" class="btn-primary">
         Solicitar demo
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <span class="btn-arrow">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </span>
       </a>
       <a href="#modulos" class="btn-outline">Ver qué incluye</a>
     </div>
@@ -810,22 +1062,22 @@ footer{
         <div class="lp-sched-hdr">V</div>
         <div class="lp-sched-name">M. González</div>
         <div class="lp-sched-cell c">Mat</div>
-        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell f">-</div>
         <div class="lp-sched-cell c">Mat</div>
         <div class="lp-sched-cell c">Mat</div>
-        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell f">-</div>
         <div class="lp-sched-name">C. Serrano</div>
-        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell f">-</div>
         <div class="lp-sched-cell c">Len</div>
         <div class="lp-sched-cell c">Len</div>
-        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell f">-</div>
         <div class="lp-sched-cell c">Len</div>
         <div class="lp-sched-name">A. Martínez</div>
         <div class="lp-sched-cell c">Ing</div>
         <div class="lp-sched-cell c">Ing</div>
-        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell f">-</div>
         <div class="lp-sched-cell c">Ing</div>
-        <div class="lp-sched-cell f">—</div>
+        <div class="lp-sched-cell f">-</div>
       </div>
       <div class="lp-before-files">
         <span class="lp-before-file">horarios_2025.xlsx</span>
@@ -853,9 +1105,8 @@ footer{
 
 <!-- PROBLEMA -->
 <section class="problema">
-  <div class="s-eyebrow reveal">El problema</div>
   <h2 class="reveal">Cada día, las mismas<br><em>interrupciones</em></h2>
-  <p class="s-sub reveal">Los equipos directivos pierden horas resolviendo consultas que un sistema inteligente podría gestionar solo.</p>
+  <p class="s-sub reveal reveal-delay-1">Los equipos directivos pierden horas resolviendo consultas que un sistema inteligente podría gestionar solo.</p>
   <div class="problema-grid">
     <div class="problema-card reveal">
       <div class="p-num">01</div>
@@ -985,7 +1236,7 @@ footer{
             </div>
             <div style="align-self:flex-end;background:#0e2a4a;color:white;padding:9px 14px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:85%">¿Cuándo tiene Mates Marcos López?</div>
             <div style="background:var(--white);border:1px solid var(--bdr);padding:12px 14px;border-radius:3px 12px 12px 12px;font-size:13px;max-width:90%;color:var(--txt2);line-height:1.6">
-              <span style="font-weight:500;color:#0e2a4a">Marcos López</span> (2ºESO B) tiene Matemáticas los <span style="font-weight:500;color:#0e2a4a">martes 10:40–11:35</span> con Ana Martínez · Aula 104.
+              <span style="font-weight:500;color:#0e2a4a">Marcos López</span> (2ºESO B) tiene Matemáticas los <span style="font-weight:500;color:#0e2a4a">martes 10:40-11:35</span> con Ana Martínez · Aula 104.
             </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr)">
@@ -1004,7 +1255,7 @@ footer{
           <span class="mock-topbar-badge">Viernes 16 may</span>
         </div>
         <div class="mock-content">
-          <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Profesores libres ahora · Tramo 3 (10:40–11:35)</div>
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Profesores libres ahora · Tramo 3 (10:40-11:35)</div>
           <div class="mock-row"><div class="mock-avatar" style="background:#dbeafe;color:#1e40af">MG</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">María González</div><div style="font-size:12px;color:var(--txt3)">Matemáticas · Sec.</div></div><span class="mock-pill libre">Libre</span></div>
           <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">CS</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">Carlos Serrano</div><div style="font-size:12px;color:var(--txt3)">Lengua · Bach.</div></div><span class="mock-pill libre">Libre</span></div>
           <div class="mock-row"><div class="mock-avatar" style="background:#fef9c3;color:#854d0e">AM</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">Ana Martínez</div><div style="font-size:12px;color:var(--txt3)">Inglés · ESO</div></div><span class="mock-pill clase">Con clase</span></div>
@@ -1037,9 +1288,9 @@ footer{
           </div>
           <table class="mock-table">
             <tr><th>Grupo</th><th>Alumnos</th><th>Estado</th></tr>
-            <tr><td>1ºESO A</td><td>22</td><td><span class="mock-pill ok">✓ OK</span></td></tr>
-            <tr><td>1ºESO B</td><td>19</td><td><span class="mock-pill ok">✓ OK</span></td></tr>
-            <tr><td>2ºESO A</td><td>24</td><td><span class="mock-pill ok">✓ OK</span></td></tr>
+            <tr><td>1ºESO A</td><td>22</td><td><span class="mock-pill ok">OK</span></td></tr>
+            <tr><td>1ºESO B</td><td>19</td><td><span class="mock-pill ok">OK</span></td></tr>
+            <tr><td>2ºESO A</td><td>24</td><td><span class="mock-pill ok">OK</span></td></tr>
             <tr><td>1ºBAC A</td><td>18</td><td><span class="mock-pill pend">Pendiente</span></td></tr>
           </table>
         </div>
@@ -1178,9 +1429,8 @@ footer{
 
 <!-- PRECIOS -->
 <section id="precios">
-  <div class="s-eyebrow reveal">Precios</div>
   <h2 class="reveal">Transparente<br><em>desde el primer día</em></h2>
-  <p class="s-sub reveal">Sin permanencia el primer año. Sin costes ocultos.</p>
+  <p class="s-sub reveal reveal-delay-1">Sin permanencia el primer año. Sin costes ocultos.</p>
   <div class="precios-grid">
     <div class="precio-card reveal">
       <div class="precio-label">Suscripción anual</div>
@@ -1213,7 +1463,13 @@ footer{
     </div>
   </div>
   <div class="fundae reveal">
-    <div class="fundae-icon">💡</div>
+    <div class="fundae-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+        <path d="M9 18h6"/>
+        <path d="M10 22h4"/>
+      </svg>
+    </div>
     <div>
       <h3>Tu centro tiene un fondo de formación anual que si no se usa, se pierde</h3>
       <p>Los centros privados y concertados disponen de crédito FUNDAE para formación de su plantilla. DidactIA puede ser la acción formativa con la que agotar ese crédito — y el centro se queda con la herramienta funcionando el curso siguiente.</p>
@@ -1229,21 +1485,37 @@ footer{
       <h2 class="reveal">Hablemos<br><em>sin compromiso</em></h2>
       <p class="s-sub reveal" style="margin-bottom:36px">Te mostramos DidactIA funcionando en un centro real y resolvemos tus dudas. Sin presentación comercial, sin presión.</p>
       <div class="c-dato reveal">
-        <div class="c-icon">✉</div>
+        <div class="c-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+        </div>
         <div>
           <div style="font-size:12px;color:var(--txt3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em">Email</div>
           <div style="font-weight:500">hola@didactia.eu</div>
         </div>
       </div>
       <div class="c-dato reveal reveal-delay-1">
-        <div class="c-icon">🌐</div>
+        <div class="c-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a14.5 14.5 0 0 1 0 20A14.5 14.5 0 0 1 12 2"/>
+            <path d="M2 12h20"/>
+          </svg>
+        </div>
         <div>
           <div style="font-size:12px;color:var(--txt3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em">Plataforma</div>
           <div style="font-weight:500">didactia.eu</div>
         </div>
       </div>
       <div class="c-dato reveal reveal-delay-2">
-        <div class="c-icon">📍</div>
+        <div class="c-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
         <div>
           <div style="font-size:12px;color:var(--txt3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em">País</div>
           <div style="font-weight:500">España</div>
@@ -1307,6 +1579,7 @@ footer{
 </footer>
 
 <script>
+/* ── Modulo tabs ── */
 const moduloData=[
   {icon:'💬',title:'Asistente IA conversacional',desc:'Cualquier miembro de la comunidad educativa puede preguntar en lenguaje natural. El sistema responde con datos reales del centro, filtrados según el rol del usuario.',features:['Horarios de alumnos y profesores','Información del centro por rol','Búsqueda directa de alumnos','Acceso para familias, profesores y dirección']},
   {icon:'🔄',title:'Guardias y sustituciones',desc:'Visualiza en tiempo real qué profesores están libres en cada tramo horario. Gestiona sustituciones, consulta el historial y expórtalo cuando necesites.',features:['Profesores libres ahora mismo','Asignación de guardias','Historial de sustituciones','Exportación a CSV']},
@@ -1322,16 +1595,35 @@ function selectModulo(idx,el){
   if(s)s.classList.add('active');
 }
 
-const obs=new IntersectionObserver(entries=>{
-  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
-},{threshold:0.08});
-document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+/* ── Scroll reveals ── */
+const revealObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('visible');
+      revealObs.unobserve(e.target);
+    }
+  });
+},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>revealObs.observe(el));
 
+/* ── Nav scroll state via IntersectionObserver ── */
+const sentinel=document.getElementById('scroll-sentinel');
+const navEl=document.getElementById('main-nav');
+if(sentinel&&navEl){
+  const navObs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      navEl.classList.toggle('is-scrolled',!e.isIntersecting);
+    });
+  },{threshold:1});
+  navObs.observe(sentinel);
+}
+
+/* ── Form submit ── */
 function handleSubmit(e){
   e.preventDefault();
   const btn=document.getElementById('submit-btn');
   btn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Mensaje enviado — te contactamos pronto';
-  btn.style.background='#16803c';
+  btn.style.background='#166534';
   btn.disabled=true;
 }
 </script>

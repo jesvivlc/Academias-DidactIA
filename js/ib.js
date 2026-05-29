@@ -202,7 +202,7 @@ async function ibEditarLOs(actId, alumnoId) {
   const div = document.createElement("div");
   div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;";
   div.innerHTML = `
-    <div id="ib-los-modal" style="background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:400px;box-shadow:var(--sh-lg);">
+    <div id="ib-los-modal" style="background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:min(400px,calc(100vw - 24px));box-shadow:var(--sh-lg);">
       <div style="font-size:16px;font-weight:600;margin-bottom:4px;">Learning Outcomes</div>
       <div style="font-size:12px;color:var(--txt3);margin-bottom:12px;">${act?.titulo || ''}</div>
       <button id="btn-sugerir-ia" class="btn btn-s" onclick="ibSugerirLOs('${actId}')"
@@ -295,7 +295,7 @@ async function _ibModalActividad(preAlumnoId, preAlumnoNombre) {
   const div = document.createElement("div");
   div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;";
   div.innerHTML = `
-    <div style="background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
+    <div style="background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:min(480px,calc(100vw - 24px));max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
         <div style="font-size:16px;font-weight:600;">Nueva actividad CAS</div>
         <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt3);">✕</button>
@@ -480,7 +480,7 @@ async function ibVerEe(alumnoId, alumnoNombre) {
   const div = document.createElement("div");
   div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;";
   div.innerHTML = `
-    <div style="background:var(--srf);border-radius:var(--r);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
+    <div style="background:var(--srf);border-radius:var(--r);padding:28px;width:100%;max-width:min(520px,calc(100vw - 24px));max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <div>
           <div style="font-size:17px;font-weight:600;color:var(--txt);">${alumnoNombre}</div>

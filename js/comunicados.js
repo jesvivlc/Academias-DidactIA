@@ -66,7 +66,7 @@ function initComunicadosPanel() {
       + '</div>'
       + '<div id="com-form-body" style="display:none;margin-top:16px;border-top:1px solid #f0f0f0;padding-top:16px;">'
       // ─ fila: plantilla + destinatarios
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">'
       + '<div><label class="lbl">Plantilla</label>'
       + '<select class="fi" id="com-plantilla" onchange="comOnPlantilla(this.value)">'
       + '<option value="">Sin plantilla</option>'
@@ -210,7 +210,7 @@ function _comVerComunicado(id) {
   modal.id = 'com-ver-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
   modal.innerHTML = ''
-    + '<div style="background:#fff;border-radius:12px;max-width:580px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);">'
+    + '<div style="background:#fff;border-radius:12px;max-width:min(580px,calc(100vw - 24px));width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);">'
     + '<div style="padding:20px 24px 16px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
     + '<div>'
     + '<div style="font-size:16px;font-weight:600;color:#222;">' + _escCom(com.titulo || '') + '</div>'
@@ -347,9 +347,9 @@ function _comShowToast(text) {
   if (!t) {
     t = document.createElement('div');
     t.id = 'com-toast';
-    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#222;color:#fff;'
+    t.style.cssText = 'position:fixed;bottom:calc(72px + env(safe-area-inset-bottom,0));right:16px;background:#222;color:#fff;'
       + 'padding:12px 20px;border-radius:10px;font-size:13px;z-index:9100;'
-      + 'box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:320px;line-height:1.5;cursor:pointer;';
+      + 'box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:min(320px,calc(100vw - 32px));line-height:1.5;cursor:pointer;';
     t.addEventListener('click', function() { t.style.display = 'none'; });
     document.body.appendChild(t);
   }
