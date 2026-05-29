@@ -230,28 +230,31 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 
 ### Comedor (comedor.js)
 - Vista día: lista de asistencia con toggle por alumno, filtros, navegación por fechas
-- Detección automática de grupo actual del profesor por hora del sistema
-- Vista histórico: últimos 30 días, tabla con totales, botón "Ver" navega al día
+- Detección automática de grupo actual del profesor por hora del sistema (`ahora = new Date()`, no desde `comedorFecha`)
+- Vista histórico: últimos 30 días, tabla con totales, botón "Ver" navega al día. Limit 50000 para superar el default de 1000 filas de Supabase
 - Exportación CSV con BOM UTF-8
 - Variable `comedorFecha` controla qué día se muestra
 - `showComedorVista('dia'|'historico')` alterna las dos vistas
+- **Crítico:** `toggleAsistencia` usa `comedorFecha` (no `new Date()`) para insertar — editar histórico no corrompe el día actual
+- **Crítico:** `comedorData` incluye `grupo_horario` para que el filtro de grupo funcione
 
 ### Sustituciones (admin.js)
 - Registro: profesor ausente, sustituto, grupo, tramo, fecha, observaciones
 - `initSustPanel()`: auto-detecta tramo por hora del sistema, pre-rellena fecha con hoy
 - Selector de sustituto ordenado por equidad (menor → mayor guardias) con recuento `(N g.)` — carga desde `getGuardiaCountsByName()`
+- Selector usa la **fecha del formulario** (no hoy) para determinar qué día de la semana buscar libres
 - Al registrar sustitución: inserta en `guardias_realizadas` vía `registrarGuardiaEnBD()` y refresca bolsa
 - Toggle `cubierta` inline en cada fila de la tabla
 - Filtros "Hoy / Esta semana / Todo" con estado activo visual
-- Contador en el tab: "🔄 Sustituciones (N)" cuando hay pendientes hoy
-- Badges ✓ Cubierta / ⚠ Pendiente, exportación CSV, eliminación desde tabla
+- Contador en el tab: "🔄 Sustituciones (N)" — cuenta **solo las sin cubrir** (`!s.cubierta`), no el total
+- Badges ✓ Cubierta / ⚠ Pendiente, exportación CSV, eliminación desde tabla (preserva el filtro activo al eliminar)
 
 ### Bolsa de guardias con equidad (guardias.js)
 - `loadBolsaGuardias()`: ranking de todos los profesores ordenado por nº de guardias del trimestre (menor → mayor)
 - Barra de progreso relativa + badge de color: verde (0) · azul (1-3) · amarillo (4-6) · rojo (7+)
 - Cuenta desde `sustituciones.profesor_sustituto` del trimestre actual (sin configuración adicional)
 - `getGuardiaCountsByName()`: mapa nombre→count usado por `admin.js` para ordenar el selector
-- `registrarGuardiaEnBD()`: inserta en `guardias_realizadas` resolviendo `profile_id` por nombre
+- `registrarGuardiaEnBD()`: resuelve `profile_id` con `.ilike("full_name", "%nombre%")` (con wildcards) e inserta en `guardias_realizadas`
 - Se carga automáticamente al abrir el tab Sustituciones y se refresca tras cada registro
 - Card "Bolsa de guardias" integrada en `panel-sust` (visible junto al formulario)
 
@@ -269,9 +272,10 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - Buscador en tiempo real y filtros por rol (pills)
 - Contador en cabecera: X profesionales · X familias · X admins
 - Modal **Invitar**: nombre, email, rol, centro (admin bloqueado al suyo), vinculación de alumnos para familias
-- Modal **Editar**: nombre, rol, alumnos vinculados; llama `notify-role` si cambia rol
+- Modal **Editar**: nombre, rol, alumnos vinculados; llama `notify-role` (vía `${SB_URL}/functions/v1/notify-role`) si cambia rol
 - Desactivar/Reactivar (campo `activo` en profiles); login bloqueado si `activo = false`
 - Badge "Pendiente" + botón "Reenviar invitación" para usuarios sin `email_confirmed_at`
+- **Eliminar** solo disponible para usuarios **pendientes** (sin `email_confirmed_at`) — los confirmados solo se pueden desactivar para evitar huérfanos en `auth.users`
 - Seguridad: admin no puede crear superadmins ni cambiar/desactivar su propio perfil
 - Toggle de módulos por centro (comedor, espacios, incidencias) — solo superadmin
 
@@ -284,8 +288,8 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - Tab `👔 RRHH` visible para `profesional`, `admin` y `superadmin`
 - **Vista profesor** (`_renderRrhhProfesor`): formulario solicitud (fecha ini/fin, tipo, motivo), historial propio con badges
 - **Vista admin/jefatura** (`_renderRrhhAdmin`): lista todas las solicitudes del centro; filtros por estado (pills), profesor y fecha
-- `aprobarAusencia(id)`: marca estado=aprobada → llama `_crearSustituciones(ausencia, nombreProf)`
-  - `_crearSustituciones`: expande rango de fechas a días lectivos, consulta `horarios_grupo` del profesor por día, inserta una fila en `sustituciones` por cada tramo encontrado (cubierta=false)
+- `aprobarAusencia(id)`: guard anti-duplicado (si ya estaba aprobada → alert y return) → marca estado=aprobada → llama `_crearSustituciones(ausencia, nombreProf)`
+  - `_crearSustituciones`: expande rango de fechas a días lectivos, consulta `horarios_grupo` con `.ilike("profesor_nombre")` (case-insensitive), inserta una fila en `sustituciones` por cada tramo encontrado (`cubierta=false`, `profesor_sustituto=null`, `observaciones` = tipo de ausencia **sin el motivo** para preservar privacidad)
   - Nombre del profesor: busca primero en tabla `profesores` (por `profile_id`), luego en `profiles.full_name`
 - `rechazarAusencia(id)`: prompt con motivo → guarda `estado=rechazada, motivo_rechazo`
 - Badges: ⏳ pendiente · ✓ aprobada · ✕ rechazada
@@ -323,8 +327,9 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - **Vista todos**: lista de comunicados con fecha, destinatarios, badge "No leído" y modal de detalle
 - **Badge de no leídos**: `_comUpdateTabBadge()` — localStorage key `com_leidos_{userId}_{ctrId}`, actualiza tab a `📢 Comunicados (N)`
 - **Realtime**: `_comInitRealtime()` — suscripción Supabase a INSERT en `comunicados` filtrado por `centro_id`; toast para usuarios que no son el creador
-- `_comCheckAndBadge()`: ejecutado 1200ms tras login — fetch solo de IDs, actualiza badge, inicia realtime
+- `_comCheckAndBadge()`: ejecutado 1200ms tras login — fetch solo de IDs (limit 500), actualiza badge, inicia realtime
 - EF `send-comunicado`: enruta por `destinatarios`; para `grupo:XXXX` hace join `alumnos→familia_alumno→profiles`; envía un email por destinatario vía Resend
+- **Validación:** si `destinatarios = grupo_especifico` y el campo grupo está vacío → bloquea el envío con error visible (no cae silenciosamente a "todos")
 
 ### Planner — generador de horarios (planner.js)
 - Tab **"Planner"** visible solo para `admin` y `superadmin`; `#tab-planner` y `#nav-planner` sincronizados en `updateBentoDashboard()` para que aparezca en el drawer Más móvil
@@ -415,6 +420,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 | Espacios | — | ✅ (módulo) | ✅ (módulo) | ✅ |
 | RRHH | — | ✅ (vista propia) | ✅ (gestión) | ✅ |
 | Comunicados | ✅ (lectura) | ✅ (lectura) | ✅ (envío+lectura) | ✅ |
+| IB (plazos/CAS/EE) | ✅ (si hijo en IB) | ✅ | ✅ | ✅ |
 | Administración | — | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
 | Planner | — | — | ✅ | ✅ |
@@ -648,8 +654,14 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 7. Hacer `git commit` antes de cada deploy
 8. `applyTheme` siempre se llama **después** de `resetChat()` y `updateUI()` para que el DOM esté listo
 
+### Convenciones de seguridad (añadidas 2026-05-29)
+9. **Nunca** hardcodear la URL de Supabase — usar siempre `SB_URL` (definido en `config.js`)
+10. **Nunca** almacenar contraseñas en `window.*` — usar variables de módulo (`let _regPass`)
+11. **Siempre** sanitizar respuestas de Gemini antes de insertar en `innerHTML` (`_sanitizeReply` en `chat.js`)
+12. En botones con `onclick` inline que incluyen nombres de usuario, usar `JSON.stringify` para escapar — nunca concatenar con comillas simples
+
 ### Convenciones UI / Design System
-9. **No tocar archivos JS** para cambios de UI — solo `app.html` e `css/styles.css`
+13. **No tocar archivos JS** para cambios de UI — solo `app.html` e `css/styles.css`
 10. **No cambiar IDs existentes** — auth.js, mejoras.js y otros módulos los referencian por ID
 11. Usar `var(--ink)` (NO colores navy fijos) en elementos que deben respetar la tematización por centro
 12. `--ink` es el color del centro sobreescrito por `applyTheme()` — nunca asumir que es azul Google
@@ -657,7 +669,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
     - `VISUAL_FIDELITY.md` — checklist y especificaciones exactas (leer antes de tocar UI)
     - `screenshots/` — capturas de referencia; el output DEBE parecerse a estas
     - `reference/DidactIA.html` — prototipo navegable completo
-14. Toda pantalla de UI debe pasar el checklist de la sección 9 de `VISUAL_FIDELITY.md` antes de declararse "hecha"
+17. Toda pantalla de UI debe pasar el checklist de la sección 9 de `VISUAL_FIDELITY.md` antes de declararse "hecha"
 
 ---
 
@@ -829,7 +841,12 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
-- `2026-05-29 12:35` · (este) — docs: CLAUDE.md actualización completa 2026-05-29 — analytics, planner V2, agente, móvil
+- `2026-05-29` · `b96172d` — merge: integrar cambios del PC de casa + sanitizeReply en chat agente
+- `2026-05-29` · `6ace69a` — fix: 5 edge cases — selector sustitutos usa fecha formulario, guard re-aprobación, tab IB para profesional, límite comunicados 500, superadmin sin centros muestra mensaje
+- `2026-05-29` · `f1e1582` — fix: 4 issues de seguridad — contraseña en _regPass, SB_URL en notify-role, sanitizeReply Gemini, JSON.stringify en onclick alumnos
+- `2026-05-29` · `70960c3` — fix: 8 bugs moderados — RRHH (privacidad motivo, null sustituto, ilike nombre), admin (badge sin cubrir, filtro al eliminar), incidencias (cache por ctrId), comunicados (grupo vacío), usuarios (eliminar solo pendientes)
+- `2026-05-29` · `d7c654a` — fix: 5 bugs críticos — comedor (horaActual, toggleAsistencia fecha, filtro grupo, histórico limit), guardias (ilike wildcards)
+- `2026-05-29 12:35` · `449da65` — docs: CLAUDE.md actualización completa 2026-05-29 — analytics, planner V2, agente, móvil
 - `2026-05-29 00:29` · `d23d852` — docs: CLAUDE.md — chatbot agente ejecutor + deploy EF chat
 - `2026-05-29` · Supabase deploy — EF `chat` desplegada con function calling (5 herramientas)
 - `2026-05-29 00:26` · `fc4c6a1` — fix: móvil — Planner en drawer Más + selector de centro para superadmin
