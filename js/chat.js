@@ -596,14 +596,17 @@ async function sendMsg() {
     document.getElementById("typing").classList.remove("show");
     history.push({ role:"assistant", content: respuestaHorarioDirecta });
     addMsg("bot", respuestaHorarioDirecta);
-  } else if (respuestaHorarioDirecta && esConsultaSustitucion) {
-    horarioGrupoCtx += "\n\nHORARIO ENCONTRADO PARA LA SUSTITUCIÓN:\n" + respuestaHorarioDirecta.replace(/<[^>]+>/g,"") + "\nUsa estos datos para llamar a crear_sustitucion con el grupo y tramo correctos.";
-    respuestaHorarioDirecta = null;
     busy = false;
     document.getElementById("send-btn").disabled = false;
     document.getElementById("load-bar").classList.remove("show");
     document.getElementById("chat-inp").focus();
     return;
+  } else if (respuestaHorarioDirecta && esConsultaSustitucion) {
+    horarioGrupoCtx += "\n\nHORARIO ENCONTRADO PARA LA SUSTITUCIÓN:\n" +
+      respuestaHorarioDirecta.replace(/<[^>]+>/g,"") +
+      "\nUsa estos datos para llamar a crear_sustitucion con el grupo y tramo correctos.";
+    respuestaHorarioDirecta = null;
+    // Continúa hacia Gemini con el contexto inyectado
   }
 
   const ctx = await buildContext();
