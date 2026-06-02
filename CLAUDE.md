@@ -820,6 +820,36 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ---
 
+## Elección de modelo según tarea
+
+**Sonnet** (default para todo lo rutinario):
+- Ediciones CSS / HTML
+- Cambios en módulos existentes (comedor, sustituciones, usuarios)
+- CRUD JS, ajuste de funciones, copy de textos
+- Añadir campos a formularios o tablas
+- Tests Playwright (salvo diseño inicial)
+
+**Opus** (escalar solo cuando lo necesites):
+- Bugs que no se resuelven en 1-2 intentos con Sonnet
+- Refactors que tocan más de 2-3 archivos a la vez
+- Lógica de Edge Functions (chat, invite-user, notify-role)
+- Cualquier cosa que involucre RLS o permisos de Supabase
+- Nuevos módulos desde cero (espacios, email comedor)
+
+**Opus con extended thinking Alto** (usar con criterio, consume cuota escasa):
+- Decisiones de arquitectura que afectan a toda la app
+- Análisis de seguridad / revisión de políticas RLS
+- Cuando Opus normal no llega en 2 intentos
+
+**Cómo cambiar de modelo en sesión:**
+- Bajar a Sonnet: `/model claude-sonnet-4-6`
+- Subir a Opus: `/model claude-opus-4-8`
+
+El modelo por defecto configurado en settings.json es Sonnet.
+Escalar a Opus es una decisión consciente, no el default.
+
+---
+
 ## Cómo trabajar
 
 ```bash
@@ -863,6 +893,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-03 00:06` · `7807ade` — docs: CLAUDE.md — infraestructura Playwright e2e y convención credenciales test
 - `2026-06-03 00:03` · `528eeb2` — test: Playwright e2e — aislamiento multi-tenant RLS entre Agora y Buñol
 - `2026-05-29 22:53` · `6de52a7` — debug: EF chat — try/catch con console.error en Path A confirm_tool
 - `2026-05-29 22:49` · `7ec8fde` — fix: EF chat — profesor_sustituto null en crear_sustitucion
