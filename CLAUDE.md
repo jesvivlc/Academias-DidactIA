@@ -27,6 +27,7 @@ URL pública: **didactia.eu**
 | Email | Resend (dominio didactia.eu) |
 | Deploy | Vercel (frontend) + GitHub (fuente) |
 | Automatización | n8n (local, http://localhost:5678) |
+| Testing e2e | Playwright 1.60 + Chromium (`npm run test:e2e`) |
 
 ## Centros activos
 
@@ -76,8 +77,12 @@ sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
 manifest.json                   PWA manifest (sin service worker aún)
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
+tests/
+  aislamiento-centros.spec.js   Playwright e2e: RLS multi-tenant (Agora vs Buñol)
 scripts/
   importar_horarios_profes.py   Import CSV de horarios → Supabase
+playwright.config.js            Config Playwright: chromium, baseURL didactia.eu, dotenv
+.env.example                    Plantilla de credenciales para tests (nunca commitear .env)
 ```
 
 ---
@@ -663,6 +668,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 10. **Nunca** almacenar contraseñas en `window.*` — usar variables de módulo (`let _regPass`)
 11. **Siempre** sanitizar respuestas de Gemini antes de insertar en `innerHTML` (`_sanitizeReply` en `chat.js`)
 12. En botones con `onclick` inline que incluyen nombres de usuario, usar `JSON.stringify` para escapar — nunca concatenar con comillas simples
+13. **Nunca** hardcodear credenciales en tests — usar siempre variables de entorno (`process.env.*`). Plantilla en `.env.example`; el `.env` real está en `.gitignore`
 
 ### Convenciones UI / Design System
 13. **No tocar archivos JS** para cambios de UI — solo `app.html` e `css/styles.css`
@@ -708,6 +714,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Planner V2: tooltip LOMLOE co-docencia, sistema de tramos configurables (`tramos_centro`), tab Dictar con IA multimodal (voz/texto/audio), Edge Function `parse-restricciones`
 - [x] Chatbot agente ejecutor: Gemini function calling con 5 herramientas (crear_sustitucion, crear_incidencia, consultar_profesor_libre, registrar_ausencia_profesor, avisar_comedor), tarjeta de confirmación UI, EF desplegada
 - [x] Analytics CMI: Cuadro de Mando Integral con 6 KPIs, gráficos Chart.js, alertas predictivas psicosociales via EF `alerta-psicosocial`
+- [x] Testing e2e con Playwright: test de aislamiento multi-tenant — login por UI como admin de Agora, extracción de JWT desde localStorage, petición REST directa a Supabase verificando que RLS devuelve 0 filas para IES Buñol y >0 filas para Agora (`npm run test:e2e`)
 - [x] Mobile responsive: 24 issues cubiertos — modales, formularios, safe-area toasts, iOS zoom (16px inputs), touch targets 44px, tabla overflow-x, bottom nav clearance
 - [x] Mobile nav: Planner en drawer Más móvil, selector de centro para superadmin en drawer Más
 - [x] Dashboard Classroom-style: banners por rol, métricas pill, grid de módulos con color por módulo, sidebar active con tint de color por módulo (`--nav-color`)
@@ -822,6 +829,9 @@ git status && git log --oneline -5
 # Después de cada cambio funcional
 git add <archivos> && git commit -m "tipo: descripción" && git push
 # Vercel despliega automáticamente desde main
+
+# Tests e2e (requiere .env con credenciales — ver .env.example)
+npm run test:e2e
 ```
 
 ---
@@ -853,6 +863,22 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-03 00:03` · `528eeb2` — test: Playwright e2e — aislamiento multi-tenant RLS entre Agora y Buñol
+- `2026-05-29 22:53` · `6de52a7` — debug: EF chat — try/catch con console.error en Path A confirm_tool
+- `2026-05-29 22:49` · `7ec8fde` — fix: EF chat — profesor_sustituto null en crear_sustitucion
+- `2026-05-29 22:48` · `38796b8` — fix: sustitucion — añadir hora_inicio/hora_fin a _sustData y EF chat
+- `2026-05-29 22:44` · `f7aa9e1` — fix: EF chat — creado_por usa user_id (UUID) no user_name en crear_sustitucion
+- `2026-05-29 22:40` · `4b34bd0` — fix: chatbot — pending_contents fallback a history cuando es null (bypass Gemini)
+- `2026-05-29 22:39` · `eaa2685` — fix: chatbot — _sustData al inicio de sendMsg para evitar scope error
+- `2026-05-29 22:37` · `958075f` — fix: chatbot — mover _sustData al scope del if (!grupoTarget) externo
+- `2026-05-29 22:21` · `43ff95e` — feat: chatbot — bypass Gemini para sustitución con datos resueltos, mostrar tarjeta directamente
+- `2026-05-29 22:18` · `bb4740f` — fix: chatbot — eliminar console.log de debug temporales
+- `2026-05-29 22:17` · `d2b914c` — feat: chatbot — datos estructurados para sustitución en horarioGrupoCtx
+- `2026-05-29 22:09` · `801e8fd` — debug: chatbot — log horarioGrupoCtx tras else-if sustitucion (temporal)
+- `2026-05-29 22:07` · `0382040` — debug: chatbot — logs diaFinal, clasesDia y respuestaHorarioDirecta (temporal)
+- `2026-05-29 22:05` · `4ebc8a0` — debug: chatbot — logs búsqueda profesor (temporal)
+- `2026-05-29 22:00` · `a3ca508` — fix: chatbot — restituir busy/return en rama horario directo + limpiar flujo sustitucion
+- `2026-05-29 21:52` · `5014b02` — docs: CLAUDE.md — flujo sustitución inteligente documentado
 - `2026-05-29` · (este) — docs: CLAUDE.md actualización — flujo sustitución inteligente documentado
 - `2026-05-29` · `a3ec38f` — fix: sustitucion busca horario profesor automaticamente (CLAUDE.md)
 - `2026-05-29` · `ce6663a` — feat: chatbot — sustitucion activa esConsultaHorario + inyecta contexto horario a Gemini
