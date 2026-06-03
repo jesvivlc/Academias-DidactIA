@@ -322,9 +322,15 @@ async function sendMsg() {
   if (!window._ultimoDiaHora) window._ultimoDiaHora = { dia: null, hora: null };
   if (window._ultimoProfesor === undefined) window._ultimoProfesor = null;
 
+  // Detectar intención de CREAR tramos horarios del planner (no consultar horario de alumno)
+  const esCreacionTramos =
+    /\b(genera|crea|configura|establece|define)\b.{0,40}\btramos?\b/i.test(txt) ||
+    /\btramos?\b.{0,60}\b(genera|crea|configura|minutos|empezando|recreo|descanso|fin\s+de?\s+jornada)/i.test(txt) ||
+    (/\btramos?\b/i.test(txt) && /\bminutos?\b|\bduraci[oó]n\b/i.test(txt));
+
   // Detectar consulta de horario: keywords explícitas O mensaje con día+hora
   const tieneDiaHora = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|ahora)\b/i.test(txt) && /\b(\d{1,2}[:.h]\d{2}|\d{1,2}\s*[ap]m|ahora)\b/i.test(txt);
-  const esConsultaHorario = /horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene|sustituci[oó]n/i.test(txt) || tieneDiaHora;
+  const esConsultaHorario = !esCreacionTramos && (/horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene|sustituci[oó]n/i.test(txt) || tieneDiaHora);
   const esConsultaSustitucion = /sustituci[oó]n/i.test(txt);
 
   // Detectar consulta de guardias/profesores libres
