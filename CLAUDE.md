@@ -900,6 +900,10 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-03 23:29` · `1fe6497` — fix: nombre de usuario usa profile.full_name en lugar del email
+- `2026-06-03 23:21` · `6f255fd` — test: entorno RLS — 4 usuarios de test + script de provisioning
+- `2026-06-03 21:32` · `dadcca2` — test: Playwright pre-demo check — 8 módulos con reporte HTML
+- `2026-06-03 21:11` · `f31876f` — docs: CLAUDE.md — estado completo 2026-06-03
 - `2026-06-03` · Supabase deploy — EF `chat` redesplegada a producción (7 herramientas, +tramos)
 - `2026-06-03 20:45` · `cb2c115` — feat: EF chat — herramientas crear_tramos_centro y listar_tramos_centro
 - `2026-06-03 20:40` · `727edc1` — feat: landing — precios 249/399, 8 módulos, FUNDAE actualizado, © 2026
