@@ -80,17 +80,25 @@ async function doRegisterStep1() {
   const errEl  = document.getElementById("reg-err");
   errEl.style.display = "none";
 
-  if (!name || !email || !pass || !codigo) {
-    errEl.textContent = "Rellena todos los campos."; errEl.style.display = "block"; return;
+  if (!name || !email || !pass) {
+    errEl.textContent = "Rellena nombre, email y contraseña."; errEl.style.display = "block"; return;
   }
   if (pass.length < 6) {
     errEl.textContent = "La contraseña debe tener al menos 6 caracteres."; errEl.style.display = "block"; return;
   }
 
-  // Check code against both codigo_familia and codigo_profesional
+  // If no code provided, register without centro assignment
+  if (!codigo) {
+    regCentroId = null;
+    regRol = "familia";
+    await finishRegister(name, email, pass, []);
+    return;
+  }
+
+  // Check code against codigo_familia, codigo_profesional and codigo_acceso
   const { data: centros, error: cErr } = await sb
     .from("centros")
-    .select("id,nombre,codigo_familia,codigo_profesional");
+    .select("id,nombre,codigo_familia,codigo_profesional,codigo_acceso");
 
   if (cErr || !centros?.length) {
     errEl.textContent = "Error al verificar el código. Inténtalo de nuevo.";
@@ -107,10 +115,13 @@ async function doRegisterStep1() {
     if (c.codigo_profesional?.toUpperCase() === codigo) {
       matchedCentro = c; regRol = "profesional"; break;
     }
+    if (c.codigo_acceso?.toUpperCase() === codigo) {
+      matchedCentro = c; regRol = "profesional"; break;
+    }
   }
 
   if (!matchedCentro) {
-    errEl.textContent = "Código incorrecto. Comprueba que lo has escrito bien.";
+    errEl.textContent = "Código de centro no válido.";
     errEl.style.display = "block"; return;
   }
 
