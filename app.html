@@ -1183,12 +1183,12 @@
       setTimeout(updateUserInfo, 200);
       return;
     }
-    var name = currentUser.full_name || currentUser.email || '—';
+    var name = currentUserName || currentUser.email || '—';
     var initial = name.charAt(0).toUpperCase();
-    /* firstName: usa full_name; si solo hay email extrae parte local antes de @ y + */
+    /* firstName: usa currentUserName (= profile.full_name en auth.js); fallback a email */
     var firstName;
-    if (currentUser.full_name) {
-      firstName = currentUser.full_name.split(' ')[0];
+    if (currentUserName && currentUserName !== currentUser.email) {
+      firstName = currentUserName.split(' ')[0];
     } else if (currentUser.email) {
       var local = currentUser.email.split('@')[0].split('+')[0];
       firstName = local.charAt(0).toUpperCase() + local.slice(1);
@@ -1222,9 +1222,10 @@
     var greetingTxt = h < 12 ? 'Buenos días,' : h < 20 ? 'Buenas tardes,' : 'Buenas noches,';
     var dateStr   = DAYS[now.getDay()] + ', ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
     var _u = currentUser || {};
+    var _uName = (typeof currentUserName !== 'undefined' ? currentUserName : '') || '';
     var firstName;
-    if (_u.full_name) {
-      firstName = _u.full_name.split(' ')[0];
+    if (_uName && _uName !== (_u.email || '')) {
+      firstName = _uName.split(' ')[0];
     } else if (_u.email) {
       var _local = _u.email.split('@')[0].split('+')[0];
       firstName = _local.charAt(0).toUpperCase() + _local.slice(1);
