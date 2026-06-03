@@ -110,6 +110,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `disponibilidad_profesor` | profesor_id, dia_semana, tramo_horario, estado | Restricciones de disponibilidad para el CSP |
 | `necesidades_lectivas` | centro_id, grupo_horario, materia_id, profesor_id, horas_semanales, tipo_aula_requerida | Input del generador: X horas/sem de materia Y con prof Z para grupo G |
 | `horario_generado` | centro_id, grupo_horario, materia_id, profesor_id, aula_id, dia_semana, tramo_horario, es_fijo | Output del CSP antes de publicar; UNIQUE(profesor_id,dia,tramo) y UNIQUE(grupo,dia,tramo) |
+| `tramos_centro` | id, centro_id, numero (int), hora_inicio (HH:MM), hora_fin (HH:MM), nombre (text\|null), es_descanso (bool) | Tramos horarios configurables por centro; gestionables por voz vía chatbot (`crear_tramos_centro`, `listar_tramos_centro`) |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
@@ -122,7 +123,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 
 | Función | Propósito |
 |---------|-----------|
-| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor` |
+| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor`, `listar_tramos_centro` (auto-execute), `crear_tramos_centro` |
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
 | `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
@@ -228,14 +229,16 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - **Contexto entre turnos** (`window._ultimoProfesor`): al encontrar un profesor guarda `{nombre, filas}`. Si el siguiente mensaje no resuelve ningún profesor pero menciona un día/tramo, reutiliza el último profesor encontrado
 - **`extractDiaHora` con ordinales**: detecta tramos por nombre ("tercera hora" → `10:40`, "cuarta" → `12:00`, etc.) además de horas numéricas y expresiones "a las X"
 - **Flujo sustitución inteligente** (`esConsultaSustitucion`): "sustitución" activa `esConsultaHorario` → busca horario del profesor mencionado → en lugar de mostrarlo, inyecta el horario en `horarioGrupoCtx` → Gemini llama a `crear_sustitucion` con grupo y tramo ya resueltos sin pedir datos manualmente
-- **Agente ejecutor** (admin/profesional/superadmin): Gemini function calling con 5 herramientas
+- **Agente ejecutor** (admin/profesional/superadmin): Gemini function calling con 7 herramientas
   - `crear_sustitucion` — INSERT en `sustituciones` (requiere confirmación)
   - `crear_incidencia` — INSERT en `incidencias` (requiere confirmación)
   - `consultar_profesor_libre` — SELECT en `horarios_grupo` (auto-ejecuta, sin confirmación)
   - `registrar_ausencia_profesor` — INSERT en `ausencias_profesor` estado pendiente (requiere confirmación)
   - `avisar_comedor` — UPSERT `asistencia_comedor` se_queda=false (requiere confirmación)
+  - `listar_tramos_centro` — SELECT en `tramos_centro` (auto-ejecuta, sin confirmación)
+  - `crear_tramos_centro` — DELETE + INSERT en `tramos_centro` (requiere confirmación); acepta array con numero, hora_inicio, hora_fin, nombre?, es_descanso?
 - **Flujo de confirmación**: respuesta `{type:"tool_call"}` → `_showToolCard()` renderiza card con parámetros → usuario confirma/cancela → `window._confirmTool()` envía `confirm_tool/confirm_args/pending_contents` a la EF → resultado final como texto
-- `READ_ONLY = Set(["consultar_profesor_libre"])` — herramientas de solo lectura se auto-ejecutan sin mostrar card
+- `READ_ONLY = Set(["consultar_profesor_libre", "listar_tramos_centro"])` — herramientas de solo lectura se auto-ejecutan sin mostrar card
 
 ### Comedor (comedor.js)
 - Vista día: lista de asistencia con toggle por alumno, filtros, navegación por fechas
@@ -712,7 +715,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Inicio admin v2: stat2 tiles (barra lateral 3px, icono soft-tinted, Newsreader 38px, sparkline SVG), timeline, atajos 3×2, AI rail 360px
 - [x] Planner — generador de horarios: motor CSP backtracking + H-MRV-SA, tablero drag & drop, CRUD materias/necesidades, publicación en horarios_grupo (solo admin/superadmin)
 - [x] Planner V2: tooltip LOMLOE co-docencia, sistema de tramos configurables (`tramos_centro`), tab Dictar con IA multimodal (voz/texto/audio), Edge Function `parse-restricciones`
-- [x] Chatbot agente ejecutor: Gemini function calling con 5 herramientas (crear_sustitucion, crear_incidencia, consultar_profesor_libre, registrar_ausencia_profesor, avisar_comedor), tarjeta de confirmación UI, EF desplegada
+- [x] Chatbot agente ejecutor: Gemini function calling con 7 herramientas (crear_sustitucion, crear_incidencia, consultar_profesor_libre, registrar_ausencia_profesor, avisar_comedor, listar_tramos_centro, crear_tramos_centro), tarjeta de confirmación UI, EF desplegada
 - [x] Analytics CMI: Cuadro de Mando Integral con 6 KPIs, gráficos Chart.js, alertas predictivas psicosociales via EF `alerta-psicosocial`
 - [x] Testing e2e con Playwright: test de aislamiento multi-tenant — login por UI como admin de Agora, extracción de JWT desde localStorage, petición REST directa a Supabase verificando que RLS devuelve 0 filas para IES Buñol y >0 filas para Agora (`npm run test:e2e`)
 - [x] Mobile responsive: 24 issues cubiertos — modales, formularios, safe-area toasts, iOS zoom (16px inputs), touch targets 44px, tabla overflow-x, bottom nav clearance
@@ -720,6 +723,10 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Dashboard Classroom-style: banners por rol, métricas pill, grid de módulos con color por módulo, sidebar active con tint de color por módulo (`--nav-color`)
 - [x] Chatbot agente ejecutor — fix crítico: `systemInstruction` en Gemini API, `toolInstr` con instrucción de ejecución inmediata (sin pedir confirmación textual), `system_prompt` propagado al flujo de confirmación
 - [x] Auditoría técnica (`docs/auditoria-app.md`): 12 módulos, 11 EFs, 4 workflows n8n, deuda técnica P0/P1/P2, seguridad
+- [x] Fix banners dashboard: banner bienvenida siempre muestra el centro activo (`updateBentoDashboard` llamado desde `updateUI` en `auth.js`); aviso urgente ya se elimina correctamente (DELETE en `info_centro` + sync inmediato de `#banner-aviso`)
+- [x] Landing actualizada: planes Operativa €249/mes · Internacional €399/mes, 8 módulos (+RRHH, Incidencias, Comunicados), FUNDAE €2.988–4.788 bonificable, © 2026
+- [x] Registro con código de centro opcional (`codigo_acceso`): si el campo queda vacío el usuario se registra sin centro asignado; `codigo_acceso` añadido al bucle de matching en `doRegisterStep1`
+- [x] Chatbot agente ejecutor — nuevas herramientas de tramos: `crear_tramos_centro` y `listar_tramos_centro` implementadas en EF `chat` y desplegadas a producción
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
@@ -742,7 +749,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ### Backlog
 - [ ] **P0 seguridad:** `disponibilidad_profesor` query en `planner.js` no filtra por `centro_id` → fuga cross-tenant. Añadir `.eq("centro_id", ctrId)` a esa query
-- [ ] **P0 deploy:** EF `chat` necesita redespliegue tras cambios (systemInstruction). Requiere `npx supabase login` → `npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
+- [x] **P0 deploy resuelto:** EF `chat` redesplegada el 2026-06-03 con 7 herramientas. Deploy vía `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
 - [ ] **P1 versionar EFs:** `invite-user`, `notify-role`, `notify-sustitucion` existen en producción pero no están en el repo (`supabase/functions/`)
 - [ ] Ejecutar `sql/alertas-predictivas.sql` en Supabase para activar tabla `alertas_predictivas` (Analytics CMI)
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
@@ -893,6 +900,14 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-03` · Supabase deploy — EF `chat` redesplegada a producción (7 herramientas, +tramos)
+- `2026-06-03 20:45` · `cb2c115` — feat: EF chat — herramientas crear_tramos_centro y listar_tramos_centro
+- `2026-06-03 20:40` · `727edc1` — feat: landing — precios 249/399, 8 módulos, FUNDAE actualizado, © 2026
+- `2026-06-03 20:32` · `04ca622` — fix: aviso urgente persiste tras borrarlo + banner bienvenida (2 bugs)
+- `2026-06-03 20:27` · `dbea96e` — fix: banner bienvenida siempre muestra el centro activo
+- `2026-06-03 00:09` · `3941d91` — docs: CLAUDE.md — guía de elección de modelo por tipo de tarea
+- `2026-06-03 09:52` · `59989e3` — chore: migración add_codigo_acceso — columna centros ya existía en producción
+- `2026-06-03 09:45` · `d2ddc16` — feat: código de centro opcional en registro — columna codigo_acceso
 - `2026-06-03 00:06` · `7807ade` — docs: CLAUDE.md — infraestructura Playwright e2e y convención credenciales test
 - `2026-06-03 00:03` · `528eeb2` — test: Playwright e2e — aislamiento multi-tenant RLS entre Agora y Buñol
 - `2026-05-29 22:53` · `6de52a7` — debug: EF chat — try/catch con console.error en Path A confirm_tool
