@@ -1138,7 +1138,7 @@ footer{
   <div class="lp-modules-intro">
     <div>
       <div class="s-eyebrow reveal">Lo que incluye</div>
-      <h2 class="reveal">Cinco módulos.<br><em>Un solo acceso.</em></h2>
+      <h2 class="reveal">Ocho módulos.<br><em>Un solo acceso.</em></h2>
       <p class="s-sub reveal" style="margin-bottom:0">Diseñados para resolver los problemas más frecuentes en la gestión diaria de cualquier centro.</p>
     </div>
 
@@ -1217,6 +1217,24 @@ footer{
         <h3>App móvil (PWA)</h3>
         <p>Instalable en cualquier smartphone sin pasar por la App Store. Siempre actualizada.</p>
         <span class="modulo-tag">iOS y Android</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-1" onclick="selectModulo(5,this)">
+        <div class="m-num">06</div>
+        <h3>RRHH y ausencias</h3>
+        <p>Justificantes, aprobación de ausencias y generación automática de sustituciones.</p>
+        <span class="modulo-tag">Automatizado</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-2" onclick="selectModulo(6,this)">
+        <div class="m-num">07</div>
+        <h3>Incidencias</h3>
+        <p>Registro y tipificación legal con IA (5 CCAA), protocolo PREVI.</p>
+        <span class="modulo-tag">IA + Normativa</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-3" onclick="selectModulo(7,this)">
+        <div class="m-num">08</div>
+        <h3>Comunicados internos</h3>
+        <p>Avisos y mensajes internos con plantillas y enrutamiento por destinatario.</p>
+        <span class="modulo-tag">Con plantillas</span>
       </div>
     </div>
     <div class="modulo-preview reveal" id="modulo-preview">
@@ -1394,6 +1412,57 @@ footer{
         </div>
       </div>
 
+      <!-- SCREEN 5: RRHH y ausencias -->
+      <div class="mock-screen" id="screen-5">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">RRHH · Solicitudes de ausencia</span>
+          <span class="mock-topbar-badge">3 pendientes</span>
+        </div>
+        <div class="mock-content">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Solicitudes de ausencia</div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fef3c7;color:#92400e">RG</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Rosa García</div><div style="font-size:11px;color:var(--txt3)">Baja médica · 12–16 jun</div></div><span class="mock-pill pend">Pendiente</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dbeafe;color:#1e40af">JP</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Juan Pérez</div><div style="font-size:11px;color:var(--txt3)">Formación · 15 jun</div></div><span class="mock-pill pend">Pendiente</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">AM</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Ana Martínez</div><div style="font-size:11px;color:var(--txt3)">Asunto propio · 10 jun</div></div><span class="mock-pill ok">Aprobada</span></div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bdr);font-size:11px;color:var(--txt3)">Al aprobar se generan sustituciones automáticamente para cada tramo afectado.</div>
+        </div>
+      </div>
+
+      <!-- SCREEN 6: Incidencias -->
+      <div class="mock-screen" id="screen-6">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Incidencias · Convivencia</span>
+          <span class="mock-topbar-badge">2 abiertas</span>
+        </div>
+        <div class="mock-content">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Registro de incidencias</div>
+          <div class="mock-row" style="align-items:flex-start"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Conflicto verbal en pasillo</div><div style="font-size:11px;color:var(--txt3);margin-top:2px">2ºESO B · Jue 12 jun · Leve</div></div><span class="mock-pill pend">Abierta</span></div>
+          <div class="mock-row" style="align-items:flex-start"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Uso de móvil reiterado</div><div style="font-size:11px;color:var(--txt3);margin-top:2px">3ºESO A · Mié 11 jun · Leve</div></div><span class="mock-pill ok">Cerrada</span></div>
+          <div style="margin-top:12px;padding:10px;background:var(--off);border-radius:8px;border:1px solid var(--bdr)">
+            <div style="font-size:11px;font-weight:600;color:#0e2a4a;margin-bottom:4px">✨ Tipificación IA</div>
+            <div style="font-size:11px;color:var(--txt2);line-height:1.5">Decreto 39/2008 (Valenciana) · Art. 35 · Conducta contraria a normas · Medidas: amonestación verbal, comunicación a familia.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 7: Comunicados internos -->
+      <div class="mock-screen" id="screen-7">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Comunicados · Centro</span>
+          <span class="mock-topbar-badge">Nuevo</span>
+        </div>
+        <div class="mock-content">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Enviar comunicado</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="background:var(--white);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:12px;color:#0e2a4a;font-weight:500">Convocatoria reunión inicio de curso</div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--txt3)">Destinatarios: Familias de 1ºESO A</div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--txt2);min-height:48px">Se convoca reunión de inicio de curso el martes 10 de septiembre a las 18:00h en el salón de actos...</div>
+          </div>
+          <div style="margin-top:12px;display:flex;justify-content:flex-end">
+            <div style="background:#0e2a4a;color:white;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:500">Enviar por email</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
@@ -1417,7 +1486,7 @@ footer{
     <div class="paso reveal reveal-delay-2">
       <div class="paso-n">3</div>
       <h3>Formamos al equipo</h3>
-      <p>Sesión de dos horas con dirección y jefatura de estudios. Nada más que aprender.</p>
+      <p>Sesión con dirección y jefatura de estudios — operativo en 1-2 semanas.</p>
     </div>
     <div class="paso reveal reveal-delay-3">
       <div class="paso-n">4</div>
@@ -1433,35 +1502,35 @@ footer{
   <p class="s-sub reveal reveal-delay-1">Sin permanencia el primer año. Sin costes ocultos.</p>
   <div class="precios-grid">
     <div class="precio-card reveal">
-      <div class="precio-label">Suscripción anual</div>
-      <div class="precio-amount"><sup>desde </sup>600<sup>€</sup></div>
-      <div class="precio-period">por centro y curso escolar</div>
+      <div class="precio-label">Plan Operativa</div>
+      <div class="precio-amount"><sup>€</sup>249<sup>/mes</sup></div>
+      <div class="precio-period">€2.988/año · por centro · sin límite de alumnos</div>
       <div class="precio-sep"></div>
       <ul class="precio-features">
         <li><div class="precio-check"></div>Todos los módulos incluidos</li>
-        <li><div class="precio-check"></div>Hasta 500 alumnos</li>
-        <li><div class="precio-check"></div>Soporte por email</li>
+        <li><div class="precio-check"></div>Sin límite de alumnos</li>
+        <li><div class="precio-check"></div>Sin coste de alta</li>
+        <li><div class="precio-check"></div>Soporte durante el curso</li>
         <li><div class="precio-check"></div>Actualizaciones incluidas</li>
-        <li><div class="precio-check"></div>Configuración inicial incluida</li>
       </ul>
-      <a href="#contacto" class="precio-cta">Más información</a>
+      <a href="#contacto" class="precio-cta">Solicitar demo</a>
     </div>
     <div class="precio-card featured reveal reveal-delay-1">
-      <div class="precio-badge">FUNDAE · Centros concertados y privados</div>
-      <div class="precio-label">Formación bonificada</div>
-      <div class="precio-amount"><sup>desde </sup>3.500<sup>€</sup></div>
-      <div class="precio-period">bonificable al 100% por tu centro</div>
+      <div class="precio-badge">Diploma IB</div>
+      <div class="precio-label">Plan Internacional</div>
+      <div class="precio-amount"><sup>€</sup>399<sup>/mes</sup></div>
+      <div class="precio-period">€4.788/año · por centro · sin límite de alumnos</div>
       <div class="precio-sep"></div>
       <ul class="precio-features">
-        <li><div class="precio-check"></div>20 horas de formación certificada</li>
-        <li><div class="precio-check"></div>IA aplicada en centros educativos</li>
-        <li><div class="precio-check"></div>Primer año de DidactIA incluido</li>
-        <li><div class="precio-check"></div>Implantación completa</li>
-        <li><div class="precio-check"></div>El centro no paga de su bolsillo</li>
+        <li><div class="precio-check"></div>Todo lo del Plan Operativa</li>
+        <li><div class="precio-check"></div>Seguimiento CAS y Extended Essay</li>
+        <li><div class="precio-check"></div>Plazos IB con alertas automáticas</li>
+        <li><div class="precio-check"></div>Briefings automáticos vía n8n</li>
       </ul>
-      <a href="#contacto" class="precio-cta">Solicitar información</a>
+      <a href="#contacto" class="precio-cta">Solicitar demo</a>
     </div>
   </div>
+  <p class="reveal" style="text-align:center;font-size:13px;color:var(--txt3);margin-top:20px;max-width:560px;margin-left:auto;margin-right:auto">Módulo Planner incluido durante la fase de validación · <strong style="color:var(--navy)">+€150/mes</strong> cuando pase a precio regular.</p>
   <div class="fundae reveal">
     <div class="fundae-icon">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
@@ -1472,7 +1541,7 @@ footer{
     </div>
     <div>
       <h3>Tu centro tiene un fondo de formación anual que si no se usa, se pierde</h3>
-      <p>Los centros privados y concertados disponen de crédito FUNDAE para formación de su plantilla. DidactIA puede ser la acción formativa con la que agotar ese crédito — y el centro se queda con la herramienta funcionando el curso siguiente.</p>
+      <p>Los centros privados y concertados disponen de crédito FUNDAE para formación de su plantilla. DidactIA puede ser la acción formativa con la que agotar ese crédito — y el centro se queda con la herramienta funcionando el curso siguiente. <strong>€2.988–4.788/año bonificable vía FUNDAE</strong> según el plan.</p>
     </div>
   </div>
 </section>
@@ -1575,7 +1644,7 @@ footer{
     <a href="#">Privacidad</a>
     <a href="mailto:hola@didactia.eu">hola@didactia.eu</a>
   </div>
-  <div style="font-size:13px;color:rgba(255,255,255,0.25)">© 2025 DidactIA</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.25)">© 2026 DidactIA</div>
 </footer>
 
 <script>
