@@ -11,7 +11,7 @@ const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 /* Tools that don't need user confirmation (read-only) */
-const READ_ONLY = new Set(["consultar_profesor_libre"]);
+const READ_ONLY = new Set(["consultar_profesor_libre", "listar_tramos_centro"]);
 
 const TOOL_DECLARATIONS = [
   {
@@ -86,6 +86,40 @@ const TOOL_DECLARATIONS = [
         fecha:         { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
       },
       required: ["alumno_nombre", "fecha"],
+    },
+  },
+  {
+    name: "listar_tramos_centro",
+    description: "Devuelve los tramos horarios actuales del centro como lista legible. No requiere confirmación.",
+    parameters: {
+      type: "OBJECT",
+      properties: {},
+    },
+  },
+  {
+    name: "crear_tramos_centro",
+    description:
+      "Crea o reemplaza completamente los tramos horarios del centro. Elimina los tramos existentes e inserta los nuevos en orden. Usar cuando el admin dicte su horario de tramos.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        tramos: {
+          type: "ARRAY",
+          description: "Lista ordenada de tramos horarios a configurar",
+          items: {
+            type: "OBJECT",
+            properties: {
+              numero:      { type: "INTEGER", description: "Número de orden del tramo (1, 2, 3...)" },
+              hora_inicio: { type: "STRING",  description: "Hora de inicio en formato HH:MM" },
+              hora_fin:    { type: "STRING",  description: "Hora de fin en formato HH:MM" },
+              nombre:      { type: "STRING",  description: "Nombre del tramo, p.ej. 'Recreo' (opcional)" },
+              es_descanso: { type: "BOOLEAN", description: "true si es recreo o descanso (opcional)" },
+            },
+            required: ["numero", "hora_inicio", "hora_fin"],
+          },
+        },
+      },
+      required: ["tramos"],
     },
   },
 ];
@@ -254,6 +288,58 @@ async function executeTool(
       );
       if (error) throw new Error(`Error al actualizar comedor: ${error.message}`);
       return `✅ Anotado que ${alumno.nombre} no comerá el ${fecha}.`;
+    }
+
+    case "listar_tramos_centro": {
+      // deno-lint-ignore no-explicit-any
+      const sbAny = sb as any;
+      const { data, error } = await sbAny
+        .from("tramos_centro")
+        .select("numero, hora_inicio, hora_fin, nombre, es_descanso")
+        .eq("centro_id", centro_id)
+        .order("numero");
+      if (error) throw new Error(`Error al listar tramos: ${error.message}`);
+      if (!data?.length) return "No hay tramos horarios configurados para este centro.";
+      type Tramo = { numero: number; hora_inicio: string; hora_fin: string; nombre: string | null; es_descanso: boolean };
+      const lines = (data as Tramo[]).map((t) => {
+        const etiq = t.nombre ? ` (${t.nombre})` : t.es_descanso ? " (Descanso)" : "";
+        return `Tramo ${t.numero}: ${t.hora_inicio}–${t.hora_fin}${etiq}`;
+      });
+      return `Tramos horarios del centro:\n${lines.join("\n")}`;
+    }
+
+    case "crear_tramos_centro": {
+      type TramoInput = { numero: number; hora_inicio: string; hora_fin: string; nombre?: string; es_descanso?: boolean };
+      const tramos = (args as unknown as { tramos: TramoInput[] }).tramos;
+      if (!tramos?.length) throw new Error("La lista de tramos está vacía.");
+
+      // deno-lint-ignore no-explicit-any
+      const sbAny = sb as any;
+      const { error: delErr } = await sbAny
+        .from("tramos_centro")
+        .delete()
+        .eq("centro_id", centro_id);
+      if (delErr) throw new Error(`Error al eliminar tramos existentes: ${delErr.message}`);
+
+      const rows = tramos.map((t) => ({
+        centro_id,
+        numero:      Number(t.numero),
+        hora_inicio: t.hora_inicio,
+        hora_fin:    t.hora_fin,
+        nombre:      t.nombre ?? null,
+        es_descanso: t.es_descanso ?? false,
+      }));
+
+      const { error: insErr } = await sbAny.from("tramos_centro").insert(rows);
+      if (insErr) throw new Error(`Error al insertar tramos: ${insErr.message}`);
+
+      const resumen = tramos
+        .map((t) => {
+          const etiq = t.nombre ? ` (${t.nombre})` : t.es_descanso ? " (Descanso)" : "";
+          return `T${t.numero}: ${t.hora_inicio}–${t.hora_fin}${etiq}`;
+        })
+        .join(", ");
+      return `✅ ${tramos.length} tramos configurados: ${resumen}`;
     }
 
     default:
