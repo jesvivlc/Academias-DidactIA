@@ -99,7 +99,7 @@ const TOOL_DECLARATIONS = [
   {
     name: "generar_tramos_horario",
     description:
-      "Genera y guarda automáticamente los tramos horarios del centro a partir de una hora de inicio, duración de clase en minutos, descansos fijos y hora de fin de jornada. Calcula todas las clases intercalando los descansos en sus horas exactas. Usar cuando el admin dicte el horario completo en lenguaje natural.",
+      "CREA y persiste por primera vez (o reconfigura completamente) los tramos horarios del planner del centro calculándolos automáticamente a partir de los parámetros de la jornada escolar. LLAMAR cuando el usuario diga cosas como: 'crea los tramos', 'genera los tramos horarios', 'configura los tramos del planner', 'el horario empieza a las X', 'las clases duran Y minutos', 'quiero configurar el horario del centro'. Esta herramienta NO consulta horarios de alumnos — es exclusivamente para CREAR o REGENERAR la estructura de tramos del centro a partir de hora de inicio, duración de cada clase en minutos, descansos/recreos y hora de fin de jornada.",
     parameters: {
       type: "OBJECT",
       properties: {
