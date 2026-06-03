@@ -429,6 +429,8 @@ function updateUI() {
   // Update header center name only if not superadmin selector
   const hdrEl = document.getElementById("ctr-name-hdr");
   if (hdrEl) hdrEl.textContent = n;
+  // Sync dashboard welcome banner (defined in app.html inline script)
+  if (typeof updateBentoDashboard === 'function') updateBentoDashboard();
 }
 function resetChat() {
   var extraIds = ["role-cards-container","ficha-centro-container","comedor-hijos-container","mis-hijos-container","busqueda-alumno-container"];
