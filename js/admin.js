@@ -81,8 +81,17 @@ async function saveInfo() {
   let ok = 0, err = 0;
   for (const k of keys) {
     const el = document.getElementById("f-"+k); if (!el) continue;
-    const v = el.value.trim(); if (!v) continue;
+    const v = el.value.trim();
     try {
+      if (!v) {
+        // Campo vaciado: eliminar la fila de Supabase si existía
+        if (cache[k]) {
+          const { error } = await sb.from("info_centro").delete().eq("id", cache[k].id);
+          if (error) throw error;
+          ok++;
+        }
+        continue;
+      }
       if (cache[k]) {
         const vp = document.getElementById("vis-"+k)?.value || "todos";
         const { error } = await sb.from("info_centro").update({ datos:{valor:v}, visible_para:vp, actualizado_el:new Date().toISOString() }).eq("id", cache[k].id);
@@ -98,6 +107,18 @@ async function saveInfo() {
   msg.textContent = err === 0 ? `✅ ${ok} campos guardados en Supabase` : `⚠️ ${ok} guardados, ${err} errores`;
   msg.style.color = err === 0 ? "var(--ink)" : "var(--amb)";
   await loadInfoCentro();
+  // Sincronizar el banner de aviso en el DOM sin recargar la página
+  const bannerEl = document.getElementById("banner-aviso");
+  const bannerTxt = document.getElementById("banner-aviso-txt");
+  if (bannerEl) {
+    const avisoVal = cache.aviso_activo?.datos?.valor || "";
+    if (avisoVal) {
+      if (bannerTxt) bannerTxt.textContent = avisoVal;
+      bannerEl.style.display = "flex";
+    } else {
+      bannerEl.style.display = "none";
+    }
+  }
 }
 
 async function loadHorarios() {
