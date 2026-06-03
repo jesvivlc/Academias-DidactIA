@@ -97,6 +97,42 @@ const TOOL_DECLARATIONS = [
     },
   },
   {
+    name: "generar_tramos_horario",
+    description:
+      "Genera y guarda automáticamente los tramos horarios del centro a partir de una hora de inicio, duración de clase en minutos, descansos fijos y hora de fin de jornada. Calcula todas las clases intercalando los descansos en sus horas exactas. Usar cuando el admin dicte el horario completo en lenguaje natural.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        hora_inicio: {
+          type: "STRING",
+          description: "Hora de inicio de la primera clase en formato HH:MM (ej: '08:50')",
+        },
+        duracion_minutos: {
+          type: "INTEGER",
+          description: "Duración de cada clase en minutos (ej: 55)",
+        },
+        descansos: {
+          type: "ARRAY",
+          description: "Lista de descansos/recreos con su hora exacta de inicio y fin",
+          items: {
+            type: "OBJECT",
+            properties: {
+              hora_inicio: { type: "STRING", description: "Inicio del descanso HH:MM" },
+              hora_fin:    { type: "STRING", description: "Fin del descanso HH:MM" },
+              nombre:      { type: "STRING", description: "Nombre del descanso (ej: 'Recreo', 'Comida')" },
+            },
+            required: ["hora_inicio", "hora_fin"],
+          },
+        },
+        hora_fin_jornada: {
+          type: "STRING",
+          description: "Hora de fin de la jornada escolar en formato HH:MM (ej: '17:00')",
+        },
+      },
+      required: ["hora_inicio", "duracion_minutos", "hora_fin_jornada"],
+    },
+  },
+  {
     name: "crear_tramos_centro",
     description:
       "Crea o reemplaza completamente los tramos horarios del centro. Elimina los tramos existentes e inserta los nuevos en orden. Usar cuando el admin dicte su horario de tramos.",
@@ -340,6 +376,104 @@ async function executeTool(
         })
         .join(", ");
       return `✅ ${tramos.length} tramos configurados: ${resumen}`;
+    }
+
+    case "generar_tramos_horario": {
+      type DescansoInput = { hora_inicio: string; hora_fin: string; nombre?: string };
+      type TramoGen = { numero: number; hora_inicio: string; hora_fin: string; nombre?: string; es_descanso: boolean };
+
+      const input = args as unknown as {
+        hora_inicio: string;
+        duracion_minutos: number;
+        descansos?: DescansoInput[];
+        hora_fin_jornada: string;
+      };
+
+      /* ── helpers de tiempo ── */
+      const toMin = (hhmm: string): number => {
+        const [h, m] = hhmm.split(":").map(Number);
+        return h * 60 + m;
+      };
+      const toHHMM = (min: number): string => {
+        const h = Math.floor(min / 60);
+        const m = min % 60;
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      };
+
+      const finJornada  = toMin(input.hora_fin_jornada);
+      const duracion    = Number(input.duracion_minutos);
+      if (!duracion || duracion <= 0) throw new Error("duracion_minutos debe ser un entero positivo.");
+
+      /* descansos ordenados por hora de inicio */
+      const breaks = (input.descansos ?? [])
+        .map((d) => ({ ...d, ini: toMin(d.hora_inicio), fin: toMin(d.hora_fin) }))
+        .sort((a, b) => a.ini - b.ini);
+
+      /* ── algoritmo de generación ── */
+      const tramos: TramoGen[] = [];
+      let cursor   = toMin(input.hora_inicio);
+      let numero   = 1;
+      let breakIdx = 0;
+
+      while (cursor < finJornada) {
+        /* ① ¿hay un descanso que empieza en cursor o que ya hemos sobrepasado? */
+        if (breakIdx < breaks.length && breaks[breakIdx].ini <= cursor) {
+          const b = breaks[breakIdx++];
+          tramos.push({ numero: numero++, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, nombre: b.nombre, es_descanso: true });
+          cursor = Math.max(cursor, b.fin);
+          continue;
+        }
+
+        const nextEnd = cursor + duracion;
+
+        /* ② ¿el próximo descanso empieza dentro del siguiente tramo de clase? */
+        if (breakIdx < breaks.length && breaks[breakIdx].ini < nextEnd) {
+          const b = breaks[breakIdx];
+          /* clase hasta el inicio del descanso (si hay tiempo) */
+          if (cursor < b.ini) {
+            tramos.push({ numero: numero++, hora_inicio: toHHMM(cursor), hora_fin: toHHMM(b.ini), es_descanso: false });
+          }
+          /* descanso */
+          tramos.push({ numero: numero++, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, nombre: b.nombre, es_descanso: true });
+          cursor = b.fin;
+          breakIdx++;
+        } else {
+          /* ③ clase completa (recortada al fin de jornada si es la última) */
+          const realFin = Math.min(nextEnd, finJornada);
+          tramos.push({ numero: numero++, hora_inicio: toHHMM(cursor), hora_fin: toHHMM(realFin), es_descanso: false });
+          cursor = realFin;
+        }
+      }
+
+      if (!tramos.length) throw new Error("No se generó ningún tramo. Verifica los parámetros de hora.");
+
+      /* ── persistir: DELETE + INSERT (misma lógica que crear_tramos_centro) ── */
+      // deno-lint-ignore no-explicit-any
+      const sbAny = sb as any;
+      const { error: delErr } = await sbAny.from("tramos_centro").delete().eq("centro_id", centro_id);
+      if (delErr) throw new Error(`Error al eliminar tramos existentes: ${delErr.message}`);
+
+      const rows = tramos.map((t) => ({
+        centro_id,
+        numero:      t.numero,
+        hora_inicio: t.hora_inicio,
+        hora_fin:    t.hora_fin,
+        nombre:      t.nombre ?? null,
+        es_descanso: t.es_descanso,
+      }));
+      const { error: insErr } = await sbAny.from("tramos_centro").insert(rows);
+      if (insErr) throw new Error(`Error al insertar tramos: ${insErr.message}`);
+
+      /* ── resumen ── */
+      const nClases    = tramos.filter((t) => !t.es_descanso).length;
+      const nDescansos = tramos.filter((t) =>  t.es_descanso).length;
+      const lista = tramos
+        .map((t) => {
+          const etiq = t.nombre ? ` (${t.nombre})` : t.es_descanso ? " (Descanso)" : "";
+          return `T${t.numero}: ${t.hora_inicio}–${t.hora_fin}${etiq}`;
+        })
+        .join(", ");
+      return `✅ ${tramos.length} tramos generados (${nClases} clases + ${nDescansos} descansos): ${lista}`;
     }
 
     default:
