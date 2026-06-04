@@ -911,7 +911,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 ## Registro de cambios recientes
 - `2026-06-04` · Planner Tablero — drag & drop con validación de hard constraints al soltar (`_ejecutarDrop` simular-validar-revertir, flash rojo + toast en rechazo) + zona "Aparcados" persistida en localStorage (retirar clases temporalmente, recolocar arrastrando, aviso en recarga/publicación). `scripts/verify-tablero-dnd.js` (14 checks)
-- `2026-06-04` · EF `chat` — 4 herramientas Gemini para editar `horario_generado` del Planner sin regenerar: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor`. Resuelven materia/profesor por nombre o ID y validan hard constraints (HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN) + disponibilidad y ocupación de profesor/grupo. Requieren confirmación. Pendiente: `npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
+- `2026-06-04` · EF `chat` — 4 herramientas Gemini para editar `horario_generado` del Planner sin regenerar: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor`. Resuelven materia/profesor por nombre o ID y validan hard constraints (HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN) + disponibilidad y ocupación de profesor/grupo. Requieren confirmación. ✅ Desplegada a producción (rflfsbrdmgaidhvbuvwb)
 - `2026-06-04` · `9b0e81d` — feat(planner): hard constraints universales HC-VENTANA + HC-INICIO-FIN en `_esHardValido()` (V2); reetiquetada HC-MATERIA-DIA; `scripts/verify-hard-constraints.js` valida los 3 invariantes con IES Demo
 - `2026-06-03 23:29` · `1fe6497` — fix: nombre de usuario usa profile.full_name en lugar del email
 - `2026-06-03 23:21` · `6f255fd` — test: entorno RLS — 4 usuarios de test + script de provisioning
