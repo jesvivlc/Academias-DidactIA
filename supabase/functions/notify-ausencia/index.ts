@@ -11,12 +11,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const { centro_id, profesor_nombre, fecha, tipo_ausencia, grupos, instrucciones } =
+    const { centro_id, profesor_nombre, fecha, fecha_fin, tipo_ausencia, motivo, grupos, instrucciones } =
       await req.json() as {
         centro_id: string;
         profesor_nombre: string;
         fecha: string;
+        fecha_fin?: string;
         tipo_ausencia: string;
+        motivo?: string;
         grupos: string;
         instrucciones: string;
       };
@@ -74,12 +76,16 @@ serve(async (req) => {
             </tr>
             <tr style="border-bottom:1px solid #e0e0e0;">
               <td style="padding:10px 0;color:#666;font-weight:500;">Fecha</td>
-              <td style="padding:10px 0;color:#222;">${fecha}</td>
+              <td style="padding:10px 0;color:#222;">${fecha_fin && fecha_fin !== fecha ? `${fecha} → ${fecha_fin}` : fecha}</td>
             </tr>
             <tr style="border-bottom:1px solid #e0e0e0;">
-              <td style="padding:10px 0;color:#666;font-weight:500;">Duración</td>
+              <td style="padding:10px 0;color:#666;font-weight:500;">Tramos</td>
               <td style="padding:10px 0;color:#222;">${tipo_ausencia}</td>
             </tr>
+            ${motivo ? `<tr style="border-bottom:1px solid #e0e0e0;">
+              <td style="padding:10px 0;color:#666;font-weight:500;">Motivo</td>
+              <td style="padding:10px 0;color:#222;">${motivo}</td>
+            </tr>` : ""}
             <tr style="border-bottom:1px solid #e0e0e0;">
               <td style="padding:10px 0;color:#666;font-weight:500;">Grupos</td>
               <td style="padding:10px 0;color:#222;">${grupos}</td>

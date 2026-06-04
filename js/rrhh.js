@@ -33,61 +33,39 @@ async function loadRrhhPanel() {
 // ─── VISTA PROFESOR ───────────────────────────────────────────────────────────
 
 async function _renderRrhhProfesor() {
-  const container = document.getElementById("rrhh-container");
+  var container = document.getElementById("rrhh-container");
   if (!container) return;
 
   if (!_rrhhMiProfileId) {
-    const { data: p } = await sb.from("profiles").select("id").eq("user_id", currentUser.id).single();
-    _rrhhMiProfileId = p ? p.id : null;
+    var res = await sb.from("profiles").select("id").eq("user_id", currentUser.id).single();
+    _rrhhMiProfileId = res.data ? res.data.id : null;
   }
-
-  const hoy = new Date().toISOString().split("T")[0];
 
   container.innerHTML =
     '<div class="pg-hdr">' +
-      '<div>' +
-        '<div class="pg-title">Mis ausencias</div>' +
-        '<div class="pg-sub">Solicita y consulta tus ausencias</div>' +
-      '</div>' +
-      '<button class="btn btn-p" onclick="mostrarFormAusencia()">+ Solicitar ausencia</button>' +
+      '<div><div class="pg-title">Mis ausencias</div>' +
+        '<div class="pg-sub">Historial administrativo — aprobaciones de dirección</div></div>' +
     '</div>' +
 
-    '<div class="card" id="rrhh-form-wrap" style="display:none;">' +
-      '<div class="card-hdr">' +
-        '<div class="card-ico b">📋</div>' +
-        '<div><div class="card-title">Nueva solicitud de ausencia</div></div>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">' +
-        '<div><label class="lbl">Fecha inicio *</label>' +
-          '<input class="fi" type="date" id="rrhh-fecha-ini" value="' + hoy + '" /></div>' +
-        '<div><label class="lbl">Fecha fin *</label>' +
-          '<input class="fi" type="date" id="rrhh-fecha-fin" value="' + hoy + '" /></div>' +
-        '<div style="grid-column:1/-1;"><label class="lbl">Tipo *</label>' +
-          '<select class="fi" id="rrhh-tipo">' +
-            '<option value="baja_medica">🏥 Baja médica</option>' +
-            '<option value="permiso">📋 Permiso</option>' +
-            '<option value="asunto_propio" selected>🗂️ Asunto propio</option>' +
-            '<option value="formacion">📚 Formación</option>' +
-            '<option value="sindical">⚖️ Sindical</option>' +
-            '<option value="otros">📝 Otros</option>' +
-          '</select></div>' +
-      '</div>' +
-      '<div><label class="lbl">Motivo (opcional)</label>' +
-        '<textarea class="fa" id="rrhh-motivo" placeholder="Describe brevemente el motivo…" style="min-height:70px;"></textarea></div>' +
-      '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-        '<button class="btn btn-p" onclick="solicitarAusencia()">📨 Enviar solicitud</button>' +
-        '<button class="btn btn-s" onclick="ocultarFormAusencia()">Cancelar</button>' +
-        '<div id="rrhh-msg" style="display:none;font-size:13px;"></div>' +
-      '</div>' +
+    '<div style="background:var(--ink-ll);border:1px solid var(--ink-l);border-radius:var(--r-sm);' +
+        'padding:12px 16px;margin-bottom:18px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+      '<span style="font-size:16px;">ℹ️</span>' +
+      '<span>Para notificar una nueva ausencia ve a la pestaña ' +
+        '<button onclick="showTab(\'sust\')" style="background:none;border:none;color:var(--ink);' +
+          'font-weight:600;cursor:pointer;font-size:13px;text-decoration:underline;padding:0;">' +
+          'Sustituciones</button> — registra la cobertura operativa y este expediente en un solo paso.' +
+      '</span>' +
     '</div>' +
 
     '<div class="card">' +
       '<div class="card-hdr">' +
         '<div class="card-ico o">📅</div>' +
-        '<div><div class="card-title">Historial de solicitudes</div></div>' +
+        '<div><div class="card-title">Historial de solicitudes</div>' +
+          '<div class="card-desc">Estado de aprobación por dirección / secretaría</div></div>' +
       '</div>' +
       '<div id="rrhh-lista-prof">' +
-        '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando…</div>' +
+        '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">' +
+          '<span class="spin">⟳</span> Cargando…</div>' +
       '</div>' +
     '</div>';
 

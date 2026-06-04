@@ -635,15 +635,31 @@
       <div class="pg-hdr">
         <div>
           <div class="pg-title">Notificar ausencia</div>
-          <div class="pg-sub">Informa a jefatura · La guardia se gestionará desde el panel de administración</div>
+          <div class="pg-sub">Registro unificado — cobertura operativa + expediente RRHH en un solo paso</div>
         </div>
       </div>
 
       <div class="card">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px;">
+        <!-- Fila 1: fechas + motivo + grupos -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px;">
           <div>
-            <label class="lbl">Fecha de la ausencia *</label>
-            <input class="fi" type="date" id="notif-fecha" />
+            <label class="lbl">Fecha inicio *</label>
+            <input class="fi" type="date" id="notif-fecha-ini" onchange="_sustFechaFinChange()" />
+          </div>
+          <div>
+            <label class="lbl">Fecha fin <span style="color:var(--txt3);font-weight:400;">(si es más de un día)</span></label>
+            <input class="fi" type="date" id="notif-fecha-fin" onchange="_sustFechaFinChange()" />
+          </div>
+          <div>
+            <label class="lbl">Motivo</label>
+            <select class="fi" id="notif-motivo">
+              <option value="baja_medica">🏥 Enfermedad / Baja médica</option>
+              <option value="permiso">🩺 Cita médica / Permiso</option>
+              <option value="formacion">📚 Formación</option>
+              <option value="asunto_propio" selected>🗂️ Asunto personal</option>
+              <option value="sindical">⚖️ Asunto sindical</option>
+              <option value="otros">📝 Otro</option>
+            </select>
           </div>
           <div>
             <label class="lbl">Grupo/s afectado/s</label>
@@ -651,8 +667,9 @@
           </div>
         </div>
 
-        <div style="margin-bottom:16px;">
-          <label class="lbl">Duración de la ausencia</label>
+        <!-- Selector de tramos (solo días únicos) -->
+        <div id="notif-tipo-wrap" style="margin-bottom:16px;">
+          <label class="lbl">Tramos afectados</label>
           <div style="display:flex;gap:20px;margin-top:8px;flex-wrap:wrap;">
             <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer;">
               <input type="radio" name="notif-tipo" value="dia" checked onchange="_sustTipoChange()" />
@@ -670,6 +687,7 @@
           <div id="notif-tramos-wrap" style="display:flex;flex-direction:column;gap:7px;margin-top:8px;"></div>
         </div>
 
+        <!-- Instrucciones -->
         <div style="margin-bottom:16px;">
           <label class="lbl">Instrucciones para el sustituto</label>
           <textarea class="fa" id="notif-instrucciones" rows="4"
@@ -677,19 +695,26 @@
             style="min-height:100px;resize:vertical;"></textarea>
         </div>
 
+        <!-- Justificante opcional -->
+        <div style="margin-bottom:16px;">
+          <label class="lbl">Justificante <span style="color:var(--txt3);font-weight:400;">(opcional — también puedes adjuntarlo después desde el historial)</span></label>
+          <input type="file" id="notif-justificante-file" accept="application/pdf,image/*"
+            style="font-size:13px;color:var(--txt2);width:100%;padding:4px 0;cursor:pointer;" />
+        </div>
+
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn btn-p" onclick="notificarAusenciaProfesor()">📨 Notificar a jefatura</button>
+          <button class="btn btn-p" onclick="notificarAusenciaProfesor()">📨 Notificar</button>
           <div id="notif-msg" style="display:none;font-size:13px;"></div>
         </div>
       </div>
 
-      <!-- Historial propio -->
+      <!-- Historial unificado -->
       <div class="card">
         <div class="card-hdr">
           <div class="card-ico" style="background:var(--ink-ll);color:var(--ink);font-size:18px;">📋</div>
           <div>
-            <div class="card-title">Mis ausencias notificadas</div>
-            <div class="card-desc">Historial y estado de cobertura</div>
+            <div class="card-title">Mis ausencias</div>
+            <div class="card-desc">Estado operativo (cobertura) y administrativo (aprobación RRHH)</div>
           </div>
         </div>
         <div id="mis-ausencias-container">
