@@ -1,16 +1,30 @@
 // ── MÓDULO INCIDENCIAS ──
-var incFiltroActivo      = 'abiertas';
-var _incLastData         = [];
-var _incAlumnosCache     = null;
+var incFiltroActivo       = 'abiertas';
+var _incLastData          = [];
+var _incAlumnosCache      = null;
 var _incAlumnosCacheCtrid = null;
-var _incTipData          = null;  // último resultado de tipificar-incidencia
+var _incTipData           = null;
+var _incAlumnosProfesor   = [];
 
 function initIncidenciasPanel() {
+  if (role === 'profesional') {
+    var viAdmin = document.getElementById('inc-vista-admin');
+    var viProf  = document.getElementById('inc-vista-profesor');
+    if (viAdmin) viAdmin.style.display = 'none';
+    if (viProf)  viProf.style.display  = 'flex';
+    _incProfesorInit();
+    return;
+  }
+
+  // Admin / superadmin
+  var viAdmin = document.getElementById('inc-vista-admin');
+  var viProf  = document.getElementById('inc-vista-profesor');
+  if (viAdmin) viAdmin.style.display = 'flex';
+  if (viProf)  viProf.style.display  = 'none';
+
   var fechaInput = document.getElementById('inc-fecha');
   if (fechaInput) fechaInput.value = new Date().toISOString().split('T')[0];
 
-  // Selección con mousedown+preventDefault: evita blur del input y evita
-  // que los dobles-comillas de JSON.stringify rompan onclick="..."
   var drop = document.getElementById('inc-alumno-drop');
   if (drop && !drop._incReady) {
     drop._incReady = true;
@@ -22,7 +36,6 @@ function initIncidenciasPanel() {
     });
   }
 
-  // Cerrar dropdown al perder el foco (con delay para no matar el mousedown)
   var inp = document.getElementById('inc-alumno');
   if (inp && !inp._incReady) {
     inp._incReady = true;
@@ -36,6 +49,144 @@ function initIncidenciasPanel() {
 
   _incLoadAlumnos();
   loadIncidencias('abiertas');
+}
+
+// ── VISTA PROFESOR ──────────────────────────────────────────────
+
+async function _incProfesorInit() {
+  var fechaEl = document.getElementById('inc-prof-fecha');
+  if (fechaEl) fechaEl.value = new Date().toISOString().split('T')[0];
+  await _incLoadAlumnosProfesor();
+  await _incLoadMisIncidencias();
+  _updateIncTabCount();
+}
+
+async function _incLoadAlumnosProfesor() {
+  // Obtener los grupos del profesor desde horarios_grupo
+  var parte = currentUserName.trim().split(/\s+/).find(function(p) { return p.length > 2; }) || '';
+  var r = await sb.from('horarios_grupo').select('grupo_horario')
+    .eq('centro_id', ctrId).ilike('profesor_nombre', '%' + parte + '%');
+  var misGrupos = Array.from(new Set(
+    (r.data || []).map(function(c) { return c.grupo_horario; }).filter(Boolean)
+  ));
+
+  // Alumnos de esos grupos
+  var q = sb.from('alumnos').select('id,nombre,grupo_horario').eq('centro_id', ctrId).order('nombre');
+  if (misGrupos.length) q = q.in('grupo_horario', misGrupos);
+  var ra = await q;
+  _incAlumnosProfesor = ra.data || [];
+
+  // Poblar selector
+  var sel = document.getElementById('inc-prof-alumno-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Sin alumno concreto / incidencia general</option>'
+    + _incAlumnosProfesor.map(function(a) {
+        return '<option value="' + a.id + '" data-grupo="' + (a.grupo_horario || '') + '">'
+          + a.nombre + (a.grupo_horario ? ' · ' + a.grupo_horario : '')
+          + '</option>';
+      }).join('');
+  sel.onchange = function() {
+    var opt = sel.options[sel.selectedIndex];
+    var grpEl = document.getElementById('inc-prof-grupo');
+    if (grpEl && opt && opt.dataset.grupo) grpEl.value = opt.dataset.grupo;
+    else if (grpEl) grpEl.value = '';
+  };
+}
+
+async function registrarIncidenciaProfesor() {
+  var sel     = document.getElementById('inc-prof-alumno-sel');
+  var alumnoNom = (sel && sel.selectedIndex > 0)
+    ? sel.options[sel.selectedIndex].text.split(' · ')[0] : null;
+  var grupo   = (document.getElementById('inc-prof-grupo') || {}).value;
+  var desc    = (document.getElementById('inc-prof-desc')  || {}).value;
+  var fecha   = (document.getElementById('inc-prof-fecha') || {}).value
+                || new Date().toISOString().split('T')[0];
+  var msgEl   = document.getElementById('inc-prof-msg');
+  if (!msgEl) return;
+
+  if (!desc || !desc.trim()) {
+    msgEl.textContent = 'La descripción es obligatoria.';
+    msgEl.style.cssText = 'display:block;color:var(--red);font-size:13px;';
+    return;
+  }
+
+  msgEl.textContent = '⟳ Registrando…';
+  msgEl.style.cssText = 'display:block;color:var(--txt2);font-size:13px;';
+
+  var r = await sb.from('incidencias').insert({
+    centro_id:      ctrId,
+    fecha:          fecha,
+    tipo:           'convivencia',
+    gravedad:       'leve',
+    descripcion:    desc.trim(),
+    alumno_nombre:  alumnoNom || null,
+    grupo_horario:  (grupo && grupo.trim()) ? grupo.trim() : null,
+    registrado_por: currentUser.id,
+    estado:         'abierta',
+  }).select().single();
+
+  if (r.error) {
+    msgEl.textContent = 'Error: ' + r.error.message;
+    msgEl.style.cssText = 'display:block;color:var(--red);font-size:13px;';
+    return;
+  }
+
+  // Notificar a jefatura automáticamente (fire-and-forget)
+  if (r.data && r.data.id) {
+    sb.functions.invoke('notify-jefatura', { body: { incidencia_id: r.data.id } }).catch(function() {});
+  }
+
+  msgEl.textContent = '✅ Incidencia registrada. Jefatura ha sido notificada.';
+  msgEl.style.cssText = 'display:block;background:var(--ink-ll);color:var(--ink);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;';
+
+  if (sel) sel.value = '';
+  var grpEl = document.getElementById('inc-prof-grupo');
+  if (grpEl) grpEl.value = '';
+  var descEl = document.getElementById('inc-prof-desc');
+  if (descEl) descEl.value = '';
+  setTimeout(function() { if (msgEl) msgEl.style.display = 'none'; }, 6000);
+
+  await _incLoadMisIncidencias();
+  _updateIncTabCount();
+}
+
+async function _incLoadMisIncidencias() {
+  var c = document.getElementById('inc-prof-lista');
+  if (!c) return;
+  c.innerHTML = '<div style="color:var(--txt3);font-size:13px;padding:8px 0;">Cargando…</div>';
+
+  var r = await sb.from('incidencias')
+    .select('id,fecha,alumno_nombre,grupo_horario,descripcion,estado')
+    .eq('centro_id', ctrId)
+    .eq('registrado_por', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (r.error || !r.data || !r.data.length) {
+    c.innerHTML = '<div style="color:var(--txt3);font-size:13px;padding:8px 0;">No has registrado incidencias aún.</div>';
+    return;
+  }
+
+  var rows = r.data.map(function(i) {
+    var ag = [i.alumno_nombre, i.grupo_horario].filter(Boolean).join(' · ') || '—';
+    var est = i.estado === 'abierta'
+      ? '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">⚠ Abierta</span>'
+      : i.estado === 'cerrada'
+      ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">✓ Cerrada</span>'
+      : '<span style="background:#e8f0fe;color:#1a56db;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">' + (i.estado || '—') + '</span>';
+    var descTxt = (i.descripcion || '—');
+    if (descTxt.length > 90) descTxt = descTxt.slice(0, 90) + '…';
+    return '<tr>'
+      + '<td style="white-space:nowrap;">' + (i.fecha || '—') + '</td>'
+      + '<td style="font-size:12px;">' + ag + '</td>'
+      + '<td style="font-size:12px;max-width:240px;">' + descTxt + '</td>'
+      + '<td>' + est + '</td>'
+      + '</tr>';
+  }).join('');
+
+  c.innerHTML = '<div style="overflow-x:auto;"><table class="tbl">'
+    + '<thead><tr><th>Fecha</th><th>Alumno / Grupo</th><th>Descripción</th><th>Estado</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table></div>';
 }
 
 // ── Buscador de alumno ──────────────────────────────────────────
