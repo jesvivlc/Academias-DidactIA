@@ -3,6 +3,8 @@ let comedorData = [];
 let comedorFilter = 'todos';
 let comedorFecha = new Date().toISOString().split("T")[0];
 let historicoData = [];
+let _comedorTramoActual   = null;   // tramo activo en este momento
+let _comedorGruposProfesor = [];    // todos los grupos del profesor logueado
 
 function changeComedorFecha(delta) {
   var d = new Date(comedorFecha);
@@ -15,58 +17,148 @@ function changeComedorFecha(delta) {
   loadComedor();
 }
 
+async function _detectarContextoProfesor(diaHG, ahoraMin) {
+  _comedorTramoActual    = null;
+  _comedorGruposProfesor = [];
+
+  // 1. Tramos del centro → detectar cuál corre ahora mismo
+  const { data: tramos } = await sb.from("tramos_centro")
+    .select("numero,hora_inicio,hora_fin,nombre,es_descanso")
+    .eq("centro_id", ctrId).order("numero");
+
+  let tramoActivo = null;
+  for (const t of (tramos || [])) {
+    if (t.es_descanso) continue;
+    const [hI, mI] = t.hora_inicio.split(":").map(Number);
+    const [hF, mF] = t.hora_fin.split(":").map(Number);
+    if (ahoraMin >= hI * 60 + mI && ahoraMin < hF * 60 + mF) {
+      tramoActivo = t;
+      break;
+    }
+  }
+  _comedorTramoActual = tramoActivo;
+
+  // 2. Todos los grupos del profesor (para filtros rápidos en fallback)
+  const partNombre = currentUserName.trim().split(/\s+/).find(p => p.length > 2) || "";
+  const { data: misClases } = await sb.from("horarios_grupo")
+    .select("grupo_horario,tramo,dia")
+    .eq("centro_id", ctrId)
+    .ilike("profesor_nombre", `%${partNombre}%`);
+
+  _comedorGruposProfesor = [...new Set(
+    (misClases || []).map(c => c.grupo_horario).filter(Boolean)
+  )].sort();
+
+  // 3. Grupo actual = intersección tramo activo + día de hoy
+  let grupoActual = null;
+  if (tramoActivo && misClases?.length) {
+    const claseAhora = misClases.find(c =>
+      c.tramo === tramoActivo.numero && c.dia === diaHG
+    );
+    if (claseAhora) grupoActual = claseAhora.grupo_horario;
+  }
+
+  return { grupoActual, tramoActivo };
+}
+
+function _renderComedorBanner(grupoActual, tramoActivo, gruposProfesor) {
+  const el = document.getElementById("comedor-contexto-banner");
+  if (!el) return;
+
+  if (grupoActual && tramoActivo) {
+    const hi = String(tramoActivo.hora_inicio || "").slice(0, 5);
+    const hf = String(tramoActivo.hora_fin    || "").slice(0, 5);
+    el.innerHTML = `<div style="background:var(--ink-ll);border:1px solid var(--ink-l);border-radius:var(--r-sm);
+        padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-size:13px;flex-wrap:wrap;">
+      <span style="font-size:15px;">📍</span>
+      <span>Mostrando alumnos de <strong>${grupoActual}</strong>
+        &nbsp;·&nbsp; Tramo ${tramoActivo.numero}${tramoActivo.nombre ? " — " + tramoActivo.nombre : ""} (${hi}–${hf})</span>
+      <button onclick="_comedorVerTodos()"
+        style="margin-left:auto;background:none;border:none;color:var(--ink);font-size:12px;
+               cursor:pointer;text-decoration:underline;padding:0;">
+        Ver todos mis grupos
+      </button>
+    </div>`;
+    el.style.display = "";
+  } else if (gruposProfesor && gruposProfesor.length) {
+    const chips = gruposProfesor.map(g =>
+      `<button onclick="_comedorFiltrarGrupo('${g}')"
+         style="background:var(--srf2);border:1px solid var(--bdr);border-radius:20px;
+                padding:4px 13px;font-size:12px;cursor:pointer;color:var(--txt2);">${g}</button>`
+    ).join("");
+    el.innerHTML = `<div style="background:var(--srf2);border:1px solid var(--bdr);border-radius:var(--r-sm);
+        padding:10px 14px;margin-bottom:12px;font-size:13px;">
+      <span style="color:var(--txt3);font-size:12px;display:block;margin-bottom:6px;">
+        Sin clase activa ahora — filtra por tu grupo:
+      </span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${chips}</div>
+    </div>`;
+    el.style.display = "";
+  } else {
+    el.style.display = "none";
+    el.innerHTML = "";
+  }
+}
+
+function _comedorFiltrarGrupo(g) {
+  const sel = document.getElementById("comedor-filtro-grupo");
+  if (sel) sel.value = g;
+  filterComedor(comedorFilter);
+}
+
+function _comedorVerTodos() {
+  const sel = document.getElementById("comedor-filtro-grupo");
+  if (sel) sel.value = "";
+  filterComedor(comedorFilter);
+}
+
 async function loadComedor() {
-  const today = new Date(comedorFecha + "T12:00:00");
-  const ahora = new Date();
-  const diasSinTilde = ["Domingo","Lunes","Martes","Miercoles","Jueves","Viernes","Sabado"];
-  const diasConTilde = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const today  = new Date(comedorFecha + "T12:00:00");
+  const ahora  = new Date();
+  const diasConTilde  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const diasHG        = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
   const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   const fechaStr = comedorFecha;
-  const horaActual = ahora.getHours() * 100 + ahora.getMinutes();
-  const diaActual = diasSinTilde[today.getDay()];
 
   document.getElementById("comedor-fecha").textContent =
     diasConTilde[today.getDay()] + " " + today.getDate() + " de " + meses[today.getMonth()] + " de " + today.getFullYear();
 
-  // Profesional: detect current class from horarios
   let grupoActual = null;
+
   if (role === "profesional" && currentUserName) {
-    const apellido = currentUserName.split(" ")[0];
-    const { data: horariosHoy } = await sb.from("horarios")
-      .select("actividad,hora")
-      .eq("centro_id", ctrId)
-      .ilike("dia", "%" + diaActual + "%")
-      .ilike("profesor", "%" + apellido + "%");
-
-    if (horariosHoy && horariosHoy.length) {
-      let mejorHorario = null;
-      let mejorDiff = Infinity;
-      for (const h of horariosHoy) {
-        const partes = h.hora.replace(/ /g,"").split("-");
-        if (!partes[0]) continue;
-        const hm = partes[0].split(":");
-        const horaInicio = parseInt(hm[0]) * 100 + parseInt(hm[1] || 0);
-        const diff = Math.abs(horaActual - horaInicio);
-        if (diff < mejorDiff) { mejorDiff = diff; mejorHorario = h; }
-      }
-      if (mejorHorario) {
-        const palabras = mejorHorario.actividad.trim().split(" ");
-        const ultima = palabras[palabras.length - 1];
-        if (/ESO|BAT|CF|PDC|FP/i.test(ultima)) grupoActual = ultima;
-      }
-    }
+    const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+    const diaHG    = diasHG[today.getDay()];
+    const ctx = await _detectarContextoProfesor(diaHG, ahoraMin);
+    grupoActual = ctx.grupoActual;
+    _renderComedorBanner(ctx.grupoActual, ctx.tramoActivo, _comedorGruposProfesor);
+  } else {
+    const el = document.getElementById("comedor-contexto-banner");
+    if (el) { el.style.display = "none"; el.innerHTML = ""; }
   }
 
-  // Load alumnos filtered by grupo if detected
-  let alumnosQuery = sb.from("alumnos").select("id,nombre,curso,grupo_horario")
+  // Query alumnos según rol y contexto
+  let alumnosQuery = sb.from("alumnos")
+    .select("id,nombre,curso,grupo_horario")
     .eq("centro_id", ctrId).order("curso").order("nombre");
-  if (grupoActual && role === "profesional") {
-    alumnosQuery = alumnosQuery.eq("grupo_horario", grupoActual);
-    document.getElementById("comedor-fecha").textContent += " · Clase: " + grupoActual;
+
+  if (role === "profesional" && currentUserName) {
+    if (grupoActual) {
+      alumnosQuery = alumnosQuery.eq("grupo_horario", grupoActual);
+      const sel = document.getElementById("comedor-filtro-grupo");
+      if (sel) sel.value = grupoActual;
+    } else if (_comedorGruposProfesor.length) {
+      // Sin clase activa → mostrar solo los grupos del profesor, no todo el centro
+      alumnosQuery = alumnosQuery.in("grupo_horario", _comedorGruposProfesor);
+      const sel = document.getElementById("comedor-filtro-grupo");
+      if (sel) sel.value = "";
+    }
+    // Si el profesor no tiene grupos en BD → sin filtro (muestra todos)
   }
+  // Admin/superadmin: sin filtro → todos los alumnos del centro
+
   const { data: alumnos } = await alumnosQuery;
 
-  // Load asistencia de hoy
+  // Asistencia del día
   const { data: asistencia } = await sb.from("asistencia_comedor")
     .select("*").eq("centro_id", ctrId).eq("fecha", fechaStr);
 
@@ -74,13 +166,13 @@ async function loadComedor() {
   (asistencia || []).forEach(a => { asistMap[a.alumno_id] = a; });
 
   comedorData = (alumnos || []).map(a => ({
-    alumno_id: a.id,
-    nombre: a.nombre,
-    curso: a.curso,
+    alumno_id:    a.id,
+    nombre:       a.nombre,
+    curso:        a.curso,
     grupo_horario: a.grupo_horario || null,
-    se_queda: asistMap[a.id]?.se_queda ?? false,
-    plaza_fija: asistMap[a.id]?.plaza_fija ?? false,
-    db_id: asistMap[a.id]?.id ?? null
+    se_queda:     asistMap[a.id]?.se_queda ?? false,
+    plaza_fija:   asistMap[a.id]?.plaza_fija ?? false,
+    db_id:        asistMap[a.id]?.id ?? null
   }));
 
   updateComedorStats();
