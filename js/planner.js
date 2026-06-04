@@ -39,6 +39,8 @@
     dictarRecognizing:  false,
     disponibilidad: {},   // profesor_id → Set<"dia_tramo">
     schedule:       {},   // grupo → dia → String(tramo) → slot
+    aparcados:      [],   // [{ grupo, slot }] — clases retiradas temporalmente (persistido en localStorage)
+    aparcadosAvisados: false,
     auditLog:       {},   // grupo → string[]
     globalScore:    {},   // grupo → 0–100
     currentGrupo:   null,
@@ -72,7 +74,15 @@
     const wrap = document.getElementById('pt-materias');
     if (wrap) wrap.innerHTML = '<div class="planner-empty" style="padding:40px 0;text-align:center">Cargando…</div>';
     _loadData()
-      .then(function () { _showPTab(_s.ptab); })
+      .then(function () {
+        _showPTab(_s.ptab);
+        if (_s.aparcados && _s.aparcados.length && !_s.aparcadosAvisados) {
+          _s.aparcadosAvisados = true;
+          _plannerToast('⚠ Tienes ' + _s.aparcados.length + ' clase' + (_s.aparcados.length === 1 ? '' : 's') +
+            ' aparcada' + (_s.aparcados.length === 1 ? '' : 's') + ' sin asignar. Arrástrala' +
+            (_s.aparcados.length === 1 ? '' : 's') + ' a un hueco del tablero.', 'warn');
+        }
+      })
       .catch(function (err) {
         console.error('[Planner V2] error al cargar datos:', err);
         const el = document.getElementById('pt-materias');
@@ -151,6 +161,10 @@
         _s.disponibilidad[d.profesor_id].add(d.dia_semana + '_' + d.tramo_horario);
       });
     }
+
+    /* Clases aparcadas (persistidas en localStorage por centro) */
+    _s.aparcadosAvisados = false;
+    _loadAparcados();
   }
 
   /* ── Sub-tabs ── */
@@ -871,8 +885,16 @@
             _buildMobileList() +
             '<div class="unassigned-pool" id="planner-pool"' +
             ' ondragover="plannerDragOver(event)" ondragleave="plannerDragLeave(event)" ondrop="plannerDropPool(event)">' +
-            '<div class="card-eyebrow" style="margin-bottom:6px">Zona libre — arrastra aquí para quitar una sesión</div>' +
-            '<div id="planner-pool-inner" style="min-height:32px"></div>' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
+              '<div class="card-eyebrow" style="margin:0">🅿️ Aparcados — arrastra una clase aquí para quitarla del horario temporalmente</div>' +
+              (_s.aparcados.length
+                ? '<span style="font-size:11px;font-weight:700;color:var(--warning-soft);background:var(--warning);padding:2px 9px;border-radius:999px">' +
+                  _s.aparcados.length + ' sin asignar</span>'
+                : '') +
+            '</div>' +
+            '<div id="planner-pool-inner" style="min-height:48px;display:flex;flex-wrap:wrap;gap:8px">' +
+              _buildAparcadosInner() +
+            '</div>' +
             '</div>' +
           '</div>');
 
@@ -965,6 +987,27 @@
     }).join('');
 
     return '<div class="planner-mobile-list">' + html + '</div>';
+  }
+
+  /* ── Tarjetas de la zona de aparcamiento ── */
+  function _buildAparcadosInner() {
+    if (!_s.aparcados.length) {
+      return '<div style="font-size:12px;color:var(--muted-2);padding:6px 2px">No hay clases aparcadas. Arrastra una clase del tablero aquí para retirarla temporalmente.</div>';
+    }
+    return _s.aparcados.map(function (a, i) {
+      var s = a.slot || {};
+      return '<div class="class-card aparcado-card" draggable="true"' +
+        ' style="position:relative;cursor:grab;min-width:128px;border-left-color:' + _esc(s.materia_color || 'var(--muted)') + '"' +
+        ' data-idx="' + i + '"' +
+        ' ondragstart="plannerDragStartAparcado(event,this)" ondragend="plannerDragEnd(event)">' +
+        '<button class="icon-btn-sm" title="Eliminar definitivamente" draggable="false"' +
+        ' onclick="plannerDescartarAparcado(' + i + ')"' +
+        ' style="position:absolute;top:2px;right:2px;line-height:1">&#x2715;</button>' +
+        '<div class="class-card__mat">' + _esc(s.materia_nombre || '—') + '</div>' +
+        '<div class="class-card__prof">' + _esc(s.profesor_nombre || '') + '</div>' +
+        '<div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px">' + _esc(a.grupo || '') + '</div>' +
+        '</div>';
+    }).join('');
   }
 
   /* ── Banner de puntuación neuroeducativa ── */
@@ -1344,18 +1387,189 @@
   /* ════════════════════════════════
      DRAG & DROP
   ════════════════════════════════ */
+  /* ── Persistencia de aparcados (localStorage por centro) ── */
+  function _aparcadosKey() {
+    return 'planner_aparcados_' + (typeof ctrId !== 'undefined' && ctrId ? ctrId : 'sin-centro');
+  }
+  function _loadAparcados() {
+    try {
+      var raw = localStorage.getItem(_aparcadosKey());
+      var arr = raw ? JSON.parse(raw) : [];
+      _s.aparcados = Array.isArray(arr) ? arr : [];
+    } catch (e) { _s.aparcados = []; }
+  }
+  function _saveAparcados() {
+    try { localStorage.setItem(_aparcadosKey(), JSON.stringify(_s.aparcados)); } catch (e) { /* quota / privado */ }
+  }
+
+  /* ── Toast ligero del planner ── */
+  function _plannerToast(msg, tipo) {
+    var bg = tipo === 'error' ? 'var(--danger)' : tipo === 'warn' ? 'var(--warning)' : 'var(--success)';
+    var t = document.createElement('div');
+    t.style.cssText =
+      'position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);' +
+      'z-index:9500;background:' + bg + ';color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;' +
+      'font-family:var(--font-ui);box-shadow:var(--sh-lg);max-width:90vw;text-align:center;line-height:1.35';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; }, 2700);
+    setTimeout(function () { if (t.parentNode) t.remove(); }, 3150);
+  }
+
+  function _flashCellError(cell) {
+    if (!cell) return;
+    /* diferido para que se vea tras el barrido de clases que hace plannerDragEnd */
+    setTimeout(function () {
+      cell.classList.add('drag-error');
+      setTimeout(function () { if (cell) cell.classList.remove('drag-error'); }, 650);
+    }, 0);
+  }
+
+  function _ensureSched(grupo) {
+    if (!_s.schedule[grupo]) _s.schedule[grupo] = {};
+    DIAS.forEach(function (d) { if (!_s.schedule[grupo][d]) _s.schedule[grupo][d] = {}; });
+  }
+
+  function _slotProfIds(slot) {
+    return slot.codocente_prof_ids && slot.codocente_prof_ids.length
+      ? slot.codocente_prof_ids
+      : (slot.profesor_id ? [slot.profesor_id] : []);
+  }
+
+  /* ── Validación de hard constraints (misma lógica que mover_clase) ── */
+  /* Valida el estado actual de un día concreto de un grupo (tras una mutación tentativa). */
+  function _validarDiaGrupo(grupo, dia) {
+    var TNUMS = _tramoNums();
+    var sched = _s.schedule[grupo] || {};
+    var vistas = {}, occ = [];
+    for (var i = 0; i < TNUMS.length; i++) {
+      var s = sched[dia] && sched[dia][String(TNUMS[i])];
+      if (!s) continue;
+      occ.push(TNUMS[i]);
+      /* HC-MATERIA-DIA */
+      if (vistas[s.materia_id]) {
+        return { ok: false, motivo: (s.materia_nombre || 'Esa materia') + ' quedaría dos veces el mismo día.' };
+      }
+      vistas[s.materia_id] = true;
+    }
+    /* HC-VENTANA */
+    if (occ.length > 8) return { ok: false, motivo: 'El grupo superaría 8 tramos lectivos ese día.' };
+    /* HC-INICIO-FIN: sin huecos en mitad de la jornada */
+    if (occ.length > 1) {
+      var idxs = occ.map(function (t) { return TNUMS.indexOf(t); });
+      var mn = Math.min.apply(null, idxs), mx = Math.max.apply(null, idxs);
+      if (mx - mn + 1 !== idxs.length) return { ok: false, motivo: 'Quedaría un hueco libre en mitad de la jornada.' };
+    }
+    return { ok: true };
+  }
+
+  /* Valida que el slot ahora situado en (grupo,dia,tramo) no choque con otros grupos ni disponibilidad. */
+  function _validarProfesorGlobal(grupo, dia, tramo) {
+    var slot = _s.schedule[grupo] && _s.schedule[grupo][dia] && _s.schedule[grupo][dia][String(tramo)];
+    if (!slot) return { ok: true };
+    var profIds = _slotProfIds(slot);
+    var bad = null;
+    Object.keys(_s.schedule).forEach(function (gg) {
+      if (gg === grupo) return;
+      var o = _s.schedule[gg] && _s.schedule[gg][dia] && _s.schedule[gg][dia][String(tramo)];
+      if (!o) return;
+      var oids = _slotProfIds(o);
+      if (profIds.some(function (id) { return oids.indexOf(id) !== -1; })) bad = gg;
+    });
+    if (bad) return { ok: false, motivo: 'Un profesor ya da clase a ' + bad + ' ese día y tramo.' };
+    for (var p = 0; p < profIds.length; p++) {
+      var set = _s.disponibilidad[profIds[p]];
+      if (set && set.has(dia + '_' + tramo)) return { ok: false, motivo: 'El profesor no está disponible ese día y tramo.' };
+    }
+    return { ok: true };
+  }
+
+  /* Núcleo simular-validar-revertir. dryRun=true revierte siempre (para feedback en hover). */
+  function _ejecutarDrop(grupo, tgtDia, tgtTramo, dryRun) {
+    var d = _s.dragData;
+    if (!d) return { ok: false };
+    var key = String(tgtTramo);
+    _ensureSched(grupo);
+
+    var fromAparcado = d.from === 'aparcado';
+    var srcSlot, srcGrupo = null, srcDia = null, srcTramo = null;
+
+    if (fromAparcado) {
+      var ap = _s.aparcados[d.idx];
+      if (!ap) return { ok: false };
+      if (ap.grupo !== grupo) {
+        return { ok: false, motivo: 'Esta clase es del grupo ' + ap.grupo + '. Cámbiate a ese grupo para colocarla.' };
+      }
+      srcSlot = ap.slot;
+    } else {
+      srcGrupo = d.grupo; srcDia = d.dia; srcTramo = d.tramo;
+      if (srcGrupo === grupo && srcDia === tgtDia && srcTramo === key) return { ok: true, noop: true };
+      srcSlot = _s.schedule[srcGrupo] && _s.schedule[srcGrupo][srcDia] && _s.schedule[srcGrupo][srcDia][srcTramo];
+      if (!srcSlot) return { ok: false };
+    }
+
+    var tgtSlot = (_s.schedule[grupo][tgtDia] && _s.schedule[grupo][tgtDia][key]) || null;
+    var isSwap = !!tgtSlot;
+    if (isSwap && fromAparcado) {
+      return { ok: false, motivo: 'Ese hueco está ocupado. Suelta la clase en un slot libre.' };
+    }
+
+    /* ── mutación tentativa ── */
+    if (fromAparcado) {
+      _s.schedule[grupo][tgtDia][key] = srcSlot;
+    } else if (isSwap) {
+      _s.schedule[grupo][tgtDia][key] = srcSlot;
+      _s.schedule[srcGrupo][srcDia][srcTramo] = tgtSlot;
+    } else {
+      _s.schedule[grupo][tgtDia][key] = srcSlot;
+      delete _s.schedule[srcGrupo][srcDia][srcTramo];
+    }
+
+    /* ── validación de los días/posiciones afectados ── */
+    var checks = [_validarDiaGrupo(grupo, tgtDia), _validarProfesorGlobal(grupo, tgtDia, key)];
+    if (!fromAparcado) {
+      checks.push(_validarDiaGrupo(srcGrupo, srcDia)); /* el día de origen no debe quedar con huecos */
+      if (isSwap) checks.push(_validarProfesorGlobal(srcGrupo, srcDia, srcTramo));
+    }
+    var bad = null;
+    for (var c = 0; c < checks.length; c++) { if (!checks[c].ok) { bad = checks[c]; break; } }
+
+    if (bad || dryRun) {
+      /* ── revertir ── */
+      if (fromAparcado) {
+        delete _s.schedule[grupo][tgtDia][key];
+      } else if (isSwap) {
+        _s.schedule[grupo][tgtDia][key] = tgtSlot;
+        _s.schedule[srcGrupo][srcDia][srcTramo] = srcSlot;
+      } else {
+        delete _s.schedule[grupo][tgtDia][key];
+        _s.schedule[srcGrupo][srcDia][srcTramo] = srcSlot;
+      }
+      return bad ? { ok: false, motivo: bad.motivo } : { ok: true };
+    }
+
+    /* ── commit ── */
+    if (fromAparcado) {
+      _s.aparcados.splice(d.idx, 1);
+      _saveAparcados();
+    }
+    return { ok: true, committed: true };
+  }
+
   window.plannerDragStart = function (e, el) {
-    _s.dragData = { dia: el.dataset.dia, tramo: el.dataset.tramo, grupo: el.dataset.grupo };
+    _s.dragData = { from: 'tablero', dia: el.dataset.dia, tramo: el.dataset.tramo, grupo: el.dataset.grupo };
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(function () { if (el) el.style.opacity = '0.4'; }, 0);
+  };
+
+  window.plannerDragStartAparcado = function (e, el) {
+    _s.dragData = { from: 'aparcado', idx: parseInt(el.dataset.idx, 10) };
     e.dataTransfer.effectAllowed = 'move';
     setTimeout(function () { if (el) el.style.opacity = '0.4'; }, 0);
   };
 
   window.plannerDragEnd = function () {
-    if (_s.dragData) {
-      var src = document.querySelector(
-        '.class-card[data-dia="' + _s.dragData.dia + '"][data-tramo="' + _s.dragData.tramo + '"]');
-      if (src) src.style.opacity = '';
-    }
+    document.querySelectorAll('.class-card').forEach(function (c) { c.style.opacity = ''; });
     document.querySelectorAll('.planner-cell').forEach(function (c) {
       c.classList.remove('drag-over', 'drag-error');
     });
@@ -1367,11 +1581,10 @@
     e.preventDefault();
     var cell = e.currentTarget;
     if (cell.classList.contains('planner-cell')) {
-      var occupied = !!(_s.schedule[_s.currentGrupo] &&
-                        _s.schedule[_s.currentGrupo][cell.dataset.dia] &&
-                        _s.schedule[_s.currentGrupo][cell.dataset.dia][cell.dataset.tramo]);
-      cell.classList.toggle('drag-over', !occupied);
-      cell.classList.toggle('drag-error',  occupied);
+      var res = _ejecutarDrop(_s.currentGrupo, cell.dataset.dia, cell.dataset.tramo, true);
+      if (res.noop) { cell.classList.remove('drag-over', 'drag-error'); return; }
+      cell.classList.toggle('drag-over', !!res.ok);
+      cell.classList.toggle('drag-error', !res.ok);
     } else {
       cell.classList.add('drag-over');
     }
@@ -1387,73 +1600,44 @@
     cell.classList.remove('drag-over', 'drag-error');
     if (!_s.dragData) return;
 
-    var srcDia   = _s.dragData.dia;
-    var srcTramo = _s.dragData.tramo;
-    var srcGrupo = _s.dragData.grupo;
-    var tgtDia   = cell.dataset.dia;
-    var tgtTramo = cell.dataset.tramo;
-    _s.dragData  = null;
+    var res = _ejecutarDrop(grupo, cell.dataset.dia, cell.dataset.tramo, false);
+    _s.dragData = null;
 
-    if (srcDia === tgtDia && srcTramo === tgtTramo && srcGrupo === grupo) return;
-
-    var srcSlot = _s.schedule[srcGrupo] && _s.schedule[srcGrupo][srcDia] && _s.schedule[srcGrupo][srcDia][srcTramo];
-    if (!srcSlot) return;
-
-    var srcProfIds = srcSlot.codocente_prof_ids && srcSlot.codocente_prof_ids.length
-      ? srcSlot.codocente_prof_ids : (srcSlot.profesor_id ? [srcSlot.profesor_id] : []);
-    var conflict = false;
-    Object.keys(_s.schedule).forEach(function (g) {
-      if (g === srcGrupo) return;
-      var other = _s.schedule[g] && _s.schedule[g][tgtDia] && _s.schedule[g][tgtDia][tgtTramo];
-      if (!other) return;
-      var otherIds = other.codocente_prof_ids && other.codocente_prof_ids.length
-        ? other.codocente_prof_ids : (other.profesor_id ? [other.profesor_id] : []);
-      if (srcProfIds.some(function (id) { return otherIds.indexOf(id) !== -1; })) conflict = true;
-    });
-    if (conflict) {
-      alert('Conflicto: uno de los profesores ya tiene clase en ' + tgtDia + ' tramo ' + tgtTramo + ' con otro grupo.');
+    if (res.noop) return;
+    if (!res.ok) {
+      if (res.motivo) _plannerToast('No se puede colocar: ' + res.motivo, 'error');
+      _flashCellError(cell);
       return;
     }
-
-    var tgtSlot = (_s.schedule[grupo] && _s.schedule[grupo][tgtDia] && _s.schedule[grupo][tgtDia][tgtTramo]) || null;
-
-    if (!tgtSlot) {
-      _s.schedule[grupo][tgtDia][tgtTramo] = srcSlot;
-      delete _s.schedule[srcGrupo][srcDia][srcTramo];
-    } else {
-      var tgtProfIds = tgtSlot.codocente_prof_ids && tgtSlot.codocente_prof_ids.length
-        ? tgtSlot.codocente_prof_ids : (tgtSlot.profesor_id ? [tgtSlot.profesor_id] : []);
-      var conflict2 = false;
-      Object.keys(_s.schedule).forEach(function (g) {
-        if (g === grupo) return;
-        var other = _s.schedule[g] && _s.schedule[g][srcDia] && _s.schedule[g][srcDia][srcTramo];
-        if (!other) return;
-        var otherIds = other.codocente_prof_ids && other.codocente_prof_ids.length
-          ? other.codocente_prof_ids : (other.profesor_id ? [other.profesor_id] : []);
-        if (tgtProfIds.some(function (id) { return otherIds.indexOf(id) !== -1; })) conflict2 = true;
-      });
-      if (conflict2) {
-        alert('Conflicto de intercambio: el profesor del slot destino ya tiene clase en esa posición.');
-        return;
-      }
-      _s.schedule[grupo][tgtDia][tgtTramo]    = srcSlot;
-      _s.schedule[srcGrupo][srcDia][srcTramo] = tgtSlot;
-    }
-
     _renderTablero();
   };
 
+  /* Soltar sobre la zona "Aparcados" → retirar la clase del horario (sin eliminarla) */
   window.plannerDropPool = function (e) {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
-    if (!_s.dragData) return;
-    var dia   = _s.dragData.dia;
-    var tramo = _s.dragData.tramo;
-    var grupo = _s.dragData.grupo;
+    var d = _s.dragData;
     _s.dragData = null;
-    if (_s.schedule[grupo] && _s.schedule[grupo][dia]) {
-      delete _s.schedule[grupo][dia][tramo];
-    }
+    if (!d || d.from === 'aparcado') return; /* ya está aparcada */
+
+    var slot = _s.schedule[d.grupo] && _s.schedule[d.grupo][d.dia] && _s.schedule[d.grupo][d.dia][d.tramo];
+    if (!slot) return;
+
+    delete _s.schedule[d.grupo][d.dia][d.tramo];
+    _s.aparcados.push({ grupo: d.grupo, slot: slot });
+    _saveAparcados();
+    _renderTablero();
+    _plannerToast('Clase aparcada. Arrástrala a un hueco para recolocarla.', 'ok');
+  };
+
+  /* Eliminar definitivamente una clase aparcada */
+  window.plannerDescartarAparcado = function (i) {
+    if (i < 0 || i >= _s.aparcados.length) return;
+    var a = _s.aparcados[i];
+    var nom = (a && a.slot && a.slot.materia_nombre) ? a.slot.materia_nombre : 'esta clase';
+    if (!confirm('¿Eliminar definitivamente "' + nom + '" de ' + ((a && a.grupo) || '') + '? No se podrá recuperar.')) return;
+    _s.aparcados.splice(i, 1);
+    _saveAparcados();
     _renderTablero();
   };
 
@@ -1500,7 +1684,11 @@
   }
 
   window.plannerPublicar = function () {
-    if (!confirm('¿Publicar? Se sobreescribirán los horarios_grupo de los grupos generados.')) return;
+    var avisoAparcados = _s.aparcados.length
+      ? '\n\n⚠ Tienes ' + _s.aparcados.length + ' clase' + (_s.aparcados.length === 1 ? '' : 's') +
+        ' aparcada' + (_s.aparcados.length === 1 ? '' : 's') + ' sin asignar que NO se publicarán.'
+      : '';
+    if (!confirm('¿Publicar? Se sobreescribirán los horarios_grupo de los grupos generados.' + avisoAparcados)) return;
     var btn = document.getElementById('planner-pub-btn');
     var msg = document.getElementById('planner-pub-msg');
     if (btn) { btn.disabled = true; btn.textContent = 'Publicando…'; }
