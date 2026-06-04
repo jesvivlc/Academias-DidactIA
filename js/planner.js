@@ -533,13 +533,38 @@
     /* HC-1: slot ya ocupado para el grupo */
     if (sched[dia][key]) return false;
 
-    /* HC-2: misma materia no dos veces el mismo día */
+    /* HC-MATERIA-DIA (universal, todas las CCAA): para un grupo dado, la misma
+       materia no puede aparecer más de una vez en el mismo día de la semana */
     const materiaIds = sess.type === 'codoce'
       ? sess.necs.map(function (n) { return n.materia_id; })
       : [sess.materia_id];
     for (var t = 0; t < TNUMS.length; t++) {
       const s = sched[dia][String(TNUMS[t])];
       if (s && materiaIds.indexOf(s.materia_id) !== -1) return false;
+    }
+
+    /* HC-VENTANA (universal): el nº de tramos lectivos de un grupo en un mismo
+       día no puede superar 8 tramos de clase (los descansos no cuentan, ya que
+       TNUMS excluye los tramos con es_descanso) */
+    var ocupadosHoy = 0;
+    for (var v = 0; v < TNUMS.length; v++) {
+      if (sched[dia][String(TNUMS[v])]) ocupadosHoy++;
+    }
+    if (ocupadosHoy >= 8) return false;
+
+    /* HC-INICIO-FIN (universal): sin huecos libres en mitad de la jornada — las
+       clases del grupo deben ser consecutivas dentro de los tramos lectivos.
+       Los descansos no rompen la continuidad porque TNUMS solo lista tramos de
+       clase; verificamos que los índices ocupados formen un bloque contiguo. */
+    var idxNuevo = TNUMS.indexOf(parseInt(tramo, 10));
+    if (idxNuevo !== -1) {
+      var ocupadas = [idxNuevo];
+      for (var w = 0; w < TNUMS.length; w++) {
+        if (sched[dia][String(TNUMS[w])]) ocupadas.push(w);
+      }
+      var minI = Math.min.apply(null, ocupadas);
+      var maxI = Math.max.apply(null, ocupadas);
+      if (maxI - minI + 1 !== ocupadas.length) return false;
     }
 
     /* HC-3: disponibilidad + ocupación en otros grupos */
