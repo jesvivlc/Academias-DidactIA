@@ -6,18 +6,16 @@
 
   const DIAS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes'];
 
-  /* Tramos por defecto (horario Agora Lledó) — se usan si el centro no tiene tramos_centro */
+  /* Tramos genéricos de hora en hora — solo como placeholder hasta que el centro
+     configure los suyos en la pestaña Tramos. NO corresponden a ningún centro real. */
   const TRAMOS_DEFAULT = [
-    { numero:1,  hora_inicio:'08:50', hora_fin:'09:45', nombre:'',       es_descanso:false },
-    { numero:2,  hora_inicio:'09:45', hora_fin:'10:40', nombre:'',       es_descanso:false },
-    { numero:3,  hora_inicio:'10:40', hora_fin:'11:35', nombre:'',       es_descanso:false },
-    { numero:4,  hora_inicio:'11:35', hora_fin:'12:00', nombre:'Recreo', es_descanso:true  },
-    { numero:5,  hora_inicio:'12:00', hora_fin:'12:55', nombre:'',       es_descanso:false },
-    { numero:6,  hora_inicio:'12:55', hora_fin:'13:50', nombre:'',       es_descanso:false },
-    { numero:7,  hora_inicio:'13:50', hora_fin:'14:45', nombre:'',       es_descanso:false },
-    { numero:8,  hora_inicio:'14:45', hora_fin:'15:10', nombre:'Comida', es_descanso:true  },
-    { numero:9,  hora_inicio:'15:10', hora_fin:'16:05', nombre:'',       es_descanso:false },
-    { numero:10, hora_inicio:'16:05', hora_fin:'17:00', nombre:'',       es_descanso:false },
+    { numero:1, hora_inicio:'08:00', hora_fin:'09:00', nombre:'', es_descanso:false },
+    { numero:2, hora_inicio:'09:00', hora_fin:'10:00', nombre:'', es_descanso:false },
+    { numero:3, hora_inicio:'10:00', hora_fin:'11:00', nombre:'', es_descanso:false },
+    { numero:4, hora_inicio:'11:00', hora_fin:'11:30', nombre:'Recreo', es_descanso:true  },
+    { numero:5, hora_inicio:'11:30', hora_fin:'12:30', nombre:'', es_descanso:false },
+    { numero:6, hora_inicio:'12:30', hora_fin:'13:30', nombre:'', es_descanso:false },
+    { numero:7, hora_inicio:'13:30', hora_fin:'14:30', nombre:'', es_descanso:false },
   ];
 
   function _esc(s) {
@@ -76,6 +74,8 @@
     if (wrap) wrap.innerHTML = '<div class="planner-empty" style="padding:40px 0;text-align:center">Cargando…</div>';
     _loadData()
       .then(function () {
+        var warn = document.getElementById('planner-tramos-warn');
+        if (warn) warn.style.display = _s.usingFallbackTramos ? 'flex' : 'none';
         _showPTab(_s.ptab);
         if (_s.aparcados && _s.aparcados.length && !_s.aparcadosAvisados) {
           _s.aparcadosAvisados = true;
@@ -141,9 +141,11 @@
     });
 
     /* Tramos: usar DB si existen, si no usar TRAMOS_DEFAULT */
-    _s.tramos = (tR.data && tR.data.length)
+    const tramosFromDB = !!(tR.data && tR.data.length);
+    _s.tramos = tramosFromDB
       ? tR.data
       : TRAMOS_DEFAULT.map(function (t) { return Object.assign({}, t); });
+    _s.usingFallbackTramos = !tramosFromDB;
 
     _s.grupos = [...new Set(_s.necesidades.map(function (n) { return n.grupo_horario; }))].sort();
     if (!_s.currentGrupo && _s.grupos.length) _s.currentGrupo = _s.grupos[0];
