@@ -276,21 +276,57 @@ function showComedorVista(vista) {
   }
 }
 
-function exportarHistoricoCSV() {
-  if (!historicoData.length) return;
+async function exportarHistoricoCSV() {
+  if (!historicoData.length) { alert("No hay histórico de comedor para exportar."); return; }
+  if (typeof XLSX === "undefined") { alert("La librería de exportación (Excel) no está disponible."); return; }
+
   const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-  const rows = [["Fecha","Día","Total","Fijos","Esporádicos"]];
+
+  // ── Hoja 1: histórico diario (30 días) ──
+  const aoaHist = [["Fecha","Día","Total","Fijos","Esporádicos"]];
   historicoData.forEach(d => {
     const fechaObj = new Date(d.fecha + "T12:00:00");
-    const fechaFmt = fechaObj.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
-    rows.push([fechaFmt, dias[fechaObj.getDay()], d.total, d.fijos, d.esporadicos]);
+    aoaHist.push([
+      fechaObj.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      dias[fechaObj.getDay()], d.total, d.fijos, d.esporadicos
+    ]);
   });
-  const csv = rows.map(r => r.join(",")).join("\n");
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "historico-comedor-" + new Date().toISOString().split("T")[0] + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  const wb = XLSX.utils.book_new();
+  const wsHist = XLSX.utils.aoa_to_sheet(aoaHist);
+  wsHist["!cols"] = [{ wch: 12 },{ wch: 11 },{ wch: 8 },{ wch: 8 },{ wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, wsHist, "Histórico 30 días");
+
+  // ── Hoja 2: desglose por grupo (si hay datos de grupo) ──
+  try {
+    const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+    const desde = hace30.toISOString().split("T")[0];
+    const { data: rows } = await sb.from("asistencia_comedor")
+      .select("se_queda,plaza_fija,alumnos(grupo_horario,curso)")
+      .eq("centro_id", ctrId)
+      .eq("se_queda", true)
+      .gte("fecha", desde)
+      .limit(50000);
+
+    const byGrupo = {};
+    (rows || []).forEach(r => {
+      const al = r.alumnos || {};
+      const g = al.grupo_horario || al.curso || "Sin grupo";
+      if (!byGrupo[g]) byGrupo[g] = { total: 0, fijos: 0, esporadicos: 0 };
+      byGrupo[g].total++;
+      if (r.plaza_fija) byGrupo[g].fijos++; else byGrupo[g].esporadicos++;
+    });
+
+    const grupos = Object.keys(byGrupo).sort((a, b) => a.localeCompare(b, "es"));
+    if (grupos.length) {
+      const aoaGrp = [["Grupo","Total comensales (30d)","Fijos","Esporádicos"]];
+      grupos.forEach(g => aoaGrp.push([g, byGrupo[g].total, byGrupo[g].fijos, byGrupo[g].esporadicos]));
+      const wsGrp = XLSX.utils.aoa_to_sheet(aoaGrp);
+      wsGrp["!cols"] = [{ wch: 14 },{ wch: 22 },{ wch: 8 },{ wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsGrp, "Por grupo");
+    }
+  } catch (e) {
+    console.warn("[comedor] desglose por grupo no disponible:", e);
+  }
+
+  XLSX.writeFile(wb, "historico-comedor-" + new Date().toISOString().split("T")[0] + ".xlsx");
 }

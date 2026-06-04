@@ -190,15 +190,18 @@ async function loadIncidencias(filtro) {
 
 function exportarIncidenciasCSV() {
   if (!_incLastData.length) { alert('No hay incidencias para exportar.'); return; }
-  var cols   = ['fecha', 'tipo', 'gravedad', 'descripcion', 'alumno_nombre', 'grupo_horario', 'estado', 'created_at'];
-  var header = ['Fecha', 'Tipo', 'Gravedad', 'Descripcion', 'Alumno', 'Grupo', 'Estado', 'Creado'];
-  var esc = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
-  var csv = '﻿' + header.join(',') + '\n'
-    + _incLastData.map(function(row) { return cols.map(function(k) { return esc(row[k]); }).join(','); }).join('\n');
-  var a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'incidencias-' + new Date().toISOString().split('T')[0] + '.csv';
-  a.click();
+  if (typeof XLSX === 'undefined') { alert('La librería de exportación (Excel) no está disponible.'); return; }
+  var cols   = ['fecha', 'tipo', 'gravedad', 'alumno_nombre', 'grupo_horario', 'descripcion', 'estado'];
+  var header = ['Fecha', 'Tipo', 'Gravedad', 'Alumno', 'Grupo', 'Descripción', 'Estado'];
+  var aoa = [header];
+  _incLastData.forEach(function(row) {
+    aoa.push(cols.map(function(k) { return row[k] == null ? '' : row[k]; }));
+  });
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 12 },{ wch: 14 },{ wch: 11 },{ wch: 22 },{ wch: 10 },{ wch: 46 },{ wch: 10 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Incidencias');
+  XLSX.writeFile(wb, 'incidencias-' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
 // ── Registrar ───────────────────────────────────────────────────

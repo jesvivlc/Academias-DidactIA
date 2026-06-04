@@ -28,6 +28,7 @@ URL pública: **didactia.eu**
 | Deploy | Vercel (frontend) + GitHub (fuente) |
 | Automatización | n8n (local, http://localhost:5678) |
 | Testing e2e | Playwright 1.60 + Chromium (`npm run test:e2e`) |
+| Exportación | SheetJS/xlsx 0.18.5 (Excel) + jsPDF 2.5.1 (PDF), vía CDN en `app.html` |
 
 ## Centros activos
 
@@ -60,7 +61,7 @@ js/
   config.js             SB_URL, SB_KEY, variables globales, boot DOMContentLoaded
   auth.js               doLogin, loadUserProfile, showTab, applyTheme, goHome
   chat.js               sendMsg, buildContext, horarios por grupo, Gemini fetch
-  comedor.js            loadComedor, toggleAsistencia, histórico 30 días, CSV export
+  comedor.js            loadComedor, toggleAsistencia, histórico 30 días, export Excel
   admin.js              loadAdmin, loadSustituciones, registrarSustitucion, initSustPanel
   mejoras.js            loadDashboard, loadComedorHijos, buscarAlumnoRapido, toggleVoice
   users.js              loadUsersPanel, inviteUser, changeRole, toggleModulo
@@ -244,7 +245,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - Vista día: lista de asistencia con toggle por alumno, filtros, navegación por fechas
 - Detección automática de grupo actual del profesor por hora del sistema (`ahora = new Date()`, no desde `comedorFecha`)
 - Vista histórico: últimos 30 días, tabla con totales, botón "Ver" navega al día. Limit 50000 para superar el default de 1000 filas de Supabase
-- Exportación CSV con BOM UTF-8
+- Exportación a Excel (.xlsx con SheetJS): hoja histórico 30 días + 2ª hoja desglose por grupo
 - Variable `comedorFecha` controla qué día se muestra
 - `showComedorVista('dia'|'historico')` alterna las dos vistas
 - **Crítico:** `toggleAsistencia` usa `comedorFecha` (no `new Date()`) para insertar — editar histórico no corrompe el día actual
@@ -259,7 +260,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - Toggle `cubierta` inline en cada fila de la tabla
 - Filtros "Hoy / Esta semana / Todo" con estado activo visual
 - Contador en el tab: "🔄 Sustituciones (N)" — cuenta **solo las sin cubrir** (`!s.cubierta`), no el total
-- Badges ✓ Cubierta / ⚠ Pendiente, exportación CSV, eliminación desde tabla (preserva el filtro activo al eliminar)
+- Badges ✓ Cubierta / ⚠ Pendiente, exportación a Excel (.xlsx, SheetJS), eliminación desde tabla (preserva el filtro activo al eliminar)
 
 ### Bolsa de guardias con equidad (guardias.js)
 - `loadBolsaGuardias()`: ranking de todos los profesores ordenado por nº de guardias del trimestre (menor → mayor)
@@ -899,9 +900,10 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` para módulo Analytics CMI ⚠️ pendiente
+> - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI): tabla+RLS+policy ya existían; índice `idx_alertas_centro_activas` creado ✅ completado 2026-06-04 vía Management API
 > - `sql/horario-generado-profesor-nullable.sql` — `horario_generado.profesor_id DROP NOT NULL` (horarios sin profesor) ✅ ejecutado 2026-06-04 vía Management API
 > - `sql/fix-bugs-prod-2026-05-29.sql` — `ausencias_profesor.tramo DROP NOT NULL` + columnas IA incidencias ✅ ejecutado 2026-05-29
 > - `sql/planner-tables.sql` — tablas planner + RLS + índices ✅ ejecutado 2026-05-27
@@ -913,6 +915,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-04` · Exportaciones — SheetJS (xlsx 0.18.5) cargado en `app.html`. **Planner**: botones PDF (jsPDF, página por grupo + por profesor, cabecera con logo/color del centro y curso escolar) y Excel (hoja por grupo, por profesor y resumen del centro); hidrata desde `horario_generado` si el tablero está vacío. **Sustituciones/Comedor/Incidencias**: CSV → .xlsx (Comedor con 2ª hoja desglose por grupo). **RRHH**: nuevo botón Exportar → .xlsx (ausencias + resumen por profesor). **Guardias**: nuevo botón Exportar → .xlsx (ranking equidad + detalle). **Alertas predictivas**: índice creado, tabla `alertas_predictivas` ya operativa.
 - `2026-06-04` · Planner — horarios SIN profesor asignado: (1) `horario_generado.profesor_id` nullable; (2) modo CSP "sin profesores" (`plannerGenerarSinProf`, slots `profesor_id null`); (3) Tablero: slots rayados "Sin asignar", modal selector + panel lateral de profesores arrastrables; (4) chat: `asignar_profesor` + `asignar_profesor_materia` (masivo). Validación de conflicto profesor en todos los caminos. EF desplegada. `scripts/verify-sin-profesor.js`
 - `2026-06-04` · Planner Tablero — drag & drop con validación de hard constraints al soltar (`_ejecutarDrop` simular-validar-revertir, flash rojo + toast en rechazo) + zona "Aparcados" persistida en localStorage (retirar clases temporalmente, recolocar arrastrando, aviso en recarga/publicación). `scripts/verify-tablero-dnd.js` (14 checks)
 - `2026-06-04` · EF `chat` — 4 herramientas Gemini para editar `horario_generado` del Planner sin regenerar: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor`. Resuelven materia/profesor por nombre o ID y validan hard constraints (HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN) + disponibilidad y ocupación de profesor/grupo. Requieren confirmación. ✅ Desplegada a producción (rflfsbrdmgaidhvbuvwb)

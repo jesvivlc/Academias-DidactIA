@@ -74,7 +74,10 @@ function _renderBolsa(container, data, trimestre) {
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
       '<div style="font-size:12px;color:var(--txt3);">' + (triLabel[trimestre] || "Trim. " + trimestre) +
         ' · menor → mayor guardias</div>' +
-      '<button class="btn btn-s" style="font-size:11px;padding:3px 10px;" onclick="loadBolsaGuardias()">↺</button>' +
+      '<div style="display:flex;gap:6px;">' +
+        '<button class="btn btn-s" style="font-size:11px;padding:3px 10px;" onclick="exportarGuardiasExcel()">📥 Exportar</button>' +
+        '<button class="btn btn-s" style="font-size:11px;padding:3px 10px;" onclick="loadBolsaGuardias()">↺</button>' +
+      '</div>' +
     '</div>' +
     '<div style="overflow-x:auto;"><table class="tbl">' +
     '<thead><tr>' +
@@ -85,6 +88,64 @@ function _renderBolsa(container, data, trimestre) {
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table></div>';
+}
+
+// ── Exportar bolsa de guardias a Excel (ranking + detalle) ──
+async function exportarGuardiasExcel() {
+  if (typeof XLSX === "undefined") { alert("La librería de exportación (Excel) no está disponible."); return; }
+
+  const trimestre = _guardiaTrimActual();
+  const dates     = _guardiaTrimDates(trimestre);
+  const triLabel  = { 1: "1er trimestre", 2: "2º trimestre", 3: "3er trimestre" }[trimestre] || ("Trim. " + trimestre);
+
+  // Sustituciones del trimestre (fuente del ranking y del detalle)
+  let q = sb.from("sustituciones")
+    .select("fecha,tramo,grupo_horario,profesor_ausente,profesor_sustituto,cubierta")
+    .eq("centro_id", ctrId);
+  if (dates) q = q.gte("fecha", dates.from).lte("fecha", dates.to);
+  const { data: subs } = await q.order("fecha", { ascending: true });
+
+  const countByName = {};
+  (subs || []).forEach(function(s) {
+    const n = (s.profesor_sustituto || "").trim();
+    if (n) countByName[n] = (countByName[n] || 0) + 1;
+  });
+
+  const { data: hg } = await sb.from("horarios_grupo")
+    .select("profesor_nombre").eq("centro_id", ctrId).not("profesor_nombre", "is", null);
+  const nombres = new Set();
+  (hg || []).forEach(function(h) { if (h.profesor_nombre) nombres.add(h.profesor_nombre.trim()); });
+  Object.keys(countByName).forEach(function(n) { nombres.add(n); });
+
+  const cargaLabel = function(c) { return c === 0 ? "Sin guardias" : c <= 3 ? "Baja" : c <= 6 ? "Media" : "Alta"; };
+  const ranking = Array.from(nombres).map(function(n) {
+    return { nombre: n, count: countByName[n] || 0 };
+  }).sort(function(a, b) { return a.count - b.count || a.nombre.localeCompare(b.nombre, "es"); });
+
+  // Hoja 1: ranking de equidad
+  const aoa1 = [["#","Profesor","Guardias realizadas","Carga (" + triLabel + ")"]];
+  ranking.forEach(function(p, i) { aoa1.push([i + 1, p.nombre, p.count, cargaLabel(p.count)]); });
+  const ws1 = XLSX.utils.aoa_to_sheet(aoa1);
+  ws1["!cols"] = [{ wch: 5 },{ wch: 26 },{ wch: 18 },{ wch: 20 }];
+
+  // Hoja 2: detalle de cada guardia cubierta
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const aoa2 = [["Fecha","Día","Tramo","Grupo","Profesor ausente","Sustituto","Cubierta"]];
+  (subs || []).filter(function(s) { return (s.profesor_sustituto || "").trim(); }).forEach(function(s) {
+    const fo = s.fecha ? new Date(s.fecha + "T12:00:00") : null;
+    aoa2.push([
+      s.fecha || "", fo ? dias[fo.getDay()] : "", s.tramo || "",
+      s.grupo_horario || "", s.profesor_ausente || "", s.profesor_sustituto || "",
+      s.cubierta ? "Sí" : "No"
+    ]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
+  ws2["!cols"] = [{ wch: 12 },{ wch: 11 },{ wch: 7 },{ wch: 10 },{ wch: 22 },{ wch: 22 },{ wch: 10 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, "Ranking equidad");
+  XLSX.utils.book_append_sheet(wb, ws2, "Detalle guardias");
+  XLSX.writeFile(wb, "bolsa-guardias-" + new Date().toISOString().slice(0, 10) + ".xlsx");
 }
 
 async function getGuardiaCountsByName() {

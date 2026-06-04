@@ -233,7 +233,10 @@ async function _renderRrhhAdmin() {
         '<div class="pg-title">Gestión de ausencias</div>' +
         '<div class="pg-sub">Revisión y aprobación de solicitudes del profesorado</div>' +
       '</div>' +
-      '<button class="btn btn-p" onclick="_cargarAusenciasAdmin()">↺ Actualizar</button>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn btn-s" onclick="exportarRrhhExcel()">📥 Exportar</button>' +
+        '<button class="btn btn-p" onclick="_cargarAusenciasAdmin()">↺ Actualizar</button>' +
+      '</div>' +
     '</div>' +
 
     '<div class="card">' +
@@ -315,6 +318,62 @@ async function _cargarAusenciasAdmin() {
   }
 
   _renderAusenciasAdminLista();
+}
+
+// ── Exportar RRHH a Excel (2 hojas: ausencias + resumen por profesor) ──
+function exportarRrhhExcel() {
+  if (typeof XLSX === "undefined") { alert("La librería de exportación (Excel) no está disponible."); return; }
+  if (!_rrhhAusencias.length) { alert("No hay ausencias para exportar."); return; }
+
+  var TIPOS = {
+    baja_medica: "Baja médica", permiso: "Permiso", asunto_propio: "Asunto propio",
+    formacion: "Formación", sindical: "Sindical", otros: "Otros"
+  };
+  var diasEntre = function(ini, fin) {
+    if (!ini) return 0;
+    var a = new Date(ini + "T12:00:00");
+    var b = new Date((fin || ini) + "T12:00:00");
+    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+  };
+
+  // Hoja 1: ausencias
+  var aoa = [["Profesor","Fecha inicio","Fecha fin","Días","Tipo","Motivo","Estado"]];
+  _rrhhAusencias.forEach(function(a) {
+    aoa.push([
+      a._nombre || "—",
+      a.fecha || "",
+      a.fecha_fin || a.fecha || "",
+      diasEntre(a.fecha, a.fecha_fin),
+      TIPOS[a.tipo] || a.tipo || "",
+      a.motivo || "",
+      a.estado || "pendiente"
+    ]);
+  });
+  var ws1 = XLSX.utils.aoa_to_sheet(aoa);
+  ws1["!cols"] = [{ wch: 24 },{ wch: 12 },{ wch: 12 },{ wch: 6 },{ wch: 16 },{ wch: 38 },{ wch: 12 }];
+
+  // Hoja 2: resumen por profesor
+  var resumen = {};
+  _rrhhAusencias.forEach(function(a) {
+    var nom = a._nombre || "—";
+    if (!resumen[nom]) resumen[nom] = { dias: 0, aprobadas: 0, rechazadas: 0, pendientes: 0 };
+    var est = a.estado || "pendiente";
+    if (est === "aprobada") { resumen[nom].aprobadas++; resumen[nom].dias += diasEntre(a.fecha, a.fecha_fin); }
+    else if (est === "rechazada") resumen[nom].rechazadas++;
+    else resumen[nom].pendientes++;
+  });
+  var aoa2 = [["Profesor","Días ausentes (aprobadas)","Aprobadas","Rechazadas","Pendientes"]];
+  Object.keys(resumen).sort(function(a, b) { return a.localeCompare(b, "es"); }).forEach(function(nom) {
+    var r = resumen[nom];
+    aoa2.push([nom, r.dias, r.aprobadas, r.rechazadas, r.pendientes]);
+  });
+  var ws2 = XLSX.utils.aoa_to_sheet(aoa2);
+  ws2["!cols"] = [{ wch: 24 },{ wch: 24 },{ wch: 11 },{ wch: 11 },{ wch: 11 }];
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, "Ausencias");
+  XLSX.utils.book_append_sheet(wb, ws2, "Resumen por profesor");
+  XLSX.writeFile(wb, "rrhh-ausencias-" + new Date().toISOString().slice(0, 10) + ".xlsx");
 }
 
 function _renderAusenciasAdminLista() {

@@ -365,15 +365,17 @@ async function exportarSustituciones() {
     return;
   }
 
-  const cabecera = ["Fecha","Día","Hora inicio","Hora fin","Tramo","Grupo","Profesor ausente","Profesor sustituto","Observaciones"];
+  if (typeof XLSX === "undefined") { alert("La librería de exportación (Excel) no está disponible."); return; }
 
-  const filas = data.map(s => {
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const aoa = [["Fecha","Día","Hora inicio","Hora fin","Tramo","Grupo","Profesor ausente","Profesor sustituto","Observaciones"]];
+
+  data.forEach(s => {
     const fecha = s.fecha || "";
-    const fechaObj = fecha ? new Date(fecha) : null;
-    const diasSemana = fechaObj ? ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][fechaObj.getDay()] : "";
-    return [
+    const fechaObj = fecha ? new Date(fecha + "T12:00:00") : null;
+    aoa.push([
       fecha,
-      diasSemana,
+      fechaObj ? dias[fechaObj.getDay()] : "",
       (s.hora_inicio || "").slice(0,5),
       (s.hora_fin || "").slice(0,5),
       s.tramo || "",
@@ -381,17 +383,12 @@ async function exportarSustituciones() {
       s.profesor_ausente || "",
       s.profesor_sustituto || "",
       s.observaciones || ""
-    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",");
+    ]);
   });
 
-  const csv = "﻿" + cabecera.join(",") + "\n" + filas.join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "sustituciones_" + new Date().toISOString().slice(0,10) + ".csv";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{ wch: 12 },{ wch: 11 },{ wch: 10 },{ wch: 10 },{ wch: 7 },{ wch: 10 },{ wch: 22 },{ wch: 22 },{ wch: 34 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Sustituciones");
+  XLSX.writeFile(wb, "sustituciones_" + new Date().toISOString().slice(0,10) + ".xlsx");
 }

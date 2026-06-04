@@ -886,6 +886,324 @@
   }
 
   /* ════════════════════════════════
+     EXPORTACIÓN — PDF (jsPDF) + Excel (SheetJS)
+  ════════════════════════════════ */
+
+  function _ensureJsPDF() {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  function _exportCursoEscolar() {
+    var now = new Date();
+    var y = now.getFullYear();
+    return now.getMonth() >= 8 ? (y + '-' + (y + 1)) : ((y - 1) + '-' + y);  /* sep (mes 8) inicia curso */
+  }
+
+  async function _exportCentroInfo() {
+    try {
+      var r = await sb.from('centros').select('nombre,color_primario,logo_url').eq('id', ctrId).single();
+      if (r.data) return { nombre: r.data.nombre || 'Centro', color: r.data.color_primario || '#1a73e8', logo: r.data.logo_url || '' };
+    } catch (e) { /* ignore */ }
+    return { nombre: (typeof ctrName !== 'undefined' && ctrName) || 'Centro', color: '#1a73e8', logo: '' };
+  }
+
+  function _hexToRgb(hex) {
+    var h = String(hex || '#1a73e8').replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    if (isNaN(n)) return { r: 26, g: 115, b: 232 };
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function _imgToDataURL(url) {
+    return new Promise(function (resolve) {
+      if (!url) { resolve(null); return; }
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        try {
+          var c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          resolve({ dataURL: c.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight });
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = function () { resolve(null); };
+      img.src = url;
+    });
+  }
+
+  function _scheduleConDatos() {
+    return Object.keys(_s.schedule || {}).some(function (g) {
+      return DIAS.some(function (d) {
+        return _s.schedule[g][d] && Object.keys(_s.schedule[g][d]).length;
+      });
+    });
+  }
+
+  /* Carga el horario publicado desde horario_generado a _s.schedule (con nombres) */
+  async function _hidratarScheduleDesdeDB() {
+    var r = await sb.from('horario_generado')
+      .select('grupo_horario,dia_semana,tramo_horario,materia_id,profesor_id, materias(nombre,color), profesores(nombre), aulas(nombre)')
+      .eq('centro_id', ctrId);
+    if (r.error || !r.data || !r.data.length) return false;
+    _s.schedule = {};
+    r.data.forEach(function (row) {
+      var g = row.grupo_horario, d = row.dia_semana, k = String(row.tramo_horario);
+      if (!_s.schedule[g]) { _s.schedule[g] = {}; DIAS.forEach(function (dd) { _s.schedule[g][dd] = {}; }); }
+      if (!_s.schedule[g][d]) _s.schedule[g][d] = {};
+      _s.schedule[g][d][k] = {
+        materia_id:      row.materia_id,
+        materia_nombre:  row.materias ? row.materias.nombre : '',
+        materia_color:   (row.materias && row.materias.color) || '#888',
+        profesor_id:     row.profesor_id,
+        profesor_nombre: row.profesores ? row.profesores.nombre : '',
+        aula_nombre:     row.aulas ? row.aulas.nombre : ''
+      };
+    });
+    _s.grupos = Object.keys(_s.schedule).sort();
+    if (!_s.currentGrupo && _s.grupos.length) _s.currentGrupo = _s.grupos[0];
+    return true;
+  }
+
+  async function _asegurarHorario() {
+    if (!_s.tramos || !_s.tramos.length) { try { await _loadData(); } catch (e) { /* ignore */ } }
+    if (_scheduleConDatos()) return true;
+    return await _hidratarScheduleDesdeDB();
+  }
+
+  /* Índice por profesor: { nombre: { 'dia_tramo': {grupo, materia, aula} } } */
+  function _buildProfesorIndex() {
+    var idx = {};
+    Object.keys(_s.schedule).forEach(function (g) {
+      DIAS.forEach(function (d) {
+        var day = _s.schedule[g][d] || {};
+        Object.keys(day).forEach(function (k) {
+          var slot = day[k];
+          if (!slot) return;
+          var prof = (slot.profesor_nombre || '').trim();
+          if (!prof) return; /* slots sin asignar no aparecen en la hoja de profesor */
+          if (!idx[prof]) idx[prof] = {};
+          idx[prof][d + '_' + k] = { grupo: g, materia: slot.materia_nombre || '', aula: slot.aula_nombre || '' };
+        });
+      });
+    });
+    return idx;
+  }
+
+  function _safeSheetName(base, used) {
+    var n = String(base || 'Hoja').replace(/[\\/?*\[\]:]/g, ' ').trim().slice(0, 28) || 'Hoja';
+    var name = n, i = 2;
+    while (used[name]) { name = n.slice(0, 25) + ' (' + i + ')'; i++; }
+    used[name] = true;
+    return name;
+  }
+
+  /* ── PDF: cabecera con logo + banda de color corporativo ── */
+  function _pdfHeader(doc, centro, logoImg, titulo, subtitulo, rgb) {
+    var W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.rect(0, 0, W, 28, 'F');
+    var x = 12;
+    if (logoImg && logoImg.dataURL) {
+      try {
+        var h = 18, w = h * (logoImg.w / logoImg.h);
+        if (w > 42) { w = 42; h = w * (logoImg.h / logoImg.w); }
+        doc.addImage(logoImg.dataURL, 'PNG', 12, 5, w, h);
+        x = 12 + w + 7;
+      } catch (e) { /* logo opcional */ }
+    }
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(15); doc.setFont(undefined, 'bold');
+    doc.text(centro.nombre || 'Centro', x, 13);
+    doc.setFontSize(11); doc.setFont(undefined, 'normal');
+    doc.text(titulo, x, 21);
+    doc.setFontSize(9);
+    doc.text(subtitulo, W - 12, 13, { align: 'right' });
+    doc.setTextColor(40, 40, 40);
+  }
+
+  /* ── PDF: rejilla tramos × días; cellFn(dia, tramoNum) → {l1, l2} | null ── */
+  function _pdfGrid(doc, startY, tnums, rgb, cellFn) {
+    var W = doc.internal.pageSize.getWidth();
+    var H = doc.internal.pageSize.getHeight();
+    var M = 12;
+    var labels = DIAS.map(function (d) { return d.charAt(0).toUpperCase() + d.slice(1); });
+    var col0 = 34;
+    var dayW = (W - 2 * M - col0) / DIAS.length;
+    var headH = 9;
+    var avail = H - startY - M - headH;
+    var rowH = Math.max(11, Math.min(22, avail / Math.max(1, tnums.length)));
+    var y = startY;
+
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.setDrawColor(255, 255, 255);
+    doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont(undefined, 'bold');
+    doc.rect(M, y, col0, headH, 'F');
+    doc.text('Hora', M + col0 / 2, y + headH / 2 + 1.5, { align: 'center' });
+    DIAS.forEach(function (d, i) {
+      var x = M + col0 + i * dayW;
+      doc.rect(x, y, dayW, headH, 'F');
+      doc.text(labels[i], x + dayW / 2, y + headH / 2 + 1.5, { align: 'center' });
+    });
+    y += headH;
+
+    doc.setDrawColor(208, 208, 208);
+    tnums.forEach(function (t, ri) {
+      var ry = y + ri * rowH;
+      doc.setFillColor(244, 242, 238);
+      doc.rect(M, ry, col0, rowH, 'FD');
+      doc.setTextColor(80, 80, 80); doc.setFontSize(7.5); doc.setFont(undefined, 'normal');
+      doc.text(_tramoLabel(t), M + col0 / 2, ry + rowH / 2 + 1, { align: 'center', maxWidth: col0 - 3 });
+      DIAS.forEach(function (d, i) {
+        var x = M + col0 + i * dayW;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(x, ry, dayW, rowH, 'FD');
+        var cell = cellFn(d, t);
+        if (cell && cell.l1) {
+          doc.setTextColor(28, 28, 28); doc.setFontSize(8.5); doc.setFont(undefined, 'bold');
+          doc.text(String(cell.l1), x + 2, ry + rowH / 2 - 0.5, { maxWidth: dayW - 4 });
+          if (cell.l2) {
+            doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(115, 115, 115);
+            doc.text(String(cell.l2), x + 2, ry + rowH / 2 + 4, { maxWidth: dayW - 4 });
+          }
+        }
+      });
+    });
+  }
+
+  window.plannerExportarPDF = async function () {
+    var btn = document.getElementById('planner-exp-pdf-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+    try {
+      var hay = await _asegurarHorario();
+      if (!hay) { alert('No hay horario generado todavía. Genera o publica un horario primero.'); return; }
+      await _ensureJsPDF();
+
+      var centro  = await _exportCentroInfo();
+      var logoImg = await _imgToDataURL(centro.logo);
+      var curso   = _exportCursoEscolar();
+      var rgb     = _hexToRgb(centro.color);
+      var jsPDF   = window.jspdf.jsPDF;
+      var doc     = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      var tnums   = _tramoNums();
+      var grupos  = Object.keys(_s.schedule).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+      var first   = true;
+
+      grupos.forEach(function (g) {
+        if (!first) doc.addPage(); first = false;
+        _pdfHeader(doc, centro, logoImg, 'Horario · Grupo ' + g, 'Curso ' + curso, rgb);
+        _pdfGrid(doc, 44, tnums, rgb, function (d, t) {
+          var slot = _s.schedule[g][d] && _s.schedule[g][d][String(t)];
+          if (!slot) return null;
+          return { l1: slot.materia_nombre || '', l2: _slotSinProfesor(slot) ? 'Sin asignar' : (slot.profesor_nombre || '') };
+        });
+      });
+
+      var profIdx = _buildProfesorIndex();
+      Object.keys(profIdx).sort(function (a, b) { return a.localeCompare(b, 'es'); }).forEach(function (prof) {
+        doc.addPage();
+        _pdfHeader(doc, centro, logoImg, 'Horario del profesor · ' + prof, 'Curso ' + curso, rgb);
+        _pdfGrid(doc, 44, tnums, rgb, function (d, t) {
+          var cell = profIdx[prof][d + '_' + t];
+          if (!cell) return null;
+          return { l1: cell.materia || '', l2: cell.grupo + (cell.aula ? ' · ' + cell.aula : '') };
+        });
+      });
+
+      doc.save('horario-' + String(centro.nombre || 'centro').replace(/[^a-zA-Z0-9]+/g, '_') + '-' + curso + '.pdf');
+    } catch (e) {
+      console.error('[Planner] export PDF:', e);
+      alert('Error al generar el PDF. Revisa la consola.');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📄 PDF'; }
+    }
+  };
+
+  window.plannerExportarExcel = async function () {
+    var btn = document.getElementById('planner-exp-xls-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+    try {
+      if (typeof XLSX === 'undefined') { alert('La librería de exportación (Excel) no está disponible.'); return; }
+      var hay = await _asegurarHorario();
+      if (!hay) { alert('No hay horario generado todavía. Genera o publica un horario primero.'); return; }
+
+      var centro = await _exportCentroInfo();
+      var curso  = _exportCursoEscolar();
+      var tnums  = _tramoNums();
+      var labels = DIAS.map(function (d) { return d.charAt(0).toUpperCase() + d.slice(1); });
+      var grupos = Object.keys(_s.schedule).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+      var wb     = XLSX.utils.book_new();
+      var used   = {};
+
+      /* Hoja por grupo */
+      grupos.forEach(function (g) {
+        var aoa = [['Hora'].concat(labels)];
+        tnums.forEach(function (t) {
+          var row = [_tramoLabel(t)];
+          DIAS.forEach(function (d) {
+            var slot = _s.schedule[g][d] && _s.schedule[g][d][String(t)];
+            if (!slot) { row.push(''); return; }
+            var prof = _slotSinProfesor(slot) ? 'Sin asignar' : (slot.profesor_nombre || '');
+            row.push((slot.materia_nombre || '') + (prof ? '\n' + prof : ''));
+          });
+          aoa.push(row);
+        });
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = [{ wch: 16 }].concat(DIAS.map(function () { return { wch: 22 }; }));
+        XLSX.utils.book_append_sheet(wb, ws, _safeSheetName(g, used));
+      });
+
+      /* Hoja por profesor (clases, aulas y grupos) */
+      var profIdx = _buildProfesorIndex();
+      Object.keys(profIdx).sort(function (a, b) { return a.localeCompare(b, 'es'); }).forEach(function (prof) {
+        var aoa = [['Día', 'Hora', 'Grupo', 'Materia', 'Aula']];
+        DIAS.forEach(function (d) {
+          tnums.forEach(function (t) {
+            var cell = profIdx[prof][d + '_' + t];
+            if (!cell) return;
+            aoa.push([d.charAt(0).toUpperCase() + d.slice(1), _tramoLabel(t), cell.grupo, cell.materia, cell.aula || '']);
+          });
+        });
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 10 }, { wch: 24 }, { wch: 14 }];
+        XLSX.utils.book_append_sheet(wb, ws, _safeSheetName('Prof ' + prof, used));
+      });
+
+      /* Hoja resumen — horario completo del centro */
+      var resumen = [['Grupo', 'Día', 'Hora', 'Materia', 'Profesor', 'Aula']];
+      grupos.forEach(function (g) {
+        DIAS.forEach(function (d) {
+          tnums.forEach(function (t) {
+            var slot = _s.schedule[g][d] && _s.schedule[g][d][String(t)];
+            if (!slot) return;
+            resumen.push([
+              g, d.charAt(0).toUpperCase() + d.slice(1), _tramoLabel(t),
+              slot.materia_nombre || '', _slotSinProfesor(slot) ? 'Sin asignar' : (slot.profesor_nombre || ''), slot.aula_nombre || ''
+            ]);
+          });
+        });
+      });
+      var wsR = XLSX.utils.aoa_to_sheet(resumen);
+      wsR['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 24 }, { wch: 22 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, wsR, _safeSheetName('Resumen centro', used));
+
+      XLSX.writeFile(wb, 'horario-' + String(centro.nombre || 'centro').replace(/[^a-zA-Z0-9]+/g, '_') + '-' + curso + '.xlsx');
+    } catch (e) {
+      console.error('[Planner] export Excel:', e);
+      alert('Error al generar el Excel. Revisa la consola.');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📊 Excel'; }
+    }
+  };
+
+  /* ════════════════════════════════
      TABLERO — Grid + Drag & Drop
   ════════════════════════════════ */
   function _renderTablero() {
@@ -905,6 +1223,14 @@
             : '') +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button class="btn-ghost" id="planner-exp-pdf-btn" onclick="plannerExportarPDF()"' + (!_s.grupos.length ? ' disabled' : '') +
+          ' title="Exporta el horario a PDF (una página por grupo y por profesor)">' +
+            '📄 PDF' +
+          '</button>' +
+          '<button class="btn-ghost" id="planner-exp-xls-btn" onclick="plannerExportarExcel()"' + (!_s.grupos.length ? ' disabled' : '') +
+          ' title="Exporta el horario a Excel (hoja por grupo, por profesor y resumen)">' +
+            '📊 Excel' +
+          '</button>' +
           '<button class="btn-ghost" id="planner-gen-sinprof-btn" onclick="plannerGenerarSinProf()"' + (!_s.grupos.length ? ' disabled' : '') +
           ' title="Coloca las materias en el horario sin asignar profesores; los asignas después">' +
             '🧩 Generar sin profesores' +
