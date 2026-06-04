@@ -158,6 +158,70 @@ const TOOL_DECLARATIONS = [
       required: ["tramos"],
     },
   },
+  {
+    name: "mover_clase",
+    description:
+      "Mueve una clase YA EXISTENTE del horario generado por el Planner (tabla horario_generado) de un día/tramo a otro, SIN regenerar el horario completo. Verifica que el destino esté libre para el grupo y para el profesor y que el movimiento no rompa las restricciones (una materia no puede repetirse el mismo día, ni dejar huecos libres en la jornada). LLAMAR cuando el admin diga cosas como 'mueve matemáticas de 1ESO A del lunes tercera hora a martes cuarta'.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        grupo:         { type: "STRING",  description: "Grupo (ej: '1ESOA' o '1ESO A')" },
+        materia_id:    { type: "STRING",  description: "Nombre o ID de la materia a mover (ej: 'Matemáticas')" },
+        dia_origen:    { type: "STRING",  description: "Día actual: lunes, martes, miércoles, jueves o viernes" },
+        tramo_origen:  { type: "INTEGER", description: "Número de tramo actual (1, 2, 3...). 'tercera hora' = 3" },
+        dia_destino:   { type: "STRING",  description: "Día de destino" },
+        tramo_destino: { type: "INTEGER", description: "Número de tramo de destino. 'cuarta hora' = 4" },
+      },
+      required: ["grupo", "materia_id", "dia_origen", "tramo_origen", "dia_destino", "tramo_destino"],
+    },
+  },
+  {
+    name: "eliminar_clase",
+    description:
+      "Elimina una clase del horario generado por el Planner (tabla horario_generado). LLAMAR cuando el admin diga cosas como 'elimina la clase de música de 3ESO A el jueves sexta hora'. Si no se indica el tramo y solo hay una clase de esa materia ese día, se elimina esa.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        grupo:      { type: "STRING",  description: "Grupo (ej: '3ESOA')" },
+        materia_id: { type: "STRING",  description: "Nombre o ID de la materia" },
+        dia:        { type: "STRING",  description: "Día: lunes, martes, miércoles, jueves o viernes" },
+        tramo:      { type: "INTEGER", description: "Número de tramo (1, 2, 3...). Opcional si solo hay una clase de esa materia ese día" },
+      },
+      required: ["grupo", "materia_id", "dia"],
+    },
+  },
+  {
+    name: "añadir_clase",
+    description:
+      "Añade una nueva clase al horario generado por el Planner (tabla horario_generado). Verifica la disponibilidad del profesor y del grupo en ese tramo y que no se rompan las restricciones (materia no repetida el mismo día, sin huecos). LLAMAR cuando el admin quiera colocar una clase concreta en un hueco del horario.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        grupo:       { type: "STRING",  description: "Grupo (ej: '2ESOB')" },
+        materia_id:  { type: "STRING",  description: "Nombre o ID de la materia" },
+        profesor_id: { type: "STRING",  description: "Nombre o ID del profesor que imparte la clase" },
+        dia:         { type: "STRING",  description: "Día: lunes, martes, miércoles, jueves o viernes" },
+        tramo:       { type: "INTEGER", description: "Número de tramo (1, 2, 3...)" },
+      },
+      required: ["grupo", "materia_id", "profesor_id", "dia", "tramo"],
+    },
+  },
+  {
+    name: "cambiar_profesor",
+    description:
+      "Cambia el profesor de una clase YA EXISTENTE del horario generado por el Planner (tabla horario_generado). Verifica que el nuevo profesor esté libre en ese tramo. LLAMAR cuando el admin diga cosas como 'cambia el profesor de inglés de 2ESO B del miércoles por Carmen Sánchez'. Si no se indica el tramo y solo hay una clase de esa materia ese día, se cambia esa.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        grupo:             { type: "STRING",  description: "Grupo (ej: '2ESOB')" },
+        materia_id:        { type: "STRING",  description: "Nombre o ID de la materia" },
+        dia:               { type: "STRING",  description: "Día: lunes, martes, miércoles, jueves o viernes" },
+        tramo:             { type: "INTEGER", description: "Número de tramo (1, 2, 3...). Opcional si solo hay una clase de esa materia ese día" },
+        nuevo_profesor_id: { type: "STRING",  description: "Nombre o ID del nuevo profesor (ej: 'Carmen Sánchez')" },
+      },
+      required: ["grupo", "materia_id", "dia", "nuevo_profesor_id"],
+    },
+  },
 ];
 
 /* ── helpers ── */
@@ -170,6 +234,115 @@ function jsonRes(data: unknown, status = 200) {
 }
 
 type SB = ReturnType<typeof createClient>;
+
+/* ── Helpers para edición de horario_generado ── */
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function normalizeGrupo(g: string): string {
+  return String(g ?? "").toUpperCase().replace(/\s+/g, "");
+}
+
+function normalizeDia(d: string): string {
+  const k = String(d ?? "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const map: Record<string, string> = {
+    lunes: "lunes", martes: "martes", miercoles: "miércoles", jueves: "jueves", viernes: "viernes",
+  };
+  return map[k] ?? String(d ?? "").trim();
+}
+
+async function resolveMateria(sb: SB, centro_id: string, value: string): Promise<{ id: string; nombre: string }> {
+  const v = String(value ?? "").trim();
+  if (!v) throw new Error("Falta el nombre de la materia.");
+  if (UUID_RE.test(v)) {
+    const { data } = await sb.from("materias").select("id, nombre").eq("centro_id", centro_id).eq("id", v).maybeSingle();
+    if (data) return data as { id: string; nombre: string };
+  }
+  const { data } = await sb.from("materias").select("id, nombre").eq("centro_id", centro_id).ilike("nombre", `%${v}%`).limit(2);
+  if (!data?.length) throw new Error(`No encontré la materia "${value}" en este centro.`);
+  return data[0] as { id: string; nombre: string };
+}
+
+async function resolveProfesor(sb: SB, centro_id: string, value: string): Promise<{ id: string; nombre: string }> {
+  const v = String(value ?? "").trim();
+  if (!v) throw new Error("Falta el nombre del profesor.");
+  if (UUID_RE.test(v)) {
+    const { data } = await sb.from("profesores").select("id, nombre").eq("centro_id", centro_id).eq("id", v).maybeSingle();
+    if (data) return data as { id: string; nombre: string };
+  }
+  let q = sb.from("profesores").select("id, nombre").eq("centro_id", centro_id);
+  for (const p of v.split(/\s+/).filter((w) => w.length >= 2)) q = q.ilike("nombre", `%${p}%`);
+  const { data } = await q.limit(2);
+  if (!data?.length) throw new Error(`No encontré al profesor "${value}" en este centro.`);
+  return data[0] as { id: string; nombre: string };
+}
+
+async function materiaNombre(sb: SB, id: string): Promise<string> {
+  const { data } = await sb.from("materias").select("nombre").eq("id", id).maybeSingle();
+  return (data as { nombre: string } | null)?.nombre ?? "otra materia";
+}
+
+/* Tramos de clase del centro (sin descansos), ordenados. [] si no hay configuración. */
+async function getClassTramos(sb: SB, centro_id: string): Promise<number[]> {
+  const { data } = await sb.from("tramos_centro").select("numero, es_descanso").eq("centro_id", centro_id).order("numero");
+  if (!data?.length) return [];
+  return (data as { numero: number; es_descanso: boolean }[])
+    .filter((t) => !t.es_descanso).map((t) => Number(t.numero));
+}
+
+type DaySlot = { materia_id: string; profesor_id: string | null; tramo_horario: number };
+async function getDaySlots(sb: SB, centro_id: string, grupo: string, dia: string): Promise<DaySlot[]> {
+  const { data } = await sb.from("horario_generado")
+    .select("materia_id, profesor_id, tramo_horario")
+    .eq("centro_id", centro_id).eq("grupo_horario", grupo).eq("dia_semana", dia);
+  return (data as DaySlot[] | null) ?? [];
+}
+
+async function grupoOcupado(sb: SB, centro_id: string, grupo: string, dia: string, tramo: number): Promise<{ materia: string } | null> {
+  const { data } = await sb.from("horario_generado").select("materia_id")
+    .eq("centro_id", centro_id).eq("grupo_horario", grupo).eq("dia_semana", dia).eq("tramo_horario", tramo).maybeSingle();
+  return data ? { materia: (data as { materia_id: string }).materia_id } : null;
+}
+
+async function profesorOcupado(sb: SB, centro_id: string, profId: string, dia: string, tramo: number): Promise<{ grupo: string } | null> {
+  const { data } = await sb.from("horario_generado").select("grupo_horario")
+    .eq("centro_id", centro_id).eq("profesor_id", profId).eq("dia_semana", dia).eq("tramo_horario", tramo).maybeSingle();
+  return data ? { grupo: (data as { grupo_horario: string }).grupo_horario } : null;
+}
+
+/* Una fila en disponibilidad_profesor significa que el profesor NO está disponible ahí. */
+async function disponibilidadBloqueada(sb: SB, profId: string, dia: string, tramo: number): Promise<boolean> {
+  const { data } = await sb.from("disponibilidad_profesor").select("id")
+    .eq("profesor_id", profId).eq("dia_semana", dia).eq("tramo_horario", tramo).maybeSingle();
+  return !!data;
+}
+
+/* Localiza la fila exacta de horario_generado. Si tramo es null y hay una sola, la usa. */
+async function findSlot(
+  sb: SB, centro_id: string, grupo: string, materiaId: string, dia: string, tramo: number | null,
+): Promise<{ id: string; profesor_id: string | null; tramo_horario: number }> {
+  let q = sb.from("horario_generado").select("id, profesor_id, tramo_horario")
+    .eq("centro_id", centro_id).eq("grupo_horario", grupo).eq("materia_id", materiaId).eq("dia_semana", dia);
+  if (tramo != null) q = q.eq("tramo_horario", tramo);
+  const { data } = await q;
+  const rows = (data as { id: string; profesor_id: string | null; tramo_horario: number }[] | null) ?? [];
+  if (!rows.length) {
+    throw new Error(`No encontré ninguna clase de esa materia en ${grupo} el ${dia}${tramo != null ? ` (tramo ${tramo})` : ""}.`);
+  }
+  if (rows.length > 1) throw new Error(`Hay varias clases de esa materia en ${grupo} el ${dia}; indica el número de tramo.`);
+  return rows[0];
+}
+
+/* HC-VENTANA (≤8 tramos/día) + HC-INICIO-FIN (sin huecos). Devuelve motivo o null si es válido. */
+function checkVentanaYContiguidad(occupiedTramos: number[], classTramos: number[]): string | null {
+  if (occupiedTramos.length > 8) return "el grupo superaría 8 tramos lectivos ese día";
+  if (!classTramos.length || occupiedTramos.length <= 1) return null;
+  const idxs = occupiedTramos.map((t) => classTramos.indexOf(t));
+  if (idxs.some((i) => i < 0)) return null; // algún tramo fuera de la rejilla de clase: no se evalúa contigüidad
+  const min = Math.min(...idxs), max = Math.max(...idxs);
+  if (max - min + 1 !== idxs.length) return "quedaría un hueco libre en mitad de la jornada";
+  return null;
+}
 
 async function callGemini(
   apiKey: string,
@@ -474,6 +647,139 @@ async function executeTool(
         })
         .join(", ");
       return `✅ ${tramos.length} tramos generados (${nClases} clases + ${nDescansos} descansos): ${lista}`;
+    }
+
+    case "mover_clase": {
+      const grupo   = normalizeGrupo(args.grupo);
+      const materia = await resolveMateria(sb, centro_id, args.materia_id);
+      const diaO    = normalizeDia(args.dia_origen);
+      const diaD    = normalizeDia(args.dia_destino);
+      const trO     = Number(args.tramo_origen);
+      const trD     = Number(args.tramo_destino);
+      if (!trO || !trD) throw new Error("Los tramos de origen y destino deben ser números válidos.");
+
+      const src    = await findSlot(sb, centro_id, grupo, materia.id, diaO, trO);
+      const profId = src.profesor_id;
+
+      if (diaO === diaD && trO === trD) {
+        return `La clase de ${materia.nombre} de ${grupo} ya está en ${diaO}, tramo ${trO}.`;
+      }
+
+      /* destino libre para el grupo */
+      const gOcc = await grupoOcupado(sb, centro_id, grupo, diaD, trD);
+      if (gOcc) {
+        throw new Error(`No se puede mover: ${grupo} ya tiene clase de ${await materiaNombre(sb, gOcc.materia)} el ${diaD} en el tramo ${trD}.`);
+      }
+
+      /* destino libre para el profesor + disponibilidad */
+      if (profId) {
+        const pOcc = await profesorOcupado(sb, centro_id, profId, diaD, trD);
+        if (pOcc && pOcc.grupo !== grupo) {
+          throw new Error(`No se puede mover: el profesor ya imparte clase a ${pOcc.grupo} el ${diaD} en el tramo ${trD}.`);
+        }
+        if (await disponibilidadBloqueada(sb, profId, diaD, trD)) {
+          throw new Error(`No se puede mover: el profesor no está disponible el ${diaD} en el tramo ${trD}.`);
+        }
+      }
+
+      /* hard constraints */
+      const classTramos = await getClassTramos(sb, centro_id);
+      const destSlots   = await getDaySlots(sb, centro_id, grupo, diaD);
+
+      if (diaO !== diaD && destSlots.some((s) => s.materia_id === materia.id)) {
+        throw new Error(`No se puede mover: ${grupo} ya tiene ${materia.nombre} el ${diaD} (una materia no puede repetirse el mismo día).`);
+      }
+
+      if (diaO === diaD) {
+        const occ = destSlots.map((s) => s.tramo_horario).filter((t) => t !== trO);
+        occ.push(trD);
+        const err = checkVentanaYContiguidad(occ, classTramos);
+        if (err) throw new Error(`No se puede mover: ${err}.`);
+      } else {
+        const occDest = destSlots.map((s) => s.tramo_horario); occDest.push(trD);
+        const errD = checkVentanaYContiguidad(occDest, classTramos);
+        if (errD) throw new Error(`No se puede mover al destino: ${errD}.`);
+        const origSlots = await getDaySlots(sb, centro_id, grupo, diaO);
+        const occOrig   = origSlots.map((s) => s.tramo_horario).filter((t) => t !== trO);
+        const errO = checkVentanaYContiguidad(occOrig, classTramos);
+        if (errO) throw new Error(`No se puede mover: al quitar la clase de ${diaO}, ${errO}.`);
+      }
+
+      const { error } = await sb.from("horario_generado")
+        .update({ dia_semana: diaD, tramo_horario: trD }).eq("id", src.id);
+      if (error) throw new Error(`Error al mover la clase: ${error.message}`);
+      return `✅ ${materia.nombre} de ${grupo} movida de ${diaO} (tramo ${trO}) a ${diaD} (tramo ${trD}).`;
+    }
+
+    case "eliminar_clase": {
+      const grupo   = normalizeGrupo(args.grupo);
+      const materia = await resolveMateria(sb, centro_id, args.materia_id);
+      const dia     = normalizeDia(args.dia);
+      const tramo   = args.tramo != null && String(args.tramo) !== "" ? Number(args.tramo) : null;
+
+      const slot = await findSlot(sb, centro_id, grupo, materia.id, dia, tramo);
+      const { error } = await sb.from("horario_generado").delete().eq("id", slot.id);
+      if (error) throw new Error(`Error al eliminar la clase: ${error.message}`);
+      return `✅ Clase de ${materia.nombre} de ${grupo} eliminada (${dia}, tramo ${slot.tramo_horario}).`;
+    }
+
+    case "añadir_clase": {
+      const grupo   = normalizeGrupo(args.grupo);
+      const materia = await resolveMateria(sb, centro_id, args.materia_id);
+      const prof    = await resolveProfesor(sb, centro_id, args.profesor_id);
+      const dia     = normalizeDia(args.dia);
+      const tramo   = Number(args.tramo);
+      if (!tramo) throw new Error("El tramo debe ser un número válido.");
+
+      const gOcc = await grupoOcupado(sb, centro_id, grupo, dia, tramo);
+      if (gOcc) {
+        throw new Error(`No se puede añadir: ${grupo} ya tiene clase de ${await materiaNombre(sb, gOcc.materia)} el ${dia} en el tramo ${tramo}.`);
+      }
+      const pOcc = await profesorOcupado(sb, centro_id, prof.id, dia, tramo);
+      if (pOcc) throw new Error(`No se puede añadir: ${prof.nombre} ya imparte clase a ${pOcc.grupo} el ${dia} en el tramo ${tramo}.`);
+      if (await disponibilidadBloqueada(sb, prof.id, dia, tramo)) {
+        throw new Error(`No se puede añadir: ${prof.nombre} no está disponible el ${dia} en el tramo ${tramo}.`);
+      }
+
+      const classTramos = await getClassTramos(sb, centro_id);
+      const daySlots    = await getDaySlots(sb, centro_id, grupo, dia);
+      if (daySlots.some((s) => s.materia_id === materia.id)) {
+        throw new Error(`No se puede añadir: ${grupo} ya tiene ${materia.nombre} el ${dia} (una materia no puede repetirse el mismo día).`);
+      }
+      const occ = daySlots.map((s) => s.tramo_horario); occ.push(tramo);
+      const err = checkVentanaYContiguidad(occ, classTramos);
+      if (err) throw new Error(`No se puede añadir: ${err}.`);
+
+      const { error } = await sb.from("horario_generado").insert({
+        centro_id, grupo_horario: grupo, materia_id: materia.id, profesor_id: prof.id,
+        dia_semana: dia, tramo_horario: tramo, es_fijo: false,
+      });
+      if (error) throw new Error(`Error al añadir la clase: ${error.message}`);
+      return `✅ ${materia.nombre} con ${prof.nombre} añadida a ${grupo} el ${dia} (tramo ${tramo}).`;
+    }
+
+    case "cambiar_profesor": {
+      const grupo     = normalizeGrupo(args.grupo);
+      const materia   = await resolveMateria(sb, centro_id, args.materia_id);
+      const dia       = normalizeDia(args.dia);
+      const tramo     = args.tramo != null && String(args.tramo) !== "" ? Number(args.tramo) : null;
+      const nuevoProf = await resolveProfesor(sb, centro_id, args.nuevo_profesor_id);
+
+      const slot = await findSlot(sb, centro_id, grupo, materia.id, dia, tramo);
+      const tr   = slot.tramo_horario;
+
+      if (slot.profesor_id === nuevoProf.id) {
+        return `${materia.nombre} de ${grupo} (${dia}, tramo ${tr}) ya la imparte ${nuevoProf.nombre}.`;
+      }
+      const pOcc = await profesorOcupado(sb, centro_id, nuevoProf.id, dia, tr);
+      if (pOcc) throw new Error(`No se puede cambiar: ${nuevoProf.nombre} ya imparte clase a ${pOcc.grupo} el ${dia} en el tramo ${tr}.`);
+      if (await disponibilidadBloqueada(sb, nuevoProf.id, dia, tr)) {
+        throw new Error(`No se puede cambiar: ${nuevoProf.nombre} no está disponible el ${dia} en el tramo ${tr}.`);
+      }
+
+      const { error } = await sb.from("horario_generado").update({ profesor_id: nuevoProf.id }).eq("id", slot.id);
+      if (error) throw new Error(`Error al cambiar el profesor: ${error.message}`);
+      return `✅ ${materia.nombre} de ${grupo} (${dia}, tramo ${tr}) ahora la imparte ${nuevoProf.nombre}.`;
     }
 
     default:

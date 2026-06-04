@@ -123,7 +123,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 
 | Función | Propósito |
 |---------|-----------|
-| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor`, `listar_tramos_centro` (auto-execute), `crear_tramos_centro` |
+| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor`, `listar_tramos_centro` (auto-execute), `crear_tramos_centro`, `generar_tramos_horario`, y edición de `horario_generado` del Planner: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor` (todas requieren confirmación; resuelven materia/profesor por nombre o ID y validan hard constraints HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN + disponibilidad y ocupación de profesor/grupo) |
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
 | `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
@@ -907,6 +907,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-04` · EF `chat` — 4 herramientas Gemini para editar `horario_generado` del Planner sin regenerar: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor`. Resuelven materia/profesor por nombre o ID y validan hard constraints (HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN) + disponibilidad y ocupación de profesor/grupo. Requieren confirmación. Pendiente: `npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
 - `2026-06-04` · `9b0e81d` — feat(planner): hard constraints universales HC-VENTANA + HC-INICIO-FIN en `_esHardValido()` (V2); reetiquetada HC-MATERIA-DIA; `scripts/verify-hard-constraints.js` valida los 3 invariantes con IES Demo
 - `2026-06-03 23:29` · `1fe6497` — fix: nombre de usuario usa profile.full_name en lugar del email
 - `2026-06-03 23:21` · `6f255fd` — test: entorno RLS — 4 usuarios de test + script de provisioning
