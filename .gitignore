@@ -33,3 +33,4 @@ node_modules/
 
 # Supabase CLI build artifacts
 supabase/.temp/
+.vercel

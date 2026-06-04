@@ -558,74 +558,146 @@
 
   <!-- SUSTITUCIONES PANEL -->
   <div class="panel" id="panel-sust" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-    <div class="pg-hdr">
-      <div><div class="pg-title">Sustituciones</div><div class="pg-sub">Gestión de guardias y sustituciones</div></div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-p" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
-        <button class="btn btn-s" onclick="exportarSustituciones()">📥 Exportar</button>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
-        <div>
-          <label class="lbl">Profesor ausente</label>
-          <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
-        </div>
-        <div>
-          <label class="lbl">Profesor sustituto (libre ahora)</label>
-          <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
-        </div>
-        <div>
-          <label class="lbl">Grupo</label>
-          <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
-        </div>
-        <div>
-          <label class="lbl">Tramo horario</label>
-          <select class="fi" id="sust-tramo" onchange="cargarProfesoresLibresEnSelect(parseInt(this.value))">
-            <option value="1">1 — 08:50 a 09:45</option>
-            <option value="2">2 — 09:45 a 10:40</option>
-            <option value="3">3 — 10:40 a 11:35</option>
-            <option value="4">4 — 12:00 a 12:55</option>
-            <option value="5">5 — 12:55 a 13:50</option>
-            <option value="6">6 — 13:50 a 14:45</option>
-            <option value="7">7 — 15:10 a 16:05</option>
-            <option value="8">8 — 16:05 a 17:00</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl">Fecha</label>
-          <input class="fi" type="date" id="sust-fecha" />
-        </div>
-      </div>
-      <div>
-        <label class="lbl">Observaciones (opcional)</label>
-        <input class="fi" id="sust-obs" placeholder="Ej: cubre la guardia del laboratorio" />
-      </div>
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
-        <div id="sust-msg" style="display:none;font-size:13px;"></div>
-      </div>
-      <div id="sust-filter-bar" style="display:flex;gap:8px;margin-bottom:12px;margin-top:14px;">
-        <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')"    style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
-        <button id="sust-btn-semana" onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
-        <button id="sust-btn-todo"   onclick="loadSustituciones('todo')"   style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
-      </div>
-      <div id="sust-container"></div>
-    </div>
 
-    <!-- BOLSA DE GUARDIAS -->
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-ico g">⚖️</div>
-        <div>
-          <div class="card-title">Bolsa de guardias</div>
-          <div class="card-desc">Ranking de equidad — trimestre actual · menor a mayor número de guardias</div>
+    <!-- ── VISTA ADMIN / SUPERADMIN ── -->
+    <div id="sust-vista-admin" style="display:none;flex-direction:column;gap:22px;">
+      <div class="pg-hdr">
+        <div><div class="pg-title">Sustituciones</div><div class="pg-sub">Gestión de guardias y sustituciones</div></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-p" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
+          <button class="btn btn-s" onclick="exportarSustituciones()">📥 Exportar</button>
         </div>
       </div>
-      <div id="bolsa-container">
-        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">Cargando bolsa…</div>
+      <div class="card">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
+          <div>
+            <label class="lbl">Profesor ausente</label>
+            <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
+          </div>
+          <div>
+            <label class="lbl">Profesor sustituto (libre ahora)</label>
+            <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
+          </div>
+          <div>
+            <label class="lbl">Grupo</label>
+            <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
+          </div>
+          <div>
+            <label class="lbl">Tramo horario</label>
+            <select class="fi" id="sust-tramo" onchange="cargarProfesoresLibresEnSelect(parseInt(this.value))">
+              <option value="1">1 — 08:50 a 09:45</option>
+              <option value="2">2 — 09:45 a 10:40</option>
+              <option value="3">3 — 10:40 a 11:35</option>
+              <option value="4">4 — 12:00 a 12:55</option>
+              <option value="5">5 — 12:55 a 13:50</option>
+              <option value="6">6 — 13:50 a 14:45</option>
+              <option value="7">7 — 15:10 a 16:05</option>
+              <option value="8">8 — 16:05 a 17:00</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">Fecha</label>
+            <input class="fi" type="date" id="sust-fecha" />
+          </div>
+        </div>
+        <div>
+          <label class="lbl">Instrucciones / observaciones</label>
+          <input class="fi" id="sust-obs" placeholder="Instrucciones del profesor ausente o notas de jefatura" />
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
+          <div id="sust-msg" style="display:none;font-size:13px;"></div>
+        </div>
+        <div id="sust-filter-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;margin-top:14px;">
+          <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')"    style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
+          <button id="sust-btn-semana" onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
+          <button id="sust-btn-todo"   onclick="loadSustituciones('todo')"   style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
+        </div>
+        <div id="sust-container"></div>
       </div>
-    </div>
+      <!-- BOLSA DE GUARDIAS -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-ico g">⚖️</div>
+          <div>
+            <div class="card-title">Bolsa de guardias</div>
+            <div class="card-desc">Ranking de equidad — trimestre actual · menor a mayor número de guardias</div>
+          </div>
+        </div>
+        <div id="bolsa-container">
+          <div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">Cargando bolsa…</div>
+        </div>
+      </div>
+    </div><!-- /sust-vista-admin -->
+
+    <!-- ── VISTA PROFESOR ── -->
+    <div id="sust-vista-profesor" style="display:none;flex-direction:column;gap:22px;">
+      <div class="pg-hdr">
+        <div>
+          <div class="pg-title">Notificar ausencia</div>
+          <div class="pg-sub">Informa a jefatura · La guardia se gestionará desde el panel de administración</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px;">
+          <div>
+            <label class="lbl">Fecha de la ausencia *</label>
+            <input class="fi" type="date" id="notif-fecha" />
+          </div>
+          <div>
+            <label class="lbl">Grupo/s afectado/s</label>
+            <input class="fi" id="notif-grupos" placeholder="Ej: 3ESOA, 4ESOB (se pre-rellena de tu horario)" />
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label class="lbl">Duración de la ausencia</label>
+          <div style="display:flex;gap:20px;margin-top:8px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer;">
+              <input type="radio" name="notif-tipo" value="dia" checked onchange="_sustTipoChange()" />
+              Todo el día
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer;">
+              <input type="radio" name="notif-tipo" value="tramos" onchange="_sustTipoChange()" />
+              Tramos concretos
+            </label>
+          </div>
+        </div>
+
+        <div id="notif-tramos-section" style="display:none;margin-bottom:16px;">
+          <label class="lbl">Selecciona los tramos afectados</label>
+          <div id="notif-tramos-wrap" style="display:flex;flex-direction:column;gap:7px;margin-top:8px;"></div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label class="lbl">Instrucciones para el sustituto</label>
+          <textarea class="fa" id="notif-instrucciones" rows="4"
+            placeholder="Qué debe hacer la clase, materiales, tareas, actividades, páginas del libro…"
+            style="min-height:100px;resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-p" onclick="notificarAusenciaProfesor()">📨 Notificar a jefatura</button>
+          <div id="notif-msg" style="display:none;font-size:13px;"></div>
+        </div>
+      </div>
+
+      <!-- Historial propio -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-ico" style="background:var(--ink-ll);color:var(--ink);font-size:18px;">📋</div>
+          <div>
+            <div class="card-title">Mis ausencias notificadas</div>
+            <div class="card-desc">Historial y estado de cobertura</div>
+          </div>
+        </div>
+        <div id="mis-ausencias-container">
+          <div style="color:var(--txt3);font-size:13px;padding:8px 0;">Cargando…</div>
+        </div>
+      </div>
+    </div><!-- /sust-vista-profesor -->
+
   </div>
 
   <!-- INCIDENCIAS PANEL -->

@@ -387,10 +387,25 @@ async function callGemini(
     payload.tools = [{ functionDeclarations: TOOL_DECLARATIONS }];
     payload.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
   }
-  return fetch(`${GEMINI_URL}?key=${apiKey}`, {
+
+  // DEBUG TEMPORAL
+  console.log("[DEBUG] withTools:", withTools);
+  console.log("[DEBUG] tools enviados:", withTools ? JSON.stringify(TOOL_DECLARATIONS.map(t => t.name)) : "ninguno");
+  console.log("[DEBUG] último mensaje usuario:", JSON.stringify((contents as {role:string,parts:{text?:string}[]}[]).filter(c=>c.role==="user").slice(-1)));
+
+  const geminiResp = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+
+  const rawText = await geminiResp.text();
+  console.log("[DEBUG] Gemini status:", geminiResp.status);
+  console.log("[DEBUG] Gemini raw response:", rawText.slice(0, 2000));
+
+  return new Response(rawText, {
+    status: geminiResp.status,
+    headers: geminiResp.headers,
   });
 }
 

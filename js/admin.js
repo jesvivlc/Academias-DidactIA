@@ -15,6 +15,17 @@ function detectarTramoActual() {
 }
 
 function initSustPanel() {
+  if (role === "profesional") {
+    document.getElementById("sust-vista-admin").style.display = "none";
+    document.getElementById("sust-vista-profesor").style.display = "flex";
+    _sustProfesorInit();
+    return;
+  }
+
+  // Admin / superadmin
+  document.getElementById("sust-vista-admin").style.display = "flex";
+  document.getElementById("sust-vista-profesor").style.display = "none";
+
   const hoy = new Date().toISOString().split("T")[0];
   const fechaInput = document.getElementById("sust-fecha");
   if (fechaInput) fechaInput.value = hoy;
@@ -391,4 +402,240 @@ async function exportarSustituciones() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sustituciones");
   XLSX.writeFile(wb, "sustituciones_" + new Date().toISOString().slice(0,10) + ".xlsx");
+}
+
+// ── VISTA PROFESOR: NOTIFICACIÓN DE AUSENCIA ──────────────────────────────
+
+async function _sustProfesorInit() {
+  const hoy = new Date().toISOString().split("T")[0];
+  const fechaEl = document.getElementById("notif-fecha");
+  if (fechaEl) fechaEl.value = hoy;
+
+  await _loadTramosNotif();
+  await _loadGruposProfesor();
+  await loadMisAusenciasNotificadas();
+}
+
+async function _loadTramosNotif() {
+  const wrap = document.getElementById("notif-tramos-wrap");
+  if (!wrap) return;
+
+  const { data } = await sb.from("tramos_centro")
+    .select("numero, hora_inicio, hora_fin, nombre, es_descanso")
+    .eq("centro_id", ctrId)
+    .order("numero");
+
+  const tramosClase = (data || []).filter(t => !t.es_descanso);
+
+  if (tramosClase.length) {
+    wrap.innerHTML = tramosClase.map(t => {
+      const hi = String(t.hora_inicio || "").slice(0, 5);
+      const hf = String(t.hora_fin    || "").slice(0, 5);
+      const etiq = t.nombre ? ` — ${t.nombre}` : "";
+      return `<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:4px 0;">
+        <input type="checkbox" class="notif-tramo-chk" value="${t.numero}"
+          style="width:16px;height:16px;cursor:pointer;" />
+        <span>Tramo ${t.numero} · ${hi}–${hf}${etiq}</span>
+      </label>`;
+    }).join("");
+  } else {
+    // Fallback hardcoded si el centro aún no tiene tramos_centro configurados
+    const fallback = [
+      [1,"08:50","09:45"],[2,"09:45","10:40"],[3,"10:40","11:35"],
+      [4,"12:00","12:55"],[5,"12:55","13:50"],[6,"13:50","14:45"],
+      [7,"15:10","16:05"],[8,"16:05","17:00"]
+    ];
+    wrap.innerHTML = fallback.map(([n,hi,hf]) =>
+      `<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:4px 0;">
+        <input type="checkbox" class="notif-tramo-chk" value="${n}"
+          style="width:16px;height:16px;cursor:pointer;" />
+        <span>Tramo ${n} · ${hi}–${hf}</span>
+      </label>`
+    ).join("");
+  }
+}
+
+async function _loadGruposProfesor() {
+  if (!currentUserName || !sb || !ctrId) return;
+  const parte = currentUserName.trim().split(/\s+/).find(p => p.length > 2);
+  if (!parte) return;
+  const { data } = await sb.from("horarios_grupo")
+    .select("grupo_horario")
+    .eq("centro_id", ctrId)
+    .ilike("profesor_nombre", `%${parte}%`);
+  if (!data?.length) return;
+  const grupos = [...new Set(data.map(r => r.grupo_horario).filter(Boolean))].sort();
+  const el = document.getElementById("notif-grupos");
+  if (el && !el.value) el.value = grupos.join(", ");
+}
+
+function _sustTipoChange() {
+  const tipo = document.querySelector('input[name="notif-tipo"]:checked')?.value;
+  const sec = document.getElementById("notif-tramos-section");
+  if (sec) sec.style.display = tipo === "tramos" ? "block" : "none";
+}
+
+async function notificarAusenciaProfesor() {
+  const fecha   = document.getElementById("notif-fecha")?.value;
+  const tipo    = document.querySelector('input[name="notif-tipo"]:checked')?.value || "dia";
+  const grupos  = document.getElementById("notif-grupos")?.value.trim();
+  const instruc = document.getElementById("notif-instrucciones")?.value.trim();
+  const msgEl   = document.getElementById("notif-msg");
+
+  if (!fecha) { _sustNotifMsg(msgEl, "Indica la fecha de la ausencia.", "err"); return; }
+
+  let tramosSeleccionados = [];
+  if (tipo === "tramos") {
+    tramosSeleccionados = [...document.querySelectorAll(".notif-tramo-chk:checked")]
+      .map(c => parseInt(c.value));
+    if (!tramosSeleccionados.length) {
+      _sustNotifMsg(msgEl, "Selecciona al menos un tramo.", "err"); return;
+    }
+  }
+
+  _sustNotifMsg(msgEl, "⟳ Enviando notificación…", "info");
+
+  // Obtener horas reales de tramos_centro (con fallback hardcoded)
+  const { data: tramosData } = await sb.from("tramos_centro")
+    .select("numero, hora_inicio, hora_fin")
+    .eq("centro_id", ctrId)
+    .eq("es_descanso", false)
+    .order("numero");
+
+  const tramoMap = {};
+  (tramosData || []).forEach(t => { tramoMap[t.numero] = t; });
+  const fallbackMap = {
+    1:{hora_inicio:"08:50",hora_fin:"09:45"}, 2:{hora_inicio:"09:45",hora_fin:"10:40"},
+    3:{hora_inicio:"10:40",hora_fin:"11:35"}, 4:{hora_inicio:"12:00",hora_fin:"12:55"},
+    5:{hora_inicio:"12:55",hora_fin:"13:50"}, 6:{hora_inicio:"13:50",hora_fin:"14:45"},
+    7:{hora_inicio:"15:10",hora_fin:"16:05"}, 8:{hora_inicio:"16:05",hora_fin:"17:00"}
+  };
+
+  const rows = [];
+  if (tipo === "dia") {
+    rows.push({
+      centro_id: ctrId,
+      fecha,
+      tramo: null,
+      hora_inicio: "08:00",
+      hora_fin: "17:00",
+      grupo_horario: grupos || null,
+      profesor_ausente: currentUserName,
+      profesor_sustituto: null,
+      observaciones: instruc || "(Ausencia todo el día)",
+      cubierta: false,
+      creado_por: currentUser.id,
+    });
+  } else {
+    for (const n of tramosSeleccionados) {
+      const t = tramoMap[n] || fallbackMap[n] || {};
+      rows.push({
+        centro_id: ctrId,
+        fecha,
+        tramo: n,
+        hora_inicio: t.hora_inicio || null,
+        hora_fin:    t.hora_fin    || null,
+        grupo_horario: grupos || null,
+        profesor_ausente: currentUserName,
+        profesor_sustituto: null,
+        observaciones: instruc || null,
+        cubierta: false,
+        creado_por: currentUser.id,
+      });
+    }
+  }
+
+  const { error } = await sb.from("sustituciones").insert(rows);
+  if (error) { _sustNotifMsg(msgEl, "Error al guardar: " + error.message, "err"); return; }
+
+  // Notificar al admin por email (fire-and-forget; si falla, el badge lo cubre)
+  try {
+    fetch(`${SB_URL}/functions/v1/notify-ausencia`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${ANON_KEY}`,
+        "apikey": ANON_KEY,
+      },
+      body: JSON.stringify({
+        centro_id: ctrId,
+        profesor_nombre: currentUserName,
+        fecha,
+        tipo_ausencia: tipo === "dia" ? "todo el día" : `tramos ${tramosSeleccionados.join(", ")}`,
+        grupos: grupos || "—",
+        instrucciones: instruc || "Sin instrucciones específicas.",
+      }),
+    });
+  } catch (_) {}
+
+  _sustNotifMsg(msgEl, "✅ Jefatura ha sido notificada. Puedes ver el estado en tu historial.", "ok");
+
+  // Limpiar formulario (mantener fecha)
+  document.getElementById("notif-grupos").value = "";
+  document.getElementById("notif-instrucciones").value = "";
+  document.querySelectorAll(".notif-tramo-chk").forEach(c => { c.checked = false; });
+  const radioDay = document.querySelector('input[name="notif-tipo"][value="dia"]');
+  if (radioDay) { radioDay.checked = true; _sustTipoChange(); }
+
+  await loadMisAusenciasNotificadas();
+}
+
+function _sustNotifMsg(el, txt, tipo) {
+  if (!el) return;
+  if (tipo === "err") {
+    el.style.cssText = "display:block;color:var(--red);font-size:13px;";
+  } else if (tipo === "ok") {
+    el.style.cssText = "display:block;background:#e6f4ea;color:#1e6b3a;border-radius:var(--r-sm);padding:8px 12px;font-size:13px;";
+  } else {
+    el.style.cssText = "display:block;color:var(--txt2);font-size:13px;";
+  }
+  el.textContent = txt;
+}
+
+async function loadMisAusenciasNotificadas() {
+  const c = document.getElementById("mis-ausencias-container");
+  if (!c) return;
+  c.innerHTML = '<div style="color:var(--txt3);font-size:13px;padding:8px 0;">Cargando…</div>';
+
+  const { data, error } = await sb.from("sustituciones")
+    .select("fecha, tramo, hora_inicio, hora_fin, grupo_horario, observaciones, cubierta, profesor_sustituto")
+    .eq("centro_id", ctrId)
+    .eq("profesor_ausente", currentUserName)
+    .order("fecha", { ascending: false })
+    .limit(30);
+
+  if (error || !data?.length) {
+    c.innerHTML = '<div style="color:var(--txt3);font-size:13px;padding:8px 0;">No tienes ausencias notificadas aún.</div>';
+    return;
+  }
+
+  c.innerHTML = `<table class="tbl" style="margin-top:8px;">
+    <thead><tr>
+      <th>Fecha</th><th>Tramo</th><th>Grupo</th>
+      <th>Instrucciones enviadas</th><th>Estado</th><th>Sustituto</th>
+    </tr></thead>
+    <tbody>${data.map(s => {
+      const estado = s.cubierta
+        ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 10px;font-size:11px;white-space:nowrap;">✓ Cubierta</span>'
+        : '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:2px 10px;font-size:11px;white-space:nowrap;">⏳ Pendiente</span>';
+      const tramoTxt = s.tramo ? `T${s.tramo}` : "Todo el día";
+      const hi = String(s.hora_inicio || "").slice(0, 5);
+      const hf = String(s.hora_fin    || "").slice(0, 5);
+      const horas = hi && hf && s.tramo ? `<br><span style="font-size:11px;color:var(--txt3);">${hi}–${hf}</span>` : "";
+      const instrucTxt = s.observaciones
+        ? `<span title="${s.observaciones.replace(/"/g,"&quot;")}" style="cursor:help;">
+             ${s.observaciones.length > 60 ? s.observaciones.slice(0, 60) + "…" : s.observaciones}
+           </span>`
+        : '<span style="color:var(--txt3);">—</span>';
+      return `<tr>
+        <td style="white-space:nowrap;">${s.fecha || "—"}</td>
+        <td>${tramoTxt}${horas}</td>
+        <td>${s.grupo_horario || "—"}</td>
+        <td style="font-size:12px;color:var(--txt2);max-width:220px;">${instrucTxt}</td>
+        <td>${estado}</td>
+        <td style="font-size:12px;">${s.profesor_sustituto || '<span style="color:var(--txt3);">Sin asignar</span>'}</td>
+      </tr>`;
+    }).join("")}
+    </tbody>
+  </table>`;
 }
