@@ -21,18 +21,29 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   sb = window.supabase.createClient(SB_URL, SB_KEY);
 
-  // Check if this is a password recovery redirect
-  const hash = window.location.hash;
-  if (hash.includes("type=recovery") || hash.includes("access_token")) {
-    const params = new URLSearchParams(hash.replace("#", "?"));
-    const accessToken = params.get("access_token");
-    const type = params.get("type");
-    if (type === "recovery" && accessToken) {
-      // Set the session from the recovery token
-      await sb.auth.setSession({ access_token: accessToken, refresh_token: params.get("refresh_token") || "" });
-      showRecovery();
-      return;
+  // Detect invite/recovery tokens — Supabase may embed them in the hash (#) or query (?),
+  // depending on whether the project uses implicit or PKCE flow.
+  let _accessToken = null, _refreshToken = null, _tokenType = null;
+
+  const _hash = window.location.hash.replace(/^#/, "");
+  const _query = window.location.search.replace(/^\?/, "");
+
+  for (const src of [_hash, _query]) {
+    if (!src) continue;
+    const p = new URLSearchParams(src);
+    const t = p.get("type");
+    if ((t === "recovery" || t === "invite") && p.get("access_token")) {
+      _accessToken  = p.get("access_token");
+      _refreshToken = p.get("refresh_token") || "";
+      _tokenType    = t;
+      break;
     }
+  }
+
+  if (_tokenType && _accessToken) {
+    await sb.auth.setSession({ access_token: _accessToken, refresh_token: _refreshToken });
+    showRecovery(_tokenType);
+    return;
   }
 
   // Check existing session

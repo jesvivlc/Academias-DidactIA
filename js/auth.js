@@ -13,12 +13,16 @@ function showLogin() {
   document.getElementById("auth-sub").textContent = "Accede con tu cuenta para continuar.";
 }
 
-function showRecovery() {
+function showRecovery(type) {
   document.getElementById("form-login").style.display = "none";
   document.getElementById("form-register").style.display = "none";
   document.getElementById("form-recovery").style.display = "block";
-  document.getElementById("auth-title").textContent = "Nueva contraseña";
-  document.getElementById("auth-sub").textContent = "Introduce tu nueva contraseña para acceder a DidactIA.";
+  const isInvite = type === "invite";
+  document.getElementById("auth-title").textContent = isInvite ? "Crea tu contraseña" : "Nueva contraseña";
+  document.getElementById("auth-sub").textContent = isInvite
+    ? "Bienvenido a DidactIA. Elige una contraseña para activar tu cuenta."
+    : "Introduce tu nueva contraseña para acceder a DidactIA.";
+  window._authTokenType = type || "recovery";
 }
 
 async function doRecovery() {
@@ -28,7 +32,7 @@ async function doRecovery() {
   errEl.style.display = "none";
 
   if (!pass || !pass2) { errEl.textContent = "Rellena ambos campos."; errEl.style.display = "block"; return; }
-  if (pass.length < 6) { errEl.textContent = "La contraseña debe tener al menos 6 caracteres."; errEl.style.display = "block"; return; }
+  if (pass.length < 8) { errEl.textContent = "La contraseña debe tener al menos 8 caracteres."; errEl.style.display = "block"; return; }
   if (pass !== pass2) { errEl.textContent = "Las contraseñas no coinciden."; errEl.style.display = "block"; return; }
 
   const { error } = await sb.auth.updateUser({ password: pass });
