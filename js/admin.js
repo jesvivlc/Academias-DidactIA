@@ -191,18 +191,24 @@ async function loadSustituciones(filtro) {
     c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">No hay sustituciones registradas.</div>';
     return;
   }
-  c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Obs.</th><th>Estado</th><th></th></tr></thead><tbody>
+  c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Instrucciones</th><th>Justificante</th><th>Estado</th><th></th></tr></thead><tbody>
     ${data.map(s => {
       const cubierta = s.cubierta
         ? `<button onclick="toggleCubierta('${s.id}',true)" style="background:#e6f4ea;color:#1e6b3a;border:none;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:500;cursor:pointer;">✓ Cubierta</button>`
         : `<button onclick="toggleCubierta('${s.id}',false)" style="background:#fce8e6;color:#a50e0e;border:none;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:500;cursor:pointer;">⚠ Pendiente</button>`;
+      const instrText = _instrLimpias(s.observaciones);
+      const justPath  = _justPath(s.observaciones);
+      const justCell  = justPath
+        ? `<button onclick="window._descargarJustificante('${justPath.replace(/'/g,"\\'")}')" style="background:#e8f0fe;color:#1a56db;border:none;border-radius:12px;padding:2px 10px;font-size:11px;cursor:pointer;">📎 Ver</button>`
+        : '<span style="color:var(--txt3);font-size:11px;">—</span>';
       return `<tr>
-        <td>${s.fecha || "—"}</td>
+        <td style="white-space:nowrap;">${s.fecha || "—"}</td>
         <td>${s.hora_inicio ? s.hora_inicio.slice(0,5) + "–" + (s.hora_fin||"").slice(0,5) : "—"}</td>
         <td>${s.grupo_horario || "—"}</td>
         <td>${s.profesor_ausente || "—"}</td>
         <td>${s.profesor_sustituto || "—"}</td>
-        <td>${s.observaciones || "—"}</td>
+        <td style="font-size:12px;color:var(--txt2);max-width:180px;" title="${(instrText||"").replace(/"/g,"&quot;")}">${instrText ? (instrText.length>60?instrText.slice(0,60)+"…":instrText) : "—"}</td>
+        <td>${justCell}</td>
         <td>${cubierta}</td>
         <td><button onclick="eliminarSustitucion('${s.id}')" style="background:none;border:none;cursor:pointer;color:#a50e0e;font-size:12px;padding:4px 8px;border-radius:8px;" title="Eliminar">✕</button></td>
       </tr>`;
@@ -237,7 +243,7 @@ async function registrarSustitucion() {
   msg.style.color = "var(--txt2)";
   msg.style.display = "block";
 
-  const { error } = await sb.from("sustituciones").insert({
+  const { data: inserted, error } = await sb.from("sustituciones").insert({
     centro_id: ctrId,
     fecha: document.getElementById("sust-fecha")?.value || new Date().toISOString().split("T")[0],
     hora_inicio: t.hi,
@@ -247,8 +253,9 @@ async function registrarSustitucion() {
     profesor_ausente: ausente,
     profesor_sustituto: sustituto || null,
     observaciones: obs || null,
+    cubierta: false,
     creado_por: currentUser.id
-  });
+  }).select("id").single();
 
   if (error) {
     msg.style.cssText = "display:block;color:var(--red);font-size:13px;padding:8px 12px;";
@@ -256,6 +263,14 @@ async function registrarSustitucion() {
   } else {
     msg.style.cssText = "display:block;background:#e6f4ea;color:#1e6b3a;border-radius:var(--r-sm);padding:8px 12px;font-size:13px;";
     msg.textContent = "✅ Sustitución registrada correctamente";
+    // Notificar a ausente y sustituto por email (fire-and-forget)
+    if (inserted?.id && sustituto) {
+      fetch(`${SB_URL}/functions/v1/notify-sustitucion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+        body: JSON.stringify({ sustitucion_id: inserted.id, evento: "asignacion" }),
+      }).catch(() => {});
+    }
     const _fecha = document.getElementById("sust-fecha")?.value || new Date().toISOString().split("T")[0];
     document.getElementById("sust-ausente").value = "";
     document.getElementById("sust-sustituto").value = "";
@@ -346,12 +361,18 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
 }
 
 async function toggleCubierta(id, estadoActual) {
-  const { error } = await sb.from("sustituciones").update({ cubierta: !estadoActual }).eq("id", id);
-  if (error) {
-    alert("Error al actualizar: " + error.message);
-  } else {
-    await loadSustituciones(sustFiltroActivo);
+  const nuevoEstado = !estadoActual;
+  const { error } = await sb.from("sustituciones").update({ cubierta: nuevoEstado }).eq("id", id);
+  if (error) { alert("Error al actualizar: " + error.message); return; }
+  // Cuando se marca cubierta, notificar al ausente (y al sustituto si lo hay)
+  if (nuevoEstado) {
+    fetch(`${SB_URL}/functions/v1/notify-sustitucion`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+      body: JSON.stringify({ sustitucion_id: id, evento: "cobertura" }),
+    }).catch(() => {});
   }
+  await loadSustituciones(sustFiltroActivo);
 }
 
 async function eliminarSustitucion(id) {
@@ -612,7 +633,7 @@ async function loadMisAusenciasNotificadas() {
   c.innerHTML = `<table class="tbl" style="margin-top:8px;">
     <thead><tr>
       <th>Fecha</th><th>Tramo</th><th>Grupo</th>
-      <th>Instrucciones enviadas</th><th>Estado</th><th>Sustituto</th>
+      <th>Instrucciones enviadas</th><th>Estado</th><th>Sustituto</th><th>Justificante</th>
     </tr></thead>
     <tbody>${data.map(s => {
       const estado = s.cubierta
@@ -622,20 +643,88 @@ async function loadMisAusenciasNotificadas() {
       const hi = String(s.hora_inicio || "").slice(0, 5);
       const hf = String(s.hora_fin    || "").slice(0, 5);
       const horas = hi && hf && s.tramo ? `<br><span style="font-size:11px;color:var(--txt3);">${hi}–${hf}</span>` : "";
-      const instrucTxt = s.observaciones
-        ? `<span title="${s.observaciones.replace(/"/g,"&quot;")}" style="cursor:help;">
-             ${s.observaciones.length > 60 ? s.observaciones.slice(0, 60) + "…" : s.observaciones}
+      const instrText = _instrLimpias(s.observaciones);
+      const instrucTxt = instrText
+        ? `<span title="${instrText.replace(/"/g,"&quot;")}" style="cursor:help;font-size:12px;color:var(--txt2);">
+             ${instrText.length > 60 ? instrText.slice(0, 60) + "…" : instrText}
            </span>`
         : '<span style="color:var(--txt3);">—</span>';
+      const justPath = _justPath(s.observaciones);
+      const justCell = justPath
+        ? '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 10px;font-size:11px;white-space:nowrap;">✓ Entregado</span>'
+        : `<button onclick="window._subirJustificante('${s.id}','${s.fecha}')"
+             style="background:#f1f3f4;border:none;border-radius:12px;padding:3px 10px;font-size:11px;cursor:pointer;color:var(--txt2);">
+             📎 Adjuntar
+           </button>`;
       return `<tr>
         <td style="white-space:nowrap;">${s.fecha || "—"}</td>
         <td>${tramoTxt}${horas}</td>
         <td>${s.grupo_horario || "—"}</td>
-        <td style="font-size:12px;color:var(--txt2);max-width:220px;">${instrucTxt}</td>
+        <td style="max-width:200px;">${instrucTxt}</td>
         <td>${estado}</td>
         <td style="font-size:12px;">${s.profesor_sustituto || '<span style="color:var(--txt3);">Sin asignar</span>'}</td>
+        <td>${justCell}</td>
       </tr>`;
     }).join("")}
     </tbody>
   </table>`;
 }
+
+// ── JUSTIFICANTES: helpers ───────────────────────────────────────────────
+
+// Extrae el storage path embebido en observaciones (§JUST§<path>)
+function _justPath(obs) {
+  const m = String(obs || "").match(/\n§JUST§([^\n]+)/);
+  return m ? m[1].trim() : null;
+}
+
+// Devuelve las instrucciones limpias, sin el marcador de justificante
+function _instrLimpias(obs) {
+  return String(obs || "").replace(/\n§JUST§[^\n]*/g, "").trim();
+}
+
+// Sube un PDF/imagen al bucket "documentos" y marca la ausencia en observaciones
+window._subirJustificante = async function(sustId, fecha) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/pdf,image/*";
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split(".").pop().toLowerCase();
+    const path = `justificantes/${ctrId}/${sustId}.${ext}`;
+
+    const { error: upErr } = await sb.storage
+      .from("documentos")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (upErr) { alert("Error al subir el justificante: " + upErr.message); return; }
+
+    // Append marker to observaciones
+    const { data: row } = await sb.from("sustituciones")
+      .select("observaciones").eq("id", sustId).single();
+    const obsLimpia = _instrLimpias(row?.observaciones || "");
+    const newObs = obsLimpia + `\n§JUST§${path}`;
+
+    const { error: updErr } = await sb.from("sustituciones")
+      .update({ observaciones: newObs }).eq("id", sustId);
+    if (updErr) { alert("Justificante subido pero error al registrar: " + updErr.message); return; }
+
+    alert("✅ Justificante adjuntado correctamente.");
+    await loadMisAusenciasNotificadas();
+  };
+  input.click();
+};
+
+// Genera URL firmada (1h) y abre el justificante en nueva pestaña
+window._descargarJustificante = async function(path) {
+  const { data, error } = await sb.storage
+    .from("documentos")
+    .createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) {
+    alert("No se pudo obtener el enlace de descarga. Comprueba que el archivo existe en Storage.");
+    return;
+  }
+  window.open(data.signedUrl, "_blank");
+};
