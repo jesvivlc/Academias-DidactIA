@@ -551,14 +551,13 @@ async function notificarAusenciaProfesor() {
     const { data: ausRow, error: ausErr } = await sb.from("ausencias_profesor").insert({
       centro_id:       ctrId,
       profile_id:      _rrhhMiProfileId,
-      fecha:           fechaIni,
-      fecha_fin:       fechaFin || fechaIni,
-      tipo:            motivoTipo,
-      motivo:          instruc || null,
-      trabajo_alumnos: instruc || null,
-      estado:          "pendiente",
-      trimestre:       typeof _getTrimestreActual === "function" ? _getTrimestreActual() : null,
-      curso_escolar:   typeof _getCursoEscolar   === "function" ? _getCursoEscolar()   : null,
+      fecha:         fechaIni,
+      fecha_fin:     fechaFin || fechaIni,
+      tipo:          motivoTipo,
+      motivo:        instruc || null,
+      estado:        "pendiente",
+      trimestre:     (function(){ var m=new Date().getMonth()+1; return m>=9?1:m<=3?2:3; })(),
+      curso_escolar: (function(){ var y=new Date().getFullYear(),m=new Date().getMonth()+1; return m>=9?y+"-"+(y+1):(y-1)+"-"+y; })(),
     }).select("id").single();
     if (ausErr) { _sustNotifMsg(msgEl, "Error al registrar expediente RRHH: " + ausErr.message, "err"); return; }
     ausenciaId = ausRow?.id ?? null;
