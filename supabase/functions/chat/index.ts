@@ -222,6 +222,35 @@ const TOOL_DECLARATIONS = [
       required: ["grupo", "materia_id", "dia", "nuevo_profesor_id"],
     },
   },
+  {
+    name: "asignar_profesor",
+    description:
+      "Asigna un profesor a UNA clase concreta del horario generado por el Planner (tabla horario_generado), típicamente a un slot que estaba sin asignar. Verifica que el profesor no tenga ya clase en ese día y tramo. LLAMAR cuando el admin diga cosas como 'pon a Juan García en matemáticas de 1ESO A el lunes' o 'asigna a María en la clase de Lengua de 2ESO B del martes a tercera hora'. Si no se indica el tramo y solo hay una clase de esa materia ese día, se asigna esa.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        materia_id:  { type: "STRING",  description: "Nombre o ID de la materia" },
+        grupo:       { type: "STRING",  description: "Grupo (ej: '1ESOA')" },
+        dia:         { type: "STRING",  description: "Día: lunes, martes, miércoles, jueves o viernes" },
+        tramo:       { type: "INTEGER", description: "Número de tramo (1, 2, 3...). Opcional si solo hay una clase de esa materia ese día" },
+        profesor_id: { type: "STRING",  description: "Nombre o ID del profesor a asignar" },
+      },
+      required: ["materia_id", "grupo", "dia", "profesor_id"],
+    },
+  },
+  {
+    name: "asignar_profesor_materia",
+    description:
+      "Asigna un profesor a TODAS las clases de una materia del horario generado por el Planner (tabla horario_generado) en todo el centro, de una sola vez. Para cada slot verifica que el profesor no tenga ya clase ese día y tramo; los que generen conflicto se dejan sin asignar y se informan. LLAMAR cuando el admin diga cosas como 'asigna a Carmen Sánchez todas las clases de Filosofía' o 'pon a Juan en toda la Educación Física del centro'.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        materia_id:  { type: "STRING", description: "Nombre o ID de la materia" },
+        profesor_id: { type: "STRING", description: "Nombre o ID del profesor a asignar a todas sus clases" },
+      },
+      required: ["materia_id", "profesor_id"],
+    },
+  },
 ];
 
 /* ── helpers ── */
@@ -780,6 +809,79 @@ async function executeTool(
       const { error } = await sb.from("horario_generado").update({ profesor_id: nuevoProf.id }).eq("id", slot.id);
       if (error) throw new Error(`Error al cambiar el profesor: ${error.message}`);
       return `✅ ${materia.nombre} de ${grupo} (${dia}, tramo ${tr}) ahora la imparte ${nuevoProf.nombre}.`;
+    }
+
+    case "asignar_profesor": {
+      const grupo   = normalizeGrupo(args.grupo);
+      const materia = await resolveMateria(sb, centro_id, args.materia_id);
+      const dia     = normalizeDia(args.dia);
+      const tramo   = args.tramo != null && String(args.tramo) !== "" ? Number(args.tramo) : null;
+      const prof    = await resolveProfesor(sb, centro_id, args.profesor_id);
+
+      const slot = await findSlot(sb, centro_id, grupo, materia.id, dia, tramo);
+      const tr   = slot.tramo_horario;
+
+      if (slot.profesor_id === prof.id) {
+        return `${materia.nombre} de ${grupo} (${dia}, tramo ${tr}) ya la imparte ${prof.nombre}.`;
+      }
+      const pOcc = await profesorOcupado(sb, centro_id, prof.id, dia, tr);
+      if (pOcc) throw new Error(`No se puede asignar: ${prof.nombre} ya tiene clase con ${pOcc.grupo} el ${dia} en el tramo ${tr}.`);
+      if (await disponibilidadBloqueada(sb, prof.id, dia, tr)) {
+        throw new Error(`No se puede asignar: ${prof.nombre} no está disponible el ${dia} en el tramo ${tr}.`);
+      }
+
+      const { error } = await sb.from("horario_generado").update({ profesor_id: prof.id }).eq("id", slot.id);
+      if (error) throw new Error(`Error al asignar el profesor: ${error.message}`);
+      return `✅ ${prof.nombre} asignado a ${materia.nombre} de ${grupo} (${dia}, tramo ${tr}).`;
+    }
+
+    case "asignar_profesor_materia": {
+      const materia = await resolveMateria(sb, centro_id, args.materia_id);
+      const prof    = await resolveProfesor(sb, centro_id, args.profesor_id);
+
+      const { data: filas, error: selErr } = await sb.from("horario_generado")
+        .select("id, grupo_horario, dia_semana, tramo_horario, profesor_id")
+        .eq("centro_id", centro_id).eq("materia_id", materia.id)
+        .order("dia_semana").order("tramo_horario");
+      if (selErr) throw new Error(`Error al leer el horario: ${selErr.message}`);
+      const rows = (filas as { id: string; grupo_horario: string; dia_semana: string; tramo_horario: number; profesor_id: string | null }[] | null) ?? [];
+      if (!rows.length) return `No hay clases de ${materia.nombre} en el horario generado del centro.`;
+
+      /* ocupación actual del profesor (otras materias ya asignadas) + indisponibilidad */
+      const { data: ocup } = await sb.from("horario_generado")
+        .select("dia_semana, tramo_horario")
+        .eq("centro_id", centro_id).eq("profesor_id", prof.id);
+      const busy = new Set((ocup as { dia_semana: string; tramo_horario: number }[] | null ?? [])
+        .map((r) => `${r.dia_semana}_${r.tramo_horario}`));
+      const { data: disp } = await sb.from("disponibilidad_profesor")
+        .select("dia_semana, tramo_horario").eq("profesor_id", prof.id);
+      const noDisp = new Set((disp as { dia_semana: string; tramo_horario: number }[] | null ?? [])
+        .map((r) => `${r.dia_semana}_${r.tramo_horario}`));
+
+      const toAssign: string[] = [];
+      const conflictos: string[] = [];
+      let yaAsignadas = 0;
+      for (const r of rows) {
+        const k = `${r.dia_semana}_${r.tramo_horario}`;
+        if (r.profesor_id === prof.id) { yaAsignadas++; continue; }
+        if (noDisp.has(k)) { conflictos.push(`${r.grupo_horario} ${r.dia_semana} T${r.tramo_horario} (no disponible)`); continue; }
+        if (busy.has(k)) { conflictos.push(`${r.grupo_horario} ${r.dia_semana} T${r.tramo_horario} (ya ocupado)`); continue; }
+        toAssign.push(r.id);
+        busy.add(k); /* evita doble asignación en el mismo día/tramo dentro del lote */
+      }
+
+      if (toAssign.length) {
+        const { error } = await sb.from("horario_generado").update({ profesor_id: prof.id }).in("id", toAssign);
+        if (error) throw new Error(`Error al asignar: ${error.message}`);
+      }
+
+      let msg = `✅ ${prof.nombre} asignado a ${toAssign.length} clase(s) de ${materia.nombre}`;
+      if (yaAsignadas) msg += ` (${yaAsignadas} ya estaban asignadas a ${prof.nombre.split(/\s+/)[0]})`;
+      msg += ".";
+      if (conflictos.length) {
+        msg += ` ${conflictos.length} no se pudieron asignar por conflicto: ${conflictos.join("; ")}.`;
+      }
+      return msg;
     }
 
     default:

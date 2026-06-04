@@ -109,7 +109,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `aulas` | centro_id, nombre, tipo, capacidad | Aulas reservables en el Planner |
 | `disponibilidad_profesor` | profesor_id, dia_semana, tramo_horario, estado | Restricciones de disponibilidad para el CSP |
 | `necesidades_lectivas` | centro_id, grupo_horario, materia_id, profesor_id, horas_semanales, tipo_aula_requerida | Input del generador: X horas/sem de materia Y con prof Z para grupo G |
-| `horario_generado` | centro_id, grupo_horario, materia_id, profesor_id, aula_id, dia_semana, tramo_horario, es_fijo | Output del CSP antes de publicar; UNIQUE(profesor_id,dia,tramo) y UNIQUE(grupo,dia,tramo) |
+| `horario_generado` | centro_id, grupo_horario, materia_id, profesor_id (**nullable**), aula_id, dia_semana, tramo_horario, es_fijo | Output del CSP antes de publicar; UNIQUE(profesor_id,dia,tramo) y UNIQUE(grupo,dia,tramo). `profesor_id` nullable → soporta horarios "sin profesores" (slots a asignar después) |
 | `tramos_centro` | id, centro_id, numero (int), hora_inicio (HH:MM), hora_fin (HH:MM), nombre (text\|null), es_descanso (bool) | Tramos horarios configurables por centro; gestionables por voz vía chatbot (`crear_tramos_centro`, `listar_tramos_centro`) |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
@@ -123,7 +123,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 
 | Función | Propósito |
 |---------|-----------|
-| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor`, `listar_tramos_centro` (auto-execute), `crear_tramos_centro`, `generar_tramos_horario`, y edición de `horario_generado` del Planner: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor` (todas requieren confirmación; resuelven materia/profesor por nombre o ID y validan hard constraints HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN + disponibilidad y ocupación de profesor/grupo) |
+| `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor`, `listar_tramos_centro` (auto-execute), `crear_tramos_centro`, `generar_tramos_horario`, y edición de `horario_generado` del Planner: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor`, `asignar_profesor` (un slot), `asignar_profesor_materia` (masivo: todas las clases de una materia en el centro) (todas requieren confirmación; resuelven materia/profesor por nombre o ID y validan hard constraints HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN + disponibilidad y ocupación de profesor/grupo) |
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
 | `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
@@ -359,6 +359,7 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
     - **HC-INICIO-FIN**: sin huecos libres en mitad de la jornada — las clases del grupo deben ser consecutivas dentro de los tramos lectivos (índices ocupados en `TNUMS` deben formar bloque contiguo; recreo/comida no rompen continuidad)
     - **HC-3**: disponibilidad del profesor + ocupación en otros grupos (cross-group)
   - `_scoreSoft()` — soft constraints neuroeducativos (carga cognitiva, dinámica, horas extremas); ordena candidatos por puntuación
+  - **Modo "sin profesores"** (`_s.sinProf`, botón "🧩 Generar sin profesores" → `plannerGenerarSinProf`): el CSP coloca solo las materias omitiendo HC-3 (disponibilidad/ocupación de profesor); los slots quedan con `profesor_id: null` y `sin_asignar: true`. Genera todos los grupos vía `_generarHorario` (motor CSP backtracking, no el worker H-MRV-SA) y persiste en `horario_generado` para que el chat pueda asignar después. Los docentes se asignan luego en el Tablero (clic/drag) o por chat.
   - Si no hay solución → devuelve `null` (nunca un horario que viole un hard constraint) → alert informativo con sugerencias
   - **Verificación**: `scripts/verify-hard-constraints.js` carga el `planner.js` real en un VM de Node y comprueba los 3 invariantes sobre un horario estilo IES Demo (`node scripts/verify-hard-constraints.js`)
 - **Tablero drag & drop**: CSS Grid 6 cols (hora + L/M/X/J/V) × 8 filas (tramos 08:00–16:00); fichas `.class-card` con borde izquierdo de color por materia
@@ -366,7 +367,8 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
   - **Validación de hard constraints al soltar** (`_ejecutarDrop` — núcleo simular-validar-revertir, dryRun para feedback en hover): aplica los mismos HC que `mover_clase` (HC-MATERIA-DIA, HC-VENTANA, HC-INICIO-FIN sin huecos en origen y destino) + ocupación cross-group y disponibilidad del profesor (`_validarDiaGrupo`, `_validarProfesorGlobal`). Si el destino no es válido, la clase vuelve a su sitio con flash rojo + toast explicando el motivo. Soporta intercambio swap validado.
   - **Zona "Aparcados"** (`#planner-pool`, reemplaza la antigua "zona libre"): arrastra una clase aquí para retirarla del horario activo sin eliminarla. Estado en `_s.aparcados = [{grupo, slot}]`, persistido en `localStorage` (`planner_aparcados_{ctrId}`) vía `_loadAparcados`/`_saveAparcados`. Tarjetas con materia/grupo/profesor, arrastrables de vuelta a cualquier hueco libre (solo a su mismo grupo); botón ✕ para descartar definitivamente. Al abrir el Planner con aparcados pendientes, toast de aviso "N clases sin asignar"; `plannerPublicar` también avisa que no se publicarán. NO se escriben en `horario_generado`.
   - `.planner-cell.drag-over` (verde) / `.drag-error` (rojo) feedback visual en tiempo real
-  - **Verificación**: `scripts/verify-tablero-dnd.js` carga `planner.js` en un VM y prueba 14 casos (movimientos válidos/ inválidos por hueco y materia-día, dryRun sin mutación, aparcar/recolocar, persistencia)
+  - **Slots sin profesor** (`_slotSinProfesor`): se renderizan con fondo rayado suave y etiqueta "⚠ Sin asignar". Dos formas de asignar docente: ① clic en el slot → modal selector de profesor (`plannerAbrirSelectorProfesor`); ② arrastrar un profesor desde el panel lateral "👥 Profesores" (`_buildProfesoresPanel`, chips `prof-chip` arrastrables, `plannerDragStartProfesor`) hasta el slot. La asignación (`_asignarProfesorSlot`) valida que el profesor no tenga ya clase ese día/tramo en otro grupo ni esté indisponible; actualiza memoria + persiste en `horario_generado` (UPDATE por grupo/dia/tramo).
+  - **Verificación**: `scripts/verify-tablero-dnd.js` (14 casos drag&drop) + `scripts/verify-sin-profesor.js` (7 casos: generación sin profesores, todos los slots null, asignación válida, rechazo por conflicto/indisponibilidad)
 - **Publicar**: estadísticas (grupos, sesiones, necesidades), aviso de sobreescritura, botón que:
   1. Elimina `horarios_grupo` de los grupos afectados para el `centro_id`
   2. Inserta filas con `hora_inicio`, `hora_fin`, `actividad_nombre`, `profesor_nombre`, `aula: ''`
@@ -900,6 +902,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` para módulo Analytics CMI ⚠️ pendiente
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `sql/horario-generado-profesor-nullable.sql` — `horario_generado.profesor_id DROP NOT NULL` (horarios sin profesor) ✅ ejecutado 2026-06-04 vía Management API
 > - `sql/fix-bugs-prod-2026-05-29.sql` — `ausencias_profesor.tramo DROP NOT NULL` + columnas IA incidencias ✅ ejecutado 2026-05-29
 > - `sql/planner-tables.sql` — tablas planner + RLS + índices ✅ ejecutado 2026-05-27
 > - `sql/add-incidencias-fields.sql` — campos IA en incidencias ✅ ejecutado 2026-05-29
@@ -910,6 +913,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-04` · Planner — horarios SIN profesor asignado: (1) `horario_generado.profesor_id` nullable; (2) modo CSP "sin profesores" (`plannerGenerarSinProf`, slots `profesor_id null`); (3) Tablero: slots rayados "Sin asignar", modal selector + panel lateral de profesores arrastrables; (4) chat: `asignar_profesor` + `asignar_profesor_materia` (masivo). Validación de conflicto profesor en todos los caminos. EF desplegada. `scripts/verify-sin-profesor.js`
 - `2026-06-04` · Planner Tablero — drag & drop con validación de hard constraints al soltar (`_ejecutarDrop` simular-validar-revertir, flash rojo + toast en rechazo) + zona "Aparcados" persistida en localStorage (retirar clases temporalmente, recolocar arrastrando, aviso en recarga/publicación). `scripts/verify-tablero-dnd.js` (14 checks)
 - `2026-06-04` · EF `chat` — 4 herramientas Gemini para editar `horario_generado` del Planner sin regenerar: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor`. Resuelven materia/profesor por nombre o ID y validan hard constraints (HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN) + disponibilidad y ocupación de profesor/grupo. Requieren confirmación. ✅ Desplegada a producción (rflfsbrdmgaidhvbuvwb)
 - `2026-06-04` · `9b0e81d` — feat(planner): hard constraints universales HC-VENTANA + HC-INICIO-FIN en `_esHardValido()` (V2); reetiquetada HC-MATERIA-DIA; `scripts/verify-hard-constraints.js` valida los 3 invariantes con IES Demo

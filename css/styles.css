@@ -1749,6 +1749,9 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 .btn-ink          { padding: 8px 18px; background: var(--ink); color: #fff; border: none; border-radius: var(--r-sm); font-size: 13px; font-family: var(--font-ui); cursor: pointer; font-weight: 500; transition: opacity .15s; white-space: nowrap; }
 .btn-ink:hover    { opacity: .88; }
 .btn-ink:disabled { opacity: .5; cursor: not-allowed; }
+.btn-ghost        { padding: 8px 16px; background: transparent; color: var(--txt); border: 1px solid var(--line-2); border-radius: var(--r-sm); font-size: 13px; font-family: var(--font-ui); cursor: pointer; font-weight: 500; transition: background .15s, border-color .15s; white-space: nowrap; }
+.btn-ghost:hover  { background: var(--surface-sunk); border-color: var(--line-strong); }
+.btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
 .btn-danger       { background: var(--danger) !important; }
 .icon-btn-sm      { padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; font-size: 12px; color: var(--muted); }
 .icon-btn-sm:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }

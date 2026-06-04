@@ -41,6 +41,7 @@
     schedule:       {},   // grupo → dia → String(tramo) → slot
     aparcados:      [],   // [{ grupo, slot }] — clases retiradas temporalmente (persistido en localStorage)
     aparcadosAvisados: false,
+    sinProf:        false, // modo de generación "sin profesores" (slots con profesor_id null)
     auditLog:       {},   // grupo → string[]
     globalScore:    {},   // grupo → 0–100
     currentGrupo:   null,
@@ -581,14 +582,18 @@
       if (maxI - minI + 1 !== ocupadas.length) return false;
     }
 
-    /* HC-3: disponibilidad + ocupación en otros grupos */
-    const profIds = sess.type === 'codoce'
-      ? sess.necs.map(function (n) { return n.profesor_id; }).filter(Boolean)
-      : (sess.profesor_id ? [sess.profesor_id] : []);
-    for (var i = 0; i < profIds.length; i++) {
-      const pid = profIds[i];
-      if (teacherBusy[pid] && teacherBusy[pid].has(dtKey))           return false;
-      if (_s.disponibilidad[pid] && _s.disponibilidad[pid].has(dtKey)) return false;
+    /* HC-3: disponibilidad + ocupación en otros grupos.
+       En modo "sin profesores" se omite: el CSP solo coloca materias y los
+       slots quedan sin docente (profesor_id null) para asignarlo después. */
+    if (!_s.sinProf) {
+      const profIds = sess.type === 'codoce'
+        ? sess.necs.map(function (n) { return n.profesor_id; }).filter(Boolean)
+        : (sess.profesor_id ? [sess.profesor_id] : []);
+      for (var i = 0; i < profIds.length; i++) {
+        const pid = profIds[i];
+        if (teacherBusy[pid] && teacherBusy[pid].has(dtKey))           return false;
+        if (_s.disponibilidad[pid] && _s.disponibilidad[pid].has(dtKey)) return false;
+      }
     }
 
     return true;
@@ -676,6 +681,31 @@
   function _placeSession(sess, dia, key, sched, teacherBusy, score, reasons, auditLog) {
     var logEntry = _buildAuditEntry(sess, dia, parseInt(key), score, reasons);
     var slot;
+
+    /* Modo sin profesores: coloca solo la materia, sin docente ni teacherBusy */
+    if (_s.sinProf) {
+      var matNombre = sess.type === 'codoce'
+        ? sess.necs.map(function (n) { return n.materia_nombre; }).join(' + ')
+        : sess.materia_nombre;
+      slot = {
+        materia_id:                 sess.type === 'codoce' ? sess.necs[0].materia_id : sess.materia_id,
+        materia_nombre:             matNombre,
+        materia_color:              sess.type === 'codoce' ? sess.necs[0].materia_color : sess.materia_color,
+        profesor_id:                null,
+        profesor_nombre:            '',
+        carga_cognitiva:            sess.carga_cognitiva || 'media',
+        tipo_dinamica:              sess.tipo_dinamica   || 'estatica',
+        codocente_prof_ids:         [],
+        es_codoce:                  sess.type === 'codoce',
+        bloque_interdisciplinar_id: sess.type === 'codoce' ? sess.necs[0].bloque_interdisciplinar_id : undefined,
+        sin_asignar:                true,
+        puntuacion:                 score,
+        log_auditoria:              logEntry
+      };
+      sched[dia][key] = slot;
+      auditLog.push(logEntry);
+      return;
+    }
 
     if (sess.type === 'codoce') {
       var profIds = sess.necs.map(function (n) { return n.profesor_id; }).filter(Boolean);
@@ -874,15 +904,22 @@
             ? '<select id="planner-grupo-sel" class="planner-select" onchange="plannerChangeGrupo(this.value)" style="margin-top:6px">' + grupoOpts + '</select>'
             : '') +
         '</div>' +
-        '<button class="btn-ink" id="planner-gen-btn" onclick="plannerGenerar()"' + (!_s.grupos.length ? ' disabled' : '') + '>' +
-          '✨ Generar con IA' +
-        '</button>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button class="btn-ghost" id="planner-gen-sinprof-btn" onclick="plannerGenerarSinProf()"' + (!_s.grupos.length ? ' disabled' : '') +
+          ' title="Coloca las materias en el horario sin asignar profesores; los asignas después">' +
+            '🧩 Generar sin profesores' +
+          '</button>' +
+          '<button class="btn-ink" id="planner-gen-btn" onclick="plannerGenerar()"' + (!_s.grupos.length ? ' disabled' : '') + '>' +
+            '✨ Generar con IA' +
+          '</button>' +
+        '</div>' +
       '</div>' +
       (_s.grupos.length === 0
         ? '<div class="planner-empty">Define necesidades lectivas primero (pestaña Necesidades).</div>'
         : '<div id="planner-tablero-body">' +
             '<div class="planner-grid-outer">' + _buildGrid() + '</div>' +
             _buildMobileList() +
+            _buildProfesoresPanel() +
             '<div class="unassigned-pool" id="planner-pool"' +
             ' ondragover="plannerDragOver(event)" ondragleave="plannerDragLeave(event)" ondrop="plannerDropPool(event)">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
@@ -935,14 +972,26 @@
             ? '<div style="font-size:9px;color:var(--info);font-weight:600;margin-top:1px">CO-DOC</div>'
             : '';
           var tooltip  = slot.log_auditoria ? _esc(slot.log_auditoria) : '';
+          var sinProf  = _slotSinProfesor(slot);
+          /* fondo rayado suave para slots sin profesor asignado */
+          var sinProfBg = sinProf
+            ? ';background-image:repeating-linear-gradient(45deg,var(--surface-sunk),var(--surface-sunk) 6px,transparent 6px,transparent 12px);cursor:pointer'
+            : '';
+          var profLine = sinProf
+            ? '<div class="class-card__prof" style="color:var(--warning);font-weight:600">⚠ Sin asignar</div>'
+            : '<div class="class-card__prof">' + _esc(slot.profesor_nombre) + '</div>';
+          var clickAttr = sinProf
+            ? ' onclick="plannerAbrirSelectorProfesor(\'' + _esc(dia) + '\',\'' + key + '\',\'' + _esc(g) + '\')"'
+            : '';
           card =
-            '<div class="class-card" draggable="true"' +
-            ' style="border-left-color:' + _esc(slot.materia_color) + '"' +
-            ' title="' + tooltip + '"' +
+            '<div class="class-card' + (sinProf ? ' class-card--sin-prof' : '') + '" draggable="true"' +
+            ' style="border-left-color:' + _esc(slot.materia_color || 'var(--muted)') + sinProfBg + '"' +
+            ' title="' + (sinProf ? 'Clic para asignar profesor' : tooltip) + '"' +
             ' data-dia="' + _esc(dia) + '" data-tramo="' + key + '" data-grupo="' + _esc(g) + '"' +
+            clickAttr +
             ' ondragstart="plannerDragStart(event,this)" ondragend="plannerDragEnd(event)">' +
             '<div class="class-card__mat">' + _esc(slot.materia_nombre) + '</div>' +
-            '<div class="class-card__prof">' + _esc(slot.profesor_nombre) + '</div>' +
+            profLine +
             scBadge + codBadge +
             '</div>';
         }
@@ -974,7 +1023,9 @@
           '<span class="planner-ml-hora">' + _esc(_tramoLabel(t.numero)) + '</span>' +
           '<span class="planner-ml-card" style="border-left-color:' + _esc(color) + '">' +
             '<span class="planner-ml-mat">' + _esc(s.materia_nombre || '—') + '</span>' +
-            (s.profesor_nombre ? '<span class="planner-ml-prof">' + _esc(s.profesor_nombre) + '</span>' : '') +
+            (_slotSinProfesor(s)
+              ? '<span class="planner-ml-prof" style="color:var(--warning)">⚠ Sin asignar</span>'
+              : (s.profesor_nombre ? '<span class="planner-ml-prof">' + _esc(s.profesor_nombre) + '</span>' : '')) +
           '</span>' +
         '</div>';
       }).join('');
@@ -1008,6 +1059,53 @@
         '<div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px">' + _esc(a.grupo || '') + '</div>' +
         '</div>';
     }).join('');
+  }
+
+  /* ── ¿slot sin profesor asignado? ── */
+  function _slotSinProfesor(slot) {
+    if (!slot) return false;
+    if (slot.sin_asignar) return true;
+    return !slot.profesor_id && !(slot.codocente_prof_ids && slot.codocente_prof_ids.length);
+  }
+
+  function _profNombre(profId) {
+    var p = _s.profesores.find(function (x) { return x.id === profId; });
+    return p ? p.nombre : '';
+  }
+
+  /* ── Panel lateral de profesores (arrastrables a slots sin asignar) ── */
+  function _buildProfesoresPanel() {
+    if (!_s.profesores.length) return '';
+    /* nº de slots sin asignar en el grupo actual, para orientar al usuario */
+    var g = _s.currentGrupo, pend = 0;
+    if (g && _s.schedule[g]) {
+      DIAS.forEach(function (d) {
+        Object.keys(_s.schedule[g][d] || {}).forEach(function (k) {
+          if (_slotSinProfesor(_s.schedule[g][d][k])) pend++;
+        });
+      });
+    }
+    var chips = _s.profesores.map(function (p) {
+      return '<div class="prof-chip" draggable="true"' +
+        ' style="display:inline-flex;align-items:center;gap:6px;cursor:grab;background:var(--surface-sunk);' +
+        'border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--txt);font-family:var(--font-ui)"' +
+        ' data-prof-id="' + _esc(p.id) + '" data-prof-nombre="' + _esc(p.nombre) + '"' +
+        ' ondragstart="plannerDragStartProfesor(event,this)" ondragend="plannerDragEnd(event)"' +
+        ' title="Arrastra sobre una clase sin asignar">' +
+        '<span style="width:7px;height:7px;border-radius:50%;background:var(--accent)"></span>' +
+        _esc(p.nombre) +
+        '</div>';
+    }).join('');
+    return '<div class="profesores-panel" style="margin-top:14px;padding:12px 14px;background:var(--paper-2);border:1px solid var(--line);border-radius:10px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
+        '<div class="card-eyebrow" style="margin:0">👥 Profesores — arrastra uno sobre una clase «Sin asignar» (o haz clic en la clase)</div>' +
+        (pend
+          ? '<span style="font-size:11px;font-weight:700;color:var(--warning-soft);background:var(--warning);padding:2px 9px;border-radius:999px">' +
+            pend + ' sin asignar en ' + _esc(g) + '</span>'
+          : '') +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:7px">' + chips + '</div>' +
+    '</div>';
   }
 
   /* ── Banner de puntuación neuroeducativa ── */
@@ -1358,6 +1456,135 @@
     });
   };
 
+  /* ── Generar SIN profesores (motor CSP, solo coloca materias) ── */
+  window.plannerGenerarSinProf = async function () {
+    if (!_s.necesidades.length) {
+      alert('Define necesidades lectivas primero (pestaña Necesidades).'); return;
+    }
+    var btn = document.getElementById('planner-gen-sinprof-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+    try {
+      await _loadData();
+      if (!_s.grupos.length) { alert('No hay grupos con necesidades lectivas.'); return; }
+
+      _s.sinProf = true;
+      _s.schedule = {};
+      var fallidos = [];
+      _s.grupos.forEach(function (g) {
+        var res = _generarHorario(g);          // motor CSP backtracking, HC-3 omitido
+        if (res) {
+          _s.schedule[g] = res;
+          _s.globalScore[g] = _calcGlobalScore(res);
+        } else {
+          fallidos.push(g);
+          _s.schedule[g] = {};
+          DIAS.forEach(function (d) { _s.schedule[g][d] = {}; });
+        }
+      });
+      _s.sinProf = false;
+
+      /* persistir en horario_generado para que el chat pueda asignar después */
+      for (var i = 0; i < _s.grupos.length; i++) {
+        await _guardarHorarioGenerado(_s.grupos[i], _s.schedule[_s.grupos[i]]);
+      }
+
+      _showPTab('tablero');
+      if (fallidos.length) {
+        _plannerToast('No se pudo generar (carga incompatible): ' + fallidos.join(', '), 'warn');
+      } else {
+        _plannerToast('Horario generado sin profesores. Asigna los docentes en cada clase «Sin asignar».', 'ok');
+      }
+    } catch (e) {
+      console.error('[Planner V2] generar sin profesores:', e);
+      alert('Error al generar el horario sin profesores. Revisa la consola.');
+    } finally {
+      _s.sinProf = false;
+      if (btn) { btn.disabled = false; btn.textContent = '🧩 Generar sin profesores'; }
+    }
+  };
+
+  /* ── Asignar un profesor a un slot (memoria + horario_generado), validando conflictos ── */
+  function _asignarProfesorSlot(grupo, dia, tramo, profId, profNombre) {
+    var key = String(tramo);
+    var slot = _s.schedule[grupo] && _s.schedule[grupo][dia] && _s.schedule[grupo][dia][key];
+    if (!slot) return { ok: false, motivo: 'No hay ninguna clase en ese hueco.' };
+
+    /* conflicto: el profesor ya da clase en ese día y tramo en otro grupo */
+    var conflicto = null;
+    Object.keys(_s.schedule).forEach(function (gg) {
+      if (gg === grupo) return;
+      var o = _s.schedule[gg] && _s.schedule[gg][dia] && _s.schedule[gg][dia][key];
+      if (!o) return;
+      if (_slotProfIds(o).indexOf(profId) !== -1) conflicto = gg;
+    });
+    if (conflicto) return { ok: false, motivo: profNombre + ' ya tiene clase con ' + conflicto + ' ese día y tramo.' };
+
+    /* disponibilidad declarada */
+    var set = _s.disponibilidad[profId];
+    if (set && set.has(dia + '_' + key)) return { ok: false, motivo: profNombre + ' no está disponible ese día y tramo.' };
+
+    slot.profesor_id        = profId;
+    slot.profesor_nombre    = profNombre || _profNombre(profId);
+    slot.codocente_prof_ids = [profId];
+    slot.es_codoce          = false;
+    slot.sin_asignar        = false;
+
+    /* persistir el cambio en horario_generado (best-effort) */
+    sb.from('horario_generado')
+      .update({ profesor_id: profId })
+      .eq('centro_id', ctrId).eq('grupo_horario', grupo)
+      .eq('dia_semana', dia).eq('tramo_horario', parseInt(key, 10))
+      .then(function (r) {
+        if (r && r.error) console.warn('[Planner V2] no se pudo persistir asignación:', r.error.message);
+      });
+
+    return { ok: true };
+  }
+
+  /* ── Selector de profesor al hacer clic en un slot «Sin asignar» ── */
+  window.plannerAbrirSelectorProfesor = function (dia, tramo, grupo) {
+    if (!_s.profesores.length) { alert('No hay profesores en el centro.'); return; }
+    var slot = _s.schedule[grupo] && _s.schedule[grupo][dia] && _s.schedule[grupo][dia][String(tramo)];
+    if (!slot) return;
+
+    var overlay = document.createElement('div');
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9200;display:flex;align-items:center;justify-content:center;padding:24px';
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+
+    var opts = _s.profesores.map(function (p) {
+      return '<option value="' + _esc(p.id) + '">' + _esc(p.nombre) + '</option>';
+    }).join('');
+
+    var modal = document.createElement('div');
+    modal.style.cssText =
+      'background:var(--paper);border-radius:12px;padding:22px;max-width:380px;width:100%;box-shadow:var(--sh-lg);display:flex;flex-direction:column;gap:14px';
+    modal.innerHTML =
+      '<div><div class="card-eyebrow">Asignar profesor</div>' +
+      '<h3 style="font-family:var(--font-display);font-size:18px;font-weight:500;margin:4px 0 0">' +
+        _esc(slot.materia_nombre) + ' · ' + _esc(grupo) + '</h3>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + _esc(dia) + ', ' + _esc(_tramoLabel(parseInt(tramo, 10))) + '</div></div>' +
+      '<select id="sel-prof-asignar" class="planner-select" style="width:100%">' + opts + '</select>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+        '<button class="btn-ghost" id="sel-prof-cancel">Cancelar</button>' +
+        '<button class="btn-ink" id="sel-prof-ok">Asignar</button>' +
+      '</div>';
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    modal.querySelector('#sel-prof-cancel').onclick = function () { overlay.remove(); };
+    modal.querySelector('#sel-prof-ok').onclick = function () {
+      var sel = modal.querySelector('#sel-prof-asignar');
+      var profId = sel.value;
+      var profNombre = sel.options[sel.selectedIndex].text;
+      var res = _asignarProfesorSlot(grupo, dia, tramo, profId, profNombre);
+      if (!res.ok) { _plannerToast('No se puede asignar: ' + res.motivo, 'error'); return; }
+      overlay.remove();
+      _renderTablero();
+      _plannerToast(profNombre + ' asignado a ' + slot.materia_nombre + '.', 'ok');
+    };
+  };
+
   /* ── Guardar horario_generado en Supabase ── */
   async function _guardarHorarioGenerado(grupo, sched) {
     await sb.from('horario_generado').delete().eq('centro_id', ctrId).eq('grupo_horario', grupo);
@@ -1487,7 +1714,7 @@
   /* Núcleo simular-validar-revertir. dryRun=true revierte siempre (para feedback en hover). */
   function _ejecutarDrop(grupo, tgtDia, tgtTramo, dryRun) {
     var d = _s.dragData;
-    if (!d) return { ok: false };
+    if (!d || d.from === 'profesor') return { ok: false };
     var key = String(tgtTramo);
     _ensureSched(grupo);
 
@@ -1568,8 +1795,15 @@
     setTimeout(function () { if (el) el.style.opacity = '0.4'; }, 0);
   };
 
+  window.plannerDragStartProfesor = function (e, el) {
+    _s.dragData = { from: 'profesor', profId: el.dataset.profId, profNombre: el.dataset.profNombre };
+    e.dataTransfer.effectAllowed = 'copy';
+    setTimeout(function () { if (el) el.style.opacity = '0.4'; }, 0);
+  };
+
   window.plannerDragEnd = function () {
     document.querySelectorAll('.class-card').forEach(function (c) { c.style.opacity = ''; });
+    document.querySelectorAll('.prof-chip').forEach(function (c) { c.style.opacity = ''; });
     document.querySelectorAll('.planner-cell').forEach(function (c) {
       c.classList.remove('drag-over', 'drag-error');
     });
@@ -1581,6 +1815,16 @@
     e.preventDefault();
     var cell = e.currentTarget;
     if (cell.classList.contains('planner-cell')) {
+      var d = _s.dragData;
+      /* arrastrando un profesor: solo es válido sobre una clase "sin asignar" */
+      if (d && d.from === 'profesor') {
+        var sl = _s.schedule[_s.currentGrupo] && _s.schedule[_s.currentGrupo][cell.dataset.dia] &&
+                 _s.schedule[_s.currentGrupo][cell.dataset.dia][cell.dataset.tramo];
+        var okProf = !!sl && _slotSinProfesor(sl);
+        cell.classList.toggle('drag-over', okProf);
+        cell.classList.toggle('drag-error', !okProf);
+        return;
+      }
       var res = _ejecutarDrop(_s.currentGrupo, cell.dataset.dia, cell.dataset.tramo, true);
       if (res.noop) { cell.classList.remove('drag-over', 'drag-error'); return; }
       cell.classList.toggle('drag-over', !!res.ok);
@@ -1598,7 +1842,25 @@
     e.preventDefault();
     var cell = e.currentTarget;
     cell.classList.remove('drag-over', 'drag-error');
-    if (!_s.dragData) return;
+    var d = _s.dragData;
+    if (!d) return;
+
+    /* ── soltar un profesor sobre una clase "sin asignar" ── */
+    if (d.from === 'profesor') {
+      _s.dragData = null;
+      var dia = cell.dataset.dia, tramo = cell.dataset.tramo;
+      var slot = _s.schedule[grupo] && _s.schedule[grupo][dia] && _s.schedule[grupo][dia][tramo];
+      if (!slot) { _flashCellError(cell); return; }
+      if (!_slotSinProfesor(slot)) {
+        _plannerToast('Esa clase ya tiene profesor. Quítalo antes o usa otra.', 'warn');
+        _flashCellError(cell); return;
+      }
+      var resP = _asignarProfesorSlot(grupo, dia, tramo, d.profId, d.profNombre);
+      if (!resP.ok) { _plannerToast('No se puede asignar: ' + resP.motivo, 'error'); _flashCellError(cell); return; }
+      _renderTablero();
+      _plannerToast(d.profNombre + ' asignado a ' + slot.materia_nombre + '.', 'ok');
+      return;
+    }
 
     var res = _ejecutarDrop(grupo, cell.dataset.dia, cell.dataset.tramo, false);
     _s.dragData = null;
@@ -1618,7 +1880,7 @@
     e.currentTarget.classList.remove('drag-over');
     var d = _s.dragData;
     _s.dragData = null;
-    if (!d || d.from === 'aparcado') return; /* ya está aparcada */
+    if (!d || d.from === 'aparcado' || d.from === 'profesor') return; /* solo se aparcan clases del tablero */
 
     var slot = _s.schedule[d.grupo] && _s.schedule[d.grupo][d.dia] && _s.schedule[d.grupo][d.dia][d.tramo];
     if (!slot) return;

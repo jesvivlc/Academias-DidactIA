@@ -30,3 +30,6 @@ node_modules/
 # Playwright
 /test-results/
 /playwright-report/
+
+# Supabase CLI build artifacts
+supabase/.temp/
