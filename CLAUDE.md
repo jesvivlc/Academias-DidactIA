@@ -351,9 +351,16 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - **Motor CSP backtracking** (`_generarHorario`):
   - Expande necesidades en sesiones individuales, ordena más-restringidas primero (más horas → antes)
   - Construye `teacherBusy` desde horarios de otros grupos ya generados (cross-group conflict prevention)
-  - `_resolverCSP()` recursivo: itera DIAS × TRAMOS; coloca, recursa, deshace si falla (backtracking clásico)
-  - `_esValido()`: ① slot ocupado para el grupo ② profesor ocupado en otro grupo ese tramo ③ misma materia no dos veces el mismo día
-  - Si no hay solución → alert informativo con sugerencias de resolución
+  - `_resolverCSP_V2()` recursivo: itera DIAS × TRAMOS (solo tramos de clase, `_tramoNums()` excluye descansos); coloca, recursa, deshace si falla (backtracking clásico)
+  - `_esHardValido()` — hard constraints universales (todas las CCAA), validados en **cada paso** del backtracking, no solo en el resultado final:
+    - **HC-1**: slot ya ocupado para el grupo
+    - **HC-MATERIA-DIA**: la misma materia no puede aparecer más de una vez el mismo día para el mismo grupo
+    - **HC-VENTANA**: máximo 8 tramos lectivos por día y grupo (los descansos no cuentan)
+    - **HC-INICIO-FIN**: sin huecos libres en mitad de la jornada — las clases del grupo deben ser consecutivas dentro de los tramos lectivos (índices ocupados en `TNUMS` deben formar bloque contiguo; recreo/comida no rompen continuidad)
+    - **HC-3**: disponibilidad del profesor + ocupación en otros grupos (cross-group)
+  - `_scoreSoft()` — soft constraints neuroeducativos (carga cognitiva, dinámica, horas extremas); ordena candidatos por puntuación
+  - Si no hay solución → devuelve `null` (nunca un horario que viole un hard constraint) → alert informativo con sugerencias
+  - **Verificación**: `scripts/verify-hard-constraints.js` carga el `planner.js` real en un VM de Node y comprueba los 3 invariantes sobre un horario estilo IES Demo (`node scripts/verify-hard-constraints.js`)
 - **Tablero drag & drop**: CSS Grid 6 cols (hora + L/M/X/J/V) × 8 filas (tramos 08:00–16:00); fichas `.class-card` con borde izquierdo de color por materia; zona libre para quitar sesiones
   - Drag handlers: `plannerDragStart/End/Over/Leave/Drop/DropPool` — validación cross-group en destino, intercambio swap entre slots ocupados
   - `.planner-cell.drag-over` (verde) / `.drag-error` (rojo) feedback visual en tiempo real
@@ -900,6 +907,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-04` · `9b0e81d` — feat(planner): hard constraints universales HC-VENTANA + HC-INICIO-FIN en `_esHardValido()` (V2); reetiquetada HC-MATERIA-DIA; `scripts/verify-hard-constraints.js` valida los 3 invariantes con IES Demo
 - `2026-06-03 23:29` · `1fe6497` — fix: nombre de usuario usa profile.full_name en lugar del email
 - `2026-06-03 23:21` · `6f255fd` — test: entorno RLS — 4 usuarios de test + script de provisioning
 - `2026-06-03 21:32` · `dadcca2` — test: Playwright pre-demo check — 8 módulos con reporte HTML
