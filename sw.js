@@ -1,4 +1,6 @@
-const CACHE = 'didactia-v1';
+// Service Worker DidactIA — network-first para assets propios.
+// Bump CACHE en cada cambio estructural para purgar cachés antiguas.
+const CACHE = 'didactia-v3';
 const PRECACHE = [
   '/app.html',
   '/index.html',
@@ -10,15 +12,23 @@ const PRECACHE = [
   '/js/chat.js',
   '/js/comedor.js',
   '/js/mejoras.js',
+  '/js/palette.js',
   '/js/incidencias.js',
   '/js/espacios.js',
+  '/js/rrhh.js',
+  '/js/guardias.js',
+  '/js/ib.js',
+  '/js/comunicados.js',
+  '/js/familias.js',
+  '/js/planner.js',
+  '/js/analytics.js',
   '/manifest.json'
 ];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE)
-      .then(function(c) { return c.addAll(PRECACHE); })
+      .then(function(c) { return c.addAll(PRECACHE).catch(function() {}); })
       .then(function() { return self.skipWaiting(); })
   );
 });
@@ -31,19 +41,19 @@ self.addEventListener('activate', function(e) {
   );
 });
 
+// network-first: online siempre sirve el último deploy; offline cae a la caché.
 self.addEventListener('fetch', function(e) {
-  // Solo cachear peticiones del mismo origen (no Supabase, no CDN)
-  if (new URL(e.request.url).origin !== location.origin) return;
+  if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).origin !== location.origin) return; // Supabase/CDN pasan directos
   e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      if (cached) return cached;
-      return fetch(e.request).then(function(res) {
-        if (res.ok && e.request.method === 'GET') {
-          var clone = res.clone();
-          caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
-        }
-        return res;
-      });
+    fetch(e.request).then(function(res) {
+      if (res && res.ok) {
+        var clone = res.clone();
+        caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
+      }
+      return res;
+    }).catch(function() {
+      return caches.match(e.request);
     })
   );
 });
