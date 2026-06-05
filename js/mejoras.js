@@ -321,6 +321,46 @@ async function renderMiHorarioHoy(force) {
   setCount(todays.length + (todays.length === 1 ? " clase" : " clases"));
 }
 
+// ── MÉTRICAS ACCIONABLES DE LA HOME (Cambio 4) ──
+var _homeMetricsAt = 0, _homeMetricsKey = "";
+
+async function renderHomeMetrics(force) {
+  if (!document.querySelector("[data-metric]")) return;
+  var key = ctrId || "";
+  var nowMs = Date.now();
+  if (!force && key === _homeMetricsKey && (nowMs - _homeMetricsAt) < 5000) return; // debounce
+  _homeMetricsKey = key; _homeMetricsAt = nowMs;
+
+  var setMetric = function (name, val, alerta) {
+    document.querySelectorAll('[data-metric="' + name + '"]').forEach(function (el) {
+      el.textContent = val;
+      el.classList.toggle("is-alert", !!alerta);
+    });
+  };
+
+  var today = new Date().toISOString().split("T")[0];
+
+  // Sustituciones de hoy
+  try {
+    var s = await sb.from("sustituciones").select("id").eq("centro_id", ctrId).eq("fecha", today);
+    setMetric("sust", s.data ? s.data.length : 0);
+  } catch (e) { setMetric("sust", 0); }
+
+  // Incidencias abiertas
+  try {
+    var inc = await sb.from("incidencias").select("id").eq("centro_id", ctrId).eq("estado", "abierta");
+    setMetric("inc", inc.data ? inc.data.length : 0);
+  } catch (e) { setMetric("inc", 0); }
+
+  // Comunicados no leídos (reutiliza el registro de leídos de comunicados.js)
+  try {
+    var leidos = (typeof _comGetLeidos === "function") ? _comGetLeidos() : [];
+    var c = await sb.from("comunicados").select("id").eq("centro_id", ctrId).limit(500);
+    var unread = (c.data || []).filter(function (x) { return leidos.indexOf(x.id) === -1; }).length;
+    setMetric("com", unread, unread > 0);
+  } catch (e) { setMetric("com", 0); }
+}
+
 // ── MEJORA 8: HISTORIAL RECIENTE ──
 function addToHistorial(txt) {
   try {

@@ -289,28 +289,29 @@
           </div>
         </div>
 
-        <!-- Metrics -->
-        <div class="cls-metrics">
-          <div class="cls-metric cls-metric--warning" onclick="showTab('sust')" style="cursor:pointer">
-            <div class="cls-metric-icon"><i class="ti ti-replace"></i></div>
-            <div class="cls-metric-val" id="bento-guardias">—</div>
-            <div class="cls-metric-lbl">Guardias sin cubrir</div>
-          </div>
-          <div class="cls-metric cls-metric--info">
-            <div class="cls-metric-icon"><i class="ti ti-user-off"></i></div>
-            <div class="cls-metric-val" id="bento-ausentes">—</div>
-            <div class="cls-metric-lbl">Ausentes hoy</div>
-          </div>
-          <div class="cls-metric cls-metric--danger" onclick="showTab('incidencias')" style="cursor:pointer">
-            <div class="cls-metric-icon"><i class="ti ti-alert-triangle"></i></div>
-            <div class="cls-metric-val" id="bento-incidencias">—</div>
-            <div class="cls-metric-lbl">Incidencias abiertas</div>
-          </div>
-          <div class="cls-metric cls-metric--success" onclick="showTab('comunicados')" style="cursor:pointer">
-            <div class="cls-metric-icon"><i class="ti ti-speakerphone"></i></div>
-            <div class="cls-metric-val" id="bento-comunicados">—</div>
-            <div class="cls-metric-lbl">Comunicados</div>
-          </div>
+        <!-- Métricas accionables (Cambio 4) -->
+        <div class="home-metrics">
+          <button class="home-metric" onclick="showTab('sust');setTimeout(function(){if(typeof loadSustituciones==='function')loadSustituciones('hoy');},150)">
+            <div class="home-metric-main">
+              <div class="home-metric-val" data-metric="sust">—</div>
+              <div class="home-metric-lbl">Sustituciones hoy</div>
+            </div>
+            <i class="ti ti-chevron-right home-metric-chev"></i>
+          </button>
+          <button class="home-metric" onclick="showTab('comunicados')">
+            <div class="home-metric-main">
+              <div class="home-metric-val" data-metric="com">—</div>
+              <div class="home-metric-lbl">Comunicados nuevos</div>
+            </div>
+            <i class="ti ti-chevron-right home-metric-chev"></i>
+          </button>
+          <button class="home-metric" onclick="showTab('incidencias')">
+            <div class="home-metric-main">
+              <div class="home-metric-val" data-metric="inc">—</div>
+              <div class="home-metric-lbl">Incidencias abiertas</div>
+            </div>
+            <i class="ti ti-chevron-right home-metric-chev"></i>
+          </button>
         </div>
 
         <!-- Module grid -->
@@ -406,23 +407,29 @@
           </div>
         </div>
 
-        <!-- Metrics (3-col) -->
-        <div class="cls-metrics cls-metrics--3">
-          <div class="cls-metric cls-metric--info">
-            <div class="cls-metric-icon"><i class="ti ti-book"></i></div>
-            <div class="cls-metric-val">5</div>
-            <div class="cls-metric-lbl">Clases hoy</div>
-          </div>
-          <div class="cls-metric cls-metric--warning" onclick="showTab('sust')" style="cursor:pointer">
-            <div class="cls-metric-icon"><i class="ti ti-replace"></i></div>
-            <div class="cls-metric-val">—</div>
-            <div class="cls-metric-lbl">Sustituciones hoy</div>
-          </div>
-          <div class="cls-metric cls-metric--success" onclick="showTab('comunicados')" style="cursor:pointer">
-            <div class="cls-metric-icon"><i class="ti ti-speakerphone"></i></div>
-            <div class="cls-metric-val" id="bento-comunicados-staff">—</div>
-            <div class="cls-metric-lbl">Comunicados no leídos</div>
-          </div>
+        <!-- Métricas accionables (Cambio 4) -->
+        <div class="home-metrics">
+          <button class="home-metric" onclick="showTab('sust');setTimeout(function(){if(typeof loadSustituciones==='function')loadSustituciones('hoy');},150)">
+            <div class="home-metric-main">
+              <div class="home-metric-val" data-metric="sust">—</div>
+              <div class="home-metric-lbl">Sustituciones hoy</div>
+            </div>
+            <i class="ti ti-chevron-right home-metric-chev"></i>
+          </button>
+          <button class="home-metric" onclick="showTab('comunicados')">
+            <div class="home-metric-main">
+              <div class="home-metric-val" data-metric="com">—</div>
+              <div class="home-metric-lbl">Comunicados nuevos</div>
+            </div>
+            <i class="ti ti-chevron-right home-metric-chev"></i>
+          </button>
+          <button class="home-metric" onclick="showTab('incidencias')">
+            <div class="home-metric-main">
+              <div class="home-metric-val" data-metric="inc">—</div>
+              <div class="home-metric-lbl">Incidencias abiertas</div>
+            </div>
+            <i class="ti ti-chevron-right home-metric-chev"></i>
+          </button>
         </div>
 
         <!-- Module cards -->
@@ -1461,6 +1468,8 @@
 
     /* Mi horario de hoy (Cambio 3) — solo staff/admin */
     if (isStaff && typeof renderMiHorarioHoy === 'function') { try { renderMiHorarioHoy(); } catch (e) {} }
+    /* Métricas accionables (Cambio 4) — solo staff/admin */
+    if (isStaff && typeof renderHomeMetrics === 'function') { try { renderHomeMetrics(); } catch (e) {} }
 
     /* Compat: wb-actions (los módulos externos esperan estos IDs) */
     var actStaff = document.getElementById('wb-actions-staff');

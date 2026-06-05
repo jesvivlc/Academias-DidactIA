@@ -2218,6 +2218,31 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 }
 .home-horario-empty i { font-size: 18px; color: var(--muted-2); }
 
+/* ── Métricas accionables (Cambio 4) ── */
+.home-metrics {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px;
+}
+.home-metric {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  text-align: left; width: 100%; cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 18px; font-family: var(--font-ui);
+  transition: border-color .15s, box-shadow .15s, transform .05s;
+}
+.home-metric:hover { border-color: var(--line-strong); box-shadow: var(--sh); }
+.home-metric:active { transform: translateY(1px); }
+.home-metric-val {
+  font-family: var(--font-display); font-size: 30px; font-weight: 500;
+  line-height: 1; color: var(--txt); letter-spacing: -0.02em;
+}
+.home-metric-val.is-alert { color: var(--danger); }
+.home-metric-lbl { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.home-metric-chev { font-size: 18px; color: var(--muted-2); flex-shrink: 0; }
+.home-metric:hover .home-metric-chev { color: var(--ink); }
+@media (max-width: 640px) {
+  .home-metrics { grid-template-columns: 1fr; }
+}
+
 /* Banner */
 .cls-banner {
   background: var(--ink);
