@@ -1367,11 +1367,22 @@ h1.greeting, .greeting {
 
 /* ─ Topbar v2 ─ */
 #app-topbar { height: 60px; gap: 8px; padding: 0 16px 0 0; }
-.topbar-page { display: flex; align-items: center; flex-shrink: 0; }
+.topbar-page { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .topbar-page-title {
   font-family: var(--font-display);
   font-size: 18px; font-weight: 500; letter-spacing: -0.015em;
   color: var(--txt); white-space: nowrap;
+}
+.topbar-brand-mark {
+  width: 30px; height: 30px; border-radius: 8px; overflow: hidden;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+.topbar-brand-mark svg { display: block; border-radius: 8px; }
+.topbar-ctr-name {
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 42vw;
 }
 .topbar-search {
   flex: 1; max-width: 520px;
@@ -2126,6 +2137,44 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 /* ══════════════════════════════════════════════
    CLASSROOM DASHBOARD
    ══════════════════════════════════════════════ */
+
+/* ── Cabecera compacta de la home (Cambio 1) + buscador protagonista (Cambio 2) ── */
+.home-head { margin-bottom: 22px; }
+.home-greeting {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--txt); margin: 0; line-height: 1.2;
+}
+.home-greeting em { font-style: normal; font-weight: 600; color: var(--ink); }
+.home-subline { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.home-search { position: relative; margin-top: 16px; max-width: 720px; }
+.home-search-inp {
+  width: 100%; height: 46px; box-sizing: border-box;
+  border: 1px solid var(--line-2); border-radius: 12px;
+  background: var(--paper); color: var(--txt);
+  padding: 0 64px 0 42px; font-size: 14px; font-family: var(--font-ui);
+  outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.home-search-inp::placeholder { color: var(--muted-2); }
+.home-search-inp:focus { border-color: var(--ink); box-shadow: 0 0 0 3px var(--ink-ll); }
+.home-search-ico {
+  position: absolute; left: 15px; top: 23px; transform: translateY(-50%);
+  color: var(--muted-2); font-size: 17px; pointer-events: none;
+}
+.home-search-kbd {
+  position: absolute; right: 12px; top: 23px; transform: translateY(-50%);
+  font-size: 11px; color: var(--muted-2);
+  background: var(--surface-sunk); border: 1px solid var(--line-2);
+  border-radius: 5px; padding: 2px 7px; pointer-events: none;
+}
+.home-search-res {
+  position: absolute; left: 0; right: 0; top: 52px; z-index: 40;
+}
+.home-search-res:not(:empty) {
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: var(--sh-lg); padding: 7px; margin-top: 0;
+  max-height: 50vh; overflow-y: auto;
+}
 
 /* Banner */
 .cls-banner {

@@ -132,26 +132,18 @@
     <button id="sidebar-toggle-btn" aria-label="Colapsar menú">
       <i class="ti ti-menu-2"></i>
     </button>
-    <div class="topbar-page">
-      <span id="topbar-title" class="topbar-page-title">Inicio</span>
-    </div>
-    <div class="topbar-search">
-      <i class="ti ti-search topbar-search-icon"></i>
-      <input class="topbar-search-inp" placeholder="Buscar alumnos, profesores, aulas…" readonly>
-      <span class="topbar-search-kbd">⌘K</span>
+    <div class="topbar-page" onclick="goHome()" title="Ir al inicio" style="cursor:pointer">
+      <div class="topbar-brand-mark" id="app-brand-logo">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
+          <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
+          <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+          <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
+        </svg>
+      </div>
+      <span class="topbar-ctr-name" id="topbar-ctr-name">—</span>
     </div>
     <div class="topbar-right">
-      <div class="topbar-role-switch" id="topbar-role-switch">
-        <button class="topbar-role-btn" id="topbar-role-admin">Admin</button>
-        <button class="topbar-role-btn" id="topbar-role-prof">Profesor</button>
-      </div>
-      <button class="topbar-icon-btn" title="Asistente IA" onclick="showTab('chat');setTimeout(function(){var ci=document.getElementById('chat-inp');if(ci)ci.focus();},80)">
-        <i class="ti ti-sparkles"></i>
-      </button>
-      <button class="topbar-icon-btn" title="Notificaciones">
-        <i class="ti ti-bell"></i>
-      </button>
-      <div class="topbar-divider"></div>
+      <!-- CAMBIO 6: el botón de búsqueda (lupa) que abre el command palette se añade aquí -->
       <div class="topbar-profile">
         <div class="topbar-avatar" id="topbar-avatar" title="">U</div>
         <div class="topbar-profile-meta">
@@ -272,15 +264,17 @@
       <!-- ── ADMIN / SUPERADMIN ── -->
       <div id="inicio-admin" style="display:none">
 
-        <!-- Banner -->
-        <div class="cls-banner">
-          <div class="cls-banner-body">
-            <h1 class="cls-greeting"><span id="inicio-greeting-txt">Buenos días,</span> <em id="inicio-first-name">—</em></h1>
-            <div class="cls-subline" id="inicio-subline">—</div>
-          </div>
-          <div class="cls-banner-actions">
-            <button class="cls-banner-btn" onclick="showTab('comunicados')"><i class="ti ti-speakerphone"></i> Comunicado</button>
-            <button class="cls-banner-btn cls-banner-btn--primary" onclick="document.getElementById('chat-inp').focus()"><i class="ti ti-sparkles"></i> Preguntar IA</button>
+        <!-- Cabecera compacta + buscador protagonista -->
+        <div class="home-head">
+          <h1 class="home-greeting"><span id="inicio-greeting-txt">Buenos días,</span> <em id="inicio-first-name">—</em></h1>
+          <div class="home-subline" id="inicio-subline">—</div>
+          <div class="home-search">
+            <i class="ti ti-search home-search-ico"></i>
+            <input class="home-search-inp" id="home-search-admin" placeholder="Buscar alumnos, profesores, aulas…"
+                   autocomplete="off" oninput="buscarAlumnoRapido(this.value,'home-search-res-admin')"
+                   onkeydown="if(event.key==='Escape'){this.value='';buscarAlumnoRapido('','home-search-res-admin');}">
+            <span class="home-search-kbd">⌘K</span>
+            <div class="home-search-res" id="home-search-res-admin"></div>
           </div>
         </div>
 
@@ -356,15 +350,11 @@
         <!-- Compat: inline script sets textContent on this -->
         <div style="display:none" id="inicio-tl-date"></div>
 
-        <!-- Búsqueda rápida + historial (mejoras.js controla display) -->
+        <!-- Búsqueda rápida ahora vive en la cabecera de la home (home-search). Historial debajo. -->
         <div style="display:contents">
           <div id="busqueda-alumno-container" style="display:none">
-            <div class="inicio-card">
-              <div class="card-eyebrow">ALUMNOS</div>
-              <div class="card-title" style="margin-bottom:10px">Búsqueda rápida</div>
-              <input class="search-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" oninput="buscarAlumnoRapido(this.value)">
-              <div id="busqueda-alumno-res"></div>
-            </div>
+            <input id="busqueda-alumno-inp" style="display:none">
+            <div id="busqueda-alumno-res" style="display:none"></div>
           </div>
           <div id="bento-historial-card" style="display:none">
             <div class="inicio-card">
@@ -380,15 +370,17 @@
       <!-- ── PROFESOR ── -->
       <div id="inicio-staff" style="display:none">
 
-        <!-- Banner -->
-        <div class="cls-banner">
-          <div class="cls-banner-body">
-            <h1 class="cls-greeting"><span id="inicio-greeting-txt-staff">Buenos días,</span> <em id="inicio-first-name-staff">—</em></h1>
-            <div class="cls-subline" id="inicio-subline-staff">Profesor</div>
-          </div>
-          <div class="cls-banner-actions">
-            <button class="cls-banner-btn" onclick="showTab('incidencias')"><i class="ti ti-alert-triangle"></i> Incidencias</button>
-            <button class="cls-banner-btn cls-banner-btn--primary" onclick="document.getElementById('chat-inp').focus()"><i class="ti ti-sparkles"></i> Preguntar IA</button>
+        <!-- Cabecera compacta + buscador protagonista -->
+        <div class="home-head">
+          <h1 class="home-greeting"><span id="inicio-greeting-txt-staff">Buenos días,</span> <em id="inicio-first-name-staff">—</em></h1>
+          <div class="home-subline" id="inicio-subline-staff">—</div>
+          <div class="home-search">
+            <i class="ti ti-search home-search-ico"></i>
+            <input class="home-search-inp" id="home-search-staff" placeholder="Buscar alumnos, profesores, aulas…"
+                   autocomplete="off" oninput="buscarAlumnoRapido(this.value,'home-search-res-staff')"
+                   onkeydown="if(event.key==='Escape'){this.value='';buscarAlumnoRapido('','home-search-res-staff');}">
+            <span class="home-search-kbd">⌘K</span>
+            <div class="home-search-res" id="home-search-res-staff"></div>
           </div>
         </div>
 
@@ -443,11 +435,9 @@
 
       <!-- ── FAMILIA ── -->
       <div id="inicio-familia" style="display:none">
-        <div class="cls-banner">
-          <div class="cls-banner-body">
-            <h1 class="cls-greeting"><span id="inicio-greeting-txt-fam">Buenos días,</span> <em id="inicio-first-name-fam">—</em></h1>
-            <div class="cls-subline">Portal de familias</div>
-          </div>
+        <div class="home-head">
+          <h1 class="home-greeting"><span id="inicio-greeting-txt-fam">Buenos días,</span> <em id="inicio-first-name-fam">—</em></h1>
+          <div class="home-subline" id="inicio-subline-fam">—</div>
         </div>
         <div id="mis-hijos-container" style="display:none">
           <div class="cls-section-label" style="margin-top:16px">Mis hijos</div>
@@ -1411,8 +1401,19 @@
     set('inicio-first-name-staff',   firstName);
     set('inicio-greeting-txt-fam',   greetingTxt);
     set('inicio-first-name-fam',     firstName);
-    set('inicio-subline', dateStr + ' · ' + ctr);
-    set('inicio-tl-date', DAYS[now.getDay()].charAt(0).toUpperCase() + DAYS[now.getDay()].slice(1) + ', ' + now.getDate() + ' de ' + MONTHS[now.getMonth()]);
+
+    /* Subline cabecera compacta: "Jueves 5 de junio · Profesor" */
+    var _dayCap    = DAYS[now.getDay()].charAt(0).toUpperCase() + DAYS[now.getDay()].slice(1);
+    var _dateCap   = _dayCap + ' ' + now.getDate() + ' de ' + MONTHS[now.getMonth()];
+    var _roleLabel = isAdmin ? 'Dirección' : (r === 'profesional' ? 'Profesor' : (isFamilia ? 'Familia' : (r || '')));
+    var _subline   = _dateCap + (_roleLabel ? ' · ' + _roleLabel : '');
+    set('inicio-subline',       _subline);
+    set('inicio-subline-staff', _subline);
+    set('inicio-subline-fam',   _subline);
+    set('inicio-tl-date', _dateCap);
+
+    /* Topbar minimalista: nombre del centro */
+    set('topbar-ctr-name', ctr);
 
     /* Topbar: rol activo */
     var tUR = document.getElementById('topbar-user-role');

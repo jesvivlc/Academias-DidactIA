@@ -190,8 +190,8 @@ function loadMisHijos() {
 
 // ── MEJORA 6: BÚSQUEDA RÁPIDA ALUMNO ──
 var _busqTimer = null;
-function buscarAlumnoRapido(q) {
-  var res = document.getElementById("busqueda-alumno-res");
+function buscarAlumnoRapido(q, resId) {
+  var res = document.getElementById(resId || "busqueda-alumno-res");
   if (!res) return;
   clearTimeout(_busqTimer);
   if (!q || q.length < 2) { res.innerHTML = ""; return; }
