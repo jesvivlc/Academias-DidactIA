@@ -143,7 +143,9 @@
       <span class="topbar-ctr-name" id="topbar-ctr-name">—</span>
     </div>
     <div class="topbar-right">
-      <!-- CAMBIO 6: el botón de búsqueda (lupa) que abre el command palette se añade aquí -->
+      <button class="topbar-icon-btn" id="topbar-search-btn" title="Buscar (⌘K)" onclick="openCommandPalette()">
+        <i class="ti ti-search"></i>
+      </button>
       <div class="topbar-profile">
         <div class="topbar-avatar" id="topbar-avatar" title="">U</div>
         <div class="topbar-profile-meta">
@@ -271,10 +273,8 @@
           <div class="home-search">
             <i class="ti ti-search home-search-ico"></i>
             <input class="home-search-inp" id="home-search-admin" placeholder="Buscar alumnos, profesores, aulas…"
-                   autocomplete="off" oninput="buscarAlumnoRapido(this.value,'home-search-res-admin')"
-                   onkeydown="if(event.key==='Escape'){this.value='';buscarAlumnoRapido('','home-search-res-admin');}">
+                   autocomplete="off" readonly onclick="openCommandPalette()">
             <span class="home-search-kbd">⌘K</span>
-            <div class="home-search-res" id="home-search-res-admin"></div>
           </div>
         </div>
 
@@ -314,50 +314,7 @@
           </button>
         </div>
 
-        <!-- Module grid -->
-        <div class="cls-section-label">Módulos</div>
-        <div class="cls-modules-grid">
-          <div class="cls-mc" onclick="showTab('sust')" style="--mc-color:#1565c0">
-            <div class="cls-mc-hdr"><i class="ti ti-replace cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Sustituciones</div><div class="cls-mc-desc">Gestión de guardias del día</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('comedor')" style="--mc-color:#2e7d32">
-            <div class="cls-mc-hdr"><i class="ti ti-tools-kitchen-2 cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Comedor</div><div class="cls-mc-desc">Asistencia y seguimiento diario</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('incidencias')" style="--mc-color:#c62828">
-            <div class="cls-mc-hdr"><i class="ti ti-alert-triangle cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Incidencias</div><div class="cls-mc-desc">Registro y tipificación IA</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('rrhh')" style="--mc-color:#e65100">
-            <div class="cls-mc-hdr"><i class="ti ti-briefcase cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">RRHH</div><div class="cls-mc-desc">Ausencias y bolsa de guardias</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('comunicados')" style="--mc-color:#558b2f">
-            <div class="cls-mc-hdr"><i class="ti ti-speakerphone cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Comunicados</div><div class="cls-mc-desc">Mensajes a familias y profesores</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('espacios')" style="--mc-color:#00695c">
-            <div class="cls-mc-hdr"><i class="ti ti-door cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Espacios</div><div class="cls-mc-desc">Reserva de salas y aulas</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('planner')" style="--mc-color:#4527a0">
-            <div class="cls-mc-hdr"><i class="ti ti-calendar-event cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Planner</div><div class="cls-mc-desc">Generador de horarios lectivos</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('analytics')" style="--mc-color:#283593">
-            <div class="cls-mc-hdr"><i class="ti ti-chart-bar cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Analytics</div><div class="cls-mc-desc">Cuadro de mando integral</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('users')" style="--mc-color:#4a5568">
-            <div class="cls-mc-hdr"><i class="ti ti-users cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Usuarios</div><div class="cls-mc-desc">Gestión de cuentas y roles</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('admin')" style="--mc-color:#546e7a">
-            <div class="cls-mc-hdr"><i class="ti ti-settings cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Administración</div><div class="cls-mc-desc">Configuración del centro</div></div>
-          </div>
-        </div>
+        <!-- Cambio 5: grid "Módulos" eliminado (redundante con el sidebar) -->
 
         <!-- Compat: inline script sets textContent on this -->
         <div style="display:none" id="inicio-tl-date"></div>
@@ -389,10 +346,8 @@
           <div class="home-search">
             <i class="ti ti-search home-search-ico"></i>
             <input class="home-search-inp" id="home-search-staff" placeholder="Buscar alumnos, profesores, aulas…"
-                   autocomplete="off" oninput="buscarAlumnoRapido(this.value,'home-search-res-staff')"
-                   onkeydown="if(event.key==='Escape'){this.value='';buscarAlumnoRapido('','home-search-res-staff');}">
+                   autocomplete="off" readonly onclick="openCommandPalette()">
             <span class="home-search-kbd">⌘K</span>
-            <div class="home-search-res" id="home-search-res-staff"></div>
           </div>
         </div>
 
@@ -432,34 +387,7 @@
           </button>
         </div>
 
-        <!-- Module cards -->
-        <div class="cls-section-label">Acceso rápido</div>
-        <div class="cls-modules-grid">
-          <div class="cls-mc" onclick="showTab('sust')" style="--mc-color:#1565c0">
-            <div class="cls-mc-hdr"><i class="ti ti-replace cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Sustituciones</div><div class="cls-mc-desc">Guardias y coberturas</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('incidencias')" style="--mc-color:#c62828">
-            <div class="cls-mc-hdr"><i class="ti ti-alert-triangle cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Incidencias</div><div class="cls-mc-desc">Registrar incidencia</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('rrhh')" style="--mc-color:#e65100">
-            <div class="cls-mc-hdr"><i class="ti ti-briefcase cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">RRHH</div><div class="cls-mc-desc">Solicitar ausencia</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('comunicados')" style="--mc-color:#558b2f">
-            <div class="cls-mc-hdr"><i class="ti ti-speakerphone cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Comunicados</div><div class="cls-mc-desc">Mensajes del centro</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('comedor')" style="--mc-color:#2e7d32">
-            <div class="cls-mc-hdr"><i class="ti ti-tools-kitchen-2 cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Comedor</div><div class="cls-mc-desc">Asistencia diaria</div></div>
-          </div>
-          <div class="cls-mc" onclick="showTab('espacios')" style="--mc-color:#00695c">
-            <div class="cls-mc-hdr"><i class="ti ti-door cls-mc-ico"></i></div>
-            <div class="cls-mc-body"><div class="cls-mc-name">Espacios</div><div class="cls-mc-desc">Reservar sala o aula</div></div>
-          </div>
-        </div>
+        <!-- Cambio 5: grid "Acceso rápido" eliminado (redundante con el sidebar) -->
       </div><!-- /#inicio-staff -->
 
       <!-- ── FAMILIA ── -->
@@ -1156,6 +1084,19 @@
   </div>
 </div>
 
+<!-- COMMAND PALETTE GLOBAL (⌘K) — Cambio 6 -->
+<div id="cmd-palette" class="cmdp-overlay" style="display:none" onclick="if(event.target===this)closeCommandPalette()">
+  <div class="cmdp" role="dialog" aria-label="Buscador">
+    <div class="cmdp-head">
+      <i class="ti ti-search cmdp-ico"></i>
+      <input id="cmdp-input" class="cmdp-input" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Buscar alumnos, profesores, aulas…" oninput="cmdpSearch(this.value)" onkeydown="cmdpKey(event)">
+      <span class="cmdp-esc">esc</span>
+    </div>
+    <div id="cmdp-results" class="cmdp-results"></div>
+  </div>
+</div>
+
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/users.js"></script>
@@ -1163,6 +1104,7 @@
 <script src="js/chat.js"></script>
 <script src="js/comedor.js"></script>
 <script src="js/mejoras.js"></script>
+<script src="js/palette.js"></script>
 <script src="js/incidencias.js"></script>
 <script src="js/espacios.js"></script>
 <script src="js/rrhh.js"></script>

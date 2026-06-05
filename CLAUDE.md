@@ -211,8 +211,18 @@ El script inline en `app.html` (≈280 líneas) es editable junto con el HTML. G
 - `BADGE_MAP`: tab → badge sidebar + bottom nav
 - Patch de `window.showTab` para sincronizar nav activo
 - `updateUserInfo()`: popula sidebar footer + topbar avatar + nombre
-- `updateBentoDashboard()`: gestiona secciones de rol del Inicio y topbar
-- `syncBentoMetrics()`: sincroniza métricas desde role-cards-container oculto
+- `updateBentoDashboard()`: gestiona secciones de rol del Inicio y topbar; calcula el subline "Fecha · Rol" de la cabecera compacta, fija `#topbar-ctr-name`, e invoca `renderMiHorarioHoy()` + `renderHomeMetrics()` (staff/admin)
+- `syncBentoMetrics()`: legacy, ahora no-op inocuo (las métricas viejas `#bento-*` ya no existen; sigue null-guarded)
+
+### Home rediseñada (2026-06-05)
+La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del horario del día y se eliminaron duplicaciones con el sidebar:
+- **Cabecera compacta** `.home-head` (sustituye la banda azul `.cls-banner`): saludo + "Jueves 5 de junio · Profesor".
+- **Buscador protagonista** `.home-search` (readonly) que abre el command palette; el buscador del topbar global se eliminó.
+- **Topbar minimalista**: logo (`#app-brand-logo`, tematizado por `applyTheme`) + nombre del centro (`#topbar-ctr-name`) + lupa (`#topbar-search-btn` → palette) + avatar. Sin role-switch/IA/campana.
+- **"Mi horario de hoy"** `.home-card` (`renderMiHorarioHoy` en `js/mejoras.js`): consulta `horarios_grupo` por centro+día (día en minúsculas sin tilde), cruza `full_name` vs `profesor_nombre` por tokens normalizados, resalta la clase AHORA por `hora_inicio/fin` reales.
+- **Métricas accionables** `.home-metric` (`renderHomeMetrics`): Sustituciones hoy / Comunicados nuevos (rojo si >0) / Incidencias abiertas, clicables a su sección.
+- **Grids "Módulos"/"Acceso rápido" eliminados** (redundantes con el sidebar).
+- **Command palette ⌘K** (`js/palette.js`): overlay global `#cmd-palette`, atajo ⌘K/Ctrl+K + lupa del topbar; busca alumnos, profesores y aulas (profesores/aulas se sacan de `profesores`/`espacios` **y** de `horarios_grupo`, deduplicados, porque muchos centros sólo tienen los datos en `horarios_grupo`).
 
 ---
 
@@ -915,6 +925,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-05` · Home rediseñada (6 cambios) — cabecera compacta + buscador protagonista; topbar minimalista (logo+centro+lupa+avatar); bloque "Mi horario de hoy" (`renderMiHorarioHoy`); métricas accionables (`renderHomeMetrics`); eliminados grids "Módulos"/"Acceso rápido"; command palette global ⌘K (`js/palette.js`, busca alumnos/profesores/aulas en tablas + `horarios_grupo`). Ver "Home rediseñada" arriba.
 - `2026-06-04` · Exportaciones — SheetJS (xlsx 0.18.5) cargado en `app.html`. **Planner**: botones PDF (jsPDF, página por grupo + por profesor, cabecera con logo/color del centro y curso escolar) y Excel (hoja por grupo, por profesor y resumen del centro); hidrata desde `horario_generado` si el tablero está vacío. **Sustituciones/Comedor/Incidencias**: CSV → .xlsx (Comedor con 2ª hoja desglose por grupo). **RRHH**: nuevo botón Exportar → .xlsx (ausencias + resumen por profesor). **Guardias**: nuevo botón Exportar → .xlsx (ranking equidad + detalle). **Alertas predictivas**: índice creado, tabla `alertas_predictivas` ya operativa.
 - `2026-06-04` · Planner — horarios SIN profesor asignado: (1) `horario_generado.profesor_id` nullable; (2) modo CSP "sin profesores" (`plannerGenerarSinProf`, slots `profesor_id null`); (3) Tablero: slots rayados "Sin asignar", modal selector + panel lateral de profesores arrastrables; (4) chat: `asignar_profesor` + `asignar_profesor_materia` (masivo). Validación de conflicto profesor en todos los caminos. EF desplegada. `scripts/verify-sin-profesor.js`
 - `2026-06-04` · Planner Tablero — drag & drop con validación de hard constraints al soltar (`_ejecutarDrop` simular-validar-revertir, flash rojo + toast en rechazo) + zona "Aparcados" persistida en localStorage (retirar clases temporalmente, recolocar arrastrando, aviso en recarga/publicación). `scripts/verify-tablero-dnd.js` (14 checks)

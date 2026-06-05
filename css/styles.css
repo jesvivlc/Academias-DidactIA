@@ -2243,6 +2243,46 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
   .home-metrics { grid-template-columns: 1fr; }
 }
 
+/* ── Command palette global ⌘K (Cambio 6) ── */
+.home-search-inp[readonly] { cursor: pointer; }
+.cmdp-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(20, 22, 30, .42); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 12vh 16px 16px;
+}
+.cmdp {
+  width: 100%; max-width: 580px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--sh-lg);
+  overflow: hidden; display: flex; flex-direction: column; max-height: 70vh;
+}
+.cmdp-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.cmdp-ico { font-size: 18px; color: var(--muted-2); flex-shrink: 0; }
+.cmdp-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-size: 15px; font-family: var(--font-ui); color: var(--txt); min-width: 0;
+}
+.cmdp-input::placeholder { color: var(--muted-2); }
+.cmdp-esc {
+  font-size: 11px; color: var(--muted-2); background: var(--surface-sunk);
+  border: 1px solid var(--line-2); border-radius: 5px; padding: 2px 7px; flex-shrink: 0;
+}
+.cmdp-results { overflow-y: auto; padding: 6px; }
+.cmdp-empty { padding: 26px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+.cmdp-group {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted-2); padding: 10px 10px 4px;
+}
+.cmdp-item { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 9px; cursor: pointer; }
+.cmdp-item:hover { background: var(--surface-sunk); }
+.cmdp-item-ico { font-size: 17px; color: var(--ink); flex-shrink: 0; }
+.cmdp-item-main { flex: 1; min-width: 0; }
+.cmdp-item-title { font-size: 13.5px; font-weight: 500; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmdp-item-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.cmdp-item-go { font-size: 13px; color: var(--muted-2); opacity: 0; flex-shrink: 0; }
+.cmdp-item:hover .cmdp-item-go { opacity: 1; }
+@media (max-width: 640px) { .cmdp-overlay { padding: 8vh 10px 10px; } }
+
 /* Banner */
 .cls-banner {
   background: var(--ink);
