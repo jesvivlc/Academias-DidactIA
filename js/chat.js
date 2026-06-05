@@ -288,7 +288,11 @@ function _sanitizeReply(html) {
 
 function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight,120)+"px"; }
 function handleKey(e) { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
-function askQ(t) { document.getElementById("chat-inp").value = t; sendMsg(); }
+function askQ(t) {
+  if (typeof openAsistente === "function") openAsistente();
+  document.getElementById("chat-inp").value = t;
+  sendMsg();
+}
 function ts() { return new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}); }
 
 function addMsg(r, html) {

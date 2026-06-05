@@ -183,46 +183,46 @@
       <!-- Navegación -->
       <div class="sb-nav">
 
-        <div class="sb-group-label">Principal</div>
-        <button class="nav-item active" id="nav-chat" data-tab="chat" onclick="showTab('chat')">
+        <!-- Inicio + Asistente (sin cabecera de grupo) -->
+        <button class="nav-item active" id="nav-chat" data-tab="chat" onclick="showTab('chat')" style="--nav-color:var(--info)">
           <i class="ti ti-home"></i><span class="nav-item-label">Inicio</span>
         </button>
-        <button class="nav-item" id="nav-asistente" onclick="showTab('chat');setTimeout(function(){var ci=document.getElementById('chat-inp');if(ci)ci.focus();},80)">
+        <button class="nav-item" id="nav-asistente" onclick="openAsistente()" style="--nav-color:var(--info)">
           <i class="ti ti-sparkles"></i><span class="nav-item-label">Asistente IA</span>
           <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
         </button>
 
-        <div class="sb-group-label">Gestión diaria</div>
-        <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none;--nav-color:#1565c0">
+        <div class="sb-group-label">Docencia</div>
+        <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none;--nav-color:#185FA5">
           <i class="ti ti-replace"></i><span class="nav-item-label">Sustituciones</span>
           <span class="nav-badge" id="sb-badge-sust" style="display:none">0</span>
         </button>
-        <button class="nav-item" id="nav-incidencias" data-tab="incidencias" onclick="showTab('incidencias')" style="display:none;--nav-color:#c62828">
+        <button class="nav-item" id="nav-incidencias" data-tab="incidencias" onclick="showTab('incidencias')" style="display:none;--nav-color:#A32D2D">
           <i class="ti ti-alert-triangle"></i><span class="nav-item-label">Incidencias</span>
           <span class="nav-badge" id="sb-badge-inc" style="display:none">0</span>
         </button>
-        <button class="nav-item" id="nav-comunicados" data-tab="comunicados" onclick="showTab('comunicados')" style="display:none;--nav-color:#558b2f">
+        <button class="nav-item" id="nav-comunicados" data-tab="comunicados" onclick="showTab('comunicados')" style="display:none;--nav-color:#3B6D11">
           <i class="ti ti-speakerphone"></i><span class="nav-item-label">Comunicados</span>
           <span class="nav-badge" id="sb-badge-com" style="display:none">0</span>
         </button>
-
-        <div class="sb-group-label">Servicios</div>
-        <button class="nav-item" id="nav-comedor" data-tab="comedor" onclick="showTab('comedor')" style="display:none;--nav-color:#2e7d32">
+        <button class="nav-item" id="nav-comedor" data-tab="comedor" onclick="showTab('comedor')" style="display:none;--nav-color:#0F6E56">
           <i class="ti ti-tools-kitchen-2"></i><span class="nav-item-label">Comedor</span>
         </button>
-        <button class="nav-item" id="nav-ib" data-tab="ib" onclick="showTab('ib')" style="display:none;--nav-color:#6a1b9a">
+
+        <div class="sb-group-label">Centro</div>
+        <button class="nav-item" id="nav-ib" data-tab="ib" onclick="showTab('ib')" style="display:none;--nav-color:#534AB7">
           <i class="ti ti-school"></i><span class="nav-item-label">IB</span>
+        </button>
+        <button class="nav-item" id="nav-rrhh" data-tab="rrhh" onclick="showTab('rrhh')" style="display:none;--nav-color:#BA7517">
+          <i class="ti ti-briefcase"></i><span class="nav-item-label">RRHH</span>
+        </button>
+        <button class="nav-item" id="nav-espacios" data-tab="espacios" onclick="showTab('espacios')" style="display:none;--nav-color:#888780">
+          <i class="ti ti-door"></i><span class="nav-item-label">Espacios</span>
         </button>
 
         <div class="sb-group-label">Administración</div>
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
           <i class="ti ti-users"></i><span class="nav-item-label">Usuarios</span>
-        </button>
-        <button class="nav-item" id="nav-rrhh" data-tab="rrhh" onclick="showTab('rrhh')" style="display:none;--nav-color:#e65100">
-          <i class="ti ti-briefcase"></i><span class="nav-item-label">RRHH</span>
-        </button>
-        <button class="nav-item" id="nav-espacios" data-tab="espacios" onclick="showTab('espacios')" style="display:none;--nav-color:#00695c">
-          <i class="ti ti-door"></i><span class="nav-item-label">Espacios</span>
         </button>
         <button class="nav-item" id="nav-admin" data-tab="admin" onclick="showTab('admin')" style="--nav-color:#546e7a">
           <i class="ti ti-settings"></i><span class="nav-item-label">Administración</span>
@@ -420,52 +420,7 @@
 
     </div><!-- /.inicio-content -->
 
-    <!-- AI RAIL -->
-    <div class="inicio-rail" id="inicio-rail">
-      <div class="rail-hdr">
-        <div class="rail-hdr-logo">
-          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
-            <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
-            <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
-            <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
-          </svg>
-        </div>
-        <div>
-          <div class="rail-hdr-title">Asistente</div>
-          <div class="rail-hdr-sub">DidactIA · <span id="wlc-ctr">tu centro</span></div>
-        </div>
-      </div>
-      <div class="chat-main">
-        <div class="load-bar" id="load-bar"></div>
-        <div class="chat-msgs" id="chat-msgs">
-          <div class="welcome" id="welcome">
-            <div class="wlc-ico">D</div>
-            <div class="wlc-title">¿En qué puedo ayudarte?</div>
-            <div class="wlc-sub">Pregúntame sobre tu centro: horarios, reuniones, menú y más.</div>
-            <div class="quick-qs">
-              <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
-              <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
-              <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">Actividades extraescolares</div>
-              <div class="quick-q" onclick="askQ('¿Cuál es el horario de clases de esta semana?')">Horario de clases</div>
-            </div>
-          </div>
-        </div>
-        <div class="typing" id="typing">
-          <div class="typ-av">D</div>
-          <div class="dots"><span></span><span></span><span></span></div>
-        </div>
-        <div class="input-area">
-          <div class="inp-wrap">
-            <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
-              onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-          </div>
-          <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
-          <button class="send-btn" id="send-btn" onclick="sendMsg()">
-            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-          </button>
-        </div>
-      </div>
-    </div><!-- /.inicio-rail -->
+    <!-- El asistente IA se movió a un overlay flotante (#asistente-overlay), ver más abajo -->
 
   </div>
 
@@ -985,6 +940,67 @@
 
 </div><!-- /app-main -->
   </div><!-- /app-body -->
+
+  <!-- ASISTENTE IA — overlay flotante (Cambio 1) -->
+  <div id="asistente-overlay" class="asist-overlay" aria-hidden="true">
+    <div class="asist-backdrop" onclick="closeAsistente()"></div>
+    <aside class="asist-panel" role="dialog" aria-label="Asistente IA">
+      <div class="rail-hdr">
+        <div class="rail-hdr-logo">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
+            <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
+            <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+            <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
+          </svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="rail-hdr-title">Asistente</div>
+          <div class="rail-hdr-sub">DidactIA · <span id="wlc-ctr">tu centro</span></div>
+        </div>
+        <button class="asist-close" onclick="closeAsistente()" aria-label="Cerrar asistente"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="chat-main">
+        <div class="load-bar" id="load-bar"></div>
+        <div class="chat-msgs" id="chat-msgs">
+          <div class="welcome" id="welcome">
+            <div class="wlc-ico">D</div>
+            <div class="wlc-title">¿En qué puedo ayudarte?</div>
+            <div class="wlc-sub">Pregúntame sobre tu centro: horarios, reuniones, menú y más.</div>
+            <div class="quick-qs">
+              <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
+              <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
+              <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">Actividades extraescolares</div>
+              <div class="quick-q" onclick="askQ('¿Cuál es el horario de clases de esta semana?')">Horario de clases</div>
+            </div>
+          </div>
+        </div>
+        <div class="typing" id="typing">
+          <div class="typ-av">D</div>
+          <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+        <div class="input-area">
+          <div class="inp-wrap">
+            <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
+              onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          </div>
+          <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
+          <button class="send-btn" id="send-btn" onclick="sendMsg()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Globo de invitación + burbuja flotante -->
+  <div id="asistente-hint" class="asist-hint">
+    <span>Pregúntame sobre horarios, comedor, reuniones…</span>
+    <button class="asist-hint-x" onclick="dismissAsistHint()" aria-label="Cerrar aviso">&times;</button>
+  </div>
+  <button id="asistente-fab" class="asist-fab" onclick="toggleAsistente()" aria-label="Abrir asistente IA" title="Asistente IA">
+    <i class="ti ti-sparkles"></i>
+  </button>
+
 </div><!-- /app-shell -->
 
 <!-- BOTTOM NAV (solo móvil) -->
@@ -1178,8 +1194,57 @@
       syncAllVisibility();
       updateUserInfo();
       buildMasDrawer();
+      showAsistenteFab();
     }
   }).observe(appMain, { attributes: true, attributeFilter: ['style'] });
+
+  /* ── Asistente IA: burbuja flotante + overlay (Cambio 1) ── */
+  function showAsistenteFab() {
+    var fab = document.getElementById('asistente-fab');
+    if (fab) fab.style.display = 'flex';
+    /* Globo de invitación una sola vez (si no se cerró antes) */
+    try { if (localStorage.getItem('asist_hint_dismissed')) return; } catch (e) {}
+    setTimeout(function () {
+      var ov = document.getElementById('asistente-overlay');
+      if (ov && ov.classList.contains('open')) return;
+      var h = document.getElementById('asistente-hint');
+      if (h) h.classList.add('show');
+    }, 2600);
+  }
+  window.openAsistente = function () {
+    var ov = document.getElementById('asistente-overlay');
+    if (!ov) return;
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+    var fab = document.getElementById('asistente-fab');
+    if (fab) fab.classList.add('hidden');
+    window.dismissAsistHint(true);
+    setTimeout(function () { var ci = document.getElementById('chat-inp'); if (ci) ci.focus(); }, 130);
+  };
+  window.closeAsistente = function () {
+    var ov = document.getElementById('asistente-overlay');
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov.setAttribute('aria-hidden', 'true');
+    var fab = document.getElementById('asistente-fab');
+    if (fab) fab.classList.remove('hidden');
+  };
+  window.toggleAsistente = function () {
+    var ov = document.getElementById('asistente-overlay');
+    if (ov && ov.classList.contains('open')) window.closeAsistente();
+    else window.openAsistente();
+  };
+  window.dismissAsistHint = function (silent) {
+    var h = document.getElementById('asistente-hint');
+    if (h) h.classList.remove('show');
+    if (!silent) { try { localStorage.setItem('asist_hint_dismissed', '1'); } catch (e) {} }
+  };
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      var ov = document.getElementById('asistente-overlay');
+      if (ov && ov.classList.contains('open')) window.closeAsistente();
+    }
+  });
 
   /* ── 2. Patch showTab ── */
   var _orig = null;
