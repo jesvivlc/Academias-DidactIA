@@ -2176,6 +2176,48 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
   max-height: 50vh; overflow-y: auto;
 }
 
+/* ── Tarjeta "Mi horario de hoy" (Cambio 3) ── */
+.home-card {
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 14px; padding: 18px 20px; margin-bottom: 22px;
+}
+.home-card-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.home-card-title {
+  font-family: var(--font-display); font-size: 16px; font-weight: 500;
+  color: var(--txt); display: flex; align-items: center; gap: 8px;
+}
+.home-card-title i { color: var(--ink); font-size: 18px; }
+.home-horario-count {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  background: var(--surface-sunk); border-radius: 999px; padding: 3px 11px; white-space: nowrap;
+}
+.home-horario-body { display: flex; flex-direction: column; gap: 7px; }
+.home-horario-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 11px 14px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--paper-2); transition: background .15s;
+}
+.home-horario-row.is-now {
+  background: var(--ink-ll); border-color: var(--ink);
+}
+.hh-tramo {
+  flex-shrink: 0; width: 92px; font-size: 12px; font-weight: 600; color: var(--muted-2);
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+}
+.home-horario-row.is-now .hh-tramo { color: var(--ink); }
+.hh-now {
+  font-size: 9px; font-weight: 800; letter-spacing: .06em; color: #fff;
+  background: var(--ink); border-radius: 4px; padding: 1px 6px;
+}
+.hh-main { flex: 1; min-width: 0; }
+.hh-asig { font-size: 13.5px; font-weight: 500; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hh-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.home-horario-empty {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 26px 16px; color: var(--muted); font-size: 13px; text-align: center;
+}
+.home-horario-empty i { font-size: 18px; color: var(--muted-2); }
+
 /* Banner */
 .cls-banner {
   background: var(--ink);

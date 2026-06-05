@@ -278,6 +278,17 @@
           </div>
         </div>
 
+        <!-- Mi horario de hoy (Cambio 3) -->
+        <div class="home-card home-horario">
+          <div class="home-card-hdr">
+            <div class="home-card-title"><i class="ti ti-clock-hour-4"></i> Mi horario de hoy</div>
+            <div class="home-horario-count" data-horario-count></div>
+          </div>
+          <div class="home-horario-body" data-horario-body>
+            <div class="home-horario-empty">Cargando…</div>
+          </div>
+        </div>
+
         <!-- Metrics -->
         <div class="cls-metrics">
           <div class="cls-metric cls-metric--warning" onclick="showTab('sust')" style="cursor:pointer">
@@ -381,6 +392,17 @@
                    onkeydown="if(event.key==='Escape'){this.value='';buscarAlumnoRapido('','home-search-res-staff');}">
             <span class="home-search-kbd">⌘K</span>
             <div class="home-search-res" id="home-search-res-staff"></div>
+          </div>
+        </div>
+
+        <!-- Mi horario de hoy (Cambio 3) -->
+        <div class="home-card home-horario">
+          <div class="home-card-hdr">
+            <div class="home-card-title"><i class="ti ti-clock-hour-4"></i> Mi horario de hoy</div>
+            <div class="home-horario-count" data-horario-count></div>
+          </div>
+          <div class="home-horario-body" data-horario-body>
+            <div class="home-horario-empty">Cargando…</div>
           </div>
         </div>
 
@@ -1436,6 +1458,9 @@
     var hist = document.getElementById('bento-historial-card');
     if (busq) busq.style.display = isStaff ? 'block' : 'none';
     if (hist) hist.style.display = isStaff ? 'block' : 'none';
+
+    /* Mi horario de hoy (Cambio 3) — solo staff/admin */
+    if (isStaff && typeof renderMiHorarioHoy === 'function') { try { renderMiHorarioHoy(); } catch (e) {} }
 
     /* Compat: wb-actions (los módulos externos esperan estos IDs) */
     var actStaff = document.getElementById('wb-actions-staff');

@@ -235,6 +235,92 @@ function buscarAlumnoRapido(q, resId) {
   }, 280);
 }
 
+// ── MI HORARIO DE HOY (Cambio 3) ──
+var _miHorarioKey = null;
+
+function _mhEsc(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function _mhNorm(s) {
+  return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
+}
+function _mhTokens(s) {
+  return _mhNorm(s).split(" ").filter(function (t) { return t.length >= 3; });
+}
+
+async function renderMiHorarioHoy(force) {
+  var bodies = document.querySelectorAll("[data-horario-body]");
+  if (!bodies.length) return;
+  var counts = document.querySelectorAll("[data-horario-count]");
+  var setBodies = function (h) { bodies.forEach(function (b) { b.innerHTML = h; }); };
+  var setCount  = function (t) { counts.forEach(function (c) { c.textContent = t; }); };
+
+  var DIAS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"]; // sin acento, como en horarios_grupo
+  var now = new Date();
+  var dia = DIAS[now.getDay()];
+  var nombre = (typeof currentUserName !== "undefined" ? currentUserName : "") || "";
+  var userTokens = _mhTokens(nombre);
+
+  var key = (ctrId || "") + "|" + dia + "|" + nombre;
+  if (!force && _miHorarioKey === key) return; // evita recargas en cada cambio de tab
+  _miHorarioKey = key;
+
+  setCount("");
+  setBodies('<div class="home-horario-empty">Cargando…</div>');
+
+  // Sin nombre real (p. ej. cuenta sin full_name) → estado vacío elegante
+  if (userTokens.length < 2) {
+    setBodies('<div class="home-horario-empty"><i class="ti ti-calendar-off"></i> No hay horario vinculado a tu perfil todavía.</div>');
+    return;
+  }
+
+  // Clases del día (filtro accent-safe en cliente; ilike es sensible a tildes y no sirve aquí)
+  var r = await sb.from("horarios_grupo")
+    .select("tramo,hora_inicio,hora_fin,grupo_horario,actividad_nombre,profesor_nombre,aula")
+    .eq("centro_id", ctrId).eq("dia", dia).limit(3000);
+
+  if (r.error) {
+    setBodies('<div class="home-horario-empty">No se pudo cargar el horario.</div>');
+    _miHorarioKey = null;
+    return;
+  }
+
+  var todays = (r.data || []).filter(function (row) {
+    var pt = _mhTokens(row.profesor_nombre);
+    return userTokens.every(function (t) { return pt.indexOf(t) !== -1; });
+  }).sort(function (a, b) { return (a.tramo || 0) - (b.tramo || 0); });
+
+  if (!todays.length) {
+    var finde = (now.getDay() === 0 || now.getDay() === 6);
+    setBodies(finde
+      ? '<div class="home-horario-empty"><i class="ti ti-coffee"></i> Hoy no hay clases — ¡buen fin de semana!</div>'
+      : '<div class="home-horario-empty"><i class="ti ti-calendar-off"></i> No hay horario vinculado a tu perfil todavía.</div>');
+    setCount("");
+    return;
+  }
+
+  var nowMin = now.getHours() * 60 + now.getMinutes();
+  var hm = function (t) { if (!t) return null; var p = String(t).split(":"); return (+p[0]) * 60 + (+p[1]); };
+
+  var html = todays.map(function (row) {
+    var ini = hm(row.hora_inicio), fin = hm(row.hora_fin);
+    var ahora = (ini != null && fin != null && nowMin >= ini && nowMin < fin);
+    var horaTxt = (row.hora_inicio || "").slice(0, 5) + (row.hora_fin ? "–" + String(row.hora_fin).slice(0, 5) : "");
+    var tramoLbl = (row.tramo != null) ? row.tramo + "ª hora" : "—";
+    var aulaTxt = row.aula ? " · " + _mhEsc(row.aula) : "";
+    return '<div class="home-horario-row' + (ahora ? " is-now" : "") + '">' +
+      '<div class="hh-tramo">' + _mhEsc(tramoLbl) + (ahora ? '<span class="hh-now">AHORA</span>' : "") + "</div>" +
+      '<div class="hh-main">' +
+        '<div class="hh-asig">' + _mhEsc(row.actividad_nombre || "—") + " · " + _mhEsc(row.grupo_horario || "") + "</div>" +
+        '<div class="hh-meta">' + _mhEsc(horaTxt) + aulaTxt + "</div>" +
+      "</div>" +
+    "</div>";
+  }).join("");
+
+  setBodies(html);
+  setCount(todays.length + (todays.length === 1 ? " clase" : " clases"));
+}
+
 // ── MEJORA 8: HISTORIAL RECIENTE ──
 function addToHistorial(txt) {
   try {
