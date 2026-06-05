@@ -331,6 +331,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - Helpers: `_guardiaTrimActual()`, `_guardiaTrimDates(trim)`, `_guardiaCursoActual()`
 
 ### Incidencias — tipificación IA y flujo convivencia (incidencias.js)
+- **Vistas por rol** (`loadIncidencias` enruta por `role`): `#inc-vista-profesor` = formulario simplificado para el profesorado (`_incProfesorInit`, `_incLoadAlumnosProfesor`, `registrarIncidenciaProfesor`, `_incLoadMisIncidencias`); `#inc-vista-admin` = panel completo (registro avanzado, tipificación IA, filtros, CSV/Excel, notificación a jefatura)
 - Botón **"✨ Tipificar con IA"** junto al formulario de registro: llama Edge Function `tipificar-incidencia`
 - `tipificarIncidenciaIA()`: toma `descripcion` + `centro_id`, invoca la EF, muestra modal con resultado
 - Modal de tipificación: badge de gravedad sugerida · tipificación legal con decreto aplicado · lista de medidas · textarea editable del informe borrador · banner rojo PREVI si `protocolo_previ=true`
@@ -926,6 +927,9 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 ## Registro de cambios recientes
 - `2026-06-05` · Home rediseñada (6 cambios) — cabecera compacta + buscador protagonista; topbar minimalista (logo+centro+lupa+avatar); bloque "Mi horario de hoy" (`renderMiHorarioHoy`); métricas accionables (`renderHomeMetrics`); eliminados grids "Módulos"/"Acceso rápido"; command palette global ⌘K (`js/palette.js`, busca alumnos/profesores/aulas en tablas + `horarios_grupo`). Ver "Home rediseñada" arriba.
+- `2026-06-04` · `f3b9b69` — feat(incidencias): vistas por rol — `#inc-vista-profesor` (formulario simplificado: `_incProfesorInit`, `registrarIncidenciaProfesor`, `_incLoadMisIncidencias`) vs `#inc-vista-admin` (panel completo). `loadIncidencias` enruta por `role`
+- `2026-06-04` · `74bc038` — fix(ausencias): elimina la columna inexistente `trabajo_alumnos` del insert de ausencia en `admin.js` (vista profesor de Sustituciones)
+- `2026-06-04` · `d75e1bf` — chore(chat): elimina logs de depuración temporales de `callGemini` (EF chat)
 - `2026-06-04` · Exportaciones — SheetJS (xlsx 0.18.5) cargado en `app.html`. **Planner**: botones PDF (jsPDF, página por grupo + por profesor, cabecera con logo/color del centro y curso escolar) y Excel (hoja por grupo, por profesor y resumen del centro); hidrata desde `horario_generado` si el tablero está vacío. **Sustituciones/Comedor/Incidencias**: CSV → .xlsx (Comedor con 2ª hoja desglose por grupo). **RRHH**: nuevo botón Exportar → .xlsx (ausencias + resumen por profesor). **Guardias**: nuevo botón Exportar → .xlsx (ranking equidad + detalle). **Alertas predictivas**: índice creado, tabla `alertas_predictivas` ya operativa.
 - `2026-06-04` · Planner — horarios SIN profesor asignado: (1) `horario_generado.profesor_id` nullable; (2) modo CSP "sin profesores" (`plannerGenerarSinProf`, slots `profesor_id null`); (3) Tablero: slots rayados "Sin asignar", modal selector + panel lateral de profesores arrastrables; (4) chat: `asignar_profesor` + `asignar_profesor_materia` (masivo). Validación de conflicto profesor en todos los caminos. EF desplegada. `scripts/verify-sin-profesor.js`
 - `2026-06-04` · Planner Tablero — drag & drop con validación de hard constraints al soltar (`_ejecutarDrop` simular-validar-revertir, flash rojo + toast en rechazo) + zona "Aparcados" persistida en localStorage (retirar clases temporalmente, recolocar arrastrando, aviso en recarga/publicación). `scripts/verify-tablero-dnd.js` (14 checks)
