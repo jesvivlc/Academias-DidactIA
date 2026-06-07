@@ -102,7 +102,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por | Una fila por alumno/día |
 | `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | `cubierta` tiene toggle en la tabla. Se auto-genera desde RRHH al aprobar ausencias |
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
-| `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre, curso_escolar, trabajo_alumnos, justificante_url, created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. `trabajo_alumnos` visible al sustituto; `justificante_url` → Storage bucket `justificantes` |
+| `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre (NOT NULL), curso_escolar (NOT NULL), tramo (nullable), created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. Las instrucciones para el sustituto van en `sustituciones.observaciones`, NO aquí. `trabajo_alumnos` y `justificante_url` NO existen en el esquema real. |
 | `guardias_realizadas` | centro_id, profile_id, ausencia_id, fecha, tramo, grupo_horario, aula, observaciones, trimestre, curso_escolar, created_at | Guardias cubiertas; `ausencia_id` FK → ausencias_profesor |
 | `incidencias` | centro_id, fecha, tipo, gravedad, descripcion, alumno_nombre, grupo_horario, registrado_por, estado, informe_borrador, normativa_ref, medidas_propuestas[], protocolo_previ, created_at | Estado: abierta/cerrada; tipo: convivencia/material/instalaciones/otro; gravedad: leve/grave/muy_grave. Campos IA: `normativa_ref` (decreto aplicado), `medidas_propuestas` (text[]), `protocolo_previ` (bool), `informe_borrador` (texto editable antes de guardar) |
 | `comunicados` | centro_id, titulo, cuerpo, destinatarios, creado_por, fecha, estado, plantilla, created_at | `destinatarios`: 'todos'/'solo_profesores'/'solo_familias'/'grupo:XXXX'; `estado`: borrador/enviado; `plantilla`: reunion/horario/plazo/null |
@@ -127,7 +127,9 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `chat` | Proxy a Gemini 2.5 Flash con function calling. Path A: confirmación de herramienta (`confirm_tool/confirm_args/pending_contents`). Path B: chat normal → devuelve `{type:"text"}` o `{type:"tool_call"}`. Herramientas: `crear_sustitucion`, `crear_incidencia`, `consultar_profesor_libre` (auto-execute), `registrar_ausencia_profesor`, `avisar_comedor`, `listar_tramos_centro` (auto-execute), `crear_tramos_centro`, `generar_tramos_horario`, y edición de `horario_generado` del Planner: `mover_clase`, `eliminar_clase`, `añadir_clase`, `cambiar_profesor`, `asignar_profesor` (un slot), `asignar_profesor_materia` (masivo: todas las clases de una materia en el centro) (todas requieren confirmación; resuelven materia/profesor por nombre o ID y validan hard constraints HC-MATERIA-DIA/HC-VENTANA/HC-INICIO-FIN + disponibilidad y ocupación de profesor/grupo) |
 | `invite-user` | Crea usuario en auth + envía email con link. Requiere `caller_user_id` |
 | `notify-role` | Email de notificación al cambiar rol de usuario |
-| `notify-sustitucion` | Notifica al sustituto asignado: envía email con grupo, aula y `trabajo_alumnos` (nunca el motivo de la ausencia) |
+| `notify-sustitucion` | Notifica cuando jefatura asigna sustituto (`evento: asignacion\|cobertura`). Email al **ausente**: "tu ausencia queda cubierta por X". Email al **sustituto**: grupo, tramo, instrucciones del ausente. Busca emails en `profiles` por `full_name ilike`. Requiere `RESEND_API_KEY`. |
+| `notify-ausencia` | Notificación consolidada a admins del centro cuando un profesor notifica su ausencia. Payload: `{centro_id, profesor_nombre, fecha, fecha_fin?, tipo_ausencia, motivo?, grupos, instrucciones}`. Incluye tabla HTML con fecha-rango, motivo y bloque de instrucciones para sustituto. |
+| `notify-justificante` | Recordatorio automático de justificante pendiente. Busca `sustituciones` con `fecha ≤ hace48h`, `creado_por != null` y sin `§JUST§` en `observaciones`. Envía email al profesor ausente. Programado via pg_cron a las 08:00 UTC. POST `{}` → todos los centros; POST `{centro_id}` → solo ese centro. |
 | `tipificar-incidencia` | Clasifica incidencia con Gemini 2.5 Flash según normativa CCAA del centro. Recibe `{ descripcion, centro_id }`. Devuelve `{ gravedad, tipo_normativo, medidas, informe_borrador, normativa_ref, paradigma, protocolo_previ, alerta_urgente? }` |
 | `notify-jefatura` | Email de alerta a admins del centro cuando se registra incidencia grave/muy_grave. Recibe `{ incidencia_id }`. Incluye informe borrador, medidas y banner PREVI si aplica |
 | `send-comunicado` | Envía comunicado por email a los destinatarios del centro vía Resend. Recibe `{ comunicado_id }`. Enruta por `destinatarios`: todos/solo_profesores/solo_familias/grupo:XXXX |
@@ -253,24 +255,44 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 
 ### Comedor (comedor.js)
 - Vista día: lista de asistencia con toggle por alumno, filtros, navegación por fechas
-- Detección automática de grupo actual del profesor por hora del sistema (`ahora = new Date()`, no desde `comedorFecha`)
+- **Detección contextual para profesional** (`_detectarContextoProfesor`): (1) consulta `tramos_centro` para saber qué tramo está activo ahora (`ahoraMin = hours*60+min`); (2) consulta `horarios_grupo ilike profesor_nombre` para obtener el grupo en ese tramo+día; (3) si hay coincidencia → carga solo alumnos de ese grupo + banner "📍 Mostrando alumnos de [GRUPO] · Tramo N (HH:MM–HH:MM)"; (4) si no hay clase activa (recreo/guardia/fuera de horario) → carga alumnos de TODOS sus grupos con chips de filtro rápido por grupo; (5) admin/superadmin → todos los alumnos del centro sin filtro
+- Banner `#comedor-contexto-banner` inyectado por `_renderComedorBanner()`; chip "Ver todos mis grupos" para que el profesor pueda cambiar el filtro manualmente
+- `_comedorFiltrarGrupo(g)` / `_comedorVerTodos()`: handlers de los chips
 - Vista histórico: últimos 30 días, tabla con totales, botón "Ver" navega al día. Limit 50000 para superar el default de 1000 filas de Supabase
 - Exportación a Excel (.xlsx con SheetJS): hoja histórico 30 días + 2ª hoja desglose por grupo
 - Variable `comedorFecha` controla qué día se muestra
 - `showComedorVista('dia'|'historico')` alterna las dos vistas
 - **Crítico:** `toggleAsistencia` usa `comedorFecha` (no `new Date()`) para insertar — editar histórico no corrompe el día actual
 - **Crítico:** `comedorData` incluye `grupo_horario` para que el filtro de grupo funcione
+- Ya no usa la tabla legacy `horarios` — toda la lógica usa `tramos_centro` + `horarios_grupo`
 
-### Sustituciones (admin.js)
-- Registro: profesor ausente, sustituto, grupo, tramo, fecha, observaciones
+### Sustituciones (admin.js) — vistas diferenciadas por rol
+
+**Vista admin/superadmin** (`#sust-vista-admin`):
+- Registro: profesor ausente, sustituto (selector ordenado por equidad), grupo, tramo, fecha, instrucciones/observaciones
 - `initSustPanel()`: auto-detecta tramo por hora del sistema, pre-rellena fecha con hoy
-- Selector de sustituto ordenado por equidad (menor → mayor guardias) con recuento `(N g.)` — carga desde `getGuardiaCountsByName()`
-- Selector usa la **fecha del formulario** (no hoy) para determinar qué día de la semana buscar libres
-- Al registrar sustitución: inserta en `guardias_realizadas` vía `registrarGuardiaEnBD()` y refresca bolsa
-- Toggle `cubierta` inline en cada fila de la tabla
-- Filtros "Hoy / Esta semana / Todo" con estado activo visual
-- Contador en el tab: "🔄 Sustituciones (N)" — cuenta **solo las sin cubrir** (`!s.cubierta`), no el total
-- Badges ✓ Cubierta / ⚠ Pendiente, exportación a Excel (.xlsx, SheetJS), eliminación desde tabla (preserva el filtro activo al eliminar)
+- Al registrar sustitución con sustituto: inserta en `guardias_realizadas` + llama `notify-sustitucion{evento:"asignacion"}` (fire-and-forget)
+- Toggle `cubierta`: actualiza BD + llama `notify-sustitucion{evento:"cobertura"}` al marcar cubierta
+- Columnas tabla: Fecha, Tramo, Grupo, Ausente, Sustituto, Instrucciones, **Justificante** (📎 Ver / —), Estado, ✕
+- Filtros "Hoy / Esta semana / Todo", contador tab (solo sin cubrir), exportación Excel, eliminación
+
+**Vista profesional** (`#sust-vista-profesor`) — formulario unificado ausencia:
+- Campos: Fecha inicio, Fecha fin (multi-día → oculta selector tramos), Motivo (6 tipos RRHH), Grupos, Tramos (multi-checkbox desde `tramos_centro`), Instrucciones para sustituto, Justificante (file input opcional)
+- `_sustFechaFinChange()`: si fin > inicio → oculta `#notif-tipo-wrap` y fuerza "todo el día"
+- `notificarAusenciaProfesor()` al enviar: (1) INSERT `ausencias_profesor` → obtiene `ausencia_id`; (2) INSERT `sustituciones` por cada día lectivo del rango (tramos concretos o todo el día); observaciones incluye `§RRHH§{ausencia_id}` para linked join; (3) sube justificante a Storage si se adjuntó; (4) llama `notify-ausencia` consolidado (fire-and-forget)
+- Historial unificado 7 columnas: Fecha, Tramo, Grupo, Instrucciones, Cobertura (⏳/✓+sustituto), Estado RRHH (tipo+badge pendiente/aprobada/rechazada), Justificante
+- Join operativo+administrativo: `_rrhhIdFromObs(obs)` extrae `§RRHH§<uuid>` → batch-fetch `ausencias_profesor`
+- Botón "📎 Adjuntar" → `window._subirJustificante(sustId, fecha)`: Storage bucket `documentos` path `justificantes/{ctrId}/{sustId}.{ext}`; append `§JUST§{path}` en `observaciones`
+- `window._descargarJustificante(path)`: `createSignedUrl` (1h TTL)
+
+**Helpers en admin.js:**
+- `_justPath(obs)` — extrae path de `§JUST§`
+- `_rrhhIdFromObs(obs)` — extrae UUID de `§RRHH§`
+- `_instrLimpias(obs)` — strip `§JUST§` + `§RRHH§` antes de mostrar instrucciones
+
+**Notificaciones:**
+- `registrarSustitucion()` → `.select("id").single()` → `notify-sustitucion{evento:"asignacion"}` si hay sustituto
+- `toggleCubierta()` → `notify-sustitucion{evento:"cobertura"}` al marcar cubierta
 
 ### Bolsa de guardias con equidad (guardias.js)
 - `loadBolsaGuardias()`: ranking de todos los profesores ordenado por nº de guardias del trimestre (menor → mayor)
@@ -309,17 +331,15 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 
 ### RRHH — gestión de ausencias (rrhh.js)
 - Tab `👔 RRHH` visible para `profesional`, `admin` y `superadmin`
-- **Vista profesor** (`_renderRrhhProfesor`): formulario solicitud (fecha ini/fin, tipo, motivo), historial propio con badges
-- **Vista admin/jefatura** (`_renderRrhhAdmin`): lista todas las solicitudes del centro; filtros por estado (pills), profesor y fecha
-- `aprobarAusencia(id)`: guard anti-duplicado (si ya estaba aprobada → alert y return) → marca estado=aprobada → llama `_crearSustituciones(ausencia, nombreProf)`
-  - `_crearSustituciones`: expande rango de fechas a días lectivos, consulta `horarios_grupo` con `.ilike("profesor_nombre")` (case-insensitive), inserta una fila en `sustituciones` por cada tramo encontrado (`cubierta=false`, `profesor_sustituto=null`, `observaciones` = tipo de ausencia **sin el motivo** para preservar privacidad)
-  - Nombre del profesor: busca primero en tabla `profesores` (por `profile_id`), luego en `profiles.full_name`
-- `rechazarAusencia(id)`: prompt con motivo → guarda `estado=rechazada, motivo_rechazo`
+- **Vista profesor** (`_renderRrhhProfesor`): **simplificada** — ya NO tiene formulario de creación. Muestra banner "Notifica tus ausencias desde la pestaña Sustituciones" + historial administrativo readonly de `ausencias_profesor` (estado aprobación). El formulario de creación está en la vista unificada del tab Sustituciones (ver sección Sustituciones)
+- **Vista admin/jefatura** (`_renderRrhhAdmin`): lista todas las solicitudes del centro; filtros por estado (pills), profesor y fecha; botones Aprobar/Rechazar
+- `aprobarAusencia(id)`: guard anti-duplicado → marca `estado=aprobada` → llama `_crearSustituciones(ausencia, nombreProf)`
+  - `_crearSustituciones`: expande rango de fechas a días lectivos, consulta `horarios_grupo ilike profesor_nombre`, inserta una fila en `sustituciones` por cada tramo (`cubierta=false`, `profesor_sustituto=null`, `observaciones` = tipo de ausencia **sin el motivo** para preservar privacidad)
+  - Nombre del profesor: busca primero en `profesores` (por `profile_id`), luego en `profiles.full_name`
+- `rechazarAusencia(id)`: prompt motivo → `estado=rechazada, motivo_rechazo`
 - Badges: ⏳ pendiente · ✓ aprobada · ✕ rechazada
-- Helpers: `_getCursoEscolar()`, `_getTrimestreActual()` (mes ≥9 → T1, ≤3 → T2, resto → T3)
-- **Justificantes:** formulario de solicitud incluye campo `trabajo_alumnos` (texto libre) y subida de archivo al bucket `justificantes` de Supabase Storage → guarda URL en `justificante_url`
-- **Privacidad del sustituto:** al notificar una guardia, la Edge Function `notify-sustitucion` envía solo grupo, aula y `trabajo_alumnos`; el motivo de ausencia y la URL del justificante son invisibles para el sustituto
-- **Notificación automática:** al asignar sustituto en el panel de sustituciones, se llama `notify-sustitucion` vía `supabase.functions.invoke()`
+- Helpers: `_getCursoEscolar()`, `_getTrimestreActual()` — usados también desde `admin.js` (globales)
+- **IMPORTANTE:** `ausencias_profesor` NO tiene columnas `trabajo_alumnos` ni `justificante_url` — el CLAUDE.md anterior estaba incorrecto. Las instrucciones van en `sustituciones.observaciones`; los justificantes en Storage con path `justificantes/{ctrId}/{sustId}.{ext}` marcados via `§JUST§` en observaciones
 
 ### Bolsa de guardias con equidad (guardias.js)
 - `loadBolsaGuardias()`: cuenta `sustituciones.profesor_sustituto` del trimestre actual → ranking menor→mayor
@@ -330,17 +350,29 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - Card "Bolsa de guardias" integrada en `panel-sust`, se recarga al abrir el tab y tras cada registro
 - Helpers: `_guardiaTrimActual()`, `_guardiaTrimDates(trim)`, `_guardiaCursoActual()`
 
-### Incidencias — tipificación IA y flujo convivencia (incidencias.js)
-- **Vistas por rol** (`loadIncidencias` enruta por `role`): `#inc-vista-profesor` = formulario simplificado para el profesorado (`_incProfesorInit`, `_incLoadAlumnosProfesor`, `registrarIncidenciaProfesor`, `_incLoadMisIncidencias`); `#inc-vista-admin` = panel completo (registro avanzado, tipificación IA, filtros, CSV/Excel, notificación a jefatura)
-- Botón **"✨ Tipificar con IA"** junto al formulario de registro: llama Edge Function `tipificar-incidencia`
+### Incidencias — vistas diferenciadas por rol (incidencias.js)
+
+**Vista admin/superadmin** (`#inc-vista-admin`):
+- **Vistas por rol** (`initIncidenciasPanel` bifurca por `role`): `#inc-vista-profesor` = formulario simplificado (`_incProfesorInit`, `_incLoadAlumnosProfesor`, `registrarIncidenciaProfesor`, `_incLoadMisIncidencias`); `#inc-vista-admin` = panel completo (registro avanzado, tipificación IA, filtros, CSV/Excel, notificación a jefatura)
+- Formulario completo: tipo, gravedad, fecha, buscador de alumno (dropdown dinámico), grupo, descripción
+- Botón **"✨ Tipificar con IA"** junto al formulario: llama Edge Function `tipificar-incidencia`
 - `tipificarIncidenciaIA()`: toma `descripcion` + `centro_id`, invoca la EF, muestra modal con resultado
 - Modal de tipificación: badge de gravedad sugerida · tipificación legal con decreto aplicado · lista de medidas · textarea editable del informe borrador · banner rojo PREVI si `protocolo_previ=true`
 - `_incUsarTipificacion()`: lee de `_incTipData` (estado de módulo) — pre-rellena `gravedad`, `tipo=convivencia`, inyecta sección de informe en el formulario
 - `_incMostrarInformeEnForm(data)`: inserta textarea editable `#inc-informe` tras `#inc-desc` con banner normativa
 - `registrarIncidencia()` ampliado: guarda `informe_borrador`, `normativa_ref`, `medidas_propuestas[]`, `protocolo_previ`; llama `_incNotificarJefatura()` para gravedad ≥ grave
 - `_incNotificarJefatura(incId, msgEl)`: invoca EF `notify-jefatura`, actualiza mensaje de confirmación con `✉ Jefatura notificada (N)`
+- Botones Cerrar / Notificar familia / Eliminar disponibles
 - Edge Function `tipificar-incidencia`: 5 normativas CCAA (valenciana/madrid/andalucia/cataluna + estatal fallback), Gemini 2.5 Flash, `temperature: 0.2`, JSON forzado
 - Edge Function `notify-jefatura`: email HTML a todos los admins del centro con tabla completa + medidas + informe + banner PREVI
+
+**Vista profesional** (`#inc-vista-profesor`):
+- Formulario simplificado: selector alumno (solo alumnos de los grupos del profesor, cargados via `horarios_grupo ilike`), grupo (auto-fill al elegir alumno), fecha, descripción libre
+- `_incLoadAlumnosProfesor()`: busca grupos del profesor en `horarios_grupo`, luego `alumnos.in(misGrupos)`
+- `registrarIncidenciaProfesor()`: INSERT con `tipo=convivencia, gravedad=leve, estado=abierta`; llama `notify-jefatura` automáticamente (fire-and-forget)
+- **Sin** botón tipificar IA, **sin** botón cerrar, **sin** botón eliminar
+- Historial propio (solo lectura): 4 columnas (Fecha, Alumno/Grupo, Descripción, Estado badge)
+- `_incLoadMisIncidencias()`: filtra por `registrado_por = currentUser.id`
 
 ### Comunicados internos (comunicados.js)
 - Tab **"📢 Comunicados"** visible para todos los roles (siempre activo, sin módulo gate)
@@ -389,6 +421,8 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Motor H-MRV-SA** (`TimetableSolver`): hibridación Heurísticas + MRV (Minimum Remaining Values) + Simulated Annealing. Genera múltiples variantes Pareto, UI de progreso en tiempo real, diagnóstico de conflictos.
 - **Tablas en Supabase**: `materias`, `aulas`, `disponibilidad_profesor`, `necesidades_lectivas`, `horario_generado` — ver `sql/planner-tables.sql`
 - **XSS**: `_esc()` en todos los `innerHTML` con datos de usuario
+- **`TRAMOS_DEFAULT`**: horas redondas genéricas 8:00–14:30 (T1-T7 + Recreo 11:00-11:30) — **NO** corresponden a ningún centro real. Si `tramos_centro` está vacío para el centro, se muestra banner ámbar `#planner-tramos-warn` con enlace directo a la pestaña Tramos (`_s.usingFallbackTramos = true` en `_loadData()`)
+- **IES Buñol** (f91b7c02): no tenía `tramos_centro` → mostraba los de Agora Lledó. Fix: TRAMOS_DEFAULT genérico + banner. El centro debe configurar sus tramos reales desde la pestaña Tramos
 
 ### Analytics — Cuadro de Mando Integral (analytics.js)
 - Tab **"Analytics"** visible solo para `admin` y `superadmin`
@@ -914,6 +948,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/20260605_cron_notify_justificante.sql` — pg_cron job `notify-justificante-daily` `0 8 * * *` + pg_net ✅ 2026-06-05
+> - `supabase/migrations/20260605002_sustituciones_sustituto_nullable.sql` — `sustituciones.profesor_sustituto DROP NOT NULL` ✅ 2026-06-05 vía Management API
 > - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI): tabla+RLS+policy ya existían; índice `idx_alertas_centro_activas` creado ✅ completado 2026-06-04 vía Management API
 > - `sql/horario-generado-profesor-nullable.sql` — `horario_generado.profesor_id DROP NOT NULL` (horarios sin profesor) ✅ ejecutado 2026-06-04 vía Management API
 > - `sql/fix-bugs-prod-2026-05-29.sql` — `ausencias_profesor.tramo DROP NOT NULL` + columnas IA incidencias ✅ ejecutado 2026-05-29
@@ -928,9 +964,17 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ## Registro de cambios recientes
 - `2026-06-05` · Asistente IA como **burbuja flotante** + **sidebar rediseñado**. (1) El chat sale del rail fijo a un **overlay deslizante** (`#asistente-overlay`/`.asist-panel`, derecha, IDs del chat intactos → listeners OK); **burbuja FAB** (`#asistente-fab`, 56px, color `--ink` del centro) abajo-derecha + globo de invitación (`#asistente-hint`, una vez, localStorage `asist_hint_dismissed`); home full-width; dos accesos (item sidebar "Asistente IA" → `openAsistente()` y burbuja). `askQ` (chat.js) abre el overlay. Funciones `open/close/toggleAsistente` en el script inline de `app.html`. (2) Sidebar agrupado: Inicio + Asistente (sin cabecera) · grupos **DOCENCIA** (Sustituciones/Incidencias/Comunicados/Comedor) y **CENTRO** (IB/RRHH/Espacios) · iconos 19px con color por familia (`--nav-color`), activo = `color-mix` tintado del color de familia (Inicio/Asistente = `--info`); perfil abajo con `border-top`.
 - `2026-06-05` · Home rediseñada (6 cambios) — cabecera compacta + buscador protagonista; topbar minimalista (logo+centro+lupa+avatar); bloque "Mi horario de hoy" (`renderMiHorarioHoy`); métricas accionables (`renderHomeMetrics`); eliminados grids "Módulos"/"Acceso rápido"; command palette global ⌘K (`js/palette.js`, busca alumnos/profesores/aulas en tablas + `horarios_grupo`). Ver "Home rediseñada" arriba.
-- `2026-06-04` · `f3b9b69` — feat(incidencias): vistas por rol — `#inc-vista-profesor` (formulario simplificado: `_incProfesorInit`, `registrarIncidenciaProfesor`, `_incLoadMisIncidencias`) vs `#inc-vista-admin` (panel completo). `loadIncidencias` enruta por `role`
-- `2026-06-04` · `74bc038` — fix(ausencias): elimina la columna inexistente `trabajo_alumnos` del insert de ausencia en `admin.js` (vista profesor de Sustituciones)
-- `2026-06-04` · `d75e1bf` — chore(chat): elimina logs de depuración temporales de `callGemini` (EF chat)
+- `2026-06-05` · **Incidencias** — vistas diferenciadas por rol: admin ve pantalla completa (tipificar IA, cerrar, eliminar); profesional ve formulario simple (selector alumno de sus grupos, descripción, sin IA) + historial readonly. `initIncidenciasPanel()` bifurca a `#inc-vista-admin` / `#inc-vista-profesor`. `_incLoadAlumnosProfesor()` carga solo alumnos de los grupos del profesor via `horarios_grupo`. Notificación automática a jefatura al registrar.
+- `2026-06-05` · **Fix chat EF** — eliminados los 5 `console.log` de debug temporal de `callGemini`; restaurado a fetch directo. EF redesplegada.
+- `2026-06-05` · **Fix ausencias** — eliminado campo inexistente `trabajo_alumnos` del INSERT a `ausencias_profesor`; `trimestre` y `curso_escolar` (NOT NULL) calculados inline sin depender de `rrhh.js`.
+- `2026-06-05` · **Flujo unificado ausencias** — formulario único en Sustituciones (vista profesional) reemplaza los dos módulos separados: fecha inicio/fin, motivo (6 tipos RRHH), grupos, tramos/todo el día, instrucciones para sustituto, justificante opcional. `notificarAusenciaProfesor()` dual-write: INSERT `ausencias_profesor` (admin) + INSERT `sustituciones` por cada día lectivo (operativo) con `§RRHH§{ausencia_id}` en observaciones. Historial unificado 7 cols con estado operativo + estado RRHH. RRHH profesional simplificado a historial readonly + banner redirect.
+- `2026-06-05` · **Sustituciones notificaciones** — EF `notify-sustitucion`: email al ausente ("cubierta por X") + email al sustituto (grupo, tramo, instrucciones) al asignar. `registrarSustitucion()` y `toggleCubierta()` llaman la EF. EF `notify-justificante`: recordatorio 48h sin justificante. Cron pg_cron `notify-justificante-daily` `0 8 * * *` via migración SQL. `window._subirJustificante` + `window._descargarJustificante` en admin.js.
+- `2026-06-05` · **Sustituciones vistas por rol** — `initSustPanel()` bifurca: admin → `#sust-vista-admin` (pantalla actual); profesional → `#sust-vista-profesor` (form notificación + historial). Selector alumno pre-cargado con grupos del profesor. EF `notify-ausencia` actualizada con `motivo` y `fecha_fin`.
+- `2026-06-05` · **Migration** — `20260605002_sustituciones_sustituto_nullable.sql`: `profesor_sustituto DROP NOT NULL` (permite registrar ausencias sin sustituto asignado). Aplicada vía Management API.
+- `2026-06-05` · **Planner fallback** — `TRAMOS_DEFAULT` reemplazado por horas redondas genéricas (8:00–14:30, sin coincidir con ningún centro real). Banner `#planner-tramos-warn` aparece cuando el centro no tiene `tramos_centro` configurados, con botón directo a la pestaña Tramos.
+- `2026-06-05` · **Comedor contextual** — `_detectarContextoProfesor()` usa `tramos_centro` + `horarios_grupo` para detectar clase activa. Banner `#comedor-contexto-banner` con chips de grupos. Eliminada dependencia de tabla legacy `horarios`.
+- `2026-06-05` · **Auth invite flow** — `config.js` detecta `type=invite` y `type=recovery` en hash Y query params. `showRecovery(type)` muestra "Crea tu contraseña" para invitados, "Nueva contraseña" para recovery. Mínimo contraseña subido a 8 caracteres.
+- `2026-06-05` · **Chat EF routing** — descripción `generar_tramos_horario` mejorada con triggers explícitos. Regla 5 en `toolInstr`: bypass del interceptor cliente cuando la petición es de creación de tramos (`esCreacionTramos` en `chat.js`). Debug logs de Gemini eliminados.
 - `2026-06-04` · Exportaciones — SheetJS (xlsx 0.18.5) cargado en `app.html`. **Planner**: botones PDF (jsPDF, página por grupo + por profesor, cabecera con logo/color del centro y curso escolar) y Excel (hoja por grupo, por profesor y resumen del centro); hidrata desde `horario_generado` si el tablero está vacío. **Sustituciones/Comedor/Incidencias**: CSV → .xlsx (Comedor con 2ª hoja desglose por grupo). **RRHH**: nuevo botón Exportar → .xlsx (ausencias + resumen por profesor). **Guardias**: nuevo botón Exportar → .xlsx (ranking equidad + detalle). **Alertas predictivas**: índice creado, tabla `alertas_predictivas` ya operativa.
 - `2026-06-04` · Planner — horarios SIN profesor asignado: (1) `horario_generado.profesor_id` nullable; (2) modo CSP "sin profesores" (`plannerGenerarSinProf`, slots `profesor_id null`); (3) Tablero: slots rayados "Sin asignar", modal selector + panel lateral de profesores arrastrables; (4) chat: `asignar_profesor` + `asignar_profesor_materia` (masivo). Validación de conflicto profesor en todos los caminos. EF desplegada. `scripts/verify-sin-profesor.js`
 - `2026-06-04` · Planner Tablero — drag & drop con validación de hard constraints al soltar (`_ejecutarDrop` simular-validar-revertir, flash rojo + toast en rechazo) + zona "Aparcados" persistida en localStorage (retirar clases temporalmente, recolocar arrastrando, aviso en recarga/publicación). `scripts/verify-tablero-dnd.js` (14 checks)
