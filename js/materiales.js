@@ -37,6 +37,14 @@ function _matToast(msg, tipo) {
   setTimeout(function () { if (t.parentNode) t.remove(); }, 3100);
 }
 
+// clave de nombre: minúsculas, sin acentos, sin coma, palabras ordenadas
+// ("Cerro, Sara" ≡ "Sara Cerro")
+function _matNombreKey(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ').trim()
+    .split(' ').filter(Boolean).sort().join(' ');
+}
+
 async function _matCargarGrupos() {
   if (role === 'familia') {
     return [...new Set((currentUserAlumnos || []).map(function (a) { return a.grupo_horario; }).filter(Boolean))]
@@ -51,6 +59,44 @@ async function _matCargarGrupos() {
     .sort(function (a, b) { return a.localeCompare(b, 'es'); });
 }
 
+// Grupos del profesor logueado (para el FORM de subida). Devuelve { grupos, aviso }.
+async function _matCargarMisGrupos() {
+  // a) full_name del usuario
+  var fullName = currentUserName || '';
+  if (!fullName) {
+    try {
+      var u = await sb.auth.getUser();
+      var uid = u && u.data && u.data.user ? u.data.user.id : null;
+      if (uid) {
+        var pr0 = await sb.from('profiles').select('full_name').eq('id', uid).maybeSingle();
+        fullName = (pr0.data && pr0.data.full_name) || '';
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // b) todos los profesores del centro
+  var pr = await sb.from('profesores').select('id,nombre').eq('centro_id', ctrId).limit(2000);
+  console.log('[Materiales] mis clases — full_name:', fullName, '| profesores centro:', (pr.data ? pr.data.length : pr.data), '| error:', pr.error);
+
+  // c) match por nombre normalizado (sin acentos/coma, palabras ordenadas)
+  var myKey = _matNombreKey(fullName);
+  var match = myKey ? (pr.data || []).find(function (p) { return _matNombreKey(p.nombre) === myKey; }) : null;
+
+  // d) si hay match → grupos de necesidades_lectivas de ese profesor
+  if (match) {
+    var nr = await sb.from('necesidades_lectivas').select('grupo_horario')
+      .eq('centro_id', ctrId).eq('profesor_id', match.id).not('grupo_horario', 'is', null).limit(5000);
+    console.log('[Materiales] mis clases — profesor:', match.nombre, '| grupos:', (nr.data ? nr.data.length : nr.data), '| error:', nr.error);
+    var mis = [...new Set((nr.data || []).map(function (n) { return n.grupo_horario; }).filter(Boolean))]
+      .sort(function (a, b) { return a.localeCompare(b, 'es'); });
+    if (mis.length) return { grupos: mis, aviso: false };
+  }
+
+  // e) sin coincidencia (o profesor sin grupos) → todos los grupos del centro + aviso
+  console.log('[Materiales] mis clases — sin coincidencia, mostrando todos los grupos');
+  return { grupos: await _matCargarGrupos(), aviso: true };
+}
+
 // ── INICIALIZACIÓN ──
 async function initMateriales() {
   var cont = document.getElementById('mat-container');
@@ -58,8 +104,9 @@ async function initMateriales() {
   cont.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>';
   _matGrupos = await _matCargarGrupos();
 
-  var grupoOpts = '<option value="">Todos los grupos</option>' +
-    _matGrupos.map(function (g) { return '<option value="' + _matEsc(g) + '">' + _matEsc(g) + '</option>'; }).join('');
+  // Grupos del formulario de subida: solo las clases del profesor (o todos + aviso)
+  var misGrupos = { grupos: [], aviso: false };
+  if (_matPuedeEditar()) misGrupos = await _matCargarMisGrupos();
 
   var addBtn = _matPuedeEditar()
     ? '<button class="btn btn-p" onclick="_matToggleForm()">➕ Añadir material</button>'
@@ -80,7 +127,7 @@ async function initMateriales() {
       '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' + toggle + addBtn + '</div>' +
     '</div>' +
 
-    (_matPuedeEditar() ? _matFormHtml(grupoOpts) : '') +
+    (_matPuedeEditar() ? _matFormHtml(misGrupos) : '') +
 
     '<div class="card">' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
@@ -132,11 +179,17 @@ function _matPopularFiltros() {
   fill('mat-f-asig', uniq('asignatura'), 'Todas las asignaturas');
 }
 
-function _matFormHtml(grupoOpts) {
+function _matFormHtml(misGrupos) {
+  var grupos = (misGrupos && misGrupos.grupos) || [];
+  var grupoOpts = grupos.map(function (g) { return '<option value="' + _matEsc(g) + '">' + _matEsc(g) + '</option>'; }).join('');
+  var aviso = (misGrupos && misGrupos.aviso)
+    ? '<div style="font-size:11.5px;color:var(--warning, #d69540);margin-top:4px;">⚠ No se encontraron tus clases — mostrando todos.</div>'
+    : '';
   return '<div class="card" id="mat-form" style="display:none;">' +
     '<div class="card-hdr"><div class="card-ico g">📎</div><div><div class="card-title">Nuevo material</div></div></div>' +
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
-      '<div style="min-width:150px;"><label class="lbl">Grupo</label><select class="fi" id="mat-grupo">' + grupoOpts + '</select></div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">' +
+      '<div style="min-width:170px;"><label class="lbl">Grupos (uno o varios)</label>' +
+        '<select class="fi" id="mat-grupo" multiple size="6" style="height:auto;min-height:auto;">' + grupoOpts + '</select>' + aviso + '</div>' +
       '<div style="min-width:150px;"><label class="lbl">Asignatura</label><input class="fi" id="mat-asig" placeholder="Ej: Matemáticas"></div>' +
       '<div style="min-width:130px;"><label class="lbl">Tipo</label>' +
         '<select class="fi" id="mat-tipo" onchange="_matTipoChange()"><option value="archivo">Archivo</option><option value="enlace">Enlace</option></select></div>' +
@@ -231,7 +284,8 @@ function _matRenderLista() {
 // ── Guardar (subir archivo a Storage privado o registrar enlace) ──
 async function matGuardar() {
   if (!_matPuedeEditar()) { _matToast('No tienes permiso para añadir materiales.', 'error'); return; }
-  var grupo  = (document.getElementById('mat-grupo')  || {}).value;
+  var sel    = document.getElementById('mat-grupo');
+  var grupos = sel ? Array.from(sel.selectedOptions).map(function (o) { return o.value; }).filter(Boolean) : [];
   var asig   = ((document.getElementById('mat-asig')  || {}).value || '').trim();
   var tipo   = (document.getElementById('mat-tipo')   || {}).value || 'archivo';
   var titulo = ((document.getElementById('mat-titulo')|| {}).value || '').trim();
@@ -239,11 +293,11 @@ async function matGuardar() {
   var msg    = document.getElementById('mat-msg');
   var setMsg = function (t, c) { if (msg) { msg.textContent = t; msg.style.display = 'block'; msg.style.color = c || 'var(--txt2)'; } };
 
-  if (!grupo)  { setMsg('Selecciona un grupo.', 'var(--danger)'); return; }
-  if (!titulo) { setMsg('El título es obligatorio.', 'var(--danger)'); return; }
+  if (!grupos.length) { setMsg('Selecciona al menos un grupo.', 'var(--danger)'); return; }
+  if (!titulo)        { setMsg('El título es obligatorio.', 'var(--danger)'); return; }
 
-  var row = {
-    centro_id: ctrId, grupo: grupo, asignatura: asig || null, titulo: titulo, tipo: tipo,
+  var base = {
+    centro_id: ctrId, asignatura: asig || null, titulo: titulo, tipo: tipo,
     descripcion: desc || null, profesor_id: currentUser ? currentUser.id : null, profesor_nombre: currentUserName || null
   };
 
@@ -253,22 +307,25 @@ async function matGuardar() {
     if (tipo === 'enlace') {
       var url = ((document.getElementById('mat-url') || {}).value || '').trim();
       if (!url) { setMsg('Indica la URL del enlace.', 'var(--danger)'); return; }
-      row.url = url;
+      base.url = url;
     } else {
       var fileInput = document.getElementById('mat-file');
       var file = fileInput && fileInput.files && fileInput.files[0];
       if (!file) { setMsg('Selecciona un archivo.', 'var(--danger)'); return; }
+      // Subir el archivo UNA sola vez
       var path = ctrId + '/' + _matUuid() + '-' + _matSafeName(file.name);
       setMsg('Subiendo archivo…');
       var up = await sb.storage.from('materiales').upload(path, file, { upsert: false });
       if (up.error) { setMsg('Error al subir: ' + up.error.message, 'var(--danger)'); return; }
-      row.storage_path = path;
+      base.storage_path = path;
     }
 
-    var ins = await sb.from('materiales').insert(row);
+    // Un registro por grupo (mismo archivo/enlace, distinto grupo)
+    var rows = grupos.map(function (g) { return Object.assign({}, base, { grupo: g }); });
+    var ins = await sb.from('materiales').insert(rows);
     if (ins.error) { setMsg('Error al guardar: ' + ins.error.message, 'var(--danger)'); return; }
 
-    _matToast('✅ Material añadido.', 'ok');
+    _matToast('✅ Material añadido a ' + rows.length + ' grupo(s).', 'ok');
     // limpiar form
     ['mat-titulo', 'mat-asig', 'mat-desc', 'mat-url'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
     var fi = document.getElementById('mat-file'); if (fi) fi.value = '';
@@ -300,9 +357,20 @@ async function matEliminar(id) {
   var m = _matData.find(function (x) { return x.id === id; });
   if (!m) return;
   if (!confirm('¿Eliminar "' + (m.titulo || 'este material') + '"? No se puede deshacer.')) return;
+
+  // Si es un archivo, comprobar si otros registros del centro comparten el mismo
+  // storage_path: solo se borra del Storage si este es el último que lo usa.
   if (m.tipo === 'archivo' && m.storage_path) {
-    try { await sb.storage.from('materiales').remove([m.storage_path]); } catch (e) { /* best effort */ }
+    var otros = await sb.from('materiales').select('id')
+      .eq('centro_id', ctrId).eq('storage_path', m.storage_path).neq('id', id).limit(1);
+    var hayOtros = !otros.error && otros.data && otros.data.length > 0;
+    if (!hayOtros) {
+      try { await sb.storage.from('materiales').remove([m.storage_path]); } catch (e) { /* best effort */ }
+    } else {
+      console.log('[Materiales] otros registros usan el archivo; no se borra de Storage:', m.storage_path);
+    }
   }
+
   var d = await sb.from('materiales').delete().eq('id', id);
   if (d.error) { _matToast('Error al eliminar: ' + d.error.message, 'error'); return; }
   _matToast('Material eliminado.', 'ok');
