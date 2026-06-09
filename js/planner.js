@@ -187,6 +187,7 @@
     if (tab === 'publicar')    _renderPublicar();
     if (tab === 'tramos')      _renderTramos();
     if (tab === 'dictar')      _renderDictar();
+    if (tab === 'importar')    _renderImportar();
   }
 
   /* ════════════════════════════════
@@ -3042,6 +3043,212 @@ self.onmessage = function(e) {
         };
       });
     }
+  };
+
+  /* ════════════════════════════════
+     IMPORTAR datos de entrada del Planner desde .xlsx (una hoja → una tabla)
+  ════════════════════════════════ */
+
+  var IMPORT_CENTRO = 'ad0168e8-6c24-4597-8917-ee54cac8234b'; // Agora Lledó
+
+  function _impNorm(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/[?:.*]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function _impNum(v) {
+    if (v == null || v === '') return null;
+    var n = parseFloat(String(v).replace(',', '.'));
+    return isNaN(n) ? null : n;
+  }
+  function _impInt(v) {
+    var n = _impNum(v);
+    return n == null ? null : Math.round(n);
+  }
+  function _impBool(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'boolean') return v;
+    var s = _impNorm(v);
+    if (['si', 'sí', 'true', '1', 'x', 'verdadero', 'yes', 'y', 'ok', 'disponible', 'aplicar'].indexOf(s) !== -1) return true;
+    if (['no', 'false', '0', '-', 'n', 'falso'].indexOf(s) !== -1) return false;
+    return null;
+  }
+  function _impTime(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') {
+      var frac = (v >= 0 && v < 1) ? v : (v - Math.floor(v));
+      var mins = Math.round(frac * 24 * 60);
+      var hh = Math.floor(mins / 60) % 24, mm = mins % 60;
+      return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    }
+    var s = String(v).trim();
+    var m = s.match(/^(\d{1,2}):(\d{2})/);
+    return m ? (m[1].padStart(2, '0') + ':' + m[2]) : s;
+  }
+  function _impStr(v) {
+    if (v == null) return null;
+    var s = String(v).trim();
+    return s === '' ? null : s;
+  }
+
+  /* sheet (normalizado) → { tabla, cols: { columnaBD: { a:[alias…], t:tipo } } } */
+  var IMPORT_MAP = {
+    profesores: { tabla: 'planner_profesores', cols: {
+      nombre:            { a: ['nombre', 'profesor', 'docente', 'nombre profesor', 'apellidos nombre'], t: 'str' },
+      horas_lectivas:    { a: ['horas_lectivas', 'horas lectivas', 'horas', 'lectivas', 'horas semanales'], t: 'num' },
+      asignaturas_texto: { a: ['asignaturas_texto', 'asignaturas', 'materias', 'asignatura'], t: 'str' }
+    }},
+    cargas: { tabla: 'planner_cargas', cols: {
+      profesor:   { a: ['profesor', 'docente', 'nombre'], t: 'str' },
+      grupo:      { a: ['grupo', 'curso', 'clase'], t: 'str' },
+      asignatura: { a: ['asignatura', 'materia'], t: 'str' },
+      horas:      { a: ['horas', 'sesiones', 'horas semanales', 'h'], t: 'num' }
+    }},
+    tramos: { tabla: 'planner_tramos', cols: {
+      modelo:      { a: ['modelo', 'jornada', 'tipo modelo'], t: 'str' },
+      orden:       { a: ['orden', 'numero', 'n', 'tramo', 'posicion', 'nº'], t: 'int' },
+      hora_inicio: { a: ['hora_inicio', 'hora inicio', 'inicio', 'desde'], t: 'time' },
+      hora_fin:    { a: ['hora_fin', 'hora fin', 'fin', 'hasta'], t: 'time' },
+      tipo:        { a: ['tipo', 'categoria', 'clase descanso'], t: 'str' }
+    }},
+    restricciones: { tabla: 'planner_restricciones', cols: {
+      detalle: { a: ['detalle', 'restriccion', 'restricción', 'texto', 'descripcion'], t: 'str' }
+    }},
+    disponibilidad: { tabla: 'planner_disponibilidad', cols: {
+      profesor:   { a: ['profesor', 'docente', 'nombre'], t: 'str' },
+      dia:        { a: ['dia', 'día'], t: 'str' },
+      tramo:      { a: ['tramo', 'hora', 'orden', 'franja'], t: 'str' },
+      disponible: { a: ['disponible', 'disponibilidad', 'si no', 'ok'], t: 'bool' }
+    }},
+    espacios: { tabla: 'planner_espacios', cols: {
+      nombre:            { a: ['nombre', 'espacio', 'aula', 'sala'], t: 'str' },
+      tipo:              { a: ['tipo', 'categoria'], t: 'str' },
+      asignaturas_texto: { a: ['asignaturas_texto', 'asignaturas', 'materias', 'uso'], t: 'str' },
+      capacidad:         { a: ['capacidad', 'aforo', 'plazas', 'cap'], t: 'int' }
+    }},
+    reglas: { tabla: 'planner_reglas', cols: {
+      regla:      { a: ['regla', 'nombre', 'rule'], t: 'str' },
+      aplicar:    { a: ['aplicar', 'activa', 'activo', 'si no', 'aplicar?'], t: 'bool' },
+      comentario: { a: ['comentario', 'observaciones', 'nota', 'notas'], t: 'str' }
+    }}
+  };
+
+  /* alias de nombres de hoja → clave de IMPORT_MAP */
+  function _impMatchSheet(sheetName) {
+    var n = _impNorm(sheetName);
+    var keys = Object.keys(IMPORT_MAP);
+    for (var i = 0; i < keys.length; i++) {
+      if (n === keys[i] || n.indexOf(keys[i]) !== -1 || keys[i].indexOf(n) !== -1) return keys[i];
+    }
+    // sinónimos sueltos
+    if (n.indexOf('profe') !== -1) return 'profesores';
+    if (n.indexOf('carga') !== -1 || n.indexOf('sesion') !== -1) return 'cargas';
+    if (n.indexOf('tramo') !== -1 || n.indexOf('hora') !== -1) return 'tramos';
+    if (n.indexOf('restric') !== -1) return 'restricciones';
+    if (n.indexOf('dispon') !== -1) return 'disponibilidad';
+    if (n.indexOf('espacio') !== -1 || n.indexOf('aula') !== -1) return 'espacios';
+    if (n.indexOf('regla') !== -1) return 'reglas';
+    return null;
+  }
+
+  var _impConv = { str: _impStr, num: _impNum, int: _impInt, bool: _impBool, time: _impTime };
+
+  function _impMapRow(rawRow, colsDef) {
+    // índice normHeader → valor
+    var norm = {};
+    Object.keys(rawRow).forEach(function (k) { norm[_impNorm(k)] = rawRow[k]; });
+    var out = {}, vacia = true;
+    Object.keys(colsDef).forEach(function (col) {
+      var def = colsDef[col], val = null;
+      for (var i = 0; i < def.a.length; i++) {
+        if (norm[def.a[i]] !== undefined) { val = norm[def.a[i]]; break; }
+      }
+      var conv = _impConv[def.t](val);
+      out[col] = conv;
+      if (conv !== null && conv !== undefined && conv !== '') vacia = false;
+    });
+    return vacia ? null : out;
+  }
+
+  async function _impProcesar(wb) {
+    var resultados = [];
+    for (var si = 0; si < wb.SheetNames.length; si++) {
+      var sheetName = wb.SheetNames[si];
+      var key = _impMatchSheet(sheetName);
+      if (!key) { resultados.push({ hoja: sheetName, tabla: '—', n: 0, estado: 'ignorada (sin tabla)' }); continue; }
+      var cfg = IMPORT_MAP[key];
+      var raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
+      var rows = raw.map(function (r) {
+        var m = _impMapRow(r, cfg.cols);
+        if (!m) return null;
+        m.centro_id = IMPORT_CENTRO;
+        return m;
+      }).filter(Boolean);
+
+      try {
+        var del = await sb.from(cfg.tabla).delete().eq('centro_id', IMPORT_CENTRO);
+        if (del.error) throw new Error(del.error.message);
+        if (rows.length) {
+          var ins = await sb.from(cfg.tabla).insert(rows);
+          if (ins.error) throw new Error(ins.error.message);
+        }
+        resultados.push({ hoja: sheetName, tabla: cfg.tabla, n: rows.length, estado: '✅ ' + rows.length + ' filas' });
+      } catch (err) {
+        resultados.push({ hoja: sheetName, tabla: cfg.tabla, n: 0, estado: '❌ ' + (err.message || err) });
+      }
+    }
+    _impRenderLog(resultados);
+  }
+
+  function _impRenderLog(resultados) {
+    var el = document.getElementById('planner-import-log');
+    if (!el) return;
+    var filas = resultados.map(function (r) {
+      return '<tr><td>' + _esc(r.hoja) + '</td><td style="color:var(--muted)">' + _esc(r.tabla) +
+        '</td><td style="text-align:right">' + r.n + '</td><td>' + _esc(r.estado) + '</td></tr>';
+    }).join('');
+    el.innerHTML =
+      '<div class="planner-list" style="padding:0">' +
+      '<table class="tbl"><thead><tr><th>Hoja</th><th>Tabla</th><th style="text-align:right">Filas</th><th>Estado</th></tr></thead>' +
+      '<tbody>' + filas + '</tbody></table></div>';
+  }
+
+  function _renderImportar() {
+    var el = document.getElementById('pt-importar');
+    if (!el) return;
+    el.innerHTML =
+      '<div class="planner-section-hdr">' +
+        '<div><div class="card-eyebrow">Datos de entrada</div>' +
+        '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Importar datos de horario</h3></div>' +
+      '</div>' +
+      '<div class="planner-empty" style="text-align:left;line-height:1.5">' +
+        '<p style="margin:0 0 12px">Sube <strong>DidactIA_Planner_datos_26-27.xlsx</strong>. Cada hoja se vuelca a su tabla de entrada del Planner ' +
+        '(Profesores · Cargas · Tramos · Restricciones · Disponibilidad · Espacios · Reglas) para el centro <strong>Agora Lledó</strong>. ' +
+        'Se reemplazan los datos previos de ese centro en cada tabla.</p>' +
+        '<input type="file" id="planner-import-file" accept=".xlsx,.xls" style="display:none" onchange="plannerImportarArchivo(this)">' +
+        '<button class="btn-ink" onclick="document.getElementById(\'planner-import-file\').click()">📥 Importar datos de horario</button>' +
+      '</div>' +
+      '<div id="planner-import-log" style="margin-top:16px"></div>';
+  }
+
+  window.plannerImportarArchivo = function (input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    if (typeof XLSX === 'undefined') { alert('La librería de lectura de Excel (SheetJS) no está disponible.'); return; }
+    var logEl = document.getElementById('planner-import-log');
+    if (logEl) logEl.innerHTML = '<div style="color:var(--muted);font-size:13px"><span class="spin">⟳</span> Leyendo y volcando datos…</div>';
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var wb;
+      try { wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); }
+      catch (err) {
+        if (logEl) logEl.innerHTML = '<div style="color:var(--danger)">No se pudo leer el archivo: ' + _esc(err.message) + '</div>';
+        input.value = ''; return;
+      }
+      _impProcesar(wb).catch(function (err) {
+        if (logEl) logEl.innerHTML = '<div style="color:var(--danger)">Error: ' + _esc(err.message || err) + '</div>';
+      }).then(function () { input.value = ''; });
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   window.DidactIAPlanner = DidactIAPlanner;
