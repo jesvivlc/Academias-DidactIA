@@ -397,6 +397,10 @@ async function loadUserProfile(user) {
   const tabMat = document.getElementById("tab-materiales");
   if (tabMat) tabMat.style.display = "block";
 
+  // Informes de dirección: solo dirección/secretaría
+  const tabInf = document.getElementById("tab-informes");
+  if (tabInf) tabInf.style.display = (["admin","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
+
   const tabIb = document.getElementById("tab-ib");
   if (tabIb) {
     const isIbStaff = ["admin","superadmin","profesional"].includes(role);
@@ -488,6 +492,7 @@ function showTab(t) {
   if (t === "comunicados") initComunicadosPanel();
   if (t === "calificaciones") initCalificaciones();
   if (t === "materiales") initMateriales();
+  if (t === "informes") initInformes();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {
