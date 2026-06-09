@@ -3103,6 +3103,12 @@ self.onmessage = function(e) {
       asignatura: { a: ['asignatura', 'materia'], t: 'str' },
       horas:      { a: ['horas', 'sesiones', 'horas semanales', 'h'], t: 'num' }
     }},
+    grupos: { tabla: 'planner_grupos', cols: {
+      grupo:       { a: ['grupo', 'nombre', 'clase', 'codigo', 'grupo horario'], t: 'str' },
+      curso:       { a: ['curso', 'nivel', 'etapa'], t: 'str' },
+      num_alumnos: { a: ['num_alumnos', 'numero alumnos', 'n alumnos', 'nº alumnos', 'alumnos', 'total'], t: 'int' },
+      tutor:       { a: ['tutor', 'tutora', 'tutor/a', 'tutor a'], t: 'str' }
+    }},
     tramos: { tabla: 'planner_tramos', cols: {
       modelo:      { a: ['modelo', 'jornada', 'tipo modelo'], t: 'str' },
       orden:       { a: ['orden', 'numero', 'n', 'tramo', 'posicion', 'nº'], t: 'int' },
@@ -3132,21 +3138,44 @@ self.onmessage = function(e) {
     }}
   };
 
-  /* alias de nombres de hoja → clave de IMPORT_MAP */
+  /* Matching flexible de nombre de hoja → clave de IMPORT_MAP.
+     Tolera prefijos tipo "0. ", "1. ", acentos y mayúsculas; usa includes(). */
   function _impMatchSheet(sheetName) {
-    var n = _impNorm(sheetName);
-    var keys = Object.keys(IMPORT_MAP);
-    for (var i = 0; i < keys.length; i++) {
-      if (n === keys[i] || n.indexOf(keys[i]) !== -1 || keys[i].indexOf(n) !== -1) return keys[i];
+    // _impNorm ya pasa a minúsculas, quita acentos y convierte '.' en espacio.
+    // Además quitamos números/puntos/espacios iniciales: "1. Profesores" → "profesores".
+    var n = _impNorm(sheetName).replace(/^[0-9.\s]+/, '').trim();
+    console.log('[Planner import] hoja "' + sheetName + '" → limpia "' + n + '"');
+
+    // LÉEME / instrucciones → ignorar
+    if (n.indexOf('leeme') !== -1 || n.indexOf('leme') !== -1 || n.indexOf('readme') !== -1 || n.indexOf('instruc') !== -1) {
+      console.log('[Planner import]   ↳ ignorada (hoja de instrucciones)');
+      return null;
     }
-    // sinónimos sueltos
-    if (n.indexOf('profe') !== -1) return 'profesores';
-    if (n.indexOf('carga') !== -1 || n.indexOf('sesion') !== -1) return 'cargas';
-    if (n.indexOf('tramo') !== -1 || n.indexOf('hora') !== -1) return 'tramos';
-    if (n.indexOf('restric') !== -1) return 'restricciones';
-    if (n.indexOf('dispon') !== -1) return 'disponibilidad';
-    if (n.indexOf('espacio') !== -1 || n.indexOf('aula') !== -1) return 'espacios';
-    if (n.indexOf('regla') !== -1) return 'reglas';
+
+    // Palabra clave contenida → tabla. (orden: keywords sin solapamientos)
+    var KW = [
+      ['profesores',     'profesores'],
+      ['profe',          'profesores'],
+      ['cargas',         'cargas'],
+      ['carga',          'cargas'],
+      ['sesion',         'cargas'],
+      ['grupos',         'grupos'],
+      ['grupo',          'grupos'],
+      ['restricciones',  'restricciones'],
+      ['restric',        'restricciones'],
+      ['disponibilidad', 'disponibilidad'],
+      ['dispon',         'disponibilidad'],
+      ['tramos',         'tramos'],
+      ['tramo',          'tramos'],
+      ['espacios',       'espacios'],
+      ['espacio',        'espacios'],
+      ['aula',           'espacios'],
+      ['reglas',         'reglas'],
+      ['regla',          'reglas']
+    ];
+    for (var i = 0; i < KW.length; i++) {
+      if (n.indexOf(KW[i][0]) !== -1) return KW[i][1];
+    }
     return null;
   }
 
@@ -3171,31 +3200,48 @@ self.onmessage = function(e) {
 
   async function _impProcesar(wb) {
     var resultados = [];
+    console.log('[Planner import] centro destino (Agora):', IMPORT_CENTRO);
+    console.log('[Planner import] hojas en el archivo:', wb.SheetNames);
+
     for (var si = 0; si < wb.SheetNames.length; si++) {
       var sheetName = wb.SheetNames[si];
       var key = _impMatchSheet(sheetName);
-      if (!key) { resultados.push({ hoja: sheetName, tabla: '—', n: 0, estado: 'ignorada (sin tabla)' }); continue; }
+      if (!key) {
+        console.log('[Planner import] "' + sheetName + '" → SIN TABLA (ignorada)');
+        resultados.push({ hoja: sheetName, tabla: '—', n: 0, estado: 'ignorada (sin tabla)' });
+        continue;
+      }
       var cfg = IMPORT_MAP[key];
       var raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
+      console.log('[Planner import] "' + sheetName + '" → tabla ' + cfg.tabla + ' · ' + raw.length + ' filas leídas');
+      if (raw.length) console.log('[Planner import]   cabeceras detectadas:', Object.keys(raw[0]));
+
       var rows = raw.map(function (r) {
         var m = _impMapRow(r, cfg.cols);
         if (!m) return null;
         m.centro_id = IMPORT_CENTRO;
         return m;
       }).filter(Boolean);
+      console.log('[Planner import]   ' + rows.length + ' filas mapeadas (no vacías). Ejemplo:', rows[0] || '(ninguna)');
 
       try {
         var del = await sb.from(cfg.tabla).delete().eq('centro_id', IMPORT_CENTRO);
-        if (del.error) throw new Error(del.error.message);
+        if (del.error) { console.error('[Planner import]   ❌ error en DELETE de ' + cfg.tabla + ':', del.error); throw new Error(del.error.message); }
+        console.log('[Planner import]   datos previos de Agora borrados en ' + cfg.tabla);
         if (rows.length) {
           var ins = await sb.from(cfg.tabla).insert(rows);
-          if (ins.error) throw new Error(ins.error.message);
+          if (ins.error) { console.error('[Planner import]   ❌ error en INSERT a ' + cfg.tabla + ':', ins.error); throw new Error(ins.error.message); }
+          console.log('[Planner import]   ✅ ' + rows.length + ' filas insertadas en ' + cfg.tabla);
+        } else {
+          console.log('[Planner import]   (no hay filas que insertar en ' + cfg.tabla + ')');
         }
         resultados.push({ hoja: sheetName, tabla: cfg.tabla, n: rows.length, estado: '✅ ' + rows.length + ' filas' });
       } catch (err) {
+        console.error('[Planner import]   ❌ ' + cfg.tabla + ' falló:', err);
         resultados.push({ hoja: sheetName, tabla: cfg.tabla, n: 0, estado: '❌ ' + (err.message || err) });
       }
     }
+    console.log('[Planner import] resumen:', resultados);
     _impRenderLog(resultados);
   }
 
@@ -3233,7 +3279,8 @@ self.onmessage = function(e) {
   window.plannerImportarArchivo = function (input) {
     var file = input.files && input.files[0];
     if (!file) return;
-    if (typeof XLSX === 'undefined') { alert('La librería de lectura de Excel (SheetJS) no está disponible.'); return; }
+    console.log('[Planner import] archivo seleccionado:', file.name, '(' + file.size + ' bytes)');
+    if (typeof XLSX === 'undefined') { console.error('[Planner import] SheetJS (XLSX) no está cargado'); alert('La librería de lectura de Excel (SheetJS) no está disponible.'); return; }
     var logEl = document.getElementById('planner-import-log');
     if (logEl) logEl.innerHTML = '<div style="color:var(--muted);font-size:13px"><span class="spin">⟳</span> Leyendo y volcando datos…</div>';
     var reader = new FileReader();
@@ -3241,9 +3288,11 @@ self.onmessage = function(e) {
       var wb;
       try { wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); }
       catch (err) {
+        console.error('[Planner import] no se pudo leer el .xlsx:', err);
         if (logEl) logEl.innerHTML = '<div style="color:var(--danger)">No se pudo leer el archivo: ' + _esc(err.message) + '</div>';
         input.value = ''; return;
       }
+      console.log('[Planner import] archivo leído. Hojas:', wb.SheetNames);
       _impProcesar(wb).catch(function (err) {
         if (logEl) logEl.innerHTML = '<div style="color:var(--danger)">Error: ' + _esc(err.message || err) + '</div>';
       }).then(function () { input.value = ''; });
