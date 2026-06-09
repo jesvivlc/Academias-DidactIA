@@ -72,10 +72,15 @@ js/
   ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
   comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
   familias.js           (stub — portal familias, pendiente)
-  planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab
+  planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab, Importar (.xlsx → planner_inputs)
   analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales
+  calificaciones.js     initCalificaciones (gradebook): vista profesor (entrada notas) / vista dirección (consulta + export CSV/PDF)
+  palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
+supabase/migrations/
+  calificaciones.sql    DDL gradebook: tabla calificaciones + RLS (4 políticas) + índices
+  planner_inputs.sql    DDL entrada del Planner: 7 tablas planner_* + RLS por centro
 manifest.json                   PWA manifest (sin service worker aún)
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
 tests/
@@ -111,6 +116,8 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `disponibilidad_profesor` | profesor_id, dia_semana, tramo_horario, estado | Restricciones de disponibilidad para el CSP |
 | `necesidades_lectivas` | centro_id, grupo_horario, materia_id, profesor_id, horas_semanales, tipo_aula_requerida | Input del generador: X horas/sem de materia Y con prof Z para grupo G |
 | `horario_generado` | centro_id, grupo_horario, materia_id, profesor_id (**nullable**), aula_id, dia_semana, tramo_horario, es_fijo | Output del CSP antes de publicar; UNIQUE(profesor_id,dia,tramo) y UNIQUE(grupo,dia,tramo). `profesor_id` nullable → soporta horarios "sin profesores" (slots a asignar después) |
+| `calificaciones` | centro_id, alumno_id, alumno_nombre, grupo, asignatura, evaluacion, nota (NUMERIC 0–10), observaciones, profesor_id, profesor_nombre, updated_at | Gradebook. `evaluacion` CHECK ('1ª/2ª/3ª Evaluación','Final'); UNIQUE(centro_id,alumno_id,asignatura,evaluacion). RLS: lectura mismo centro/superadmin; insert/update por profesor dueño (`profesor_id=auth.uid()`) o admin; delete solo dirección. Módulo `js/calificaciones.js` |
+| `planner_profesores`, `planner_cargas`, `planner_tramos`, `planner_restricciones`, `planner_disponibilidad`, `planner_espacios`, `planner_reglas` | (centro_id + columnas por hoja) | **Datos de ENTRADA del generador** del Planner (una tabla por hoja de `DidactIA_Planner_datos_26-27.xlsx`). RLS `centro_isolation`. Se rellenan desde Planner → pestaña **Importar** (`.xlsx` con SheetJS) |
 | `tramos_centro` | id, centro_id, numero (int), hora_inicio (HH:MM), hora_fin (HH:MM), nombre (text\|null), es_descanso (bool) | Tramos horarios configurables por centro; gestionables por voz vía chatbot (`crear_tramos_centro`, `listar_tramos_centro`) |
 | `espacios` | centro_id, nombre, capacidad | Salas/espacios reservables del centro |
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
@@ -481,6 +488,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 <script src="js/familias.js"></script>
 <script src="js/planner.js"></script>
 <script src="js/analytics.js"></script>
+<script src="js/calificaciones.js"></script>
 ```
 
 ---
@@ -914,6 +922,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/planner_inputs.sql` — 7 tablas de entrada del Planner (`planner_profesores/cargas/tramos/restricciones/disponibilidad/espacios/reglas`) + RLS por centro ✅ ejecutado 2026-06-09 vía Management API
+> - `supabase/migrations/calificaciones.sql` — tabla `calificaciones` + RLS (4 políticas) + índices ✅ ejecutado 2026-06-09 vía Management API
 > - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI): tabla+RLS+policy ya existían; índice `idx_alertas_centro_activas` creado ✅ completado 2026-06-04 vía Management API
 > - `sql/horario-generado-profesor-nullable.sql` — `horario_generado.profesor_id DROP NOT NULL` (horarios sin profesor) ✅ ejecutado 2026-06-04 vía Management API
 > - `sql/fix-bugs-prod-2026-05-29.sql` — `ausencias_profesor.tramo DROP NOT NULL` + columnas IA incidencias ✅ ejecutado 2026-05-29
@@ -926,6 +936,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-09` · `21bf059` — feat(planner): modelo de datos de **entrada del generador** + importador. 7 tablas (`planner_profesores`, `planner_cargas`, `planner_tramos`, `planner_restricciones`, `planner_disponibilidad`, `planner_espacios`, `planner_reglas`), todas con `centro_id` + índice + RLS `centro_isolation` (`sql`/`supabase/migrations/planner_inputs.sql`, ejecutado vía Management API). Nueva sub-pestaña **Importar** del Planner: botón "Importar datos de horario" que lee un `.xlsx` con SheetJS, mapea cada hoja→tabla por nombre (tolerante a acentos/sinónimos) y columnas por cabecera (alias + conversión num/int/bool Sí-No/hora Excel→HH:MM), vuelca con el `centro_id` de Agora (`ad0168e8…`) reemplazando datos previos (delete+insert) y muestra log por hoja. (`_renderImportar`/`plannerImportarArchivo`/`_impProcesar` en `js/planner.js`).
+- `2026-06-09` · `e38176e` — feat(calificaciones): módulo gradebook nuevo (`js/calificaciones.js`). Tabla `calificaciones` + RLS (`supabase/migrations/calificaciones.sql`, ejecutado). Vista profesor (`profesional`): grupo/asignatura/evaluación → tabla editable de notas (0–10) con prerelleno y upsert masivo (`onConflict centro_id,alumno_id,asignatura,evaluacion`). Vista dirección (`admin`/`superadmin`): filtros + tabla solo lectura + export CSV (SheetJS) y PDF (jsPDF). Registrado en `app.html` (tab/nav grupo Docencia/panel/TAB_MAP) + `auth.js` (showTab + visibilidad; no familia). SW `v3→v4`.
 - `2026-06-05` · Asistente IA como **burbuja flotante** + **sidebar rediseñado**. (1) El chat sale del rail fijo a un **overlay deslizante** (`#asistente-overlay`/`.asist-panel`, derecha, IDs del chat intactos → listeners OK); **burbuja FAB** (`#asistente-fab`, 56px, color `--ink` del centro) abajo-derecha + globo de invitación (`#asistente-hint`, una vez, localStorage `asist_hint_dismissed`); home full-width; dos accesos (item sidebar "Asistente IA" → `openAsistente()` y burbuja). `askQ` (chat.js) abre el overlay. Funciones `open/close/toggleAsistente` en el script inline de `app.html`. (2) Sidebar agrupado: Inicio + Asistente (sin cabecera) · grupos **DOCENCIA** (Sustituciones/Incidencias/Comunicados/Comedor) y **CENTRO** (IB/RRHH/Espacios) · iconos 19px con color por familia (`--nav-color`), activo = `color-mix` tintado del color de familia (Inicio/Asistente = `--info`); perfil abajo con `border-top`.
 - `2026-06-05` · Home rediseñada (6 cambios) — cabecera compacta + buscador protagonista; topbar minimalista (logo+centro+lupa+avatar); bloque "Mi horario de hoy" (`renderMiHorarioHoy`); métricas accionables (`renderHomeMetrics`); eliminados grids "Módulos"/"Acceso rápido"; command palette global ⌘K (`js/palette.js`, busca alumnos/profesores/aulas en tablas + `horarios_grupo`). Ver "Home rediseñada" arriba.
 - `2026-06-04` · `f3b9b69` — feat(incidencias): vistas por rol — `#inc-vista-profesor` (formulario simplificado: `_incProfesorInit`, `registrarIncidenciaProfesor`, `_incLoadMisIncidencias`) vs `#inc-vista-admin` (panel completo). `loadIncidencias` enruta por `role`
