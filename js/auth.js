@@ -340,6 +340,7 @@ async function loadUserProfile(user) {
       ctrName = ctr?.nombre || "Mi centro";
       modulosActivos = ctr?.modulos_activos || [];
       applyTheme(ctr?.color_primario, ctr?.logo_url);
+      _cacheBrand(ctr?.color_primario, ctr?.logo_url);
     }
     document.getElementById("ctr-name-hdr").textContent = ctrName;
   }
@@ -553,6 +554,59 @@ function applyTheme(colorPrimario, logoUrl) {
       wlcIco.textContent = "D";
       wlcIco.style.cssText = "";
     }
+  }
+}
+
+// ── Marca del centro en la pantalla de LOGIN (antes de autenticar) ──
+// Persiste la última marca usada en este navegador para mostrarla en el próximo login.
+function _cacheBrand(color, logo) {
+  try {
+    if (!color && !logo) return;
+    localStorage.setItem("didactia_brand", JSON.stringify({ color: color || null, logo: logo || null }));
+  } catch (e) {}
+}
+function _readBrand() {
+  try { return JSON.parse(localStorage.getItem("didactia_brand") || "null"); } catch (e) { return null; }
+}
+
+// Tematiza el login ANTES de autenticar. Detecta el centro por la URL
+// (?centro=<uuid|código> · ?c=<código> · ?codigo=<código>) y, en su defecto,
+// recupera la última marca usada en este navegador. Si no hay pista → marca
+// DidactIA por defecto (sin error). No interviene en la autenticación.
+async function themeLoginScreen() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var hint = (params.get("centro") || params.get("c") || params.get("codigo") || "").trim();
+
+    if (hint && sb) {
+      var isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hint);
+      var ctr = null;
+      if (isUuid) {
+        var r1 = await sb.from("centros").select("color_primario,logo_url").eq("id", hint).maybeSingle();
+        ctr = r1 && r1.data;
+      } else {
+        var code = hint.toUpperCase();
+        var r2 = await sb.from("centros")
+          .select("color_primario,logo_url,codigo_familia,codigo_profesional,codigo_acceso");
+        ctr = (r2 && r2.data || []).find(function (c) {
+          return (c.codigo_familia && c.codigo_familia.toUpperCase() === code)
+            || (c.codigo_profesional && c.codigo_profesional.toUpperCase() === code)
+            || (c.codigo_acceso && c.codigo_acceso.toUpperCase() === code);
+        }) || null;
+      }
+      if (ctr && (ctr.color_primario || ctr.logo_url)) {
+        applyTheme(ctr.color_primario, ctr.logo_url);
+        _cacheBrand(ctr.color_primario, ctr.logo_url);
+        return;
+      }
+    }
+
+    // Sin pista en la URL → recupera la última marca usada en este navegador.
+    var cached = _readBrand();
+    if (cached && (cached.color || cached.logo)) applyTheme(cached.color, cached.logo);
+    // Si no hay nada → se conserva la marca DidactIA por defecto.
+  } catch (e) {
+    // Silencioso: cualquier fallo deja la marca DidactIA por defecto.
   }
 }
 

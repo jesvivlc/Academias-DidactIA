@@ -21,6 +21,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   sb = window.supabase.createClient(SB_URL, SB_KEY);
 
+  // Tematiza la pantalla de login (logo + color del centro) antes de autenticar.
+  // No bloquea el arranque: si no detecta centro, conserva la marca DidactIA.
+  if (typeof themeLoginScreen === "function") themeLoginScreen();
+
   // Detect invite/recovery tokens — Supabase may embed them in the hash (#) or query (?),
   // depending on whether the project uses implicit or PKCE flow.
   let _accessToken = null, _refreshToken = null, _tokenType = null;
