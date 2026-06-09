@@ -75,7 +75,8 @@ js/
   planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab, Importar (.xlsx → planner_inputs)
   analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales
   calificaciones.js     initCalificaciones (gradebook): vista profesor (entrada notas) / vista dirección (consulta + export CSV/PDF)
-  materiales.js         initMateriales (hub de materiales): subida a Storage privado/enlace, descarga signed URL, toggle "Mis materiales/Todos"
+  materiales.js         initMateriales (hub de materiales): subida multi-grupo a Storage privado/enlace, descarga signed URL, toggle "Mis materiales/Todos", form "solo mis clases"
+  informes.js           initInformes (Informes de dirección): PDF consolidado por periodo (jsPDF + autotable, logo+color del centro); solo lee tablas existentes
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -496,6 +497,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 <script src="js/analytics.js"></script>
 <script src="js/calificaciones.js"></script>
 <script src="js/materiales.js"></script>
+<script src="js/informes.js"></script>
 ```
 
 ---
@@ -945,6 +947,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-09` · `a4684f1` — feat(informes): módulo **Informes de dirección** (`js/informes.js`, sin SQL — solo lee tablas existentes). Selector de periodo (presets Esta semana/mes/trimestre/curso + rango personalizado) → **PDF consolidado** con jsPDF + **jspdf-autotable** (CDN on-demand). Cabecera por página: logo + nombre del centro + "INFORME DE DIRECCIÓN" + periodo, banda con `color_primario` (patrón de `plannerExportarPDF`); pie con centro + nº página. 6 secciones (Resumen, Sustituciones, Ausencias RRHH, Guardias, Incidencias, Comedor), cada una con su query por `centro_id`+rango; sin datos → "Sin registros en este período". Registrado en `app.html` (tab/nav grupo Administración/panel/TAB_MAP) + `auth.js` (showTab; visible solo admin/director/jefatura/superadmin). SW `v5→v6`.
+- `2026-06-09` · `4cfcc31`/`b9bf71c` — feat(materiales): form de subida **multi-grupo** (`<select multiple>`; sube el archivo 1 vez y crea 1 registro por grupo; al borrar solo quita de Storage si ningún otro registro comparte `storage_path`) + **"solo mis clases"** (match nombre normalizado del profesor contra `profesores.nombre`, sin acentos/coma/orden → grupos de `necesidades_lectivas`; fallback a `alumnos`→`necesidades_lectivas` + aviso).
 - `2026-06-09` · `dc9f12c`/`0c225fd` — feat(materiales): módulo **hub de materiales** por grupo/asignatura (`js/materiales.js`, tabla `materiales` + bucket privado `materiales`, `supabase/migrations/materiales.sql` ejecutado). Lectura todos los roles del centro; subida (archivo a Storage privado con signed URL 1h, o enlace) para docentes/dirección; borrado subidor o admin. RLS de tabla + de Storage por centro. Vista profesor: por defecto **"Mis materiales"** (`profesor_id=auth.uid()`) con toggle "Mis materiales/Todos"; filtros Grupo/Asignatura poblados desde la vista actual. Registrado en `app.html` (tab/nav grupo Docencia/panel/TAB_MAP) + `auth.js` (showTab; tab visible a todos los roles). SW `v4→v5`.
 - `2026-06-09` · `2d705b1` — feat(planner): la hoja **"Cargas"** del importador deja de ir a `planner_cargas` y se vuelca a lo que lee el generador → **materias + profesores + necesidades_lectivas** (con `centro_id=ctrId`). Casa asignatura→`materia_id` (nombre normalizado) y profesor→`profesor_id` (palabras ordenadas sin coma: "Cerro, Sara" ≡ "Sara Cerro"), crea los que falten; borra+inserta necesidades; filas sin horas no se importan. (`_impCargasANecesidades`). Matching de hojas tolerante a prefijos "N. " e ignora "LÉEME" (`458dc02`); tabla extra `planner_grupos` para la hoja Grupos.
 - `2026-06-09` · `21bf059` — feat(planner): modelo de datos de **entrada del generador** + importador. 7 tablas (`planner_profesores`, `planner_cargas`, `planner_tramos`, `planner_restricciones`, `planner_disponibilidad`, `planner_espacios`, `planner_reglas`), todas con `centro_id` + índice + RLS `centro_isolation` (`sql`/`supabase/migrations/planner_inputs.sql`, ejecutado vía Management API). Nueva sub-pestaña **Importar** del Planner: botón "Importar datos de horario" que lee un `.xlsx` con SheetJS, mapea cada hoja→tabla por nombre (tolerante a acentos/sinónimos) y columnas por cabecera (alias + conversión num/int/bool Sí-No/hora Excel→HH:MM), vuelca con el `centro_id` de Agora (`ad0168e8…`) reemplazando datos previos (delete+insert) y muestra log por hoja. (`_renderImportar`/`plannerImportarArchivo`/`_impProcesar` en `js/planner.js`).
