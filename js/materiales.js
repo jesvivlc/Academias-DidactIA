@@ -6,6 +6,7 @@
 
 let _matData    = [];
 let _matGrupos  = [];
+let _matVista   = 'mias';   // solo profesional: 'mias' = subidos por mí · 'todos' = del centro
 
 function _matEsc(s) {
   return String(s == null ? '' : s)
@@ -61,11 +62,19 @@ async function initMateriales() {
     ? '<button class="btn btn-p" onclick="_matToggleForm()">➕ Añadir material</button>'
     : '';
 
+  // Toggle "Mis materiales / Todos" — solo para el profesorado
+  var toggle = (role === 'profesional')
+    ? '<div class="mat-toggle" style="display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;">' +
+        '<button id="mat-tg-mias"  class="btn btn-s" style="border:none;" onclick="matSetVista(\'mias\')">Mis materiales</button>' +
+        '<button id="mat-tg-todos" class="btn btn-s" style="border:none;" onclick="matSetVista(\'todos\')">Todos</button>' +
+      '</div>'
+    : '';
+
   cont.innerHTML =
     '<div class="pg-hdr">' +
       '<div><div class="pg-title">Materiales</div>' +
       '<div class="pg-sub">Recursos del centro por grupo y asignatura</div></div>' +
-      addBtn +
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' + toggle + addBtn + '</div>' +
     '</div>' +
 
     (_matPuedeEditar() ? _matFormHtml(grupoOpts) : '') +
@@ -73,9 +82,9 @@ async function initMateriales() {
     '<div class="card">' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
         '<div style="min-width:160px;"><label class="lbl">Grupo</label>' +
-          '<select class="fi" id="mat-f-grupo" onchange="_matRenderLista()">' + grupoOpts + '</select></div>' +
+          '<select class="fi" id="mat-f-grupo" onchange="_matRenderLista()"><option value="">Todos los grupos</option></select></div>' +
         '<div style="min-width:160px;"><label class="lbl">Asignatura</label>' +
-          '<input class="fi" id="mat-f-asig" placeholder="Todas" oninput="_matRenderLista()"></div>' +
+          '<select class="fi" id="mat-f-asig" onchange="_matRenderLista()"><option value="">Todas las asignaturas</option></select></div>' +
         '<button class="btn btn-s" onclick="cargarMateriales()">↺ Actualizar</button>' +
       '</div>' +
     '</div>' +
@@ -83,6 +92,41 @@ async function initMateriales() {
     '<div id="mat-lista"></div>';
 
   await cargarMateriales();
+}
+
+// Cambia entre "Mis materiales" y "Todos" (profesorado). Recarga y repuebla filtros.
+function matSetVista(v) {
+  _matVista = (v === 'todos') ? 'todos' : 'mias';
+  cargarMateriales();
+}
+
+// Activa el botón correcto del toggle según _matVista
+function _matSyncToggle() {
+  var bm = document.getElementById('mat-tg-mias');
+  var bt = document.getElementById('mat-tg-todos');
+  if (!bm || !bt) return;
+  var on = 'background:var(--ink);color:#fff;border:none;';
+  var off = 'background:transparent;color:var(--txt2);border:none;';
+  bm.style.cssText = (_matVista === 'mias')  ? on : off;
+  bt.style.cssText = (_matVista === 'todos') ? on : off;
+}
+
+// Repuebla los selects de Grupo y Asignatura con los valores presentes en la vista actual
+function _matPopularFiltros() {
+  var uniq = function (key) {
+    return [...new Set(_matData.map(function (m) { return m[key]; }).filter(Boolean))]
+      .sort(function (a, b) { return String(a).localeCompare(String(b), 'es'); });
+  };
+  var fill = function (id, vals, ph) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">' + ph + '</option>' +
+      vals.map(function (v) { return '<option value="' + _matEsc(v) + '">' + _matEsc(v) + '</option>'; }).join('');
+    sel.value = (cur && vals.indexOf(cur) !== -1) ? cur : '';   // conserva selección si sigue presente
+  };
+  fill('mat-f-grupo', uniq('grupo'), 'Todos los grupos');
+  fill('mat-f-asig', uniq('asignatura'), 'Todas las asignaturas');
 }
 
 function _matFormHtml(grupoOpts) {
@@ -124,12 +168,16 @@ async function cargarMateriales() {
   var q = sb.from('materiales').select('*').eq('centro_id', ctrId).order('created_at', { ascending: false }).limit(2000);
   // familia: limitar a los grupos de sus hijos
   if (role === 'familia' && _matGrupos.length) q = q.in('grupo', _matGrupos);
+  // profesional con vista "Mis materiales": solo los que subió (profesor_id = auth.uid())
+  if (role === 'profesional' && _matVista === 'mias' && currentUser) q = q.eq('profesor_id', currentUser.id);
   var r = await q;
   if (r.error) {
     if (box) box.innerHTML = '<div class="card" style="color:var(--red);font-size:13px;">Error: ' + _matEsc(r.error.message) + '</div>';
     return;
   }
   _matData = r.data || [];
+  _matSyncToggle();
+  _matPopularFiltros();   // los filtros reflejan SOLO la vista actual
   _matRenderLista();
 }
 
@@ -137,11 +185,11 @@ function _matRenderLista() {
   var box = document.getElementById('mat-lista');
   if (!box) return;
   var fg = (document.getElementById('mat-f-grupo') || {}).value || '';
-  var fa = ((document.getElementById('mat-f-asig') || {}).value || '').trim().toLowerCase();
+  var fa = (document.getElementById('mat-f-asig') || {}).value || '';   // ahora es select: valor exacto
 
   var rows = _matData.filter(function (m) {
     if (fg && m.grupo !== fg) return false;
-    if (fa && String(m.asignatura || '').toLowerCase().indexOf(fa) === -1) return false;
+    if (fa && String(m.asignatura || '') !== fa) return false;
     return true;
   });
 
