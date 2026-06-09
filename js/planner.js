@@ -1743,16 +1743,28 @@
         _s.schedule[grupo] = {};
         DIAS.forEach(function (d) { _s.schedule[grupo][d] = {}; });
       }
-      _s.schedule[grupo][dia][key] = {
-        materia_nombre:  item.subjectName,
-        materia_color:   item.materia_color || '#1a56db',
-        profesor_nombre: (item.teacherIds || []).map(function (tid) { return profNombre[tid] || tid; }).join(' + '),
-        puntuacion:      r.score,
-        es_codoce:       (item.teacherIds || []).length > 1,
-        log_auditoria:   null,
-        carga_cognitiva: item.cognitiveLoad,
-        tipo_dinamica:   item.dynamicType
+      var tIds    = item.teacherIds || [];
+      var pNombre = tIds.map(function (tid) { return profNombre[tid] || tid; }).join(' + ');
+      var slot    = {
+        materia_id:        item.subjectId   || null,
+        materia_nombre:    item.subjectName,
+        materia_color:     item.materia_color || '#1a56db',
+        profesor_id:       tIds[0]           || null,
+        profesor_nombre:   pNombre,
+        codocente_prof_ids: tIds,
+        sin_asignar:       tIds.length === 0,
+        puntuacion:        r.score,
+        es_codoce:         tIds.length > 1,
+        log_auditoria:     null,
+        carga_cognitiva:   item.cognitiveLoad,
+        tipo_dinamica:     item.dynamicType
       };
+      console.log('[Planner] slot colocado:', grupo, dia, key,
+        '| materia:', slot.materia_nombre,
+        '| profesor_id:', slot.profesor_id,
+        '| profesor_nombre:', slot.profesor_nombre,
+        '| sin_asignar:', slot.sin_asignar);
+      _s.schedule[grupo][dia][key] = slot;
     });
 
     var gruposHorario = Object.keys(_s.schedule);
