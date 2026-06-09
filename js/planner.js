@@ -2310,11 +2310,26 @@
 
     (async function () {
       try {
+        /* ── DIAGNÓSTICO (solo logs, sin cambiar lógica) ── */
+        var _u = await sb.auth.getUser();
+        var _user = _u && _u.data ? _u.data.user : null;
+        console.log('[PUBLICAR] user id:', _user && _user.id);
+        var _perfil = null;
+        if (_user) {
+          var _pr = await sb.from('profiles').select('rol,centro_id').eq('id', _user.id).maybeSingle();
+          _perfil = _pr.data;
+        }
+        console.log('[PUBLICAR] rol/centro:', _perfil);
+        console.log('[PUBLICAR] ctrId global (el que va en cada fila):', ctrId);
+
         for (var i = 0; i < grupos.length; i++) {
           await sb.from('horarios_grupo').delete().eq('centro_id', ctrId).eq('grupo_horario', grupos[i]);
         }
         if (rows.length) {
+          console.log('[PUBLICAR] filas a insertar:', JSON.stringify(rows.slice(0, 3), null, 2));
+          console.log('[PUBLICAR] total filas:', rows.length);
           var r = await sb.from('horarios_grupo').insert(rows);
+          if (r.error) console.error('[PUBLICAR] error Supabase:', JSON.stringify(r.error, null, 2));
           if (r.error) throw r.error;
         }
         if (btn) { btn.disabled = false; btn.textContent = 'Publicar horario en el centro'; }
