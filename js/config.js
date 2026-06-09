@@ -6,6 +6,7 @@ const ANON_KEY = SB_KEY;
 
 let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
 let currentUser = null, currentUserName = "", currentUserAlumnos = [], modulosActivos = [];
+let cursoActivo = '2025-26'; // se actualiza tras login leyendo info_centro.curso_activo
 
 // ── BOOT ──
 window.addEventListener("DOMContentLoaded", async () => {

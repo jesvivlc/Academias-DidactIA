@@ -63,6 +63,7 @@ async function getHorarioGrupo(grupoHorario) {
   const { data, error } = await sb.from("horarios_grupo")
     .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
     .eq("grupo_horario", grupoHorario)
     .order("dia").order("tramo");
   if (error) return null;
@@ -74,6 +75,7 @@ async function getClaseExactaGrupo(grupoHorario, dia, hora) {
   const { data, error } = await sb.from("horarios_grupo")
     .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
     .eq("grupo_horario", grupoHorario)
     .eq("dia", dia);
   if (error || !data || !data.length) return null;
@@ -149,10 +151,12 @@ async function buscarGrupoAlumno(nombreBuscado) {
 async function getProfesoresLibres(dia, hora) {
   if (!sb || !ctrId) return null;
 
+  const _ca = typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26";
   // Todos los profesores del centro
   const { data: todos } = await sb.from("horarios_grupo")
     .select("profesor_nombre")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", _ca)
     .not("profesor_nombre", "is", null);
   if (!todos?.length) return null;
 
@@ -162,6 +166,7 @@ async function getProfesoresLibres(dia, hora) {
   const { data: conClase } = await sb.from("horarios_grupo")
     .select("profesor_nombre,actividad_nombre,grupo_horario,aula")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", _ca)
     .eq("dia", dia)
     .filter("hora_inicio", "lte", hora + ":00")
     .filter("hora_fin", "gt", hora + ":00");
@@ -248,6 +253,7 @@ async function buildContext() {
         const { data: hg } = await sb.from("horarios_grupo")
           .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,grupo_horario")
           .eq("centro_id", ctrId)
+          .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
           .ilike("profesor_nombre", `%${nameParts[0]}%`)
           .order("dia").order("tramo")
           .limit(80);
@@ -418,6 +424,7 @@ async function sendMsg() {
         const { data: profRows } = await sb.from("horarios_grupo")
           .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
           .eq("centro_id", ctrId)
+          .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
           .ilike("profesor_nombre", `%${palabra}%`)
           .limit(50);
         if (!profRows?.length) continue;
@@ -560,7 +567,9 @@ async function sendMsg() {
       const filasDia = await (async () => {
         const { data } = await sb.from("horarios_grupo")
           .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
-          .eq("centro_id", ctrId).eq("grupo_horario", grupoTarget).eq("dia", dia);
+          .eq("centro_id", ctrId)
+          .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
+          .eq("grupo_horario", grupoTarget).eq("dia", dia);
         return data || [];
       })();
       // Filtrar por hora y tomar solo la primera coincidencia (evitar optativas duplicadas)

@@ -2274,9 +2274,19 @@
             ? '<div class="planner-stat"><div class="planner-stat-n">' + avgScore + '</div><div class="planner-stat-l">Score IA</div></div>'
             : '') +
         '</div>' +
+        '<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+          '<label style="font-size:13px;font-weight:500;">Curso escolar:</label>' +
+          '<select id="planner-curso-escolar" style="font-size:13px;padding:5px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);">' +
+            '<option value="2025-26">2025-26 (actual)</option>' +
+            '<option value="2026-27" selected>2026-27 (próximo)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="planner-pub-aviso-curso" style="display:none;background:#fde8e8;color:#b71c1c;border-radius:6px;padding:8px 12px;font-size:13px;margin-bottom:12px;">' +
+          '⚠️ Estás publicando sobre el curso activo. Los cambios afectarán al chat y las sustituciones inmediatamente.' +
+        '</div>' +
         '<div class="planner-warning">' +
           '<strong>⚠ Atención:</strong> Publicar reemplazará los registros actuales en ' +
-          '<code>horarios_grupo</code> para los grupos generados. ' +
+          '<code>horarios_grupo</code> para el curso y grupos generados. ' +
           'El chatbot y el resto de módulos usarán el nuevo horario inmediatamente.' +
         '</div>' +
         (total === 0
@@ -2287,11 +2297,22 @@
   }
 
   window.plannerPublicar = function () {
+    // 1. Leer curso a publicar desde el selector (fallback '2026-27')
+    var selCurso = document.getElementById('planner-curso-escolar');
+    var cursoAPublicar = selCurso ? selCurso.value : '2026-27';
+
+    // Avisar si se publica sobre el curso activo
+    var avisoCursoEl = document.getElementById('planner-pub-aviso-curso');
+    if (avisoCursoEl) {
+      var esActivo = (typeof cursoActivo !== 'undefined') && cursoAPublicar === cursoActivo;
+      avisoCursoEl.style.display = esActivo ? '' : 'none';
+    }
+
     var avisoAparcados = _s.aparcados.length
       ? '\n\n⚠ Tienes ' + _s.aparcados.length + ' clase' + (_s.aparcados.length === 1 ? '' : 's') +
         ' aparcada' + (_s.aparcados.length === 1 ? '' : 's') + ' sin asignar que NO se publicarán.'
       : '';
-    if (!confirm('¿Publicar? Se sobreescribirán los horarios_grupo de los grupos generados.' + avisoAparcados)) return;
+    if (!confirm('¿Publicar curso ' + cursoAPublicar + '? Se sobreescribirán los horarios_grupo de los grupos generados para ese curso.' + avisoAparcados)) return;
     var btn = document.getElementById('planner-pub-btn');
     var msg = document.getElementById('planner-pub-msg');
     if (btn) { btn.disabled = true; btn.textContent = 'Publicando…'; }
@@ -2306,6 +2327,7 @@
           rows.push({
             centro_id:        ctrId,
             grupo_horario:    grupo,
+            curso_escolar:    cursoAPublicar,
             dia:              dia,
             tramo:            tr,
             hora_inicio:      _horaInicio(tr),
@@ -2319,34 +2341,24 @@
     });
 
     var grupos = [...new Set(rows.map(function (r) { return r.grupo_horario; }))];
+    console.log('[PUBLICAR] curso:', cursoAPublicar, '| filas:', rows.length, '| grupos:', grupos);
 
     (async function () {
       try {
-        /* ── DIAGNÓSTICO (solo logs, sin cambiar lógica) ── */
-        var _u = await sb.auth.getUser();
-        var _user = _u && _u.data ? _u.data.user : null;
-        console.log('[PUBLICAR] user id:', _user && _user.id);
-        var _perfil = null;
-        if (_user) {
-          var _pr = await sb.from('profiles').select('rol,centro_id').eq('id', _user.id).maybeSingle();
-          _perfil = _pr.data;
-        }
-        console.log('[PUBLICAR] rol/centro:', _perfil);
-        console.log('[PUBLICAR] ctrId global (el que va en cada fila):', ctrId);
-
+        // DELETE filtrado por centro_id Y curso_escolar — nunca toca otros cursos
         for (var i = 0; i < grupos.length; i++) {
-          await sb.from('horarios_grupo').delete().eq('centro_id', ctrId).eq('grupo_horario', grupos[i]);
+          await sb.from('horarios_grupo').delete()
+            .eq('centro_id', ctrId)
+            .eq('curso_escolar', cursoAPublicar)
+            .eq('grupo_horario', grupos[i]);
         }
         if (rows.length) {
-          console.log('[PUBLICAR] filas a insertar:', JSON.stringify(rows.slice(0, 3), null, 2));
-          console.log('[PUBLICAR] total filas:', rows.length);
           var r = await sb.from('horarios_grupo').insert(rows);
-          if (r.error) console.error('[PUBLICAR] error Supabase:', JSON.stringify(r.error, null, 2));
-          if (r.error) throw r.error;
+          if (r.error) { console.error('[PUBLICAR] error Supabase:', JSON.stringify(r.error, null, 2)); throw r.error; }
         }
         if (btn) { btn.disabled = false; btn.textContent = 'Publicar horario en el centro'; }
         if (msg) msg.innerHTML =
-          '<span style="color:var(--success)">✓ Horario publicado — ' + rows.length + ' sesiones en ' + grupos.length + ' grupos.</span>';
+          '<span style="color:var(--success)">✓ Horario publicado (' + cursoAPublicar + ') — ' + rows.length + ' sesiones en ' + grupos.length + ' grupos.</span>';
       } catch (err) {
         if (btn) { btn.disabled = false; btn.textContent = 'Publicar horario en el centro'; }
         if (msg) msg.innerHTML =

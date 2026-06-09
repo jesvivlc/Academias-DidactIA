@@ -419,6 +419,11 @@ async function loadUserProfile(user) {
   document.getElementById("app-tabs").style.display = "flex";
   document.getElementById("app-main").style.display = "flex";
 
+  // Leer curso_activo del centro (fire-and-forget; fallback ya está en config.js)
+  sb.from("info_centro").select("curso_activo").eq("centro_id", ctrId).maybeSingle()
+    .then(function(r) { if (r.data?.curso_activo) cursoActivo = r.data.curso_activo; })
+    .catch(function() {});
+
   updateUI();
   loadAdmin();
   setTimeout(initWelcomeExtras, 400);

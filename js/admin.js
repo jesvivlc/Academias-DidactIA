@@ -330,11 +330,12 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
     horaRef = tramoData[tramoOverride].hi;
   }
 
-  const { data: todos } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).not("profesor_nombre", "is", null);
+  const _ca = typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26";
+  const { data: todos } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("curso_escolar", _ca).not("profesor_nombre", "is", null);
   if (!todos) return;
   const todosProfes = [...new Set(todos.map(r => r.profesor_nombre).filter(Boolean))].sort();
 
-  const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("dia", dia)
+  const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
     .filter("hora_inicio", "lte", horaRef + ":00")
     .filter("hora_fin", "gt", horaRef + ":00");
 
@@ -348,6 +349,7 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
   const { data: conGuardia } = await sb.from("horarios_grupo")
     .select("profesor_nombre")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", _ca)
     .eq("dia", diaActual)
     .ilike("actividad", "%guardia%")
     .filter("hora_inicio", "lte", horaRefGuardia + ":00")
@@ -529,6 +531,7 @@ async function _loadGruposProfesor() {
   const { data } = await sb.from("horarios_grupo")
     .select("grupo_horario")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
     .ilike("profesor_nombre", `%${parte}%`);
   if (!data?.length) return;
   const grupos = [...new Set(data.map(r => r.grupo_horario).filter(Boolean))].sort();
