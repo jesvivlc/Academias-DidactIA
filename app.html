@@ -121,7 +121,9 @@
   <div class="tab" id="tab-comunicados"        onclick="showTab('comunicados')" style="display:none">📢 Comunicados</div>
   <div class="tab" id="tab-avisos"             onclick="showTab('avisos')"      style="display:none">🔔 Avisos</div>
   <div class="tab" id="tab-planner"           onclick="showTab('planner')"     style="display:none">📅 Planner</div>
-  <div class="tab" id="tab-analytics"        onclick="showTab('analytics')"   style="display:none">📊 Analytics</div>
+  <div class="tab" id="tab-analisis"         onclick="showTab('analisis')"    style="display:none">📊 Análisis</div>
+  <div class="tab" id="tab-calificaciones"   onclick="showTab('calificaciones')" style="display:none">📝 Calificaciones</div>
+  <div class="tab" id="tab-materiales"        onclick="showTab('materiales')"     style="display:none">📎 Materiales</div>
 </nav>
 
 <!-- APP SHELL -->
@@ -208,6 +210,12 @@
         <button class="nav-item" id="nav-comedor" data-tab="comedor" onclick="showTab('comedor')" style="display:none;--nav-color:#0F6E56">
           <i class="ti ti-tools-kitchen-2"></i><span class="nav-item-label">Comedor</span>
         </button>
+        <button class="nav-item" id="nav-calificaciones" data-tab="calificaciones" onclick="showTab('calificaciones')" style="display:none;--nav-color:#6A4C93">
+          <i class="ti ti-clipboard-list"></i><span class="nav-item-label">Calificaciones</span>
+        </button>
+        <button class="nav-item" id="nav-materiales" data-tab="materiales" onclick="showTab('materiales')" style="display:none;--nav-color:#1F7A8C">
+          <i class="ti ti-paperclip"></i><span class="nav-item-label">Materiales</span>
+        </button>
 
         <div class="sb-group-label">Centro</div>
         <button class="nav-item" id="nav-ib" data-tab="ib" onclick="showTab('ib')" style="display:none;--nav-color:#534AB7">
@@ -221,6 +229,9 @@
         </button>
 
         <div class="sb-group-label">Administración</div>
+        <button class="nav-item" id="nav-analisis" data-tab="analisis" onclick="showTab('analisis')" style="display:none;--nav-color:#283593">
+          <i class="ti ti-chart-histogram"></i><span class="nav-item-label">Análisis</span>
+        </button>
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
           <i class="ti ti-users"></i><span class="nav-item-label">Usuarios</span>
         </button>
@@ -229,9 +240,6 @@
         </button>
         <button class="nav-item" id="nav-planner" data-tab="planner" onclick="showTab('planner')" style="display:none;--nav-color:#4527a0">
           <i class="ti ti-calendar-event"></i><span class="nav-item-label">Planner</span>
-        </button>
-        <button class="nav-item" id="nav-analytics" data-tab="analytics" onclick="showTab('analytics')" style="display:none;--nav-color:#283593">
-          <i class="ti ti-chart-bar"></i><span class="nav-item-label">Analytics</span>
         </button>
 
       </div><!-- /sb-nav -->
@@ -857,6 +865,28 @@
     </div>
   </div>
 
+  <!-- CALIFICACIONES PANEL -->
+  <div class="panel" id="panel-calificaciones">
+    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
+      <div id="cal-container">
+        <!-- calificaciones.js renderiza aquí (vista profesor o vista admin según rol) -->
+        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATERIALES PANEL -->
+  <div class="panel" id="panel-materiales">
+    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
+      <div id="mat-container">
+        <!-- materiales.js renderiza aquí -->
+        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- (panel-informes fusionado dentro de panel-analisis → pestaña "Informes PDF") -->
+
   <!-- USERS PANEL -->
   <div class="panel" id="panel-users" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
     <div class="pg-hdr">
@@ -903,9 +933,24 @@
   <div class="panel" id="panel-avisos" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
   </div>
 
-  <!-- ANALYTICS PANEL -->
-  <div class="panel" id="panel-analytics" style="flex-direction:column;overflow-y:auto;background:var(--bg);padding:0;">
-    <div id="analytics-container"></div>
+  <!-- ANÁLISIS PANEL (fusión Analytics Dashboard + Informes PDF) -->
+  <div class="panel" id="panel-analisis" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
+    <div style="padding:18px 28px 0;flex-shrink:0;">
+      <div class="planner-tabs">
+        <button class="planner-tab active" id="analisis-tab-dash" onclick="analisisTab('dashboard')">Dashboard</button>
+        <button class="planner-tab"        id="analisis-tab-inf"  onclick="analisisTab('informes')">Informes PDF</button>
+      </div>
+    </div>
+    <!-- Dashboard → analytics.js renderiza en #analytics-container (sin cambios) -->
+    <div id="analisis-dashboard" style="flex:1;min-height:0;">
+      <div id="analytics-container"></div>
+    </div>
+    <!-- Informes PDF → informes.js renderiza en #inf-container (sin cambios) -->
+    <div id="analisis-informes" style="display:none;padding:28px;">
+      <div id="inf-container">
+        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+      </div>
+    </div>
   </div>
 
   <!-- PLANNER PANEL -->
@@ -928,6 +973,7 @@
         <button class="planner-tab"        data-ptab="publicar"    onclick="showPTab('publicar')">Publicar</button>
         <button class="planner-tab"        data-ptab="tramos"      onclick="showPTab('tramos')">Tramos</button>
         <button class="planner-tab"        data-ptab="dictar"      onclick="showPTab('dictar')">Dictar</button>
+        <button class="planner-tab"        data-ptab="importar"    onclick="showPTab('importar')">Importar</button>
       </div>
       <div class="pt-panel" id="pt-materias"></div>
       <div class="pt-panel" id="pt-necesidades"></div>
@@ -935,6 +981,7 @@
       <div class="pt-panel" id="pt-publicar"></div>
       <div class="pt-panel" id="pt-tramos"></div>
       <div class="pt-panel" id="pt-dictar"></div>
+      <div class="pt-panel" id="pt-importar"></div>
     </div>
   </div>
 
@@ -1130,6 +1177,9 @@
 <script src="js/familias.js"></script>
 <script src="js/planner.js"></script>
 <script src="js/analytics.js"></script>
+<script src="js/calificaciones.js"></script>
+<script src="js/materiales.js"></script>
+<script src="js/informes.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1149,7 +1199,7 @@
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
-    analytics:'Analytics — Cuadro de Mando'
+    analisis:'Análisis'
   };
   var MAS_CFG = {
     ib:        { icon:'ti-school',          label:'IB' },
@@ -1158,7 +1208,7 @@
     users:     { icon:'ti-users',           label:'Usuarios' },
     admin:     { icon:'ti-settings',        label:'Administración' },
     planner:      { icon:'ti-calendar-event',  label:'Planner' },
-    analytics:    { icon:'ti-chart-bar',       label:'Analytics' },
+    analisis:     { icon:'ti-chart-histogram', label:'Análisis' },
     comunicados:  { icon:'ti-speakerphone',    label:'Comunicados' }
   };
   /* IDs: tab → nav-item sidebar, nav-item bottom-nav */
@@ -1174,7 +1224,9 @@
     'tab-ib':          { nav:'nav-ib',           bn:null },
     'tab-comunicados': { nav:'nav-comunicados',  bn:'bn-comunicados' },
     'tab-planner':     { nav:'nav-planner',      bn:null },
-    'tab-analytics':   { nav:'nav-analytics',    bn:null }
+    'tab-analisis':    { nav:'nav-analisis',     bn:null },
+    'tab-calificaciones': { nav:'nav-calificaciones', bn:null },
+    'tab-materiales':      { nav:'nav-materiales',     bn:null }
   };
   var BADGE_MAP = {
     'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
@@ -1266,12 +1318,29 @@
         var titleEl = document.getElementById('topbar-title');
         if (titleEl) titleEl.textContent = TITLES[t] || t;
         closeMasDrawer();
-        if (t === 'planner'   && typeof initPlannerPanel   === 'function') initPlannerPanel();
-        if (t === 'analytics' && typeof initAnalyticsPanel === 'function') initAnalyticsPanel();
+        if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
+        if (t === 'analisis') initAnalisis();
       };
     }
   }
   patchShowTab(); /* auth.js se carga antes de este script */
+
+  /* ── Análisis = fusión Dashboard (analytics.js) + Informes PDF (informes.js) ── */
+  window.analisisTab = function (which) {
+    var verInf = (which === 'informes');
+    var dash = document.getElementById('analisis-dashboard');
+    var inf  = document.getElementById('analisis-informes');
+    var bd   = document.getElementById('analisis-tab-dash');
+    var bi   = document.getElementById('analisis-tab-inf');
+    if (dash) dash.style.display = verInf ? 'none' : '';
+    if (inf)  inf.style.display  = verInf ? '' : 'none';
+    if (bd) bd.classList.toggle('active', !verInf);
+    if (bi) bi.classList.toggle('active', verInf);
+    if (verInf) { if (typeof initInformes === 'function') initInformes(); }
+    else { if (typeof initAnalyticsPanel === 'function') initAnalyticsPanel(); }
+  };
+  function initAnalisis() { window.analisisTab('dashboard'); }
+  window.initAnalisis = initAnalisis;
 
   /* ── 3. Sincronizar visibilidad tab → nav-item/bn-item ── */
   function syncTabItem(tabId) {
@@ -1488,15 +1557,17 @@
     var panelChat = document.getElementById('panel-chat');
     if (panelChat && r) panelChat.dataset.role = r;
 
-    /* Planner + Analytics — solo admin/superadmin */
+    /* Planner — solo admin/superadmin */
     var np = document.getElementById('nav-planner');
     if (np) np.style.display = isAdmin ? 'flex' : 'none';
     var tp = document.getElementById('tab-planner');
     if (tp) tp.style.display = isAdmin ? '' : 'none';
-    var na = document.getElementById('nav-analytics');
-    if (na) na.style.display = isAdmin ? 'flex' : 'none';
-    var ta = document.getElementById('tab-analytics');
-    if (ta) ta.style.display = isAdmin ? '' : 'none';
+    /* Análisis (Dashboard + Informes) — admin/director/jefatura/superadmin */
+    var _verAnalisis = ['admin','director','jefatura','superadmin'].indexOf(r) !== -1;
+    var na = document.getElementById('nav-analisis');
+    if (na) na.style.display = _verAnalisis ? 'flex' : 'none';
+    var ta = document.getElementById('tab-analisis');
+    if (ta) ta.style.display = _verAnalisis ? '' : 'none';
 
     if (!_bentoObserversSetup) {
       _bentoObserversSetup = true;

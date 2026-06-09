@@ -187,6 +187,7 @@
     if (tab === 'publicar')    _renderPublicar();
     if (tab === 'tramos')      _renderTramos();
     if (tab === 'dictar')      _renderDictar();
+    if (tab === 'importar')    _renderImportar();
   }
 
   /* ════════════════════════════════
@@ -2309,11 +2310,26 @@
 
     (async function () {
       try {
+        /* ── DIAGNÓSTICO (solo logs, sin cambiar lógica) ── */
+        var _u = await sb.auth.getUser();
+        var _user = _u && _u.data ? _u.data.user : null;
+        console.log('[PUBLICAR] user id:', _user && _user.id);
+        var _perfil = null;
+        if (_user) {
+          var _pr = await sb.from('profiles').select('rol,centro_id').eq('id', _user.id).maybeSingle();
+          _perfil = _pr.data;
+        }
+        console.log('[PUBLICAR] rol/centro:', _perfil);
+        console.log('[PUBLICAR] ctrId global (el que va en cada fila):', ctrId);
+
         for (var i = 0; i < grupos.length; i++) {
           await sb.from('horarios_grupo').delete().eq('centro_id', ctrId).eq('grupo_horario', grupos[i]);
         }
         if (rows.length) {
+          console.log('[PUBLICAR] filas a insertar:', JSON.stringify(rows.slice(0, 3), null, 2));
+          console.log('[PUBLICAR] total filas:', rows.length);
           var r = await sb.from('horarios_grupo').insert(rows);
+          if (r.error) console.error('[PUBLICAR] error Supabase:', JSON.stringify(r.error, null, 2));
           if (r.error) throw r.error;
         }
         if (btn) { btn.disabled = false; btn.textContent = 'Publicar horario en el centro'; }
@@ -3042,6 +3058,370 @@ self.onmessage = function(e) {
         };
       });
     }
+  };
+
+  /* ════════════════════════════════
+     IMPORTAR datos de entrada del Planner desde .xlsx (una hoja → una tabla)
+  ════════════════════════════════ */
+
+  var IMPORT_CENTRO = 'ad0168e8-6c24-4597-8917-ee54cac8234b'; // Agora Lledó
+
+  function _impNorm(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/[?:.*]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function _impNum(v) {
+    if (v == null || v === '') return null;
+    var n = parseFloat(String(v).replace(',', '.'));
+    return isNaN(n) ? null : n;
+  }
+  function _impInt(v) {
+    var n = _impNum(v);
+    return n == null ? null : Math.round(n);
+  }
+  function _impBool(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'boolean') return v;
+    var s = _impNorm(v);
+    if (['si', 'sí', 'true', '1', 'x', 'verdadero', 'yes', 'y', 'ok', 'disponible', 'aplicar'].indexOf(s) !== -1) return true;
+    if (['no', 'false', '0', '-', 'n', 'falso'].indexOf(s) !== -1) return false;
+    return null;
+  }
+  function _impTime(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') {
+      var frac = (v >= 0 && v < 1) ? v : (v - Math.floor(v));
+      var mins = Math.round(frac * 24 * 60);
+      var hh = Math.floor(mins / 60) % 24, mm = mins % 60;
+      return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    }
+    var s = String(v).trim();
+    var m = s.match(/^(\d{1,2}):(\d{2})/);
+    return m ? (m[1].padStart(2, '0') + ':' + m[2]) : s;
+  }
+  function _impStr(v) {
+    if (v == null) return null;
+    var s = String(v).trim();
+    return s === '' ? null : s;
+  }
+
+  /* clave de nombre: minúsculas, sin acentos, sin espacios extra (para casar materias) */
+  function _impNombreKey(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+  /* clave de profesor: como _impNombreKey pero quita comas y ordena las palabras
+     → "Cerro, Sara" y "Sara Cerro" producen la misma clave "cerro sara" */
+  function _impProfKey(s) {
+    return _impNombreKey(String(s == null ? '' : s).replace(/,/g, ' '))
+      .split(' ').filter(Boolean).sort().join(' ');
+  }
+
+  /* sheet (normalizado) → { tabla, cols: { columnaBD: { a:[alias…], t:tipo } } } */
+  var IMPORT_MAP = {
+    profesores: { tabla: 'planner_profesores', cols: {
+      nombre:            { a: ['nombre', 'profesor', 'docente', 'nombre profesor', 'apellidos nombre'], t: 'str' },
+      horas_lectivas:    { a: ['horas_lectivas', 'horas lectivas', 'horas', 'lectivas', 'horas semanales'], t: 'num' },
+      asignaturas_texto: { a: ['asignaturas_texto', 'asignaturas', 'materias', 'asignatura'], t: 'str' }
+    }},
+    cargas: { tabla: 'planner_cargas', cols: {
+      profesor:   { a: ['profesor', 'docente', 'nombre'], t: 'str' },
+      grupo:      { a: ['grupo', 'curso', 'clase'], t: 'str' },
+      asignatura: { a: ['asignatura', 'materia'], t: 'str' },
+      horas:      { a: ['horas', 'sesiones', 'horas semanales', 'h'], t: 'num' }
+    }},
+    grupos: { tabla: 'planner_grupos', cols: {
+      grupo:       { a: ['grupo', 'nombre', 'clase', 'codigo', 'grupo horario'], t: 'str' },
+      curso:       { a: ['curso', 'nivel', 'etapa'], t: 'str' },
+      num_alumnos: { a: ['num_alumnos', 'numero alumnos', 'n alumnos', 'nº alumnos', 'alumnos', 'total'], t: 'int' },
+      tutor:       { a: ['tutor', 'tutora', 'tutor/a', 'tutor a'], t: 'str' }
+    }},
+    tramos: { tabla: 'planner_tramos', cols: {
+      modelo:      { a: ['modelo', 'jornada', 'tipo modelo'], t: 'str' },
+      orden:       { a: ['orden', 'numero', 'n', 'tramo', 'posicion', 'nº'], t: 'int' },
+      hora_inicio: { a: ['hora_inicio', 'hora inicio', 'inicio', 'desde'], t: 'time' },
+      hora_fin:    { a: ['hora_fin', 'hora fin', 'fin', 'hasta'], t: 'time' },
+      tipo:        { a: ['tipo', 'categoria', 'clase descanso'], t: 'str' }
+    }},
+    restricciones: { tabla: 'planner_restricciones', cols: {
+      detalle: { a: ['detalle', 'restriccion', 'restricción', 'texto', 'descripcion'], t: 'str' }
+    }},
+    disponibilidad: { tabla: 'planner_disponibilidad', cols: {
+      profesor:   { a: ['profesor', 'docente', 'nombre'], t: 'str' },
+      dia:        { a: ['dia', 'día'], t: 'str' },
+      tramo:      { a: ['tramo', 'hora', 'orden', 'franja'], t: 'str' },
+      disponible: { a: ['disponible', 'disponibilidad', 'si no', 'ok'], t: 'bool' }
+    }},
+    espacios: { tabla: 'planner_espacios', cols: {
+      nombre:            { a: ['nombre', 'espacio', 'aula', 'sala'], t: 'str' },
+      tipo:              { a: ['tipo', 'categoria'], t: 'str' },
+      asignaturas_texto: { a: ['asignaturas_texto', 'asignaturas', 'materias', 'uso'], t: 'str' },
+      capacidad:         { a: ['capacidad', 'aforo', 'plazas', 'cap'], t: 'int' }
+    }},
+    reglas: { tabla: 'planner_reglas', cols: {
+      regla:      { a: ['regla', 'nombre', 'rule'], t: 'str' },
+      aplicar:    { a: ['aplicar', 'activa', 'activo', 'si no', 'aplicar?'], t: 'bool' },
+      comentario: { a: ['comentario', 'observaciones', 'nota', 'notas'], t: 'str' }
+    }}
+  };
+
+  /* Matching flexible de nombre de hoja → clave de IMPORT_MAP.
+     Tolera prefijos tipo "0. ", "1. ", acentos y mayúsculas; usa includes(). */
+  function _impMatchSheet(sheetName) {
+    // _impNorm ya pasa a minúsculas, quita acentos y convierte '.' en espacio.
+    // Además quitamos números/puntos/espacios iniciales: "1. Profesores" → "profesores".
+    var n = _impNorm(sheetName).replace(/^[0-9.\s]+/, '').trim();
+    console.log('[Planner import] hoja "' + sheetName + '" → limpia "' + n + '"');
+
+    // LÉEME / instrucciones → ignorar
+    if (n.indexOf('leeme') !== -1 || n.indexOf('leme') !== -1 || n.indexOf('readme') !== -1 || n.indexOf('instruc') !== -1) {
+      console.log('[Planner import]   ↳ ignorada (hoja de instrucciones)');
+      return null;
+    }
+
+    // Palabra clave contenida → tabla. (orden: keywords sin solapamientos)
+    var KW = [
+      ['profesores',     'profesores'],
+      ['profe',          'profesores'],
+      ['cargas',         'cargas'],
+      ['carga',          'cargas'],
+      ['sesion',         'cargas'],
+      ['grupos',         'grupos'],
+      ['grupo',          'grupos'],
+      ['restricciones',  'restricciones'],
+      ['restric',        'restricciones'],
+      ['disponibilidad', 'disponibilidad'],
+      ['dispon',         'disponibilidad'],
+      ['tramos',         'tramos'],
+      ['tramo',          'tramos'],
+      ['espacios',       'espacios'],
+      ['espacio',        'espacios'],
+      ['aula',           'espacios'],
+      ['reglas',         'reglas'],
+      ['regla',          'reglas']
+    ];
+    for (var i = 0; i < KW.length; i++) {
+      if (n.indexOf(KW[i][0]) !== -1) return KW[i][1];
+    }
+    return null;
+  }
+
+  var _impConv = { str: _impStr, num: _impNum, int: _impInt, bool: _impBool, time: _impTime };
+
+  function _impMapRow(rawRow, colsDef) {
+    // índice normHeader → valor
+    var norm = {};
+    Object.keys(rawRow).forEach(function (k) { norm[_impNorm(k)] = rawRow[k]; });
+    var out = {}, vacia = true;
+    Object.keys(colsDef).forEach(function (col) {
+      var def = colsDef[col], val = null;
+      for (var i = 0; i < def.a.length; i++) {
+        if (norm[def.a[i]] !== undefined) { val = norm[def.a[i]]; break; }
+      }
+      var conv = _impConv[def.t](val);
+      out[col] = conv;
+      if (conv !== null && conv !== undefined && conv !== '') vacia = false;
+    });
+    return vacia ? null : out;
+  }
+
+  /* Hoja "Cargas" → materias + profesores + necesidades_lectivas (lo que lee el generador).
+     Usa ctrId (el centro activo, que es el que consulta _loadData). */
+  async function _impCargasANecesidades(rawRows) {
+    var centro = ctrId;
+    var filas = rawRows.map(function (r) { return _impMapRow(r, IMPORT_MAP.cargas.cols); }).filter(Boolean);
+    console.log('[Planner import][Cargas→Necesidades] centro_id:', centro, '· filas con datos:', filas.length);
+
+    // ── 1. MATERIAS: casar por nombre normalizado; crear las que falten ──
+    var matRes = await sb.from('materias').select('id,nombre').eq('centro_id', centro);
+    if (matRes.error) { console.error('[Planner import][Cargas] error leyendo materias:', JSON.stringify(matRes.error, null, 2)); throw new Error(matRes.error.message); }
+    var matIdByKey = {};
+    (matRes.data || []).forEach(function (m) { matIdByKey[_impNombreKey(m.nombre)] = m.id; });
+
+    var asigRawByKey = {};
+    filas.forEach(function (f) {
+      if (!f.asignatura) return;
+      var k = _impNombreKey(f.asignatura);
+      if (k && !(k in asigRawByKey)) asigRawByKey[k] = f.asignatura;
+    });
+
+    var matCreadas = 0, matReusadas = 0;
+    var asigKeys = Object.keys(asigRawByKey);
+    for (var i = 0; i < asigKeys.length; i++) {
+      var ak = asigKeys[i];
+      if (matIdByKey[ak]) { matReusadas++; continue; }
+      var mi = await sb.from('materias').insert({ centro_id: centro, nombre: asigRawByKey[ak] }).select('id').single();
+      if (mi.error) { console.error('[Planner import][Cargas] error creando materia "' + asigRawByKey[ak] + '":', JSON.stringify(mi.error, null, 2)); throw new Error(mi.error.message); }
+      matIdByKey[ak] = mi.data.id; matCreadas++;
+    }
+    console.log('[Planner import][Cargas] materias → creadas:', matCreadas, '· reutilizadas:', matReusadas, '(' + asigKeys.length + ' distintas)');
+
+    // ── 2. PROFESORES: casar por palabras ordenadas (sin orden ni coma); crear los que falten ──
+    var profRes = await sb.from('profesores').select('id,nombre').eq('centro_id', centro);
+    if (profRes.error) { console.error('[Planner import][Cargas] error leyendo profesores:', JSON.stringify(profRes.error, null, 2)); throw new Error(profRes.error.message); }
+    var profIdByKey = {};
+    (profRes.data || []).forEach(function (p) { profIdByKey[_impProfKey(p.nombre)] = p.id; });
+
+    var profRawByKey = {};
+    filas.forEach(function (f) {
+      if (!f.profesor) return;
+      var k = _impProfKey(f.profesor);
+      if (k && !(k in profRawByKey)) profRawByKey[k] = f.profesor;
+    });
+
+    var profCreados = 0, profReusados = 0;
+    var profKeys = Object.keys(profRawByKey);
+    for (var j = 0; j < profKeys.length; j++) {
+      var pk = profKeys[j];
+      if (profIdByKey[pk]) { profReusados++; continue; }
+      var pi = await sb.from('profesores').insert({ centro_id: centro, nombre: profRawByKey[pk] }).select('id').single();
+      if (pi.error) { console.error('[Planner import][Cargas] error creando profesor "' + profRawByKey[pk] + '":', JSON.stringify(pi.error, null, 2)); throw new Error(pi.error.message); }
+      profIdByKey[pk] = pi.data.id; profCreados++;
+    }
+    console.log('[Planner import][Cargas] profesores → creados:', profCreados, '· reutilizados:', profReusados, '(' + profKeys.length + ' distintos)');
+
+    // ── 3. NECESIDADES_LECTIVAS: borrar las del centro e insertar una por carga con horas válidas ──
+    var del = await sb.from('necesidades_lectivas').delete().eq('centro_id', centro);
+    if (del.error) { console.error('[Planner import][Cargas] error borrando necesidades_lectivas:', JSON.stringify(del.error, null, 2)); throw new Error(del.error.message); }
+    console.log('[Planner import][Cargas] necesidades_lectivas previas del centro borradas');
+
+    var necRows = [], sinHoras = 0;
+    filas.forEach(function (f) {
+      var horas = (f.horas == null) ? NaN : parseInt(f.horas, 10);
+      if (isNaN(horas)) { sinHoras++; return; }   // horas_semanales es NOT NULL → no se inserta
+      necRows.push({
+        centro_id:       centro,
+        grupo_horario:   f.grupo || null,
+        materia_id:      f.asignatura ? (matIdByKey[_impNombreKey(f.asignatura)] || null) : null,
+        profesor_id:     f.profesor   ? (profIdByKey[_impProfKey(f.profesor)]   || null) : null,
+        horas_semanales: horas
+      });
+    });
+
+    if (necRows.length) {
+      var nins = await sb.from('necesidades_lectivas').insert(necRows);
+      if (nins.error) { console.error('[Planner import][Cargas] error insertando necesidades_lectivas:', JSON.stringify(nins.error, null, 2)); throw new Error(nins.error.message); }
+    }
+    console.log('[Planner import][Cargas] necesidades insertadas:', necRows.length, '·', sinHoras, 'cargas sin horas, no importadas');
+
+    return { necesidades: necRows.length, sinHoras: sinHoras, matCreadas: matCreadas, matReusadas: matReusadas, profCreados: profCreados, profReusados: profReusados };
+  }
+
+  async function _impProcesar(wb) {
+    var resultados = [];
+    console.log('[Planner import] centro destino (Agora):', IMPORT_CENTRO);
+    console.log('[Planner import] hojas en el archivo:', wb.SheetNames);
+
+    for (var si = 0; si < wb.SheetNames.length; si++) {
+      var sheetName = wb.SheetNames[si];
+      var key = _impMatchSheet(sheetName);
+      if (!key) {
+        console.log('[Planner import] "' + sheetName + '" → SIN TABLA (ignorada)');
+        resultados.push({ hoja: sheetName, tabla: '—', n: 0, estado: 'ignorada (sin tabla)' });
+        continue;
+      }
+      var cfg = IMPORT_MAP[key];
+      var raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
+      console.log('[Planner import] "' + sheetName + '" → tabla ' + cfg.tabla + ' · ' + raw.length + ' filas leídas');
+      if (raw.length) console.log('[Planner import]   cabeceras detectadas:', Object.keys(raw[0]));
+
+      /* "Cargas" NO va a planner_cargas: se vuelca a lo que lee el generador
+         (materias + profesores + necesidades_lectivas). */
+      if (key === 'cargas') {
+        try {
+          var rc = await _impCargasANecesidades(raw);
+          resultados.push({ hoja: sheetName, tabla: 'necesidades_lectivas', n: rc.necesidades,
+            estado: '✅ ' + rc.necesidades + ' necesidades · ' + rc.sinHoras + ' sin horas · materias +' +
+              rc.matCreadas + '/♻' + rc.matReusadas + ' · profes +' + rc.profCreados + '/♻' + rc.profReusados });
+        } catch (err) {
+          console.error('[Planner import]   ❌ Cargas→necesidades falló:', err);
+          resultados.push({ hoja: sheetName, tabla: 'necesidades_lectivas', n: 0, estado: '❌ ' + (err.message || err) });
+        }
+        continue;
+      }
+
+      var rows = raw.map(function (r) {
+        var m = _impMapRow(r, cfg.cols);
+        if (!m) return null;
+        m.centro_id = IMPORT_CENTRO;
+        return m;
+      }).filter(Boolean);
+      console.log('[Planner import]   ' + rows.length + ' filas mapeadas (no vacías). Ejemplo:', rows[0] || '(ninguna)');
+
+      try {
+        var del = await sb.from(cfg.tabla).delete().eq('centro_id', IMPORT_CENTRO);
+        if (del.error) { console.error('[Planner import]   ❌ error en DELETE de ' + cfg.tabla + ':', del.error); throw new Error(del.error.message); }
+        console.log('[Planner import]   datos previos de Agora borrados en ' + cfg.tabla);
+        if (rows.length) {
+          var ins = await sb.from(cfg.tabla).insert(rows);
+          if (ins.error) { console.error('[Planner import]   ❌ error en INSERT a ' + cfg.tabla + ':', ins.error); throw new Error(ins.error.message); }
+          console.log('[Planner import]   ✅ ' + rows.length + ' filas insertadas en ' + cfg.tabla);
+        } else {
+          console.log('[Planner import]   (no hay filas que insertar en ' + cfg.tabla + ')');
+        }
+        resultados.push({ hoja: sheetName, tabla: cfg.tabla, n: rows.length, estado: '✅ ' + rows.length + ' filas' });
+      } catch (err) {
+        console.error('[Planner import]   ❌ ' + cfg.tabla + ' falló:', err);
+        resultados.push({ hoja: sheetName, tabla: cfg.tabla, n: 0, estado: '❌ ' + (err.message || err) });
+      }
+    }
+    console.log('[Planner import] resumen:', resultados);
+    _impRenderLog(resultados);
+  }
+
+  function _impRenderLog(resultados) {
+    var el = document.getElementById('planner-import-log');
+    if (!el) return;
+    var filas = resultados.map(function (r) {
+      return '<tr><td>' + _esc(r.hoja) + '</td><td style="color:var(--muted)">' + _esc(r.tabla) +
+        '</td><td style="text-align:right">' + r.n + '</td><td>' + _esc(r.estado) + '</td></tr>';
+    }).join('');
+    el.innerHTML =
+      '<div class="planner-list" style="padding:0">' +
+      '<table class="tbl"><thead><tr><th>Hoja</th><th>Tabla</th><th style="text-align:right">Filas</th><th>Estado</th></tr></thead>' +
+      '<tbody>' + filas + '</tbody></table></div>';
+  }
+
+  function _renderImportar() {
+    var el = document.getElementById('pt-importar');
+    if (!el) return;
+    el.innerHTML =
+      '<div class="planner-section-hdr">' +
+        '<div><div class="card-eyebrow">Datos de entrada</div>' +
+        '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Importar datos de horario</h3></div>' +
+      '</div>' +
+      '<div class="planner-empty" style="text-align:left;line-height:1.5">' +
+        '<p style="margin:0 0 12px">Sube <strong>DidactIA_Planner_datos_26-27.xlsx</strong>. Cada hoja se vuelca a su tabla de entrada del Planner ' +
+        '(Profesores · Cargas · Tramos · Restricciones · Disponibilidad · Espacios · Reglas) para el centro <strong>Agora Lledó</strong>. ' +
+        'Se reemplazan los datos previos de ese centro en cada tabla.</p>' +
+        '<input type="file" id="planner-import-file" accept=".xlsx,.xls" style="display:none" onchange="plannerImportarArchivo(this)">' +
+        '<button class="btn-ink" onclick="document.getElementById(\'planner-import-file\').click()">📥 Importar datos de horario</button>' +
+      '</div>' +
+      '<div id="planner-import-log" style="margin-top:16px"></div>';
+  }
+
+  window.plannerImportarArchivo = function (input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    console.log('[Planner import] archivo seleccionado:', file.name, '(' + file.size + ' bytes)');
+    if (typeof XLSX === 'undefined') { console.error('[Planner import] SheetJS (XLSX) no está cargado'); alert('La librería de lectura de Excel (SheetJS) no está disponible.'); return; }
+    var logEl = document.getElementById('planner-import-log');
+    if (logEl) logEl.innerHTML = '<div style="color:var(--muted);font-size:13px"><span class="spin">⟳</span> Leyendo y volcando datos…</div>';
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var wb;
+      try { wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); }
+      catch (err) {
+        console.error('[Planner import] no se pudo leer el .xlsx:', err);
+        if (logEl) logEl.innerHTML = '<div style="color:var(--danger)">No se pudo leer el archivo: ' + _esc(err.message) + '</div>';
+        input.value = ''; return;
+      }
+      console.log('[Planner import] archivo leído. Hojas:', wb.SheetNames);
+      _impProcesar(wb).catch(function (err) {
+        if (logEl) logEl.innerHTML = '<div style="color:var(--danger)">Error: ' + _esc(err.message || err) + '</div>';
+      }).then(function () { input.value = ''; });
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   window.DidactIAPlanner = DidactIAPlanner;
