@@ -103,9 +103,10 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 |-------|-------------|-------|
 | `centros` | id, nombre, modulos_activos[], color_primario, logo_url, ccaa | `ccaa` determina normativa convivencia: 'valenciana'\|'madrid'\|'andalucia'\|'cataluna'\|NULL (estatal) |
 | `profiles` | id, user_id, full_name, email, rol, centro_id, activo (bool DEFAULT true), created_at | Extiende auth.users. `id = user_id` (ambos = auth UUID). `activo=false` bloquea el login |
-| `info_centro` | centro_id, nombre_config, datos (jsonb), visible_para | Contexto del chatbot |
+<!-- info_centro actualizado en línea horarios_grupo arriba -->
 | `horarios` | centro_id, dia, hora, profesor, actividad | Tabla legacy — chatbot búsqueda por apellido |
-| `horarios_grupo` | centro_id, grupo_horario, dia, tramo, hora_inicio, hora_fin, actividad_nombre, profesor_nombre, aula | Tabla principal — lógica horaria directa |
+| `horarios_grupo` | centro_id, grupo_horario, **curso_escolar** (TEXT NOT NULL DEFAULT '2025-26'), dia, tramo, hora_inicio, hora_fin, actividad_nombre, profesor_nombre, aula | Tabla principal — lógica horaria directa. Multi-curso: filtrar siempre por `curso_escolar = cursoActivo` (global en config.js). Índice: `idx_hg_curso(centro_id, curso_escolar)` |
+| `info_centro` | centro_id, nombre_config, datos (jsonb), visible_para, **curso_activo** (TEXT NOT NULL DEFAULT '2025-26') | Contexto del chatbot. `curso_activo` controla qué horario ven chat y sustituciones |
 | `alumnos` | centro_id, nombre, curso, grupo_horario | Vinculados vía familia_alumno |
 | `familia_alumno` | profile_id, alumno_id | N:M familias↔alumnos |
 | `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por | Una fila por alumno/día |
@@ -425,16 +426,24 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
   - `.planner-cell.drag-over` (verde) / `.drag-error` (rojo) feedback visual en tiempo real
   - **Slots sin profesor** (`_slotSinProfesor`): se renderizan con fondo rayado suave y etiqueta "⚠ Sin asignar". Dos formas de asignar docente: ① clic en el slot → modal selector de profesor (`plannerAbrirSelectorProfesor`); ② arrastrar un profesor desde el panel lateral "👥 Profesores" (`_buildProfesoresPanel`, chips `prof-chip` arrastrables, `plannerDragStartProfesor`) hasta el slot. La asignación (`_asignarProfesorSlot`) valida que el profesor no tenga ya clase ese día/tramo en otro grupo ni esté indisponible; actualiza memoria + persiste en `horario_generado` (UPDATE por grupo/dia/tramo).
   - **Verificación**: `scripts/verify-tablero-dnd.js` (14 casos drag&drop) + `scripts/verify-sin-profesor.js` (7 casos: generación sin profesores, todos los slots null, asignación válida, rechazo por conflicto/indisponibilidad)
-- **Publicar**: estadísticas (grupos, sesiones, necesidades), aviso de sobreescritura, botón que:
-  1. Elimina `horarios_grupo` de los grupos afectados para el `centro_id`
-  2. Inserta filas con `hora_inicio`, `hora_fin`, `actividad_nombre`, `profesor_nombre`, `aula: ''`
-  3. El chatbot y sustituciones usan el nuevo horario inmediatamente
+- **Publicar**: estadísticas (grupos, sesiones, necesidades), selector de **curso escolar** (`<select id="planner-curso-escolar">` con opciones 2025-26 / 2026-27; aviso rojo si coincide con `cursoActivo`), botón que:
+  1. DELETE en `horarios_grupo` filtrado por `centro_id` AND `curso_escolar` AND `grupo_horario` (nunca toca otros cursos)
+  2. Inserta filas con `curso_escolar`, `hora_inicio`, `hora_fin`, `actividad_nombre`, `profesor_nombre`, `aula: ''`
+  3. El chatbot y sustituciones usan el horario del curso activo inmediatamente
 - **Tab Dictar**: entrada voz (Web Speech API, es-ES, continuo) + texto + archivo audio (FileReader base64). Llama Edge Function `parse-restricciones`. Panel de resultados con checkboxes por ítem (materias/necesidades/restricciones). Botón "Aplicar" crea registros en Supabase: materias nuevas, necesidades_lectivas, disponibilidad_profesor. Soporte de optativas LOMLOE (agrupa por `bloque_interdisciplinar_id`). Botón "Refinar" recupera preguntas de la IA y limpia el resultado.
-- **Motor H-MRV-SA** (`TimetableSolver`): hibridación Heurísticas + MRV (Minimum Remaining Values) + Simulated Annealing. Genera múltiples variantes Pareto, UI de progreso en tiempo real, diagnóstico de conflictos.
+- **Motor H-MRV-SA** (`TimetableSolver`): hibridación Heurísticas + MRV (Minimum Remaining Values) + Simulated Annealing. Genera múltiples variantes Pareto (3 Web Workers en paralelo), UI de progreso en tiempo real, diagnóstico de conflictos.
+  - **Arquitectura**: resuelve TODOS los grupos simultáneamente en un único solver compartido. `teacherOccupancy: Map<tid,Set<slot>>` impide que el mismo profesor esté en dos grupos al mismo tiempo (restricción global).
+  - **Hard constraints en `getValidSlots`**: (1) slot ocupado por el grupo (`groupOccupancy`); (2) profesor ocupado en otro grupo o fuera de su disponibilidad (`teacherOccupancy`); (3) **HC-MATERIA-DIA**: `subjectDayOccupancy Map<groupId_subjectId, Map<dayIdx,count>>` con `maxPerDay = ceil(total_sesiones/5)` — excluye slots del día si esa materia ya alcanzó el máximo para ese grupo.
+  - `assignBlock` / `removeBlock`: actualizan las tres estructuras de ocupación. Simulated Annealing (SWAP + RELOCATE) llama `getValidSlots` → los HCs aplican en ambas fases automáticamente.
+  - **Fix crítico** (`plannerElegirVariante`): al aplicar una variante Pareto, el slot construido ahora incluye `profesor_id`, `materia_id`, `codocente_prof_ids` y `sin_asignar`. Antes faltaban → `_slotSinProfesor()` devolvía `true` → todas las celdas mostraban "⚠ Sin asignar" aunque el motor los había colocado correctamente.
+  - **El profesor viene de `necesidades_lectivas.profesor_id`** (predefinido en la necesidad). El motor no asigna profesores; solo respeta los `teacherIds` del bloque. Gemini no interviene en la generación.
 - **Tablas en Supabase**: `materias`, `aulas`, `disponibilidad_profesor`, `necesidades_lectivas`, `horario_generado` — ver `sql/planner-tables.sql`
 - **XSS**: `_esc()` en todos los `innerHTML` con datos de usuario
 - **`TRAMOS_DEFAULT`**: horas redondas genéricas 8:00–14:30 (T1-T7 + Recreo 11:00-11:30) — **NO** corresponden a ningún centro real. Si `tramos_centro` está vacío para el centro, se muestra banner ámbar `#planner-tramos-warn` con enlace directo a la pestaña Tramos (`_s.usingFallbackTramos = true` en `_loadData()`)
 - **IES Buñol** (f91b7c02): no tenía `tramos_centro` → mostraba los de Agora Lledó. Fix: TRAMOS_DEFAULT genérico + banner. El centro debe configurar sus tramos reales desde la pestaña Tramos
+- **Agora Lledó tramos 26-27**: cargados vía Management API — 10 filas (8 lectivos + Recreo 11:20–11:50 + Comida 14:20–15:20). Tramos lectivos: 08:50–09:40, 09:40–10:30, 10:30–11:20, 11:50–12:40, 12:40–13:30, 13:30–14:20, 15:20–16:10, 16:10–17:00.
+- **`scripts/importar_cargas_eso.mjs`**: importa `data/Cargas_ESO_limpia.xlsx` hoja "Cargas ESO" para los 6 grupos 1ºESO+3ºESO → borra necesidades_lectivas del centro, get-or-create materias y profesores por nombre normalizado, crea placeholders `PENDIENTE-<Grupo>-<Materia>` para celdas sin profesor. Resultado: 75 filas, 16 materias distintas, 29 profesores, 0 nulls en materia_id/profesor_id. Uso: `node scripts/importar_cargas_eso.mjs`
+- **Soporte multi-curso**: `horarios_grupo.curso_escolar TEXT NOT NULL DEFAULT '2025-26'`; `info_centro.curso_activo TEXT NOT NULL DEFAULT '2025-26'`; global `cursoActivo` en `config.js` actualizado tras login desde `info_centro`; 7 queries en `chat.js` y 4 en `admin.js` filtran por `curso_escolar` con fallback `'2025-26'`. Migración: `supabase/migrations/horarios_curso_escolar.sql` (PENDIENTE ejecutar en SQL Editor)
 
 ### Analytics — Cuadro de Mando Integral (analytics.js)
 - Tab **"Analytics"** visible solo para `admin` y `superadmin`
@@ -962,9 +971,10 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - _(ninguna)_
+> - `supabase/migrations/horarios_curso_escolar.sql` — `horarios_grupo.curso_escolar` + `info_centro.curso_activo` + índice. **Ejecutar antes de que el código multi-curso entre en producción.**
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/20260609_push_subscriptions.sql` — tabla `push_subscriptions` + RLS + índices ✅ 2026-06-09 vía Management API (confirmado)
 > - `supabase/migrations/planner_inputs.sql` — 7 tablas de entrada del Planner (`planner_profesores/cargas/tramos/restricciones/disponibilidad/espacios/reglas`) + RLS por centro ✅ ejecutado 2026-06-09 vía Management API
 > - `supabase/migrations/materiales.sql` — tabla `materiales` + RLS + bucket privado `materiales` + RLS de Storage ✅ ejecutado 2026-06-09 vía Management API
 > - `supabase/migrations/planner_grupos.sql` — tabla `planner_grupos` (hoja "Grupos") + RLS ✅ ejecutado 2026-06-09 vía Management API
@@ -983,6 +993,12 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-09` · **Multi-curso horarios_grupo** — `curso_escolar TEXT NOT NULL DEFAULT '2025-26'` + `info_centro.curso_activo`; global `cursoActivo` en `config.js`; auth.js carga `curso_activo` tras login (fire-and-forget); 7 queries `chat.js` + 4 `admin.js` filtran por `curso_escolar`; Planner Publicar: selector 2025-26/2026-27, aviso si es el curso activo, DELETE filtra por `centro_id+curso_escolar+grupo_horario`. Migración `horarios_curso_escolar.sql` PENDIENTE ejecutar manualmente.
+- `2026-06-09` · **Planner: HC-MATERIA-DIA en H-MRV-SA** — `TimetableSolver` añade `subjectDayOccupancy` y `maxPerDay=ceil(h/5)` en constructor; `getValidSlots` las comprueba; `assignBlock`/`removeBlock` las mantienen sincronizadas. Aplica en fase greedy (MRV) y SA (SWAP+RELOCATE) en los 3 Workers.
+- `2026-06-09` · **Planner fix: slots sin profesor_id** — `plannerElegirVariante` construía slots sin `profesor_id`, `materia_id`, `codocente_prof_ids` → `_slotSinProfesor()` = true → "⚠ Sin asignar" en todas las celdas. Fix: extraer `tIds=item.teacherIds`, poblar los tres campos + `sin_asignar`.
+- `2026-06-09` · **Agora tramos 26-27** — 10 tramos cargados vía Management API: 8 lectivos (08:50–17:00) + Recreo (11:20–11:50) + Comida (14:20–15:20). Anteriores 7 genéricos borrados.
+- `2026-06-09` · **`scripts/importar_cargas_eso.mjs`** — importa `data/Cargas_ESO_limpia.xlsx` hoja "Cargas ESO" para 1ºESO A/B/C + 3ºESO A/B/C. Borra necesidades_lectivas del centro, get-or-create materias+profesores por nombre normalizado, placeholders `PENDIENTE-<Grupo>-<Materia>` para celdas sin profesor. Resultado: 75 filas, 0 nulls.
+- `2026-06-09` · **push_subscriptions** — tabla confirmada en producción (aplicada en sesión anterior): `id, user_id, centro_id, subscription jsonb, created_at`; RLS `push_own` + `push_superadmin`. VAPID secrets configurados en EF `send-push`.
 - `2026-06-09` · `a4684f1` — feat(informes): módulo **Informes de dirección** (`js/informes.js`, sin SQL — solo lee tablas existentes). Selector de periodo (presets Esta semana/mes/trimestre/curso + rango personalizado) → **PDF consolidado** con jsPDF + **jspdf-autotable** (CDN on-demand). Cabecera por página: logo + nombre del centro + "INFORME DE DIRECCIÓN" + periodo, banda con `color_primario` (patrón de `plannerExportarPDF`); pie con centro + nº página. 6 secciones (Resumen, Sustituciones, Ausencias RRHH, Guardias, Incidencias, Comedor), cada una con su query por `centro_id`+rango; sin datos → "Sin registros en este período". Registrado en `app.html` (tab/nav grupo Administración/panel/TAB_MAP) + `auth.js` (showTab; visible solo admin/director/jefatura/superadmin). SW `v5→v6`.
 - `2026-06-09` · `4cfcc31`/`b9bf71c` — feat(materiales): form de subida **multi-grupo** (`<select multiple>`; sube el archivo 1 vez y crea 1 registro por grupo; al borrar solo quita de Storage si ningún otro registro comparte `storage_path`) + **"solo mis clases"** (match nombre normalizado del profesor contra `profesores.nombre`, sin acentos/coma/orden → grupos de `necesidades_lectivas`; fallback a `alumnos`→`necesidades_lectivas` + aviso).
 - `2026-06-09` · `dc9f12c`/`0c225fd` — feat(materiales): módulo **hub de materiales** por grupo/asignatura (`js/materiales.js`, tabla `materiales` + bucket privado `materiales`, `supabase/migrations/materiales.sql` ejecutado). Lectura todos los roles del centro; subida (archivo a Storage privado con signed URL 1h, o enlace) para docentes/dirección; borrado subidor o admin. RLS de tabla + de Storage por centro. Vista profesor: por defecto **"Mis materiales"** (`profesor_id=auth.uid()`) con toggle "Mis materiales/Todos"; filtros Grupo/Asignatura poblados desde la vista actual. Registrado en `app.html` (tab/nav grupo Docencia/panel/TAB_MAP) + `auth.js` (showTab; tab visible a todos los roles). SW `v4→v5`.
