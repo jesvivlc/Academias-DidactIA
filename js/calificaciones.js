@@ -1,0 +1,420 @@
+// ── CALIFICACIONES MODULE ──
+// Gradebook. Dos vistas según rol:
+//   · profesional  → vista profesor (entrada/edición de notas de su grupo)
+//   · admin/superadmin (y jefatura/director si existieran) → vista consulta + export
+// Patrón calcado de comedor.js / admin.js (globals sb, ctrId, role, currentUser…).
+
+const CAL_EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
+
+let _calAlumnos   = [];   // alumnos del grupo cargado (vista profesor)
+let _calData      = [];   // calificaciones cargadas (vista admin)
+let _calGrupos    = [];   // grupos del centro
+let _calCentros   = [];   // centros (solo superadmin)
+let _calCentroSel = null;  // centro activo en la vista admin
+
+function _calEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function _calEsAdmin() { return ['admin', 'superadmin', 'jefatura', 'director'].includes(role); }
+function _calEsProfesor() { return role === 'profesional' || role === 'profesor'; }
+
+// Toast (no hay helper global en el proyecto; mismo estilo que planner/comedor)
+function _calToast(msg, tipo) {
+  var bg = tipo === 'error' ? 'var(--danger, #c0392b)'
+         : tipo === 'warn'  ? 'var(--warning, #d69540)'
+         : 'var(--success, #2e7d32)';
+  var t = document.createElement('div');
+  t.style.cssText =
+    'position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0));transform:translateX(-50%);' +
+    'z-index:9500;background:' + bg + ';color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;' +
+    'font-family:var(--font-ui);box-shadow:var(--sh-lg, 0 8px 24px rgba(0,0,0,.18));max-width:90vw;text-align:center;';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function () { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; }, 2600);
+  setTimeout(function () { if (t.parentNode) t.remove(); }, 3100);
+}
+
+// Grupos distintos del centro (desde alumnos.grupo_horario)
+async function _calCargarGrupos(centroId) {
+  var r = await sb.from('alumnos').select('grupo_horario')
+    .eq('centro_id', centroId).not('grupo_horario', 'is', null).limit(5000);
+  _calGrupos = [...new Set((r.data || []).map(function (a) { return a.grupo_horario; }).filter(Boolean))]
+    .sort(function (a, b) { return a.localeCompare(b, 'es'); });
+  return _calGrupos;
+}
+
+// ── INICIALIZACIÓN ──
+async function initCalificaciones() {
+  var cont = document.getElementById('cal-container');
+  if (!cont) return;
+  cont.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>';
+  if (_calEsAdmin()) await _calRenderAdmin();
+  else if (_calEsProfesor()) await _calRenderProfesor();
+  else cont.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;">No tienes acceso a las calificaciones.</div>';
+}
+
+/* ════════════════════════════════════════════════════
+   VISTA PROFESOR — entrada/edición de notas
+   ════════════════════════════════════════════════════ */
+async function _calRenderProfesor() {
+  var cont = document.getElementById('cal-container');
+  await _calCargarGrupos(ctrId);
+
+  var grupoOpts = '<option value="">Grupo…</option>' +
+    _calGrupos.map(function (g) { return '<option value="' + _calEsc(g) + '">' + _calEsc(g) + '</option>'; }).join('');
+  var evalOpts = '<option value="">Evaluación…</option>' +
+    CAL_EVALS.map(function (e) { return '<option value="' + _calEsc(e) + '">' + _calEsc(e) + '</option>'; }).join('');
+
+  cont.innerHTML =
+    '<div class="pg-hdr">' +
+      '<div><div class="pg-title">Calificaciones</div>' +
+      '<div class="pg-sub">Introduce y guarda las notas de tu grupo</div></div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
+        '<div style="flex:1;min-width:150px;"><label class="lbl">Grupo</label>' +
+          '<select class="fi" id="cal-prof-grupo" onchange="_calProfAutoCargar()">' + grupoOpts + '</select></div>' +
+        '<div style="flex:1;min-width:150px;"><label class="lbl">Asignatura</label>' +
+          '<input class="fi" id="cal-prof-asig" placeholder="Ej: Matemáticas" oninput="_calProfAutoCargar()"></div>' +
+        '<div style="flex:1;min-width:150px;"><label class="lbl">Evaluación</label>' +
+          '<select class="fi" id="cal-prof-eval" onchange="_calProfAutoCargar()">' + evalOpts + '</select></div>' +
+        '<button class="btn btn-p" onclick="calCargarAlumnos()">Cargar alumnos</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div id="cal-prof-tabla"></div>';
+}
+
+// Carga automática cuando los tres campos están completos
+function _calProfAutoCargar() {
+  var g = (document.getElementById('cal-prof-grupo') || {}).value;
+  var a = ((document.getElementById('cal-prof-asig') || {}).value || '').trim();
+  var e = (document.getElementById('cal-prof-eval') || {}).value;
+  if (g && a && e) calCargarAlumnos();
+}
+
+async function calCargarAlumnos() {
+  var grupo = (document.getElementById('cal-prof-grupo') || {}).value;
+  var asig  = ((document.getElementById('cal-prof-asig') || {}).value || '').trim();
+  var evalu = (document.getElementById('cal-prof-eval') || {}).value;
+  var box   = document.getElementById('cal-prof-tabla');
+  if (!box) return;
+  if (!grupo || !asig || !evalu) {
+    box.innerHTML = '<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;">Selecciona grupo, asignatura y evaluación.</div>';
+    return;
+  }
+  box.innerHTML = '<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;"><span class="spin">⟳</span> Cargando alumnos…</div>';
+
+  // Alumnos del grupo
+  var rAl = await sb.from('alumnos').select('id,nombre,grupo_horario')
+    .eq('centro_id', ctrId).eq('grupo_horario', grupo).order('nombre');
+  _calAlumnos = rAl.data || [];
+
+  if (!_calAlumnos.length) {
+    box.innerHTML = '<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;">No hay alumnos en ' + _calEsc(grupo) + '.</div>';
+    return;
+  }
+
+  // Calificaciones ya guardadas para grupo/asignatura/evaluación
+  var rCal = await sb.from('calificaciones').select('alumno_id,nota,observaciones')
+    .eq('centro_id', ctrId).eq('grupo', grupo).eq('asignatura', asig).eq('evaluacion', evalu);
+  var prev = {};
+  (rCal.data || []).forEach(function (c) { prev[c.alumno_id] = c; });
+
+  var rows = _calAlumnos.map(function (al) {
+    var p = prev[al.id] || {};
+    var nota = (p.nota === null || p.nota === undefined) ? '' : p.nota;
+    var obs  = p.observaciones || '';
+    return '<tr data-alumno-id="' + _calEsc(al.id) + '" data-alumno-nombre="' + _calEsc(al.nombre) + '">' +
+      '<td style="font-weight:500;">' + _calEsc(al.nombre) + '</td>' +
+      '<td style="width:110px;"><input class="fi cal-nota" type="number" min="0" max="10" step="0.01" ' +
+        'value="' + _calEsc(nota) + '" placeholder="—" style="text-align:center;padding:6px 8px;"></td>' +
+      '<td><input class="fi cal-obs" type="text" value="' + _calEsc(obs) + '" placeholder="Observaciones…" style="padding:6px 8px;"></td>' +
+    '</tr>';
+  }).join('');
+
+  box.innerHTML =
+    '<div class="card">' +
+      '<div class="card-hdr"><div class="card-ico g">📝</div>' +
+        '<div><div class="card-title">' + _calEsc(grupo) + ' · ' + _calEsc(asig) + ' · ' + _calEsc(evalu) + '</div>' +
+        '<div class="card-desc">' + _calAlumnos.length + ' alumnos · nota de 0 a 10 (vacío = sin calificar)</div></div>' +
+      '</div>' +
+      '<div style="overflow-x:auto;"><table class="tbl">' +
+        '<thead><tr><th>Alumno</th><th style="width:110px;text-align:center;">Nota</th><th>Observaciones</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:14px;">' +
+        '<button class="btn btn-p" onclick="calGuardar()">💾 Guardar calificaciones</button>' +
+      '</div>' +
+    '</div>';
+}
+
+async function calGuardar() {
+  var grupo = (document.getElementById('cal-prof-grupo') || {}).value;
+  var asig  = ((document.getElementById('cal-prof-asig') || {}).value || '').trim();
+  var evalu = (document.getElementById('cal-prof-eval') || {}).value;
+  if (!grupo || !asig || !evalu) { _calToast('Faltan grupo, asignatura o evaluación.', 'error'); return; }
+
+  var trs = document.querySelectorAll('#cal-prof-tabla tr[data-alumno-id]');
+  var rows = [];
+  var ahora = new Date().toISOString();
+  for (var i = 0; i < trs.length; i++) {
+    var tr = trs[i];
+    var notaInp = tr.querySelector('.cal-nota');
+    var obsInp  = tr.querySelector('.cal-obs');
+    var raw = (notaInp.value || '').trim().replace(',', '.');
+    var nota = null;
+    if (raw !== '') {
+      nota = parseFloat(raw);
+      if (isNaN(nota) || nota < 0 || nota > 10) {
+        _calToast('Nota inválida en "' + tr.dataset.alumnoNombre + '" (debe ser 0–10).', 'error');
+        notaInp.focus();
+        return;
+      }
+      nota = Math.round(nota * 100) / 100;
+    }
+    rows.push({
+      centro_id:       ctrId,
+      alumno_id:       tr.dataset.alumnoId,
+      alumno_nombre:   tr.dataset.alumnoNombre,
+      grupo:           grupo,
+      asignatura:      asig,
+      evaluacion:      evalu,
+      nota:            nota,
+      observaciones:   (obsInp.value || '').trim() || null,
+      profesor_id:     currentUser ? currentUser.id : null,
+      profesor_nombre: currentUserName || null,
+      updated_at:      ahora
+    });
+  }
+
+  if (!rows.length) { _calToast('No hay alumnos que guardar.', 'warn'); return; }
+
+  var r = await sb.from('calificaciones').upsert(rows, { onConflict: 'centro_id,alumno_id,asignatura,evaluacion' });
+  if (r.error) { _calToast('Error al guardar: ' + r.error.message, 'error'); return; }
+  _calToast('✅ ' + rows.length + ' calificaciones guardadas.', 'ok');
+}
+
+/* ════════════════════════════════════════════════════
+   VISTA ADMIN / JEFATURA / DIRECTOR / SUPERADMIN — consulta + export
+   ════════════════════════════════════════════════════ */
+async function _calRenderAdmin() {
+  var cont = document.getElementById('cal-container');
+  _calCentroSel = _calCentroSel || ctrId;
+
+  var centroSelHtml = '';
+  if (role === 'superadmin') {
+    var rc = await sb.from('centros').select('id,nombre').order('nombre');
+    _calCentros = rc.data || [];
+    var opts = _calCentros.map(function (c) {
+      return '<option value="' + _calEsc(c.id) + '"' + (c.id === _calCentroSel ? ' selected' : '') + '>' + _calEsc(c.nombre) + '</option>';
+    }).join('');
+    centroSelHtml =
+      '<div style="min-width:150px;"><label class="lbl">Centro</label>' +
+        '<select class="fi" id="cal-f-centro" onchange="calChangeCentro(this.value)">' + opts + '</select></div>';
+  }
+
+  cont.innerHTML =
+    '<div class="pg-hdr">' +
+      '<div><div class="pg-title">Calificaciones</div>' +
+      '<div class="pg-sub">Consulta y exportación de calificaciones</div></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn btn-s" onclick="calExportarCSV()">📥 Exportar CSV</button>' +
+        '<button class="btn btn-s" onclick="calExportarPDF()">📄 Exportar PDF</button>' +
+        '<button class="btn btn-p" onclick="calAdminCargar()">↺ Actualizar</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
+        centroSelHtml +
+        '<div style="min-width:130px;"><label class="lbl">Grupo</label><select class="fi" id="cal-f-grupo" onchange="_calRenderTablaAdmin()"><option value="">Todos</option></select></div>' +
+        '<div style="min-width:140px;"><label class="lbl">Asignatura</label><select class="fi" id="cal-f-asig" onchange="_calRenderTablaAdmin()"><option value="">Todas</option></select></div>' +
+        '<div style="min-width:140px;"><label class="lbl">Evaluación</label><select class="fi" id="cal-f-eval" onchange="_calRenderTablaAdmin()"><option value="">Todas</option></select></div>' +
+        '<div style="min-width:150px;"><label class="lbl">Profesor</label><select class="fi" id="cal-f-prof" onchange="_calRenderTablaAdmin()"><option value="">Todos</option></select></div>' +
+        '<button class="btn btn-s" onclick="_calLimpiarFiltros()">✕ Limpiar</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div id="cal-admin-tabla"></div>';
+
+  await calAdminCargar();
+}
+
+function calChangeCentro(id) { _calCentroSel = id; calAdminCargar(); }
+
+async function calAdminCargar() {
+  var box = document.getElementById('cal-admin-tabla');
+  if (box) box.innerHTML = '<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;"><span class="spin">⟳</span> Cargando calificaciones…</div>';
+
+  var r = await sb.from('calificaciones').select('*')
+    .eq('centro_id', _calCentroSel || ctrId)
+    .order('grupo').order('alumno_nombre').limit(10000);
+
+  if (r.error) {
+    if (box) box.innerHTML = '<div class="card" style="color:var(--red);font-size:13px;">Error: ' + _calEsc(r.error.message) + '</div>';
+    return;
+  }
+  _calData = r.data || [];
+
+  // Poblar dropdowns de filtros a partir de los datos
+  var fill = function (id, vals, ph) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">' + ph + '</option>' +
+      vals.map(function (v) { return '<option value="' + _calEsc(v) + '">' + _calEsc(v) + '</option>'; }).join('');
+    sel.value = cur;
+  };
+  var uniq = function (key) {
+    return [...new Set(_calData.map(function (c) { return c[key]; }).filter(Boolean))]
+      .sort(function (a, b) { return String(a).localeCompare(String(b), 'es'); });
+  };
+  fill('cal-f-grupo', uniq('grupo'), 'Todos');
+  fill('cal-f-asig', uniq('asignatura'), 'Todas');
+  fill('cal-f-eval', CAL_EVALS, 'Todas');
+  fill('cal-f-prof', uniq('profesor_nombre'), 'Todos');
+
+  _calRenderTablaAdmin();
+}
+
+function _calLimpiarFiltros() {
+  ['cal-f-grupo', 'cal-f-asig', 'cal-f-eval', 'cal-f-prof'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  _calRenderTablaAdmin();
+}
+
+function _calFiltradas() {
+  var fg = (document.getElementById('cal-f-grupo') || {}).value || '';
+  var fa = (document.getElementById('cal-f-asig')  || {}).value || '';
+  var fe = (document.getElementById('cal-f-eval')  || {}).value || '';
+  var fp = (document.getElementById('cal-f-prof')  || {}).value || '';
+  return _calData.filter(function (c) {
+    return (!fg || c.grupo === fg) && (!fa || c.asignatura === fa) &&
+           (!fe || c.evaluacion === fe) && (!fp || c.profesor_nombre === fp);
+  });
+}
+
+function _calFechaCorta(iso) {
+  if (!iso) return '—';
+  try {
+    var d = new Date(iso);
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+      ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return String(iso).slice(0, 10); }
+}
+
+function _calRenderTablaAdmin() {
+  var box = document.getElementById('cal-admin-tabla');
+  if (!box) return;
+  var rows = _calFiltradas();
+
+  if (!rows.length) {
+    box.innerHTML = '<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;">No hay calificaciones que mostrar.</div>';
+    return;
+  }
+
+  var body = rows.map(function (c) {
+    var notaTxt = (c.nota === null || c.nota === undefined) ? '—' : String(c.nota);
+    return '<tr>' +
+      '<td style="font-weight:500;">' + _calEsc(c.alumno_nombre || '—') + '</td>' +
+      '<td>' + _calEsc(c.grupo || '—') + '</td>' +
+      '<td>' + _calEsc(c.asignatura || '—') + '</td>' +
+      '<td>' + _calEsc(c.evaluacion || '—') + '</td>' +
+      '<td style="text-align:center;font-weight:600;">' + _calEsc(notaTxt) + '</td>' +
+      '<td>' + _calEsc(c.profesor_nombre || '—') + '</td>' +
+      '<td style="font-size:11px;color:var(--txt3);">' + _calEsc(_calFechaCorta(c.updated_at || c.created_at)) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  box.innerHTML =
+    '<div class="card">' +
+      '<div style="font-size:12px;color:var(--txt3);margin-bottom:10px;">' + rows.length + ' calificaciones cargadas</div>' +
+      '<div style="overflow-x:auto;"><table class="tbl">' +
+        '<thead><tr><th>Alumno</th><th>Grupo</th><th>Asignatura</th><th>Evaluación</th>' +
+        '<th style="text-align:center;">Nota</th><th>Profesor</th><th>Última modificación</th></tr></thead>' +
+        '<tbody>' + body + '</tbody></table></div>' +
+    '</div>';
+}
+
+// ── EXPORT CSV (SheetJS) ──
+function calExportarCSV() {
+  if (typeof XLSX === 'undefined') { _calToast('La librería de exportación (Excel) no está disponible.', 'error'); return; }
+  var rows = _calFiltradas();
+  if (!rows.length) { _calToast('No hay calificaciones para exportar.', 'warn'); return; }
+  var aoa = [['Alumno', 'Grupo', 'Asignatura', 'Evaluación', 'Nota', 'Observaciones', 'Profesor', 'Fecha']];
+  rows.forEach(function (c) {
+    aoa.push([
+      c.alumno_nombre || '', c.grupo || '', c.asignatura || '', c.evaluacion || '',
+      (c.nota === null || c.nota === undefined) ? '' : c.nota,
+      c.observaciones || '', c.profesor_nombre || '', _calFechaCorta(c.updated_at || c.created_at)
+    ]);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 18 }, { wch: 16 }, { wch: 7 }, { wch: 30 }, { wch: 22 }, { wch: 18 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');
+  XLSX.writeFile(wb, 'calificaciones_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+}
+
+// ── EXPORT PDF (jsPDF on-demand) ──
+async function calExportarPDF() {
+  var rows = _calFiltradas();
+  if (!rows.length) { _calToast('No hay calificaciones para exportar.', 'warn'); return; }
+  if (typeof window.jspdf === 'undefined') {
+    await new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    }).catch(function () {});
+  }
+  if (typeof window.jspdf === 'undefined') { _calToast('No se pudo cargar el generador de PDF.', 'error'); return; }
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  var W = doc.internal.pageSize.getWidth();
+  var H = doc.internal.pageSize.getHeight();
+  var M = 12;
+
+  doc.setFontSize(15); doc.setTextColor(31, 44, 79);
+  doc.text('Calificaciones — ' + (ctrName || 'Centro'), M, 16);
+  doc.setFontSize(9); doc.setTextColor(120, 120, 120);
+  doc.text('Generado: ' + new Date().toLocaleDateString('es-ES') + '  ·  ' + rows.length + ' calificaciones', M, 22);
+
+  var cols = [
+    { t: 'Alumno', w: 60 }, { t: 'Grupo', w: 22 }, { t: 'Asignatura', w: 45 },
+    { t: 'Evaluación', w: 32 }, { t: 'Nota', w: 16 }, { t: 'Profesor', w: 50 }, { t: 'Fecha', w: 38 }
+  ];
+  var y = 30, rowH = 7;
+  var drawHead = function () {
+    doc.setFillColor(31, 44, 79); doc.setTextColor(255, 255, 255); doc.setFontSize(8.5);
+    var x = M;
+    cols.forEach(function (c) { doc.rect(x, y, c.w, rowH, 'F'); doc.text(c.t, x + 1.5, y + 4.8); x += c.w; });
+    y += rowH;
+    doc.setTextColor(40, 40, 40);
+  };
+  drawHead();
+
+  rows.forEach(function (c, i) {
+    if (y + rowH > H - M) { doc.addPage(); y = M; drawHead(); }
+    if (i % 2 === 0) { doc.setFillColor(244, 242, 238); doc.rect(M, y, W - 2 * M, rowH, 'F'); }
+    doc.setFontSize(8); doc.setTextColor(40, 40, 40);
+    var vals = [
+      c.alumno_nombre || '', c.grupo || '', c.asignatura || '', c.evaluacion || '',
+      (c.nota === null || c.nota === undefined) ? '—' : String(c.nota),
+      c.profesor_nombre || '', _calFechaCorta(c.updated_at || c.created_at)
+    ];
+    var x = M;
+    cols.forEach(function (col, ci) {
+      doc.text(doc.splitTextToSize(String(vals[ci]), col.w - 2)[0] || '', x + 1.5, y + 4.8);
+      x += col.w;
+    });
+    y += rowH;
+  });
+
+  doc.save('calificaciones_' + new Date().toISOString().slice(0, 10) + '.pdf');
+}

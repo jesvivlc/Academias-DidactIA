@@ -389,6 +389,10 @@ async function loadUserProfile(user) {
   const tabRrhh = document.getElementById("tab-rrhh");
   if (tabRrhh) tabRrhh.style.display = (["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
 
+  // Calificaciones: profesores y dirección (no familia)
+  const tabCal = document.getElementById("tab-calificaciones");
+  if (tabCal) tabCal.style.display = (["profesional","admin","superadmin","jefatura","director"].includes(role)) ? "block" : "none";
+
   const tabIb = document.getElementById("tab-ib");
   if (tabIb) {
     const isIbStaff = ["admin","superadmin","profesional"].includes(role);
@@ -478,6 +482,7 @@ function showTab(t) {
   if (t === "rrhh") loadRrhhPanel();
   if (t === "ib") loadIbPanel();
   if (t === "comunicados") initComunicadosPanel();
+  if (t === "calificaciones") initCalificaciones();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

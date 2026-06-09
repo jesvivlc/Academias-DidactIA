@@ -122,6 +122,7 @@
   <div class="tab" id="tab-avisos"             onclick="showTab('avisos')"      style="display:none">🔔 Avisos</div>
   <div class="tab" id="tab-planner"           onclick="showTab('planner')"     style="display:none">📅 Planner</div>
   <div class="tab" id="tab-analytics"        onclick="showTab('analytics')"   style="display:none">📊 Analytics</div>
+  <div class="tab" id="tab-calificaciones"   onclick="showTab('calificaciones')" style="display:none">📝 Calificaciones</div>
 </nav>
 
 <!-- APP SHELL -->
@@ -207,6 +208,9 @@
         </button>
         <button class="nav-item" id="nav-comedor" data-tab="comedor" onclick="showTab('comedor')" style="display:none;--nav-color:#0F6E56">
           <i class="ti ti-tools-kitchen-2"></i><span class="nav-item-label">Comedor</span>
+        </button>
+        <button class="nav-item" id="nav-calificaciones" data-tab="calificaciones" onclick="showTab('calificaciones')" style="display:none;--nav-color:#6A4C93">
+          <i class="ti ti-clipboard-list"></i><span class="nav-item-label">Calificaciones</span>
         </button>
 
         <div class="sb-group-label">Centro</div>
@@ -857,6 +861,16 @@
     </div>
   </div>
 
+  <!-- CALIFICACIONES PANEL -->
+  <div class="panel" id="panel-calificaciones">
+    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
+      <div id="cal-container">
+        <!-- calificaciones.js renderiza aquí (vista profesor o vista admin según rol) -->
+        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+      </div>
+    </div>
+  </div>
+
   <!-- USERS PANEL -->
   <div class="panel" id="panel-users" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
     <div class="pg-hdr">
@@ -1130,6 +1144,7 @@
 <script src="js/familias.js"></script>
 <script src="js/planner.js"></script>
 <script src="js/analytics.js"></script>
+<script src="js/calificaciones.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1174,7 +1189,8 @@
     'tab-ib':          { nav:'nav-ib',           bn:null },
     'tab-comunicados': { nav:'nav-comunicados',  bn:'bn-comunicados' },
     'tab-planner':     { nav:'nav-planner',      bn:null },
-    'tab-analytics':   { nav:'nav-analytics',    bn:null }
+    'tab-analytics':   { nav:'nav-analytics',    bn:null },
+    'tab-calificaciones': { nav:'nav-calificaciones', bn:null }
   };
   var BADGE_MAP = {
     'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
