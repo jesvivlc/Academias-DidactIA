@@ -51,12 +51,22 @@ async function _matCargarGrupos() {
       .sort(function (a, b) { return a.localeCompare(b, 'es'); });
   }
 
-  // Fuente fija: grupos reales del centro desde necesidades_lectivas
-  var r = await sb.from('necesidades_lectivas').select('grupo_horario')
-    .eq('centro_id', ctrId).not('grupo_horario', 'is', null).limit(10000);
-  console.log('[Materiales] grupos desde necesidades_lectivas → filas:', (r.data ? r.data.length : r.data), '| error:', r.error);
-  return [...new Set((r.data || []).map(function (n) { return n.grupo_horario; }).filter(Boolean))]
-    .sort(function (a, b) { return a.localeCompare(b, 'es'); });
+  // Fuente 1: alumnos del centro (funciona para cualquier centro con alumnos importados)
+  var ar = await sb.from('alumnos').select('grupo_horario')
+    .eq('centro_id', ctrId).not('grupo_horario', 'is', null).limit(5000);
+  console.log('[Materiales] grupos desde alumnos → filas:', (ar.data ? ar.data.length : ar.data), '| error:', ar.error);
+  var grupos = [...new Set((ar.data || []).map(function (a) { return a.grupo_horario; }).filter(Boolean))];
+
+  // Fuente 2 (fallback): necesidades_lectivas si alumnos falla o no devuelve grupos
+  // (Agora y centros sin alumnos importados)
+  if (ar.error || !grupos.length) {
+    var nr = await sb.from('necesidades_lectivas').select('grupo_horario')
+      .eq('centro_id', ctrId).not('grupo_horario', 'is', null).limit(10000);
+    console.log('[Materiales] fallback grupos desde necesidades_lectivas → filas:', (nr.data ? nr.data.length : nr.data), '| error:', nr.error);
+    grupos = [...new Set((nr.data || []).map(function (n) { return n.grupo_horario; }).filter(Boolean))];
+  }
+
+  return grupos.sort(function (a, b) { return a.localeCompare(b, 'es'); });
 }
 
 // Grupos del profesor logueado (para el FORM de subida). Devuelve { grupos, aviso }.
