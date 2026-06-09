@@ -2781,9 +2781,11 @@ class TimetableSolver {
     this.auditLog  = [];
     this.startTime = Date.now();
     this.finalCost = 0;
-    this.schedule         = new Map();
-    this.teacherOccupancy = new Map();
-    this.groupOccupancy   = new Map();
+    this.schedule              = new Map();
+    this.teacherOccupancy      = new Map();
+    this.groupOccupancy        = new Map();
+    this.subjectDayOccupancy   = new Map(); // key: groupId+'_'+subjectId → Map<dayIdx,count>
+    this.maxPerDay             = new Map(); // key: groupId+'_'+subjectId → Math.ceil(total/5)
     this.previousSchedule = cfg.previousSchedule
       ? new Map(Object.entries(cfg.previousSchedule)) : new Map();
     this.groups.forEach(function(g) { this.groupOccupancy.set(g.id, new Set()); }.bind(this));
@@ -2791,6 +2793,17 @@ class TimetableSolver {
       this.teacherOccupancy.set(t.id, new Set());
       t.unavailableSlots = new Set(t.unavailableSlots || []);
     }.bind(this));
+    // Pre-compute maxPerDay: ceil(total_sesiones / 5) per (group, subject)
+    var blockCounts = {};
+    this.blocks.forEach(function(b) {
+      var k = b.groupId + '_' + b.subjectId;
+      blockCounts[k] = (blockCounts[k] || 0) + 1;
+    });
+    var self_ = this;
+    Object.keys(blockCounts).forEach(function(k) {
+      self_.maxPerDay.set(k, Math.ceil(blockCounts[k] / 5));
+      self_.subjectDayOccupancy.set(k, new Map());
+    });
   }
 
   getValidSlots(block) {
@@ -2809,6 +2822,14 @@ class TimetableSolver {
           if (this.teachers[j].id === tid) { teacher = this.teachers[j]; break; }
         }
         if (teacher && teacher.unavailableSlots.has(s)) { conflict = true; break; }
+      }
+      // HC-MATERIA-DIA: max ceil(horas_semanales/5) sesiones de la misma materia por día y grupo
+      if (!conflict) {
+        var sdKey  = block.groupId + '_' + block.subjectId;
+        var sdMap  = this.subjectDayOccupancy.get(sdKey);
+        var maxPD  = this.maxPerDay.get(sdKey) || 1;
+        var dayIdx = Math.floor(s / this.numTramos);
+        if (sdMap && (sdMap.get(dayIdx) || 0) >= maxPD) conflict = true;
       }
       if (!conflict) valid.push(s);
     }
@@ -2842,6 +2863,12 @@ class TimetableSolver {
       if (!t) { t = new Set(); this.teacherOccupancy.set(block.teacherIds[i], t); }
       t.add(slot);
     }
+    // HC-MATERIA-DIA: incrementar conteo (grupo, materia, día)
+    var sdKey = block.groupId + '_' + block.subjectId;
+    var sdMap = this.subjectDayOccupancy.get(sdKey);
+    if (!sdMap) { sdMap = new Map(); this.subjectDayOccupancy.set(sdKey, sdMap); }
+    var day = Math.floor(slot / this.numTramos);
+    sdMap.set(day, (sdMap.get(day) || 0) + 1);
   }
 
   removeBlock(block) {
@@ -2853,6 +2880,14 @@ class TimetableSolver {
     for (var i = 0; i < block.teacherIds.length; i++) {
       var t = this.teacherOccupancy.get(block.teacherIds[i]);
       if (t) t.delete(slot);
+    }
+    // HC-MATERIA-DIA: decrementar conteo (grupo, materia, día)
+    var sdKey = block.groupId + '_' + block.subjectId;
+    var sdMap = this.subjectDayOccupancy.get(sdKey);
+    if (sdMap) {
+      var day = Math.floor(slot / this.numTramos);
+      var cur = sdMap.get(day) || 0;
+      if (cur <= 1) sdMap.delete(day); else sdMap.set(day, cur - 1);
     }
   }
 
