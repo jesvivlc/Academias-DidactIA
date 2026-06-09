@@ -3105,6 +3105,18 @@ self.onmessage = function(e) {
     return s === '' ? null : s;
   }
 
+  /* clave de nombre: minúsculas, sin acentos, sin espacios extra (para casar materias) */
+  function _impNombreKey(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+  /* clave de profesor: como _impNombreKey pero quita comas y ordena las palabras
+     → "Cerro, Sara" y "Sara Cerro" producen la misma clave "cerro sara" */
+  function _impProfKey(s) {
+    return _impNombreKey(String(s == null ? '' : s).replace(/,/g, ' '))
+      .split(' ').filter(Boolean).sort().join(' ');
+  }
+
   /* sheet (normalizado) → { tabla, cols: { columnaBD: { a:[alias…], t:tipo } } } */
   var IMPORT_MAP = {
     profesores: { tabla: 'planner_profesores', cols: {
@@ -3213,6 +3225,88 @@ self.onmessage = function(e) {
     return vacia ? null : out;
   }
 
+  /* Hoja "Cargas" → materias + profesores + necesidades_lectivas (lo que lee el generador).
+     Usa ctrId (el centro activo, que es el que consulta _loadData). */
+  async function _impCargasANecesidades(rawRows) {
+    var centro = ctrId;
+    var filas = rawRows.map(function (r) { return _impMapRow(r, IMPORT_MAP.cargas.cols); }).filter(Boolean);
+    console.log('[Planner import][Cargas→Necesidades] centro_id:', centro, '· filas con datos:', filas.length);
+
+    // ── 1. MATERIAS: casar por nombre normalizado; crear las que falten ──
+    var matRes = await sb.from('materias').select('id,nombre').eq('centro_id', centro);
+    if (matRes.error) { console.error('[Planner import][Cargas] error leyendo materias:', JSON.stringify(matRes.error, null, 2)); throw new Error(matRes.error.message); }
+    var matIdByKey = {};
+    (matRes.data || []).forEach(function (m) { matIdByKey[_impNombreKey(m.nombre)] = m.id; });
+
+    var asigRawByKey = {};
+    filas.forEach(function (f) {
+      if (!f.asignatura) return;
+      var k = _impNombreKey(f.asignatura);
+      if (k && !(k in asigRawByKey)) asigRawByKey[k] = f.asignatura;
+    });
+
+    var matCreadas = 0, matReusadas = 0;
+    var asigKeys = Object.keys(asigRawByKey);
+    for (var i = 0; i < asigKeys.length; i++) {
+      var ak = asigKeys[i];
+      if (matIdByKey[ak]) { matReusadas++; continue; }
+      var mi = await sb.from('materias').insert({ centro_id: centro, nombre: asigRawByKey[ak] }).select('id').single();
+      if (mi.error) { console.error('[Planner import][Cargas] error creando materia "' + asigRawByKey[ak] + '":', JSON.stringify(mi.error, null, 2)); throw new Error(mi.error.message); }
+      matIdByKey[ak] = mi.data.id; matCreadas++;
+    }
+    console.log('[Planner import][Cargas] materias → creadas:', matCreadas, '· reutilizadas:', matReusadas, '(' + asigKeys.length + ' distintas)');
+
+    // ── 2. PROFESORES: casar por palabras ordenadas (sin orden ni coma); crear los que falten ──
+    var profRes = await sb.from('profesores').select('id,nombre').eq('centro_id', centro);
+    if (profRes.error) { console.error('[Planner import][Cargas] error leyendo profesores:', JSON.stringify(profRes.error, null, 2)); throw new Error(profRes.error.message); }
+    var profIdByKey = {};
+    (profRes.data || []).forEach(function (p) { profIdByKey[_impProfKey(p.nombre)] = p.id; });
+
+    var profRawByKey = {};
+    filas.forEach(function (f) {
+      if (!f.profesor) return;
+      var k = _impProfKey(f.profesor);
+      if (k && !(k in profRawByKey)) profRawByKey[k] = f.profesor;
+    });
+
+    var profCreados = 0, profReusados = 0;
+    var profKeys = Object.keys(profRawByKey);
+    for (var j = 0; j < profKeys.length; j++) {
+      var pk = profKeys[j];
+      if (profIdByKey[pk]) { profReusados++; continue; }
+      var pi = await sb.from('profesores').insert({ centro_id: centro, nombre: profRawByKey[pk] }).select('id').single();
+      if (pi.error) { console.error('[Planner import][Cargas] error creando profesor "' + profRawByKey[pk] + '":', JSON.stringify(pi.error, null, 2)); throw new Error(pi.error.message); }
+      profIdByKey[pk] = pi.data.id; profCreados++;
+    }
+    console.log('[Planner import][Cargas] profesores → creados:', profCreados, '· reutilizados:', profReusados, '(' + profKeys.length + ' distintos)');
+
+    // ── 3. NECESIDADES_LECTIVAS: borrar las del centro e insertar una por carga con horas válidas ──
+    var del = await sb.from('necesidades_lectivas').delete().eq('centro_id', centro);
+    if (del.error) { console.error('[Planner import][Cargas] error borrando necesidades_lectivas:', JSON.stringify(del.error, null, 2)); throw new Error(del.error.message); }
+    console.log('[Planner import][Cargas] necesidades_lectivas previas del centro borradas');
+
+    var necRows = [], sinHoras = 0;
+    filas.forEach(function (f) {
+      var horas = (f.horas == null) ? NaN : parseInt(f.horas, 10);
+      if (isNaN(horas)) { sinHoras++; return; }   // horas_semanales es NOT NULL → no se inserta
+      necRows.push({
+        centro_id:       centro,
+        grupo_horario:   f.grupo || null,
+        materia_id:      f.asignatura ? (matIdByKey[_impNombreKey(f.asignatura)] || null) : null,
+        profesor_id:     f.profesor   ? (profIdByKey[_impProfKey(f.profesor)]   || null) : null,
+        horas_semanales: horas
+      });
+    });
+
+    if (necRows.length) {
+      var nins = await sb.from('necesidades_lectivas').insert(necRows);
+      if (nins.error) { console.error('[Planner import][Cargas] error insertando necesidades_lectivas:', JSON.stringify(nins.error, null, 2)); throw new Error(nins.error.message); }
+    }
+    console.log('[Planner import][Cargas] necesidades insertadas:', necRows.length, '·', sinHoras, 'cargas sin horas, no importadas');
+
+    return { necesidades: necRows.length, sinHoras: sinHoras, matCreadas: matCreadas, matReusadas: matReusadas, profCreados: profCreados, profReusados: profReusados };
+  }
+
   async function _impProcesar(wb) {
     var resultados = [];
     console.log('[Planner import] centro destino (Agora):', IMPORT_CENTRO);
@@ -3230,6 +3324,21 @@ self.onmessage = function(e) {
       var raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
       console.log('[Planner import] "' + sheetName + '" → tabla ' + cfg.tabla + ' · ' + raw.length + ' filas leídas');
       if (raw.length) console.log('[Planner import]   cabeceras detectadas:', Object.keys(raw[0]));
+
+      /* "Cargas" NO va a planner_cargas: se vuelca a lo que lee el generador
+         (materias + profesores + necesidades_lectivas). */
+      if (key === 'cargas') {
+        try {
+          var rc = await _impCargasANecesidades(raw);
+          resultados.push({ hoja: sheetName, tabla: 'necesidades_lectivas', n: rc.necesidades,
+            estado: '✅ ' + rc.necesidades + ' necesidades · ' + rc.sinHoras + ' sin horas · materias +' +
+              rc.matCreadas + '/♻' + rc.matReusadas + ' · profes +' + rc.profCreados + '/♻' + rc.profReusados });
+        } catch (err) {
+          console.error('[Planner import]   ❌ Cargas→necesidades falló:', err);
+          resultados.push({ hoja: sheetName, tabla: 'necesidades_lectivas', n: 0, estado: '❌ ' + (err.message || err) });
+        }
+        continue;
+      }
 
       var rows = raw.map(function (r) {
         var m = _impMapRow(r, cfg.cols);
