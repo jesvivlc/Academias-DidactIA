@@ -2816,6 +2816,19 @@ class TimetableSolver {
       self_.maxPerDay.set(k, Math.ceil(blockCounts[k] / 5));
       self_.subjectDayOccupancy.set(k, new Map());
     });
+    // ── LOG TEMPORAL DEBUG ──
+    var resumen = {};
+    for (var _bi = 0; _bi < this.blocks.length; _bi++) {
+      var _b = this.blocks[_bi];
+      var _key = _b.groupId + '|' + (_b.subjectName || _b.subjectId);
+      resumen[_key] = (resumen[_key] || 0) + 1;
+    }
+    var grupo1A = Object.entries(resumen)
+      .filter(function(e) { return e[0].startsWith('1ºESO A') || e[0].startsWith('1ESO A') || e[0].startsWith('1ESOA'); })
+      .sort();
+    console.log('[SOLVER] bloques 1ºESO A:', JSON.stringify(grupo1A));
+    console.log('[SOLVER] total bloques todos los grupos:', this.blocks.length);
+    // ── FIN LOG TEMPORAL ──
   }
 
   getValidSlots(block) {
@@ -2931,6 +2944,11 @@ class TimetableSolver {
         self.postMessage({ type: 'progress', variantId: this.variantId,
           phase: 1, assigned: assigned, total: this.blocks.length });
     }
+    // ── LOG TEMPORAL DEBUG ──
+    var _sinColocar = this.blocks.filter(function(b) { return !this.schedule.has(b.id); }.bind(this));
+    console.log('[SOLVER] bloques sin colocar tras greedy:', _sinColocar.length);
+    console.log('[SOLVER] detalle sin colocar:', JSON.stringify(_sinColocar.map(function(b) { return { g: b.groupId, s: b.subjectName || b.subjectId }; })));
+    // ── FIN LOG TEMPORAL ──
   }
 
   calculateCost() {
