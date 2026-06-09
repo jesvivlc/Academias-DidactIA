@@ -60,3 +60,23 @@ self.addEventListener('fetch', function(e) {
     })
   );
 });
+
+
+// ── PUSH NOTIFICATIONS ──
+self.addEventListener('push', function(e) {
+  var d = {};
+  try { d = e.data ? e.data.json() : {}; } catch(_) {}
+  e.waitUntil(
+    self.registration.showNotification(d.title || 'DidactIA', {
+      body:  d.body  || '',
+      icon:  '/icon-192.png',
+      badge: '/icon-192.png',
+      tag:   d.tag   || 'didactia'
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(e) {
+  e.notification.close();
+  e.waitUntil(clients.openWindow('/'));
+});

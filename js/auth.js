@@ -425,6 +425,7 @@ async function loadUserProfile(user) {
   if (role === "familia") setTimeout(initFamiliaView, 300);
   setTimeout(initRealtimeNotifications, 800);
   setTimeout(_comCheckAndBadge, 1200);
+  setTimeout(function() { if (typeof window._initPushButton === "function") window._initPushButton(); }, 1500);
 }
 
 function onCtrChange() {

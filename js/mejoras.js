@@ -516,3 +516,77 @@ function initWelcomeExtras() {
   }
   renderHistorial();
 }
+
+// ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
+
+const VAPID_PUBLIC_KEY = 'BC7YNMiAwyGQZitoyhKtyAfRa2xhMcGvaDOMBy6aUXtE7aw_KoXpG9ce87qUEmLltbWOuebfQQVupXq9gGKTpc4';
+
+function _urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(base64);
+  var out = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function initPushButton() {
+  var btn = document.getElementById('push-notif-btn');
+  if (!btn || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  btn.style.display = '';
+  await _updatePushBtnState();
+}
+
+async function _updatePushBtnState() {
+  var icon = document.getElementById('push-notif-icon');
+  if (!icon) return;
+  var reg = await navigator.serviceWorker.ready;
+  var sub = await reg.pushManager.getSubscription();
+  if (sub) {
+    icon.className = 'ti ti-bell-ringing';
+    document.getElementById('push-notif-btn').title = '✓ Notificaciones activas — pulsa para desactivar';
+  } else {
+    icon.className = 'ti ti-bell';
+    document.getElementById('push-notif-btn').title = 'Activar notificaciones push';
+  }
+}
+
+async function togglePushNotification() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('Tu navegador no soporta notificaciones push.');
+    return;
+  }
+  var reg = await navigator.serviceWorker.ready;
+  var sub = await reg.pushManager.getSubscription();
+
+  if (sub) {
+    // Desactivar
+    await sub.unsubscribe();
+    await sb.from('push_subscriptions').delete().eq('user_id', currentUser.id);
+    await _updatePushBtnState();
+    return;
+  }
+
+  // Activar
+  var perm = await Notification.requestPermission();
+  if (perm !== 'granted') return;
+
+  try {
+    var newSub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await sb.from('push_subscriptions').upsert({
+      user_id:      currentUser.id,
+      centro_id:    ctrId,
+      subscription: JSON.parse(JSON.stringify(newSub))
+    }, { onConflict: 'user_id' });
+    await _updatePushBtnState();
+  } catch(e) {
+    console.error('[push]', e);
+    alert('No se pudo activar: ' + e.message);
+  }
+}
+
+// Se llama desde loadUserProfile (auth.js) con setTimeout
+window._initPushButton = function() { initPushButton().catch(function() {}); };

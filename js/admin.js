@@ -263,13 +263,37 @@ async function registrarSustitucion() {
   } else {
     msg.style.cssText = "display:block;background:#e6f4ea;color:#1e6b3a;border-radius:var(--r-sm);padding:8px 12px;font-size:13px;";
     msg.textContent = "✅ Sustitución registrada correctamente";
-    // Notificar a ausente y sustituto por email (fire-and-forget)
+    // Notificar a ausente y sustituto por email + push (fire-and-forget)
     if (inserted?.id && sustituto) {
       fetch(`${SB_URL}/functions/v1/notify-sustitucion`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
         body: JSON.stringify({ sustitucion_id: inserted.id, evento: "asignacion" }),
       }).catch(() => {});
+      // Push al sustituto si tiene cuenta en el sistema
+      (async () => {
+        try {
+          const tramoParsed = parseInt(tramo) || null;
+          const fechaVal = document.getElementById("sust-fecha")?.value || new Date().toISOString().split("T")[0];
+          // Buscar user_id del sustituto por nombre
+          const { data: perfil } = await sb.from("profiles")
+            .select("user_id").eq("centro_id", ctrId)
+            .ilike("full_name", `%${sustituto.trim().split(/\s+/)[0]}%`).limit(1);
+          const sustUserId = perfil?.[0]?.user_id;
+          if (sustUserId) {
+            fetch(`${SB_URL}/functions/v1/send-push`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+              body: JSON.stringify({
+                user_ids: [sustUserId],
+                title: "📋 Guardia asignada",
+                body: `Tramo ${tramoParsed || "—"} · Grupo ${grupo || "—"} · ${fechaVal}`,
+                tag: "guardia",
+              }),
+            }).catch(() => {});
+          }
+        } catch(_) {}
+      })();
     }
     const _fecha = document.getElementById("sust-fecha")?.value || new Date().toISOString().split("T")[0];
     document.getElementById("sust-ausente").value = "";
