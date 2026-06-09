@@ -393,6 +393,10 @@ async function loadUserProfile(user) {
   const tabCal = document.getElementById("tab-calificaciones");
   if (tabCal) tabCal.style.display = (["profesional","admin","superadmin","jefatura","director"].includes(role)) ? "block" : "none";
 
+  // Materiales: lectura para todos los roles del centro (incl. familia)
+  const tabMat = document.getElementById("tab-materiales");
+  if (tabMat) tabMat.style.display = "block";
+
   const tabIb = document.getElementById("tab-ib");
   if (tabIb) {
     const isIbStaff = ["admin","superadmin","profesional"].includes(role);
@@ -483,6 +487,7 @@ function showTab(t) {
   if (t === "ib") loadIbPanel();
   if (t === "comunicados") initComunicadosPanel();
   if (t === "calificaciones") initCalificaciones();
+  if (t === "materiales") initMateriales();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

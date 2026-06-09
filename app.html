@@ -123,6 +123,7 @@
   <div class="tab" id="tab-planner"           onclick="showTab('planner')"     style="display:none">📅 Planner</div>
   <div class="tab" id="tab-analytics"        onclick="showTab('analytics')"   style="display:none">📊 Analytics</div>
   <div class="tab" id="tab-calificaciones"   onclick="showTab('calificaciones')" style="display:none">📝 Calificaciones</div>
+  <div class="tab" id="tab-materiales"        onclick="showTab('materiales')"     style="display:none">📎 Materiales</div>
 </nav>
 
 <!-- APP SHELL -->
@@ -211,6 +212,9 @@
         </button>
         <button class="nav-item" id="nav-calificaciones" data-tab="calificaciones" onclick="showTab('calificaciones')" style="display:none;--nav-color:#6A4C93">
           <i class="ti ti-clipboard-list"></i><span class="nav-item-label">Calificaciones</span>
+        </button>
+        <button class="nav-item" id="nav-materiales" data-tab="materiales" onclick="showTab('materiales')" style="display:none;--nav-color:#1F7A8C">
+          <i class="ti ti-paperclip"></i><span class="nav-item-label">Materiales</span>
         </button>
 
         <div class="sb-group-label">Centro</div>
@@ -871,6 +875,16 @@
     </div>
   </div>
 
+  <!-- MATERIALES PANEL -->
+  <div class="panel" id="panel-materiales">
+    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
+      <div id="mat-container">
+        <!-- materiales.js renderiza aquí -->
+        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+      </div>
+    </div>
+  </div>
+
   <!-- USERS PANEL -->
   <div class="panel" id="panel-users" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
     <div class="pg-hdr">
@@ -1147,6 +1161,7 @@
 <script src="js/planner.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/calificaciones.js"></script>
+<script src="js/materiales.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1192,7 +1207,8 @@
     'tab-comunicados': { nav:'nav-comunicados',  bn:'bn-comunicados' },
     'tab-planner':     { nav:'nav-planner',      bn:null },
     'tab-analytics':   { nav:'nav-analytics',    bn:null },
-    'tab-calificaciones': { nav:'nav-calificaciones', bn:null }
+    'tab-calificaciones': { nav:'nav-calificaciones', bn:null },
+    'tab-materiales':      { nav:'nav-materiales',     bn:null }
   };
   var BADGE_MAP = {
     'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
