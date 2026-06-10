@@ -20,10 +20,81 @@ function _oriEsc(s) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+// Toast — reutiliza el sistema existente (_calToast con tipo, o showToast global).
+function _oriToast(msg, tipo) {
+  if (typeof _calToast === "function") return _calToast(msg, tipo);
+  if (typeof showToast === "function") return showToast(msg);
+  try { alert(msg); } catch (e) {}
+}
+
+// Push — mismo patrón que admin.js (EF send-push). Silencioso, no bloquea el flujo.
+function _oriPush(userIds, title, body, tag) {
+  try {
+    const ids = [...new Set((userIds || []).filter(Boolean))];
+    if (!ids.length) return;
+    fetch(SB_URL + "/functions/v1/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON_KEY, "apikey": ANON_KEY },
+      body: JSON.stringify({ user_ids: ids, title: title, body: body, tag: tag || "orientacion" })
+    }).catch(() => {});
+  } catch (e) { /* silencioso */ }
+}
+
+// IDs de personal del centro por rol (profiles.id = user_id = auth uid)
+async function _oriStaffIds(roles) {
+  try {
+    const { data } = await sb.from("profiles").select("id").eq("centro_id", ctrId).in("rol", roles);
+    return (data || []).map(p => p.id).filter(Boolean);
+  } catch (e) { return []; }
+}
+
+// IDs de familias vinculadas a un alumno (familia_alumno.profile_id = auth uid)
+async function _oriFamiliaIds(alumnoId) {
+  try {
+    const { data } = await sb.from("familia_alumno").select("profile_id").eq("alumno_id", alumnoId);
+    return (data || []).map(v => v.profile_id).filter(Boolean);
+  } catch (e) { return []; }
+}
+
+// CSS responsive inyectado una sola vez (no toca css/styles.css)
+function _oriEnsureResponsiveCSS() {
+  if (document.getElementById("ori-responsive-css")) return;
+  const st = document.createElement("style");
+  st.id = "ori-responsive-css";
+  st.textContent =
+    ".ori-mobile-only{display:none;}" +
+    ".ori-ellipsis{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
+    "#ori-fab{display:none;}" +
+    "@media(max-width:768px){" +
+      ".ori-desktop-only{display:none!important;}" +
+      ".ori-mobile-only{display:block;}" +
+      ".ori-ellipsis{max-width:150px;}" +
+      ".ori-card-table thead{display:none;}" +
+      ".ori-card-table,.ori-card-table tbody,.ori-card-table tr,.ori-card-table td{display:block;width:auto;}" +
+      ".ori-card-table tr{border:1px solid var(--bdr);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--srf);}" +
+      ".ori-card-table td{border:none!important;padding:3px 0;}" +
+      ".ori-card-table td:first-child{font-size:16px;font-weight:600;margin-bottom:4px;}" +
+      ".ori-card-table td .ori-ellipsis{max-width:100%;white-space:normal;}" +
+      ".ori-card-table td button{width:100%;margin-top:6px;}" +
+      "#ori-fab{display:flex;align-items:center;justify-content:center;position:fixed;right:18px;bottom:calc(80px + env(safe-area-inset-bottom,0));width:56px;height:56px;border-radius:50%;background:var(--ink);color:#fff;font-size:30px;line-height:1;border:none;box-shadow:0 6px 18px rgba(0,0,0,.28);z-index:900;cursor:pointer;}" +
+      "#ori-modal>div{width:95%!important;max-height:90vh!important;}" +
+    "}";
+  document.head.appendChild(st);
+}
+
+// Estado vacío reutilizable (icono + texto + acción opcional)
+function _oriEmptyState(icono, texto, accionHTML) {
+  return '<div style="text-align:center;padding:40px 20px;color:var(--txt3);">' +
+    '<div style="font-size:38px;margin-bottom:10px;">' + icono + '</div>' +
+    '<div style="font-size:14px;margin-bottom:' + (accionHTML ? "16px" : "0") + ';">' + _oriEsc(texto) + '</div>' +
+    (accionHTML || "") + '</div>';
+}
+
 // ── CARGA ──────────────────────────────────────────────────────────────────
 async function initOrientacion() {
   const c = document.getElementById("ori-container");
   if (!c) return;
+  _oriEnsureResponsiveCSS();
   c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando expedientes…</div>';
   await loadExpedientes();
 }
@@ -143,20 +214,25 @@ function renderExpedientes() {
     '" style="padding:7px 10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--srf);color:var(--txt);">' +
     opts.map(o => '<option value="' + o[0] + '"' + (o[0] === val ? " selected" : "") + '>' + o[1] + '</option>').join("") + '</select>';
 
+  _oriEnsureResponsiveCSS();
   const filtered = _oriFiltrados();
 
   let tabla;
-  if (!filtered.length) {
-    tabla = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:24px;">No hay expedientes que coincidan con los filtros.</div>';
+  if (!_oriExpedientes.length) {
+    // Estado vacío real (sin ningún expediente)
+    tabla = _oriEmptyState("🧭", "No hay expedientes abiertos. ¿Empezamos?",
+      '<button class="btn btn-p" onclick="abrirModalNuevoExpediente()">+ Nuevo expediente</button>');
+  } else if (!filtered.length) {
+    tabla = _oriEmptyState("🔍", "No hay expedientes que coincidan con los filtros.", "");
   } else {
-    tabla = '<table class="tbl"><thead><tr>' +
+    tabla = '<table class="tbl ori-card-table"><thead><tr>' +
       '<th>Alumno</th><th>Grupo</th><th>Medida activa</th><th>Nivel riesgo</th><th>Estado</th><th></th>' +
       '</tr></thead><tbody>' +
       filtered.map(e =>
         '<tr>' +
-        '<td style="font-weight:500;">' + _oriEsc(e.alumno) + '</td>' +
+        '<td style="font-weight:500;"><span class="ori-ellipsis" title="' + _oriEsc(e.alumno) + '">' + _oriEsc(e.alumno) + '</span></td>' +
         '<td>' + _oriEsc(e.grupo) + '</td>' +
-        '<td>' + (e.medida ? _oriEsc(e.medida) : '<span style="color:var(--txt3);">—</span>') + '</td>' +
+        '<td><span class="ori-ellipsis" title="' + _oriEsc(e.medida || "") + '">' + (e.medida ? _oriEsc(e.medida) : '<span style="color:var(--txt3);">—</span>') + '</span></td>' +
         '<td>' + _oriRiesgoBadge(e.riesgo) + '</td>' +
         '<td>' + _oriEstadoBadge(e.estado) + '</td>' +
         '<td><button onclick="oriAbrirExpediente(\'' + e.id + '\')" style="background:var(--ink);color:#fff;border:none;border-radius:var(--r-sm);padding:5px 12px;font-size:12px;cursor:pointer;">Ver expediente</button></td>' +
@@ -171,7 +247,7 @@ function renderExpedientes() {
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button class="btn" onclick="oriPanelRiesgo()" style="border:1px solid var(--bdr);background:var(--srf);">📊 Panel de riesgo</button>' +
         '<button class="btn" onclick="oriEstadisticas()" style="border:1px solid var(--bdr);background:var(--srf);">📈 Estadísticas</button>' +
-        '<button class="btn btn-p" onclick="abrirModalNuevoExpediente()">+ Nuevo expediente</button>' +
+        '<button class="btn btn-p ori-desktop-only" onclick="abrirModalNuevoExpediente()">+ Nuevo expediente</button>' +
         '<button class="btn" onclick="exportarOrientacion()" style="border:1px solid var(--bdr);background:var(--srf);">⬇ Exportar</button>' +
       '</div>' +
     '</div>' +
@@ -180,7 +256,8 @@ function renderExpedientes() {
       sel("ori-f-riesgo", riesgoOpts, _oriFiltroRiesgo) +
       sel("ori-f-medida", medidaOpts, _oriFiltroMedida) +
     '</div>' +
-    tabla;
+    tabla +
+    '<button id="ori-fab" class="ori-mobile-only" onclick="abrirModalNuevoExpediente()" title="Nuevo expediente">+</button>';
 
   // Recolocar contador (el innerHTML lo reescribió)
   const activos = _oriExpedientes.filter(e => e.estado === "activo").length;
@@ -228,6 +305,7 @@ function _oriAsignaturas(jsonbVal) {
 
 // Modal genérico reutilizable (un único overlay #ori-modal)
 function _oriShowModal(innerHTML, maxw) {
+  _oriEnsureResponsiveCSS();
   let overlay = document.getElementById("ori-modal");
   if (overlay) overlay.remove();
   overlay = document.createElement("div");
@@ -235,7 +313,8 @@ function _oriShowModal(innerHTML, maxw) {
   overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;";
   overlay.onclick = (ev) => { if (ev.target === overlay) overlay.remove(); };
   overlay.innerHTML =
-    '<div style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);max-width:' + (maxw || 460) + 'px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:var(--sh-lg);">' +
+    '<div style="position:relative;background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);max-width:' + (maxw || 460) + 'px;width:100%;max-height:88vh;overflow-y:auto;padding:24px;box-shadow:var(--sh-lg);">' +
+      '<button onclick="_oriCloseModal()" aria-label="Cerrar" style="position:sticky;float:right;top:0;margin:-8px -8px 0 0;background:var(--srf2);border:1px solid var(--bdr);border-radius:8px;width:30px;height:30px;font-size:16px;line-height:1;cursor:pointer;color:var(--txt2);z-index:2;">×</button>' +
       innerHTML + '</div>';
   document.body.appendChild(overlay);
   return overlay;
@@ -345,6 +424,7 @@ window.oriAbrirExpediente = oriAbrirExpediente;
 function _oriRenderExpedienteShell() {
   const c = document.getElementById("ori-container");
   if (!c) return;
+  _oriEnsureResponsiveCSS();
   const e = _oriExpActual;
   const tabs = [["resumen", "Resumen"], ["informes", "Informes"], ["adaptaciones", "Adaptaciones"], ["tramites", "Trámites"]];
 
@@ -363,7 +443,11 @@ function _oriRenderExpedienteShell() {
       '<div class="pg-sub">' + _oriEsc(e.grupo) + ' · Expediente abierto el ' + _oriFmtFecha(e.fecha_apertura) + '</div></div>' +
       '<div>' + _oriEstadoBadge(e.estado) + '</div>' +
     '</div>' +
-    '<div style="display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:18px;flex-wrap:wrap;">' +
+    // Desktop: tabs horizontales · Móvil: <select>
+    '<select class="ori-mobile-only" onchange="_oriRenderTab(this.value)" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:14px;background:var(--bg);color:var(--txt);margin-bottom:18px;">' +
+      tabs.map(t => '<option value="' + t[0] + '"' + (t[0] === _oriTabActiva ? " selected" : "") + '>' + t[1] + '</option>').join("") +
+    '</select>' +
+    '<div class="ori-desktop-only" style="display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:18px;flex-wrap:wrap;">' +
       tabs.map(t =>
         '<button id="ori-tab-' + t[0] + '" onclick="_oriRenderTab(\'' + t[0] + '\')" ' +
           'style="background:none;border:none;border-bottom:2px solid transparent;padding:9px 14px;font-size:13px;cursor:pointer;color:var(--txt2);">' +
@@ -405,10 +489,14 @@ function _oriMedidaBadge(tipo) { return _oriTipoBadge(tipo, "#e8eefc", "#1a3a8a"
 async function oriCambiarEstado() {
   if (!_oriExpActual) return;
   const nuevo = _oriExpActual.estado === "activo" ? "archivado" : "activo";
-  if (!confirm("¿Cambiar el estado del expediente a '" + nuevo + "'?")) return;
+  const msg = nuevo === "archivado"
+    ? "¿Archivar este expediente? Dejará de contar como activo (podrás reactivarlo después)."
+    : "¿Reactivar este expediente?";
+  if (!confirm(msg)) return;
   const { error } = await sb.from("expedientes_orientacion")
     .update({ estado: nuevo }).eq("id", _oriExpActual.id).eq("centro_id", ctrId);
-  if (error) { alert("Error al cambiar el estado: " + error.message); return; }
+  if (error) { _oriToast("Error al cambiar el estado: " + error.message, "error"); return; }
+  _oriToast(nuevo === "archivado" ? "Expediente archivado" : "Expediente reactivado", "ok");
   _oriExpActual.estado = nuevo;
   _oriRenderExpedienteShell();
   _oriRenderTab(_oriTabActiva);
@@ -496,17 +584,19 @@ function _oriSeccion(titulo, accionHTML, contenidoHTML) {
 }
 
 async function oriDesactivarMedida(id) {
-  if (!confirm("¿Desactivar esta medida?")) return;
+  if (!confirm("¿Desactivar esta medida de atención? Dejará de figurar como activa en el expediente.")) return;
   const { error } = await sb.from("medidas_atencion").update({ activa: false }).eq("id", id).eq("centro_id", ctrId);
-  if (error) { alert("Error: " + error.message); return; }
+  if (error) { _oriToast("Error: " + error.message, "error"); return; }
+  _oriToast("Medida desactivada", "ok");
   _oriRenderTab(_oriTabActiva);
 }
 window.oriDesactivarMedida = oriDesactivarMedida;
 
 async function oriResolverAlerta(id) {
-  if (!confirm("¿Marcar la alerta como resuelta?")) return;
+  if (!confirm("¿Marcar la alerta de riesgo como resuelta? Dejará de aparecer en el panel de riesgo.")) return;
   const { error } = await sb.from("alertas_orientacion").update({ estado: "resuelta" }).eq("id", id).eq("centro_id", ctrId);
-  if (error) { alert("Error: " + error.message); return; }
+  if (error) { _oriToast("Error: " + error.message, "error"); return; }
+  _oriToast("Alerta resuelta", "ok");
   _oriRenderTab(_oriTabActiva);
 }
 window.oriResolverAlerta = oriResolverAlerta;
@@ -546,8 +636,9 @@ async function oriGuardarMedida() {
     tipo, descripcion: desc, asignaturas_afectadas: asigs,
     activa: true, fecha_inicio: fecha
   });
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
   _oriCloseModal();
+  _oriToast("Medida añadida", "ok");
   _oriRenderTab(_oriTabActiva);
 }
 window.oriGuardarMedida = oriGuardarMedida;
@@ -612,11 +703,25 @@ async function oriGuardarTramite() {
   const { error } = await sb.from("tramites_orientacion").insert({
     centro_id: ctrId, expediente_id: _oriExpActual.id, ...f
   });
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
+  if (f.visible_familia) _oriNotificarTramiteFamilia(f.estado_tramite);
   _oriCloseModal();
+  _oriToast("Trámite guardado", "ok");
   _oriRenderTab(_oriTabActiva);
 }
 window.oriGuardarTramite = oriGuardarTramite;
+
+// PUSH D) Trámite visible para familia → familias vinculadas al alumno
+async function _oriNotificarTramiteFamilia(estadoTramite) {
+  try {
+    const e = _oriExpActual;
+    if (!e || !e.alumno_id) return;
+    const ids = await _oriFamiliaIds(e.alumno_id);   // familia_alumno.profile_id = auth uid
+    _oriPush(ids, "📋 Actualización de trámite escolar",
+      "Hay una actualización en el expediente de " + e.alumno + ": " + (estadoTramite || "—"),
+      "ori-tramite");
+  } catch (_) {}
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  PESTAÑA 2 — INFORMES
@@ -660,7 +765,8 @@ async function _oriTabInformes() {
           '</div>' +
         '</div>'
       ).join("")
-    : '<div style="color:var(--txt3);font-size:13px;padding:6px 0;">Sin informes registrados.</div>';
+    : _oriEmptyState("📄", "Aún no hay informes para este expediente",
+        '<button class="btn btn-p" onclick="oriModalNuevoInforme()">+ Nuevo informe</button>');
 
   body.innerHTML = _oriSeccion("Informes psicopedagógicos",
     '<button class="btn btn-p" onclick="oriModalNuevoInforme()" style="font-size:12px;padding:5px 11px;">+ Nuevo informe</button>',
@@ -694,8 +800,9 @@ async function oriCrearInforme() {
     tipo, borrador_texto: texto, estado: "borrador",
     creado_por: (currentUser && currentUser.id) || null
   });
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
   _oriCloseModal();
+  _oriToast("Informe creado", "ok");
   _oriRenderTab("informes");
 }
 window.oriCrearInforme = oriCrearInforme;
@@ -806,8 +913,9 @@ async function oriGuardarBorradorInforme(id) {
   const { error } = await sb.from("informes_psicopedagogicos")
     .update({ borrador_texto: texto, estado: "borrador" })
     .eq("id", id).eq("centro_id", ctrId);
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
   _oriCloseModal();
+  _oriToast("Borrador guardado", "ok");
   _oriRenderTab("informes");
 }
 window.oriGuardarBorradorInforme = oriGuardarBorradorInforme;
@@ -818,11 +926,25 @@ async function oriValidarInforme(id) {
   const { data: cur } = await sb.from("informes_psicopedagogicos").select("estado").eq("id", id).eq("centro_id", ctrId).single();
   if (cur && cur.estado === "firmado") { if (errEl) { errEl.textContent = "El informe está firmado: no se puede revalidar."; errEl.style.display = "block"; } return; }
   const texto = document.getElementById("ori-inf-edit")?.value || "";
+  const { data: infData } = await sb.from("informes_psicopedagogicos").select("tipo").eq("id", id).eq("centro_id", ctrId).single();
   const { error } = await sb.from("informes_psicopedagogicos")
     .update({ borrador_texto: texto, texto_final: texto, estado: "validado", fecha_validacion: new Date().toISOString() })
     .eq("id", id).eq("centro_id", ctrId);
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
+
+  // PUSH C) Informe validado → director/admin del centro
+  (async () => {
+    try {
+      const ids = await _oriStaffIds(["director", "admin"]);
+      const e = _oriExpActual;
+      _oriPush(ids, "✅ Informe psicopedagógico validado",
+        "Informe de " + ((infData && infData.tipo) || "orientación") + " para " + (e ? e.alumno : "un alumno") + " pendiente de revisión final",
+        "ori-informe");
+    } catch (_) {}
+  })();
+
   _oriCloseModal();
+  _oriToast("Informe validado", "ok");
   _oriRenderTab("informes");
 }
 window.oriValidarInforme = oriValidarInforme;
@@ -1062,8 +1184,9 @@ async function oriCrearInformeDesdeSintesis() {
     tipo: "dictamen", borrador_texto: texto, estado: "borrador",
     creado_por: (currentUser && currentUser.id) || null
   });
-  if (error) { alert("Error al crear el informe: " + error.message); return; }
+  if (error) { _oriToast("Error al crear el informe: " + error.message, "error"); return; }
   _oriCloseModal();
+  _oriToast("Informe creado desde la síntesis", "ok");
   _oriRenderTab("informes");
 }
 window.oriCrearInformeDesdeSintesis = oriCrearInformeDesdeSintesis;
@@ -1110,9 +1233,26 @@ async function oriGuardarCuestionario(id) {
   if (error) {
     const errEl = document.getElementById("ori-cuest-err");
     if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; }
+    _oriToast("Error al guardar: " + error.message, "error");
     return;
   }
+
+  // PUSH A) Cuestionario completado → orientador del expediente
+  (async () => {
+    try {
+      const e = _oriExpActual;
+      if (!e || !e.orientador_id) return;
+      const { data: c } = await sb.from("cuestionarios_docentes")
+        .select("asignatura,profesor_id").eq("id", id).eq("centro_id", ctrId).single();
+      const profNombre = c && c.profesor_id ? await _oriProfileName(c.profesor_id) : "Un docente";
+      _oriPush([e.orientador_id], "📝 Cuestionario completado",
+        profNombre + " ha completado el cuestionario de " + ((c && c.asignatura) || "una asignatura") + " para " + e.alumno,
+        "ori-cuestionario");
+    } catch (_) {}
+  })();
+
   _oriCloseModal();
+  _oriToast("Cuestionario guardado", "ok");
   _oriRenderTab("adaptaciones");
 }
 window.oriGuardarCuestionario = oriGuardarCuestionario;
@@ -1149,8 +1289,9 @@ async function oriEnviarCuestionario() {
     centro_id: ctrId, expediente_id: _oriExpActual.id,
     profesor_id: profId, asignatura: asig, respuestas: {}, estado: "pendiente"
   });
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
   _oriCloseModal();
+  _oriToast("Cuestionario enviado al docente", "ok");
   _oriRenderTab("adaptaciones");
 }
 window.oriEnviarCuestionario = oriEnviarCuestionario;
@@ -1205,8 +1346,10 @@ async function oriActualizarTramite(id) {
   const errEl = document.getElementById("ori-tram-err");
   if (!f.tipo) { if (errEl) { errEl.textContent = "Selecciona un tipo."; errEl.style.display = "block"; } return; }
   const { error } = await sb.from("tramites_orientacion").update(f).eq("id", id).eq("centro_id", ctrId);
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
+  if (f.visible_familia) _oriNotificarTramiteFamilia(f.estado_tramite);
   _oriCloseModal();
+  _oriToast("Trámite actualizado", "ok");
   _oriRenderTab("tramites");
 }
 window.oriActualizarTramite = oriActualizarTramite;
@@ -1322,9 +1465,10 @@ async function guardarNuevoExpediente() {
     alumno_id: _oriAlumnoSel.id,
     orientador_id: orientadorId || null
   });
-  if (error) { showErr("Error al crear el expediente: " + error.message); return; }
+  if (error) { showErr("Error al crear el expediente: " + error.message); _oriToast("Error: " + error.message, "error"); return; }
 
   cerrarModalNuevoExpediente();
+  _oriToast("Expediente creado", "ok");
   await loadExpedientes();
 }
 window.guardarNuevoExpediente = guardarNuevoExpediente;
@@ -1365,6 +1509,7 @@ const _ORI_NIVEL_ORDEN = { alto: 0, medio: 1, bajo: 2 };
 async function oriPanelRiesgo() {
   const c = document.getElementById("ori-container");
   if (!c) return;
+  _oriEnsureResponsiveCSS();
   c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando panel de riesgo…</div>';
 
   // Alertas activas del centro + alumno
@@ -1405,7 +1550,7 @@ async function oriPanelRiesgo() {
           (a.descripcion_ia ? '<div style="font-size:13px;color:var(--txt);">' + _oriEsc(a.descripcion_ia) + '</div>' : '') +
         '</div>';
       }).join("")
-    : '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:24px;">No hay alumnos con alertas activas.</div>';
+    : _oriEmptyState("✅", "No hay alertas activas en este momento", "");
 
   c.innerHTML =
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">' +
@@ -1423,9 +1568,10 @@ async function oriPanelRiesgo() {
 window.oriPanelRiesgo = oriPanelRiesgo;
 
 async function oriResolverAlertaPanel(id) {
-  if (!confirm("¿Marcar la alerta como resuelta?")) return;
+  if (!confirm("¿Marcar la alerta de riesgo como resuelta? Dejará de aparecer en el panel.")) return;
   const { error } = await sb.from("alertas_orientacion").update({ estado: "resuelta" }).eq("id", id).eq("centro_id", ctrId);
-  if (error) { alert("Error: " + error.message); return; }
+  if (error) { _oriToast("Error: " + error.message, "error"); return; }
+  _oriToast("Alerta resuelta", "ok");
   oriPanelRiesgo();
 }
 window.oriResolverAlertaPanel = oriResolverAlertaPanel;
@@ -1435,7 +1581,8 @@ async function oriCrearExpedientePara(alumnoId) {
   const { data, error } = await sb.from("expedientes_orientacion")
     .insert({ centro_id: ctrId, alumno_id: alumnoId, orientador_id: null })
     .select("id").single();
-  if (error) { alert("Error al crear el expediente: " + error.message); return; }
+  if (error) { _oriToast("Error al crear el expediente: " + error.message, "error"); return; }
+  _oriToast("Expediente creado", "ok");
   if (data && data.id) oriAbrirExpediente(data.id);
 }
 window.oriCrearExpedientePara = oriCrearExpedientePara;
@@ -1482,11 +1629,32 @@ async function oriGuardarAlertaManual() {
     centro_id: ctrId, alumno_id: alumnoId, tipo, nivel_riesgo: nivel,
     descripcion_ia: desc, estado: "nueva"
   });
-  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } _oriToast("Error: " + error.message, "error"); return; }
+
+  // PUSH B) Nueva alerta → orientadores/jefatura/director/admin del centro
+  (async () => {
+    try {
+      const sel = document.getElementById("ori-al-alumno");
+      const nombre = (sel && sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text) || "Un alumno";
+      await _oriNotificarAlerta(nombre, nivel, tipo, desc);
+    } catch (_) {}
+  })();
+
   _oriCloseModal();
+  _oriToast("Alerta creada", "ok");
   oriPanelRiesgo();
 }
 window.oriGuardarAlertaManual = oriGuardarAlertaManual;
+
+// Notifica una nueva alerta de riesgo al equipo de orientación/dirección del centro
+async function _oriNotificarAlerta(nombreAlumno, nivel, tipo, descripcion) {
+  const emoji = nivel === "alto" ? "🔴" : nivel === "medio" ? "🟠" : "🟡";
+  const ids = await _oriStaffIds(["orientador", "jefatura", "director", "admin"]);
+  const desc = (descripcion || "").slice(0, 80);
+  _oriPush(ids, emoji + " Nueva alerta de riesgo " + (nivel || ""),
+    (nombreAlumno || "Alumno") + " — " + (tipo || "") + (desc ? ": " + desc : ""),
+    "ori-alerta");
+}
 
 // ── Detección automática de riesgos con IA ───────────────────────────────────
 async function oriDetectarRiesgosIA() {
@@ -1610,8 +1778,20 @@ async function oriCrearAlertasSeleccionadas() {
     };
   });
   const { error } = await sb.from("alertas_orientacion").insert(rows);
-  if (error) { alert("Error al crear las alertas: " + error.message); return; }
+  if (error) { _oriToast("Error al crear las alertas: " + error.message, "error"); return; }
+
+  // PUSH B) cada alerta confirmada → equipo de orientación/dirección
+  (async () => {
+    try {
+      for (const ch of chks) {
+        const x = _oriRiesgoDetectados[parseInt(ch.dataset.i, 10)];
+        if (x) await _oriNotificarAlerta(x.nombre, x.nivel_riesgo, x.tipo, x.descripcion);
+      }
+    } catch (_) {}
+  })();
+
   _oriCloseModal();
+  _oriToast(rows.length + " alerta(s) creada(s)", "ok");
   oriPanelRiesgo();
 }
 window.oriCrearAlertasSeleccionadas = oriCrearAlertasSeleccionadas;
@@ -2043,6 +2223,7 @@ async function _oriComputeStats() {
 async function oriEstadisticas() {
   const c = document.getElementById("ori-container");
   if (!c) return;
+  _oriEnsureResponsiveCSS();
   c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Calculando estadísticas…</div>';
   const s = await _oriComputeStats();
 
