@@ -99,6 +99,7 @@ function renderUsersTable() {
 
   const ROL_BADGE = {
     familia:    { bg: "#e8f5e9", color: "#2e7d32", label: "Familia" },
+    orientador: { bg: "#e0f2f1", color: "#00695c", label: "Orientador" },
     profesional:{ bg: "#e3f2fd", color: "#1565c0", label: "Profesional" },
     admin:      { bg: "#fff3e0", color: "#e65100", label: "Admin" },
     superadmin: { bg: "#fce4ec", color: "#c62828", label: "Superadmin" },
@@ -226,6 +227,7 @@ async function mostrarModalInvitar() {
     invCentroWrap.style.display = "block";
     invRolSel.innerHTML = `
       <option value="familia">👨‍👩‍👧 Familia</option>
+      <option value="orientador">🧭 Orientador</option>
       <option value="profesional">👩‍🏫 Profesional</option>
       <option value="admin">⚙️ Administrador</option>
       <option value="superadmin">🔑 Superadmin</option>`;
@@ -236,6 +238,7 @@ async function mostrarModalInvitar() {
     invCentroWrap.style.display = "block";
     invRolSel.innerHTML = `
       <option value="familia">👨‍👩‍👧 Familia</option>
+      <option value="orientador">🧭 Orientador</option>
       <option value="profesional">👩‍🏫 Profesional</option>
       <option value="admin">⚙️ Administrador</option>`;
     // Pre-load alumnos since centro is fixed and familia is default
@@ -360,11 +363,13 @@ async function mostrarModalEditar(profileId) {
   if (role === "admin") {
     editRolSel.innerHTML = `
       <option value="familia">👨‍👩‍👧 Familia</option>
+      <option value="orientador">🧭 Orientador</option>
       <option value="profesional">👩‍🏫 Profesional</option>
       <option value="admin">⚙️ Administrador</option>`;
   } else {
     editRolSel.innerHTML = `
       <option value="familia">👨‍👩‍👧 Familia</option>
+      <option value="orientador">🧭 Orientador</option>
       <option value="profesional">👩‍🏫 Profesional</option>
       <option value="admin">⚙️ Administrador</option>
       <option value="superadmin">🔑 Superadmin</option>`;
