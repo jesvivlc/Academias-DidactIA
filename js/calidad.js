@@ -81,15 +81,15 @@ async function _calRenderDashboard(c) {
     '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;">' +
     '<span style="display:inline-block;animation:spin 1s linear infinite;">⟳</span> Cargando…</div>';
 
-  const hoy         = new Date().toISOString().slice(0, 10);
-  const primerMes   = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-                        .toISOString().slice(0, 10);
-  const en7d        = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  try {
 
-  const [
-    rNcAb, rNcCr, rFbPend, rDocs, rCapaVenc,
-    rUltNc, rFbSinResp, rCapaProx
-  ] = await Promise.all([
+  const hoy       = new Date().toISOString().slice(0, 10);
+  const primerMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+                      .toISOString().slice(0, 10);
+  const en7d      = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  // ── 5 counts en paralelo ──────────────────────────────────────────────────
+  const [rNcAb, rNcCr, rFbPend, rDocs, rCapaVenc] = await Promise.all([
     sb.from('no_conformidades').select('id', { count:'exact', head:true })
       .eq('centro_id', ctrId).in('estado', ['abierta','en_analisis']),
     sb.from('no_conformidades').select('id', { count:'exact', head:true })
@@ -99,7 +99,11 @@ async function _calRenderDashboard(c) {
     sb.from('documentos_calidad').select('id', { count:'exact', head:true })
       .eq('centro_id', ctrId).gte('created_at', primerMes),
     sb.from('acciones_capa').select('id', { count:'exact', head:true })
-      .eq('centro_id', ctrId).lt('fecha_objetivo', hoy).is('es_eficaz', null),
+      .eq('centro_id', ctrId).lt('fecha_objetivo', hoy).is('es_eficaz', null)
+  ]);
+
+  // ── 3 listas en paralelo (segunda oleada, sin bloquear los counts) ─────────
+  const [rUltNc, rFbSinResp, rCapaProx] = await Promise.all([
     sb.from('no_conformidades')
       .select('id,proceso_categoria,descripcion_raw,estado,prioridad,reported_at')
       .eq('centro_id', ctrId).order('created_at', { ascending:false }).limit(5),
@@ -114,12 +118,12 @@ async function _calRenderDashboard(c) {
       .order('fecha_objetivo', { ascending:true }).limit(5)
   ]);
 
-  const ncAb      = rNcAb.count   || 0;
-  const ncCr      = rNcCr.count   || 0;
+  const ncAb      = rNcAb.count    || 0;
+  const ncCr      = rNcCr.count    || 0;
   const fbPend    = rFbPend.count  || 0;
-  const docs      = rDocs.count   || 0;
+  const docs      = rDocs.count    || 0;
   const capaVenc  = rCapaVenc.count || 0;
-  const ultNc     = rUltNc.data   || [];
+  const ultNc     = rUltNc.data    || [];
   const fbSinResp = rFbSinResp.data || [];
   const capaProx  = rCapaProx.data  || [];
 
@@ -246,6 +250,18 @@ async function _calRenderDashboard(c) {
       '</div>' +
 
     '</div>';
+
+  } catch (err) {
+    console.error('[Calidad] error en _calRenderDashboard:', err);
+    c.innerHTML =
+      '<div style="background:var(--danger-soft);border:1px solid var(--danger);border-radius:var(--r);' +
+      'padding:20px;color:var(--danger);font-size:13px;">' +
+      '<strong>Error al cargar el módulo Calidad</strong><br>' +
+      '<code style="font-size:11px;word-break:break-all;">' + _calEsc(String(err)) + '</code><br>' +
+      '<button onclick="initCalidad()" style="margin-top:12px;padding:6px 14px;background:var(--danger);' +
+      'color:#fff;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:12px;">Reintentar</button>' +
+      '</div>';
+  }
 }
 
 // ── SECCIONES (placeholder — se implementan en sprints siguientes) ─────────────
