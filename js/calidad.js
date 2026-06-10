@@ -5,7 +5,6 @@
 // Todo filtrado por ctrId (RLS + query explícita).
 
 let _calSeccion = 'dashboard';
-console.log('[calidad.js] módulo cargado');
 
 function _calEsc(s) {
   return String(s == null ? '' : s)
@@ -68,9 +67,8 @@ function _calFondo(color) {
 // ── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 async function initCalidad() {
-  console.log('[Calidad] initCalidad() llamado');
   const c = document.getElementById('cal-container');
-  if (!c) { console.warn('[Calidad] cal-container no encontrado'); return; }
+  if (!c) return;
   _calSeccion = 'dashboard';
   await _calRenderDashboard(c);
 }
@@ -79,7 +77,6 @@ window.initCalidad = initCalidad;
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 
 async function _calRenderDashboard(c) {
-  console.log('[Calidad] _calRenderDashboard start, ctrId=', typeof ctrId !== 'undefined' ? ctrId : 'UNDEFINED', 'sb=', typeof sb);
   c.innerHTML =
     '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;">' +
     '<span style="display:inline-block;animation:spin 1s linear infinite;">⟳</span> Cargando…</div>';
@@ -112,7 +109,6 @@ async function _calRenderDashboard(c) {
   const primerMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const en7d      = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
 
-  console.log('[Calidad] lanzando queries...');
   // ── 5 counts en paralelo ──────────────────────────────────────────────────
   const [nc, ncCrit, quejas, docs, capa] = await Promise.all([
     sb.from('no_conformidades').select('*', { count:'exact', head:true })
@@ -127,8 +123,6 @@ async function _calRenderDashboard(c) {
       .eq('centro_id', centroId).lt('fecha_objetivo', hoy).is('es_eficaz', null)
   ]);
 
-  console.log('[Calidad] counts OK:', nc.count, ncCrit.count, quejas.count, docs.count, capa.count,
-    '| errors:', nc.error?.message, ncCrit.error?.message, quejas.error?.message, docs.error?.message, capa.error?.message);
   // ── 3 listas en paralelo (segunda oleada) ─────────────────────────────────
   const [rUltNc, rFbSinResp, rCapaProx] = await Promise.all([
     sb.from('no_conformidades')
@@ -145,7 +139,6 @@ async function _calRenderDashboard(c) {
       .order('fecha_objetivo', { ascending:true }).limit(5)
   ]);
 
-  console.log('[Calidad] listas OK, rUltNc.data:', rUltNc.data?.length, 'err:', rUltNc.error?.message);
   const ncAb      = nc.count      || 0;
   const ncCr      = ncCrit.count  || 0;
   const fbPend    = quejas.count  || 0;
@@ -240,9 +233,6 @@ async function _calRenderDashboard(c) {
 
   // ── Render final ──────────────────────────────────────────────────────────
 
-  console.log('[Calidad] pre-render — c.id:', c.id, 'isConnected:', c.isConnected,
-    'offsetParent:', c.offsetParent, 'offsetHeight:', c.offsetHeight,
-    'panel active:', document.getElementById('panel-calidad')?.classList.contains('active'));
   c.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;">' +
       '<div>' +
@@ -281,15 +271,6 @@ async function _calRenderDashboard(c) {
       '</div>' +
 
     '</div>';
-
-  console.log('[Calidad] render final completado, innerHTML len:', c.innerHTML.length,
-    'isConnected:', c.isConnected);
-  // Detectar si algo sobreescribe el contenido tras el render
-  setTimeout(function() {
-    var el = document.getElementById('cal-container');
-    console.log('[Calidad] +800ms — innerHTML len:', el ? el.innerHTML.length : 'NO ELEMENT',
-      'panel active:', document.getElementById('panel-calidad')?.classList.contains('active'));
-  }, 800);
 
   } catch (err) {
     console.error('[Calidad] error en _calRenderDashboard:', err);

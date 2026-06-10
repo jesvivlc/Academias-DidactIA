@@ -915,9 +915,11 @@
   <div class="panel" id="panel-salidas" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);"></div><!-- /panel-salidas -->
 
   <!-- CALIDAD PANEL -->
-  <div class="panel" id="panel-calidad" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-    <div id="cal-container">
-      <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+  <div class="panel" id="panel-calidad">
+    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
+      <div id="cal-container">
+        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+      </div>
     </div>
   </div>
 
@@ -1365,7 +1367,7 @@
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
         if (t === 'orientacion' && typeof initOrientacion === 'function') initOrientacion();
-        if (t === 'calidad') { console.log('[patchShowTab] calidad, initCalidad tipo:', typeof initCalidad); if (typeof initCalidad === 'function') initCalidad(); }
+        if (t === 'calidad' && typeof initCalidad === 'function') initCalidad();
       };
     }
   }
