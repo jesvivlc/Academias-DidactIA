@@ -240,7 +240,9 @@ async function _calRenderDashboard(c) {
 
   // ── Render final ──────────────────────────────────────────────────────────
 
-  console.log('[Calidad] ejecutando render final...');
+  console.log('[Calidad] pre-render — c.id:', c.id, 'isConnected:', c.isConnected,
+    'offsetParent:', c.offsetParent, 'offsetHeight:', c.offsetHeight,
+    'panel active:', document.getElementById('panel-calidad')?.classList.contains('active'));
   c.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;">' +
       '<div>' +
@@ -280,7 +282,14 @@ async function _calRenderDashboard(c) {
 
     '</div>';
 
-  console.log('[Calidad] render final completado, innerHTML len:', c.innerHTML.length);
+  console.log('[Calidad] render final completado, innerHTML len:', c.innerHTML.length,
+    'isConnected:', c.isConnected);
+  // Detectar si algo sobreescribe el contenido tras el render
+  setTimeout(function() {
+    var el = document.getElementById('cal-container');
+    console.log('[Calidad] +800ms — innerHTML len:', el ? el.innerHTML.length : 'NO ELEMENT',
+      'panel active:', document.getElementById('panel-calidad')?.classList.contains('active'));
+  }, 800);
 
   } catch (err) {
     console.error('[Calidad] error en _calRenderDashboard:', err);
