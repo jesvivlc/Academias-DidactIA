@@ -67,7 +67,7 @@ function _calFondo(color) {
 // ── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 async function initCalidad() {
-  const c = document.getElementById('cal-container');
+  const c = document.getElementById('calidad-cont');
   if (!c) return;
   _calSeccion = 'dashboard';
   await _calRenderDashboard(c);
@@ -288,7 +288,7 @@ async function _calRenderDashboard(c) {
 // ── SECCIONES (placeholder — se implementan en sprints siguientes) ─────────────
 
 window._calIrSeccion = function (seccion) {
-  const c = document.getElementById('cal-container');
+  const c = document.getElementById('calidad-cont');
   if (!c) return;
   _calSeccion = seccion;
 
