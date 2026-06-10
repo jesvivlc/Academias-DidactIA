@@ -112,6 +112,7 @@ async function _calRenderDashboard(c) {
   const primerMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const en7d      = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
 
+  console.log('[Calidad] lanzando queries...');
   // ── 5 counts en paralelo ──────────────────────────────────────────────────
   const [nc, ncCrit, quejas, docs, capa] = await Promise.all([
     sb.from('no_conformidades').select('*', { count:'exact', head:true })
@@ -126,6 +127,8 @@ async function _calRenderDashboard(c) {
       .eq('centro_id', centroId).lt('fecha_objetivo', hoy).is('es_eficaz', null)
   ]);
 
+  console.log('[Calidad] counts OK:', nc.count, ncCrit.count, quejas.count, docs.count, capa.count,
+    '| errors:', nc.error?.message, ncCrit.error?.message, quejas.error?.message, docs.error?.message, capa.error?.message);
   // ── 3 listas en paralelo (segunda oleada) ─────────────────────────────────
   const [rUltNc, rFbSinResp, rCapaProx] = await Promise.all([
     sb.from('no_conformidades')
@@ -142,6 +145,7 @@ async function _calRenderDashboard(c) {
       .order('fecha_objetivo', { ascending:true }).limit(5)
   ]);
 
+  console.log('[Calidad] listas OK, rUltNc.data:', rUltNc.data?.length, 'err:', rUltNc.error?.message);
   const ncAb      = nc.count      || 0;
   const ncCr      = ncCrit.count  || 0;
   const fbPend    = quejas.count  || 0;
@@ -236,6 +240,7 @@ async function _calRenderDashboard(c) {
 
   // ── Render final ──────────────────────────────────────────────────────────
 
+  console.log('[Calidad] ejecutando render final...');
   c.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;">' +
       '<div>' +
@@ -274,6 +279,8 @@ async function _calRenderDashboard(c) {
       '</div>' +
 
     '</div>';
+
+  console.log('[Calidad] render final completado, innerHTML len:', c.innerHTML.length);
 
   } catch (err) {
     console.error('[Calidad] error en _calRenderDashboard:', err);
