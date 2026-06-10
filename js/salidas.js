@@ -660,8 +660,8 @@ function _salTabDashboard() {
               (p.necesita_picnic ? 'checked' : '') + ' onchange="_salTogglePart(this)" style="width:16px;height:16px;accent-color:var(--warning);cursor:pointer;">'
           : (p.necesita_picnic ? '🥪' : '—')) +
       '</td>' +
-      '<td style="padding:9px 12px;font-size:12px;color:var(--txt2);">' +
-        _salEsc(p.alergias_confirmadas || '—') +
+      '<td id="sal-aler-cell-' + p.id + '" style="padding:9px 12px;font-size:12px;">' +
+        _salAlerCell(p) +
       '</td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--txt3);">Sin participantes registrados.</td></tr>';
@@ -702,10 +702,72 @@ async function _salTogglePart(cb) {
 }
 window._salTogglePart = _salTogglePart;
 
+function _salAlerCell(p) {
+  var txt = '<span style="color:var(--txt2);">' + _salEsc(p.alergias_confirmadas || '—') + '</span>';
+  var btn = _salPuedeEditar()
+    ? ' <button data-pid="' + _salEsc(p.id) + '" onclick="_salEditarAlergias(this.dataset.pid)" ' +
+        'style="background:none;border:none;cursor:pointer;font-size:13px;padding:1px 3px;opacity:.75;" title="Editar alergias">✏️</button>'
+    : '';
+  return txt + btn;
+}
+
+function _salEditarAlergias(pid) {
+  var part = _salDetParts.find(function(p) { return p.id === pid; });
+  var nombre = part ? (part.alumno_nombre || '') : '';
+  var currentVal = part ? (part.alergias_confirmadas || '') : '';
+
+  var existing = document.getElementById('sal-aler-modal');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'sal-aler-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:420px;box-shadow:var(--sh-lg);';
+  modal.innerHTML =
+    '<div style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--txt);">✏️ Alergias — ' + _salEsc(nombre) + '</div>' +
+    '<textarea id="sal-aler-input" rows="4" ' +
+      'style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--bg);color:var(--txt);resize:vertical;margin-bottom:16px;" ' +
+      'placeholder="Sin alergias conocidas"></textarea>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+      '<button id="sal-aler-cancel" style="padding:7px 16px;border:1px solid var(--bdr);background:var(--srf2);color:var(--txt);border-radius:var(--r-sm);cursor:pointer;font-size:13px;">Cancelar</button>' +
+      '<button id="sal-aler-save" style="padding:7px 16px;background:var(--ink);color:#fff;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:13px;">Guardar</button>' +
+    '</div>';
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById('sal-aler-input').value = currentVal;
+  document.getElementById('sal-aler-cancel').onclick = function() { overlay.remove(); };
+  document.getElementById('sal-aler-save').onclick = function() { _salGuardarAlergias(pid); };
+}
+window._salEditarAlergias = _salEditarAlergias;
+
+async function _salGuardarAlergias(pid) {
+  var inp = document.getElementById('sal-aler-input');
+  if (!inp) return;
+  var val = inp.value.trim();
+  var { error } = await sb.from('participantes_salida')
+    .update({ alergias_confirmadas: val || null })
+    .eq('id', pid).eq('centro_id', ctrId);
+  if (error) {
+    _salidasToast('Error al guardar: ' + error.message, 'var(--danger)');
+    return;
+  }
+  var part = _salDetParts.find(function(p) { return p.id === pid; });
+  if (part) part.alergias_confirmadas = val || null;
+  var cell = document.getElementById('sal-aler-cell-' + pid);
+  if (cell && part) cell.innerHTML = _salAlerCell(part);
+  var modal = document.getElementById('sal-aler-modal');
+  if (modal) modal.remove();
+  _salidasToast('Alergias actualizadas', 'var(--success)');
+}
+window._salGuardarAlergias = _salGuardarAlergias;
+
 async function _salGenerarCircular() {
   var btn = document.getElementById('sal-ia-btn');
-  var res = document.getElementById('sal-ia-result');
-  if (!btn || !res) return;
+  if (!btn) return;
   var s = _salDet;
   btn.disabled = true; btn.textContent = '⟳ Generando…';
 
@@ -732,18 +794,47 @@ async function _salGenerarCircular() {
     });
     var d = await rsp.json();
     var txt = d.text || '';
-    if (!txt) { alert('La IA no devolvió texto.'); return; }
-    res.innerHTML =
-      '<div style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-          '<div style="font-size:13px;font-weight:600;color:var(--txt);">✨ Circular generada por IA</div>' +
-          '<div style="font-size:11px;color:var(--warning);">Revisa antes de usar</div>' +
-        '</div>' +
-        '<textarea id="sal-circular-txt" rows="12" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--bg);color:var(--txt);resize:vertical;">' +
-          _salEsc(txt) + '</textarea>' +
+    if (!txt) { _salidasToast('La IA no devolvió texto', 'var(--warning)'); return; }
+
+    var existing = document.getElementById('sal-circ-modal');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'sal-circ-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    var modal = document.createElement('div');
+    modal.style.cssText = 'background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);';
+    modal.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<div style="font-size:15px;font-weight:600;color:var(--txt);">✨ Circular generada por IA</div>' +
+        '<button id="sal-circ-close" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--txt2);line-height:1;">×</button>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--txt2);background:var(--warning-soft,#FBF0DC);border-radius:var(--r-sm);padding:8px 10px;margin-bottom:12px;">' +
+        '⚠️ Revisa el texto antes de enviarlo a las familias.' +
+      '</div>' +
+      '<textarea id="sal-circ-txt" ' +
+        'style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--bg);color:var(--txt);resize:vertical;min-height:300px;margin-bottom:12px;"></textarea>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+        '<button id="sal-circ-copy" style="padding:7px 16px;border:1px solid var(--bdr);background:var(--srf2);color:var(--txt);border-radius:var(--r-sm);cursor:pointer;font-size:13px;">📋 Copiar al portapapeles</button>' +
+        '<button id="sal-circ-close2" style="padding:7px 16px;background:var(--ink);color:#fff;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:13px;">Cerrar</button>' +
       '</div>';
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    document.getElementById('sal-circ-txt').value = txt;
+    document.getElementById('sal-circ-close').onclick = function() { overlay.remove(); };
+    document.getElementById('sal-circ-close2').onclick = function() { overlay.remove(); };
+    document.getElementById('sal-circ-copy').onclick = function() {
+      var ta = document.getElementById('sal-circ-txt');
+      if (ta) navigator.clipboard.writeText(ta.value).then(function() {
+        _salidasToast('Copiado', 'var(--success)');
+      });
+    };
+
   } catch(err) {
-    alert('Error al generar: ' + err.message);
+    _salidasToast('Error al generar: ' + err.message, 'var(--danger)');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✨ Generar circular para familias'; }
   }
