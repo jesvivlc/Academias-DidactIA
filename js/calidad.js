@@ -5,6 +5,7 @@
 // Todo filtrado por ctrId (RLS + query explícita).
 
 let _calSeccion = 'dashboard';
+console.log('[calidad.js] módulo cargado');
 
 function _calEsc(s) {
   return String(s == null ? '' : s)
@@ -67,8 +68,9 @@ function _calFondo(color) {
 // ── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 async function initCalidad() {
+  console.log('[Calidad] initCalidad() llamado');
   const c = document.getElementById('cal-container');
-  if (!c) return;
+  if (!c) { console.warn('[Calidad] cal-container no encontrado'); return; }
   _calSeccion = 'dashboard';
   await _calRenderDashboard(c);
 }
@@ -77,6 +79,7 @@ window.initCalidad = initCalidad;
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 
 async function _calRenderDashboard(c) {
+  console.log('[Calidad] _calRenderDashboard start, ctrId=', typeof ctrId !== 'undefined' ? ctrId : 'UNDEFINED', 'sb=', typeof sb);
   c.innerHTML =
     '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;">' +
     '<span style="display:inline-block;animation:spin 1s linear infinite;">⟳</span> Cargando…</div>';

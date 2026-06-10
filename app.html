@@ -1365,7 +1365,7 @@
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
         if (t === 'orientacion' && typeof initOrientacion === 'function') initOrientacion();
-        if (t === 'calidad'     && typeof initCalidad      === 'function') initCalidad();
+        if (t === 'calidad') { console.log('[patchShowTab] calidad, initCalidad tipo:', typeof initCalidad); if (typeof initCalidad === 'function') initCalidad(); }
       };
     }
   }
