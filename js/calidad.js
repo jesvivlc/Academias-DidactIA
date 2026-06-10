@@ -81,49 +81,77 @@ async function _calRenderDashboard(c) {
     '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;">' +
     '<span style="display:inline-block;animation:spin 1s linear infinite;">⟳</span> Cargando…</div>';
 
+  // ── Resolver centro_id con fallback explícito ─────────────────────────────
+  let centroId = ctrId;
+  if (!centroId) {
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (user) {
+        const { data: prof } = await sb.from('profiles')
+          .select('centro_id').eq('id', user.id).single();
+        centroId = prof && prof.centro_id;
+      }
+    } catch (e) { /* silencioso — se detecta abajo */ }
+  }
+
+  console.log('[Calidad] centro_id:', centroId);
+
+  if (!centroId) {
+    c.innerHTML =
+      '<div style="background:var(--warning-soft);border:1px solid var(--warning);border-radius:var(--r);' +
+      'padding:20px;color:var(--warning);font-size:13px;">' +
+      '⚠️ No se pudo obtener el centro. Recarga la página.' +
+      '</div>';
+    return;
+  }
+
   try {
 
-  const hoy       = new Date().toISOString().slice(0, 10);
-  const primerMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-                      .toISOString().slice(0, 10);
-  const en7d      = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const hoy       = new Date().toISOString().split('T')[0];
+  const primerMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const en7d      = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
 
   // ── 5 counts en paralelo ──────────────────────────────────────────────────
-  const [rNcAb, rNcCr, rFbPend, rDocs, rCapaVenc] = await Promise.all([
-    sb.from('no_conformidades').select('id', { count:'exact', head:true })
-      .eq('centro_id', ctrId).in('estado', ['abierta','en_analisis']),
-    sb.from('no_conformidades').select('id', { count:'exact', head:true })
-      .eq('centro_id', ctrId).eq('prioridad','critica').neq('estado','cerrada'),
-    sb.from('feedback_familias').select('id', { count:'exact', head:true })
-      .eq('centro_id', ctrId).eq('estado','pendiente'),
-    sb.from('documentos_calidad').select('id', { count:'exact', head:true })
-      .eq('centro_id', ctrId).gte('created_at', primerMes),
-    sb.from('acciones_capa').select('id', { count:'exact', head:true })
-      .eq('centro_id', ctrId).lt('fecha_objetivo', hoy).is('es_eficaz', null)
+  const [nc, ncCrit, quejas, docs, capa] = await Promise.all([
+    sb.from('no_conformidades').select('*', { count:'exact', head:true })
+      .eq('centro_id', centroId).in('estado', ['abierta','en_analisis']),
+    sb.from('no_conformidades').select('*', { count:'exact', head:true })
+      .eq('centro_id', centroId).eq('prioridad','critica').neq('estado','cerrada'),
+    sb.from('feedback_familias').select('*', { count:'exact', head:true })
+      .eq('centro_id', centroId).eq('estado','pendiente'),
+    sb.from('documentos_calidad').select('*', { count:'exact', head:true })
+      .eq('centro_id', centroId).gte('created_at', primerMes),
+    sb.from('acciones_capa').select('*', { count:'exact', head:true })
+      .eq('centro_id', centroId).lt('fecha_objetivo', hoy).is('es_eficaz', null)
   ]);
 
-  // ── 3 listas en paralelo (segunda oleada, sin bloquear los counts) ─────────
+  console.log('[Calidad] resultados:',
+    nc.count, ncCrit.count, quejas.count, docs.count, capa.count);
+  console.log('[Calidad] errores:',
+    nc.error, ncCrit.error, quejas.error, docs.error, capa.error);
+
+  // ── 3 listas en paralelo (segunda oleada) ─────────────────────────────────
   const [rUltNc, rFbSinResp, rCapaProx] = await Promise.all([
     sb.from('no_conformidades')
       .select('id,proceso_categoria,descripcion_raw,estado,prioridad,reported_at')
-      .eq('centro_id', ctrId).order('created_at', { ascending:false }).limit(5),
+      .eq('centro_id', centroId).order('created_at', { ascending:false }).limit(5),
     sb.from('feedback_familias')
       .select('id,canal,texto_raw,requiere_accion,created_at')
-      .eq('centro_id', ctrId).eq('estado','pendiente')
+      .eq('centro_id', centroId).eq('estado','pendiente')
       .order('created_at', { ascending:true }).limit(5),
     sb.from('acciones_capa')
       .select('id,plan_accion,fecha_objetivo')
-      .eq('centro_id', ctrId).is('es_eficaz', null)
+      .eq('centro_id', centroId).is('es_eficaz', null)
       .gte('fecha_objetivo', hoy).lte('fecha_objetivo', en7d)
       .order('fecha_objetivo', { ascending:true }).limit(5)
   ]);
 
-  const ncAb      = rNcAb.count    || 0;
-  const ncCr      = rNcCr.count    || 0;
-  const fbPend    = rFbPend.count  || 0;
-  const docs      = rDocs.count    || 0;
-  const capaVenc  = rCapaVenc.count || 0;
-  const ultNc     = rUltNc.data    || [];
+  const ncAb      = nc.count      || 0;
+  const ncCr      = ncCrit.count  || 0;
+  const fbPend    = quejas.count  || 0;
+  const docsN     = docs.count    || 0;
+  const capaVenc  = capa.count    || 0;
+  const ultNc     = rUltNc.data   || [];
   const fbSinResp = rFbSinResp.data || [];
   const capaProx  = rCapaProx.data  || [];
 
@@ -224,7 +252,7 @@ async function _calRenderDashboard(c) {
       metrica('📋', 'NCs abiertas',        ncAb,     _calSemaforo(ncAb, 0, 3))   +
       metrica('🔴', 'NCs críticas',        ncCr,     ncCr > 0 ? 'var(--danger)' : 'var(--success)') +
       metrica('💬', 'Quejas pendientes',   fbPend,   _calSemaforo(fbPend, 0, 5)) +
-      metrica('📄', 'Documentos este mes', docs,     'var(--info)')               +
+      metrica('📄', 'Documentos este mes', docsN,    'var(--info)')               +
       metrica('⏰', 'CAPA vencidas',       capaVenc, capaVenc > 0 ? 'var(--danger)' : 'var(--success)') +
     '</div>' +
 
