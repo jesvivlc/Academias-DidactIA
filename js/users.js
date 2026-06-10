@@ -99,10 +99,11 @@ function renderUsersTable() {
 
   const ROL_BADGE = {
     familia:    { bg: "#e8f5e9", color: "#2e7d32", label: "Familia" },
-    orientador: { bg: "#e0f2f1", color: "#00695c", label: "Orientador" },
-    profesional:{ bg: "#e3f2fd", color: "#1565c0", label: "Profesional" },
-    admin:      { bg: "#fff3e0", color: "#e65100", label: "Admin" },
-    superadmin: { bg: "#fce4ec", color: "#c62828", label: "Superadmin" },
+    orientador:         { bg: "#e0f2f1", color: "#00695c", label: "Orientador" },
+    profesional:        { bg: "#e3f2fd", color: "#1565c0", label: "Profesional" },
+    admin:              { bg: "#fff3e0", color: "#e65100", label: "Admin" },
+    admin_institucional:{ bg: "#e8eaf6", color: "#3949ab", label: "Admin inst." },
+    superadmin:         { bg: "#fce4ec", color: "#c62828", label: "Superadmin" },
   };
 
   function rolBadge(u) {
@@ -230,6 +231,7 @@ async function mostrarModalInvitar() {
       <option value="orientador">🧭 Orientador</option>
       <option value="profesional">👩‍🏫 Profesional</option>
       <option value="admin">⚙️ Administrador</option>
+      <option value="admin_institucional">🏛️ Admin institucional</option>
       <option value="superadmin">🔑 Superadmin</option>`;
   } else {
     // Admin: lock to own centro, no superadmin option
@@ -372,6 +374,7 @@ async function mostrarModalEditar(profileId) {
       <option value="orientador">🧭 Orientador</option>
       <option value="profesional">👩‍🏫 Profesional</option>
       <option value="admin">⚙️ Administrador</option>
+      <option value="admin_institucional">🏛️ Admin institucional</option>
       <option value="superadmin">🔑 Superadmin</option>`;
   }
   editRolSel.value    = _editingProfile.rol;

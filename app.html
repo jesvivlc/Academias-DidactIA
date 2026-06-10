@@ -1524,7 +1524,7 @@
     var ctr       = (typeof ctrName !== 'undefined' ? ctrName : '') || '—';
     var r         = (typeof role !== 'undefined' ? role : '') || '';
 
-    var isAdmin   = r === 'admin' || r === 'superadmin';
+    var isAdmin   = r === 'admin' || r === 'superadmin' || r === 'admin_institucional';
     var isStaff   = isAdmin || r === 'profesional';
     var isFamilia = r === 'familia';
 
@@ -1593,13 +1593,13 @@
     var tp = document.getElementById('tab-planner');
     if (tp) tp.style.display = isAdmin ? '' : 'none';
     /* Análisis (Dashboard + Informes) — admin/director/jefatura/superadmin */
-    var _verAnalisis = ['admin','director','jefatura','superadmin'].indexOf(r) !== -1;
+    var _verAnalisis = ['admin','admin_institucional','director','jefatura','superadmin'].indexOf(r) !== -1;
     var na = document.getElementById('nav-analisis');
     if (na) na.style.display = _verAnalisis ? 'flex' : 'none';
     var ta = document.getElementById('tab-analisis');
     if (ta) ta.style.display = _verAnalisis ? '' : 'none';
     /* Orientación — orientador/jefatura/director/admin/superadmin */
-    var _verOri = ['orientador','jefatura','director','admin','superadmin'].indexOf(r) !== -1;
+    var _verOri = ['orientador','jefatura','director','admin','admin_institucional','superadmin'].indexOf(r) !== -1;
     var no = document.getElementById('nav-orientacion');
     if (no) no.style.display = _verOri ? 'flex' : 'none';
     var to = document.getElementById('tab-orientacion');

@@ -332,6 +332,85 @@ async function loadUserProfile(user) {
     } else {
       hdrRight.textContent = ctrName;
     }
+  } else if (role === "admin_institucional") {
+    // Load all centers of the same institution
+    const instId = profile.institucion_id;
+    if (!instId) {
+      // No institution assigned yet — fall back to single-center admin behavior
+      ctrId = profile.centro_id;
+      if (ctrId) {
+        const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
+        ctrName = ctr?.nombre || "Mi centro";
+        modulosActivos = ctr?.modulos_activos || [];
+        applyTheme(ctr?.color_primario, ctr?.logo_url);
+        _cacheBrand(ctr?.color_primario, ctr?.logo_url);
+      }
+      document.getElementById("ctr-name-hdr").textContent = ctrName;
+    } else {
+      const { data: instCentros } = await sb
+        .from("centros")
+        .select("id,nombre,modulos_activos,color_primario,logo_url")
+        .eq("institucion_id", instId)
+        .order("nombre");
+
+      if (!instCentros?.length) {
+        document.getElementById("ctr-name-hdr").textContent = "Sin centros";
+      } else {
+        // Use existing centro_id if it belongs to the institution, else take first
+        const match = instCentros.find(c => c.id === profile.centro_id);
+        const activeCentro = match || instCentros[0];
+        ctrId = activeCentro.id;
+        ctrName = activeCentro.nombre;
+        modulosActivos = activeCentro.modulos_activos || [];
+        applyTheme(activeCentro.color_primario, activeCentro.logo_url);
+        _cacheBrand(activeCentro.color_primario, activeCentro.logo_url);
+
+        if (instCentros.length > 1) {
+          const hdrRight = document.getElementById("ctr-name-hdr");
+          const sel = document.createElement("select");
+          sel.className = "ctr-sel";
+          sel.id = "super-ctr-sel";
+          sel.innerHTML = instCentros.map(c =>
+            `<option value="${c.id}" data-n="${c.nombre}" ${c.id === ctrId ? "selected" : ""}>${c.nombre}</option>`
+          ).join("");
+          const _applyInstCentro = async (id, name) => {
+            ctrId = id; ctrName = name;
+            // Update profiles.centro_id so existing RLS keeps working
+            await sb.from("profiles").update({ centro_id: id }).eq("id", currentUser.id);
+            const ds = document.getElementById("super-ctr-sel");
+            const ms = document.getElementById("mas-ctr-sel");
+            if (ds) ds.value = id;
+            if (ms) ms.value = id;
+            const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
+            modulosActivos = ctr?.modulos_activos || [];
+            const cTab = document.getElementById("tab-comedor");
+            if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
+            const eTab = document.getElementById("tab-espacios");
+            if (eTab) eTab.style.display = modulosActivos.includes("espacios") ? "block" : "none";
+            history = []; resetChat(); updateUI(); loadAdmin();
+            applyTheme(ctr?.color_primario, ctr?.logo_url);
+            const ibCont = document.getElementById("ib-container");
+            if (ibCont) ibCont.innerHTML = "";
+            const ibPanel = document.getElementById("panel-ib");
+            if (ibPanel && ibPanel.classList.contains("active")) loadIbPanel();
+          };
+          sel.onchange = function() { _applyInstCentro(this.value, this.options[this.selectedIndex].dataset.n); };
+          hdrRight.replaceWith(sel);
+          // Mirror in mobile MAS drawer
+          const masWrap = document.getElementById("mas-centro-wrap");
+          if (masWrap) {
+            const mobiSel = sel.cloneNode(true);
+            mobiSel.id = "mas-ctr-sel";
+            mobiSel.onchange = function() { _applyInstCentro(this.value, this.options[this.selectedIndex].dataset.n); };
+            masWrap.innerHTML = '<div class="mas-ctr-label">Centro activo</div>';
+            masWrap.appendChild(mobiSel);
+            masWrap.style.display = "flex";
+          }
+        } else {
+          document.getElementById("ctr-name-hdr").textContent = ctrName;
+        }
+      }
+    }
   } else {
     ctrId = profile.centro_id;
     // Load centro name and modulos
@@ -358,41 +437,41 @@ async function loadUserProfile(user) {
   const ctrHdr = document.getElementById("ctr-name-hdr");
   if (ctrHdr) ctrHdr.textContent = ctrName;
   const pill = document.getElementById("role-pill");
-  const roleLabels = { familia:"👨‍👩‍👧 Familia", profesional:"👩‍🏫 Profesional", admin:"⚙️ Admin", superadmin:"🔑 Superadmin" };
+  const roleLabels = { familia:"👨‍👩‍👧 Familia", profesional:"👩‍🏫 Profesional", admin:"⚙️ Admin", admin_institucional:"🏛️ Admin inst.", superadmin:"🔑 Superadmin" };
   pill.textContent = roleLabels[role] || role;
   pill.className = "role-pill " + (role === "familia" ? "fam" : "pro");
 
   // Show/hide admin tab based on role
   const adminTab = document.getElementById("tab-admin");
-  adminTab.style.display = (role === "admin" || role === "superadmin") ? "block" : "none";
+  adminTab.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
 
   // Show comedor tab only if module is active for this centro AND user has right role
   const comedorTab = document.getElementById("tab-comedor");
   const hasComedor = modulosActivos.includes("comedor");
-  if (comedorTab) comedorTab.style.display = (hasComedor && (role === "familia" || ["profesional","admin","superadmin"].includes(role))) ? "block" : "none";
+  if (comedorTab) comedorTab.style.display = (hasComedor && (role === "familia" || ["profesional","admin","admin_institucional","superadmin"].includes(role))) ? "block" : "none";
 
   const tabSust = document.getElementById("tab-sust");
-  if (tabSust) tabSust.style.display = (role === "admin" || role === "profesional" || role === "superadmin") ? "block" : "none";
+  if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
   const tabInc = document.getElementById("tab-incidencias");
-  if (tabInc) tabInc.style.display = (role === "profesional" || role === "admin" || role === "superadmin") ? "block" : "none";
+  if (tabInc) tabInc.style.display = (["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
 
   const tabEsp = document.getElementById("tab-espacios");
-  if (tabEsp) tabEsp.style.display = (modulosActivos.includes("espacios") && ["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
+  if (tabEsp) tabEsp.style.display = (modulosActivos.includes("espacios") && ["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
 
 
 
 
 
   const usersTab = document.getElementById("tab-users");
-  if (usersTab) usersTab.style.display = (role === "admin" || role === "superadmin") ? "block" : "none";
+  if (usersTab) usersTab.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
 
   const tabRrhh = document.getElementById("tab-rrhh");
-  if (tabRrhh) tabRrhh.style.display = (["profesional","admin","superadmin"].includes(role)) ? "block" : "none";
+  if (tabRrhh) tabRrhh.style.display = (["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
 
   // Calificaciones: profesores y dirección (no familia)
   const tabCal = document.getElementById("tab-calificaciones");
-  if (tabCal) tabCal.style.display = (["profesional","admin","superadmin","jefatura","director"].includes(role)) ? "block" : "none";
+  if (tabCal) tabCal.style.display = (["profesional","admin","admin_institucional","superadmin","jefatura","director"].includes(role)) ? "block" : "none";
 
   // Materiales: lectura para todos los roles del centro (incl. familia)
   const tabMat = document.getElementById("tab-materiales");
@@ -400,11 +479,11 @@ async function loadUserProfile(user) {
 
   // Salidas: visible para profesional, admin, superadmin y familia
   const tabSal = document.getElementById("tab-salidas");
-  if (tabSal) tabSal.style.display = (["profesional","admin","superadmin","familia"].includes(role)) ? "block" : "none";
+  if (tabSal) tabSal.style.display = (["profesional","admin","admin_institucional","superadmin","familia"].includes(role)) ? "block" : "none";
 
   const tabIb = document.getElementById("tab-ib");
   if (tabIb) {
-    const isIbStaff = ["admin","superadmin","profesional"].includes(role);
+    const isIbStaff = ["admin","admin_institucional","superadmin","profesional"].includes(role);
     const isIbFamilia = role === "familia"
       ? currentUserAlumnos.some(a => a.grupo_horario === "1IB" || a.grupo_horario === "2IB")
       : false;
