@@ -398,6 +398,10 @@ async function loadUserProfile(user) {
   const tabMat = document.getElementById("tab-materiales");
   if (tabMat) tabMat.style.display = "block";
 
+  // Salidas: visible para profesional, admin, superadmin y familia
+  const tabSal = document.getElementById("tab-salidas");
+  if (tabSal) tabSal.style.display = (["profesional","admin","superadmin","familia"].includes(role)) ? "block" : "none";
+
   const tabIb = document.getElementById("tab-ib");
   if (tabIb) {
     const isIbStaff = ["admin","superadmin","profesional"].includes(role);
@@ -495,6 +499,7 @@ function showTab(t) {
   if (t === "comunicados") initComunicadosPanel();
   if (t === "calificaciones") initCalificaciones();
   if (t === "materiales") initMateriales();
+  if (t === "salidas") initSalidasPanel();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {
