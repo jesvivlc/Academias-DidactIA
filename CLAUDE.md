@@ -44,7 +44,10 @@ Cada centro tiene `centro_id` único. Toda consulta a Supabase filtra por `centr
 **Roles:**
 - `familia` — ve sus hijos vinculados, comedor, chatbot personal
 - `profesional` — ve su horario, sustituciones, comedor
+- `orientador` — igual que profesional + acceso a módulo Orientación
 - `admin` — gestión completa de su centro
+- `admin_institucional` — admin multi-centro (vinculado a institución; selector de centro propio)
+- `director` / `jefatura` — igual que admin a efectos de módulos
 - `superadmin` — acceso global (sin `centro_id`). Cuenta: jesvivlc+admin@gmail.com
 
 **Auth:** JWT con ECC (nunca volver a HMAC). RLS activa en todas las tablas.
@@ -77,6 +80,8 @@ js/
   calificaciones.js     initCalificaciones (gradebook): vista profesor (entrada notas) / vista dirección (consulta + export CSV/PDF)
   materiales.js         initMateriales (hub de materiales): subida multi-grupo a Storage privado/enlace, descarga signed URL, toggle "Mis materiales/Todos", form "solo mis clases"
   informes.js           initInformes (Informes de dirección): PDF consolidado por periodo (jsPDF + autotable, logo+color del centro); solo lee tablas existentes (pill "Informes PDF" del módulo Análisis)
+  orientacion.js        initOrientacion (stub — panel Orientación, pendiente implementación completa)
+  calidad.js            initCalidad (módulo Calidad): dashboard 5 métricas, No Conformidades (lista/filtros/modal+voz+IA/CAPA), Feedback Familias (lista/sentimiento IA/respuesta IA); helper _calGemini reutilizable
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -133,6 +138,11 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `salidas_didacticas` | centro_id, titulo, descripcion, fecha_salida, hora_salida, hora_regreso, curso_grupos (jsonb), coste, responsable_id, estado, datos_autobus (jsonb), created_at | Estado: borrador/publicada/cerrada/cancelada. `datos_autobus`: {empresa,matricula,telefono,plazas,notas} |
 | `participantes_salida` | centro_id, salida_id, alumno_id, autorizado, pagado, necesita_picnic, alergias_confirmadas, fecha_autorizacion, created_at | UNIQUE(salida_id,alumno_id). Generados en batch al crear la salida desde los grupos seleccionados |
 | `notificaciones_salida` | centro_id, salida_id, tipo, enviada, fecha_envio, created_at | tipo: recordatorio/cierre/llegada/cocina |
+| `no_conformidades` | centro_id, reporter_id, proceso_categoria, prioridad, descripcion_raw, estado, reported_at, created_at | Módulo Calidad. `prioridad`: baja/media/alta/critica; `estado`: abierta/en_analisis/capa_ejecutada/cerrada; `proceso_categoria`: docencia/mantenimiento/comedor/transporte/convivencia/administracion/seguridad/general |
+| `acciones_capa` | centro_id, nc_id (FK→no_conformidades), causa_raiz, plan_accion, responsable_id, fecha_objetivo, fecha_verificacion, es_eficaz (bool nullable), created_at | Acciones correctivas/preventivas vinculadas a una NC. `es_eficaz=null` = pendiente de verificar |
+| `feedback_familias` | centro_id, familia_user_id, alumno_id, canal, texto_raw, categoria_ia, sentimiento_ia (numeric −1..1), resumen_ia, requiere_accion (bool), respuesta_borrador, estado, created_at | Feedback de familias. `canal`: formulario/email/chat/presencial; `estado`: pendiente/en_gestion/resuelto. Análisis IA asíncrono post-INSERT |
+| `documentos_calidad` | centro_id, titulo, tipo, contenido, created_at | Documentos del SGC (sistema de gestión de calidad) |
+| `plantillas_calidad` | centro_id, nombre, tipo, contenido_plantilla, campos_requeridos (jsonb) | Plantillas de documentos (entrevista familia, acta reunión, informe incidencia, plan mejora). Seed: `supabase/seeds/plantillas_calidad_default.sql` |
 
 ---
 
@@ -474,6 +484,23 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Tablas**: `salidas_didacticas`, `participantes_salida`, `notificaciones_salida` (ver `supabase/migrations/salidas_didacticas.sql`, ejecutado en producción)
 - **`_salidasAlumnosPorGrupo`**: cache grupo→[alumno_ids] construida en `_salidasCargarGrupos()`, usada en `salGuardar()` para insertar batch de participantes sin query extra
 
+### Calidad — SGC (calidad.js)
+- Tab **"⭐ Calidad"** visible para `admin`, `director`, `jefatura`, `superadmin`; `#panel-calidad` con contenedor `#calidad-cont` (IMPORTANTE: no usar `cal-container` — ese ID es de `panel-calificaciones`)
+- **Dashboard** (`_calRenderDashboard`): 5 métricas KPI (NCs abiertas, NCs críticas, quejas pendientes, documentos este mes, CAPA vencidas) + semáforo visual; 3 botones de sección; 3 listas resumen (últimas NCs, quejas sin responder, CAPA próximas a vencer 7 días)
+- **No Conformidades** (`_calRenderNC`): lista con filtros estado/prioridad/categoría; NC ID formato `NC-{año}-{6HEX}` (derivado de `created_at` + `id.slice(0,6).toUpperCase()`); ordenado por prioridad desc → fecha desc; contador "X abiertas · Y críticas"
+  - Modal nueva NC: categoría, prioridad, descripción + botón voz (`_calIniciarVoz` → `SpeechRecognition` con `try/catch`) + análisis IA en `onblur` (`_calNcAnalizarIA` → actualiza selectores + nota "💡 Sugerido por IA")
+  - Detalle NC: cambio de estado (botones inline), "✨ Analizar con IA" (5 Porqués + plan correctivo + prevención con Gemini), sección CAPA inline
+  - CAPA (`_calCapaNueva`/`_calCapaGuardar`): modal con causa raíz, plan, responsable (selector desde `profiles`), fechas objetivo/verificación; botones "✓ Eficaz" / "✗ No eficaz" (`_calCapaEficacia`); banner "🔒 Cerrar NC" cuando todas las CAPA son eficaces
+- **Feedback Familias** (`_calRenderFeedback`): lista con filtros estado/sentimiento (positivo/neutro/negativo por rango `sentimiento_ia`); emoji de sentimiento (`😊`/`😐`/`😤`); contador "X pendientes"
+  - Modal nuevo feedback: canal, alumno (opcional, selector desde `alumnos`), texto libre
+  - Tras INSERT → análisis IA **asíncrono no bloqueante**: `_calGemini` → UPDATE `categoria_ia`, `sentimiento_ia`, `resumen_ia`, `requiere_accion`
+  - Detalle: texto completo, grid análisis IA (categoría/sentimiento/resumen), email de contacto de familia (lazy load desde `profiles`), textarea respuesta, "✨ Generar respuesta" (Gemini), "💾 Guardar y marcar resuelta" (UPDATE `respuesta_borrador` + `estado=resuelto`)
+- **Helper `_calGemini(systemPrompt, userMsg)`**: wrapper fetch sobre EF `chat` (usa globals `API`/`ANON_KEY`/`ctrId`/`role`/`currentUserName`/`currentUser`). Devuelve texto o `null`; nunca lanza. Todas las llamadas IA en `try/catch` independiente.
+- **Voz `_calIniciarVoz(taId, btnId, onStop)`**: `window.SpeechRecognition || window.webkitSpeechRecognition`, `lang='es-ES'`, modo continuo. `try/catch` completo — si el navegador no soporta reconocimiento muestra toast informativo sin romper el flujo.
+- **XSS**: `_calEsc()` en todos los `innerHTML` con datos de usuario (mismo patrón que `_esc()` en planner.js)
+- **`_calParseJson(txt)`**: strip ` ```json ``` ` antes de `JSON.parse`
+- **Tablas**: `no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad` — pendiente ejecutar DDL en Supabase SQL Editor (`sql/calidad-tables.sql`)
+
 ---
 
 ## Estado del proyecto (2026-05-29)
@@ -539,6 +566,9 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 | Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
 | Planner | — | — | ✅ | ✅ |
 | Análisis (Dashboard CMI + Informes PDF) | — | — | ✅ | ✅ |
+| Calidad (NCs + Feedback + CAPA) | — | — | ✅ | ✅ |
+| Orientación | — | ✅ (orientador) | ✅ | ✅ |
+| Salidas Didácticas | ✅ (autorización) | ✅ | ✅ | ✅ |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
@@ -562,6 +592,8 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 <script src="js/calificaciones.js"></script>
 <script src="js/materiales.js"></script>
 <script src="js/informes.js"></script>
+<script src="js/orientacion.js"></script>
+<script src="js/calidad.js"></script>
 <script src="js/salidas.js"></script>
 ```
 
@@ -834,6 +866,8 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Registro con código de centro opcional (`codigo_acceso`): si el campo queda vacío el usuario se registra sin centro asignado; `codigo_acceso` añadido al bucle de matching en `doRegisterStep1`
 - [x] Chatbot agente ejecutor — nuevas herramientas de tramos: `crear_tramos_centro` y `listar_tramos_centro` implementadas en EF `chat` y desplegadas a producción
 - [x] Módulo Salidas Didácticas: lista, detalle 4 tabs (Dashboard/Cocina/Autobús/Administración), vista familia con autorización por hijo, push notifications, Excel 3 hojas, circular IA
+- [x] Roles `orientador` y `admin_institucional`: nuevas opciones en selectores de invitación/edición de usuarios; `admin_institucional` tiene selector multi-centro propio
+- [x] Módulo Calidad base: dashboard 5 KPIs, No Conformidades (lista+filtros+modal voz+IA+detalle+CAPA), Feedback Familias (lista+sentimiento+análisis IA asíncrono+respuesta IA); tablas `no_conformidades`/`acciones_capa`/`feedback_familias` (DDL pendiente ejecutar)
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
@@ -995,6 +1029,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
 > - `supabase/migrations/horarios_curso_escolar.sql` — `horarios_grupo.curso_escolar` + `info_centro.curso_activo` + índice. **Ejecutar antes de que el código multi-curso entre en producción.**
+> - `sql/calidad-tables.sql` — tablas `no_conformidades` + `acciones_capa` + `feedback_familias` + `documentos_calidad` + `plantillas_calidad` + `evaluaciones_platinum` + RLS por centro. **Pendiente crear el archivo y ejecutarlo.** El módulo Calidad mostrará error hasta que existan las tablas.
 >
 > **Migraciones ejecutadas** (ya en producción):
 > - `supabase/migrations/20260609_push_subscriptions.sql` — tabla `push_subscriptions` + RLS + índices ✅ 2026-06-09 vía Management API (confirmado)
@@ -1016,6 +1051,20 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-11` · **Módulo Calidad — No Conformidades + CAPA + Feedback Familias** (`763bb5e`): implementación completa de las dos secciones principales de `js/calidad.js`. Bug crítico previo: `getElementById('cal-container')` devolvía el contenedor de Calificaciones (ID duplicado) → spinner infinito. Fix: renombrar a `calidad-cont` (`af8ac5e`). Secciones implementadas:
+  - **No Conformidades**: lista paginada con filtros (estado/prioridad/categoría), NC ID `NC-{año}-{6HEX}`, ordenado por prioridad+fecha; modal con dictación por voz (`SpeechRecognition` + `try/catch` completo) + análisis IA en `onblur` que actualiza selectores automáticamente; detalle con cambio de estado inline + análisis 5 Porqués con Gemini; CAPA inline (modal causa/plan/responsable/fechas, eficacia, cierre automático cuando todas eficaces)
+  - **Feedback Familias**: lista con filtros por estado y sentimiento (rango numérico −1..1 → emoji 😊/😐/😤); modal entrada + análisis IA asíncrono non-blocking tras INSERT (UPDATE `categoria_ia/sentimiento_ia/resumen_ia/requiere_accion`); detalle con email de familia (lazy load), generación de respuesta IA, guardado + cierre
+  - Helper `_calGemini()` centralizado (API/ANON_KEY/ctrId de config.js); `_calEsc()` en todo innerHTML; `node --check` OK
+- `2026-06-11` · `af8ac5e` — fix: calidad — renombrar cal-container a calidad-cont (conflicto de ID con panel-calificaciones)
+- `2026-06-11` · `06d7f10` — fix: calidad — estructura del panel igual que módulos funcionales
+- `2026-06-10 23:16–23:42` · `4401cc5`/`1fe8671`/`04a84b5` — debug(calidad): instrumentación diagnóstico para trazar spinner infinito; Service Worker v6→v7 + precache calidad/salidas/orientacion
+- `2026-06-10 23:03` · `ac7410b` — fix: favicon SVG inline — eliminar 404 favicon.ico
+- `2026-06-10 22:52–23:00` · `e838641`/`2ae1c13`/`56442e7` — fix + cleanup: calidad dashboard error handling explícito; eliminación de logs diagnóstico temporales
+- `2026-06-10 21:20` · `f5b4458` — feat: módulo Calidad — estructura base y dashboard (5 KPIs + semáforo, 3 listas resumen, botones de sección)
+- `2026-06-10 20:58` · `75c9032` — feat: rol `admin_institucional` — selector multi-centro propio en drawer Más + opciones en modales invitar/editar usuarios
+- `2026-06-10 20:46` · `9589f2d` — feat: rol `orientador` — visible en selectores de usuario; acceso a módulo Orientación
+- `2026-06-10 20:18` · `f627b48` — fix: salidas — botón alergias y modal circular IA
+- `2026-06-10 20:05` · `64473bd` — docs(CLAUDE.md): salidas didácticas — módulo completo documentado
 - `2026-06-10 20:02` · `d19a492` — feat: salidas didácticas — detalle completo, cocina, autobús, administración y familias
 - `2026-06-10` — feat(login): **logo y color del centro en la pantalla de login** (antes de autenticar). `themeLoginScreen()` (en `js/auth.js`, llamada desde el boot de `js/config.js` tras crear el cliente) detecta el centro por la URL —`?centro=<uuid>` (por `id`) o `?centro=`/`?c=`/`?codigo=` con un código de acceso (cruza `codigo_familia`/`codigo_profesional`/`codigo_acceso`)— y aplica `applyTheme(color_primario, logo_url)` (que ya tematiza `#brand-logo` del login). Fallback: sin pista en URL → última marca usada en este navegador (`localStorage didactia_brand`, persistida por `_cacheBrand` tras login); sin nada → marca DidactIA por defecto. Todo en `try/catch` → nunca lanza error. No toca la lógica de autenticación.
 - `2026-06-10` — feat(analisis): **fusión Analytics CMI + Informes en un módulo único "📊 Análisis"** (`app.html` + `js/auth.js`; `analytics.js`/`informes.js` intactos). Un único nav item (grupo Administración, visible admin/director/jefatura/superadmin) y `#panel-analisis` con dos pills internas: **Dashboard** (contenedor `#analytics-container`) e **Informes PDF** (`#inf-container`). `analisisTab()`/`initAnalisis()` conmutan visibilidad y hacen lazy init del sub-módulo activo (`initAnalyticsPanel()`/`initInformes()`). Eliminados nav/tab/panel separados de Analytics e Informes; quitada de `auth.js#showTab` la rama `informes` y la visibilidad de `tab-informes`.
