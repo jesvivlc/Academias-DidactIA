@@ -124,6 +124,7 @@
   <div class="tab" id="tab-analisis"         onclick="showTab('analisis')"    style="display:none">📊 Análisis</div>
   <div class="tab" id="tab-calificaciones"   onclick="showTab('calificaciones')" style="display:none">📝 Calificaciones</div>
   <div class="tab" id="tab-materiales"        onclick="showTab('materiales')"     style="display:none">📎 Materiales</div>
+  <div class="tab" id="tab-orientacion"       onclick="showTab('orientacion')"    style="display:none">🧭 Orientación</div>
 </nav>
 
 <!-- APP SHELL -->
@@ -229,6 +230,9 @@
         </button>
         <button class="nav-item" id="nav-espacios" data-tab="espacios" onclick="showTab('espacios')" style="display:none;--nav-color:#888780">
           <i class="ti ti-door"></i><span class="nav-item-label">Espacios</span>
+        </button>
+        <button class="nav-item" id="nav-orientacion" data-tab="orientacion" onclick="showTab('orientacion')" style="display:none;--nav-color:#0E7C7B">
+          <i class="ti ti-compass"></i><span class="nav-item-label">Orientación</span>
         </button>
 
         <div class="sb-group-label">Administración</div>
@@ -888,6 +892,16 @@
     </div>
   </div>
 
+  <!-- ORIENTACIÓN PANEL -->
+  <div class="panel" id="panel-orientacion">
+    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
+      <div id="ori-container">
+        <!-- orientacion.js renderiza aquí (lista de expedientes) -->
+        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+      </div>
+    </div>
+  </div>
+
   <!-- (panel-informes fusionado dentro de panel-analisis → pestaña "Informes PDF") -->
 
   <!-- USERS PANEL -->
@@ -1183,6 +1197,7 @@
 <script src="js/calificaciones.js"></script>
 <script src="js/materiales.js"></script>
 <script src="js/informes.js"></script>
+<script src="js/orientacion.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1202,12 +1217,13 @@
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
-    analisis:'Análisis'
+    analisis:'Análisis', orientacion:'Orientación'
   };
   var MAS_CFG = {
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
     espacios:  { icon:'ti-door',            label:'Espacios' },
+    orientacion:  { icon:'ti-compass',         label:'Orientación' },
     users:     { icon:'ti-users',           label:'Usuarios' },
     admin:     { icon:'ti-settings',        label:'Administración' },
     planner:      { icon:'ti-calendar-event',  label:'Planner' },
@@ -1229,7 +1245,8 @@
     'tab-planner':     { nav:'nav-planner',      bn:null },
     'tab-analisis':    { nav:'nav-analisis',     bn:null },
     'tab-calificaciones': { nav:'nav-calificaciones', bn:null },
-    'tab-materiales':      { nav:'nav-materiales',     bn:null }
+    'tab-materiales':      { nav:'nav-materiales',     bn:null },
+    'tab-orientacion':     { nav:'nav-orientacion',    bn:null }
   };
   var BADGE_MAP = {
     'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
@@ -1323,6 +1340,7 @@
         closeMasDrawer();
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
+        if (t === 'orientacion' && typeof initOrientacion === 'function') initOrientacion();
       };
     }
   }
@@ -1571,6 +1589,12 @@
     if (na) na.style.display = _verAnalisis ? 'flex' : 'none';
     var ta = document.getElementById('tab-analisis');
     if (ta) ta.style.display = _verAnalisis ? '' : 'none';
+    /* Orientación — orientador/jefatura/director/admin/superadmin */
+    var _verOri = ['orientador','jefatura','director','admin','superadmin'].indexOf(r) !== -1;
+    var no = document.getElementById('nav-orientacion');
+    if (no) no.style.display = _verOri ? 'flex' : 'none';
+    var to = document.getElementById('tab-orientacion');
+    if (to) to.style.display = _verOri ? '' : 'none';
 
     if (!_bentoObserversSetup) {
       _bentoObserversSetup = true;
