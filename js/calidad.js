@@ -94,8 +94,6 @@ async function _calRenderDashboard(c) {
     } catch (e) { /* silencioso — se detecta abajo */ }
   }
 
-  console.log('[Calidad] centro_id:', centroId);
-
   if (!centroId) {
     c.innerHTML =
       '<div style="background:var(--warning-soft);border:1px solid var(--warning);border-radius:var(--r);' +
@@ -124,11 +122,6 @@ async function _calRenderDashboard(c) {
     sb.from('acciones_capa').select('*', { count:'exact', head:true })
       .eq('centro_id', centroId).lt('fecha_objetivo', hoy).is('es_eficaz', null)
   ]);
-
-  console.log('[Calidad] resultados:',
-    nc.count, ncCrit.count, quejas.count, docs.count, capa.count);
-  console.log('[Calidad] errores:',
-    nc.error, ncCrit.error, quejas.error, docs.error, capa.error);
 
   // ── 3 listas en paralelo (segunda oleada) ─────────────────────────────────
   const [rUltNc, rFbSinResp, rCapaProx] = await Promise.all([
