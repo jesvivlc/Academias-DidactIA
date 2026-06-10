@@ -58,8 +58,8 @@ index.html                      Landing page (Playfair + Geist, Navy/Blue/Amber)
 app.html                        Aplicación: login, header, tabs, paneles
 css/styles.css          Tokens CSS + estilos globales
 js/
-  config.js             SB_URL, SB_KEY, variables globales, boot DOMContentLoaded
-  auth.js               doLogin, loadUserProfile, showTab, applyTheme, goHome
+  config.js             SB_URL, SB_KEY, variables globales, boot DOMContentLoaded (llama themeLoginScreen pre-login)
+  auth.js               doLogin, loadUserProfile, showTab, applyTheme, themeLoginScreen (marca centro pre-login), goHome
   chat.js               sendMsg, buildContext, horarios por grupo, Gemini fetch
   comedor.js            loadComedor, toggleAsistencia, histórico 30 días, export Excel
   admin.js              loadAdmin, loadSustituciones, registrarSustitucion, initSustPanel
@@ -73,10 +73,10 @@ js/
   comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
   familias.js           (stub — portal familias, pendiente)
   planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab, Importar (.xlsx → planner_inputs)
-  analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales
+  analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales (pill "Dashboard" del módulo Análisis)
   calificaciones.js     initCalificaciones (gradebook): vista profesor (entrada notas) / vista dirección (consulta + export CSV/PDF)
   materiales.js         initMateriales (hub de materiales): subida multi-grupo a Storage privado/enlace, descarga signed URL, toggle "Mis materiales/Todos", form "solo mis clases"
-  informes.js           initInformes (Informes de dirección): PDF consolidado por periodo (jsPDF + autotable, logo+color del centro); solo lee tablas existentes
+  informes.js           initInformes (Informes de dirección): PDF consolidado por periodo (jsPDF + autotable, logo+color del centro); solo lee tablas existentes (pill "Informes PDF" del módulo Análisis)
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -445,8 +445,12 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **`scripts/importar_cargas_eso.mjs`**: importa `data/Cargas_ESO_limpia.xlsx` hoja "Cargas ESO" para los 6 grupos 1ºESO+3ºESO → borra necesidades_lectivas del centro, get-or-create materias y profesores por nombre normalizado, crea placeholders `PENDIENTE-<Grupo>-<Materia>` para celdas sin profesor. Resultado: 75 filas, 16 materias distintas, 29 profesores, 0 nulls en materia_id/profesor_id. Uso: `node scripts/importar_cargas_eso.mjs`
 - **Soporte multi-curso**: `horarios_grupo.curso_escolar TEXT NOT NULL DEFAULT '2025-26'`; `info_centro.curso_activo TEXT NOT NULL DEFAULT '2025-26'`; global `cursoActivo` en `config.js` actualizado tras login desde `info_centro`; 7 queries en `chat.js` y 4 en `admin.js` filtran por `curso_escolar` con fallback `'2025-26'`. Migración: `supabase/migrations/horarios_curso_escolar.sql` (PENDIENTE ejecutar en SQL Editor)
 
-### Analytics — Cuadro de Mando Integral (analytics.js)
-- Tab **"Analytics"** visible solo para `admin` y `superadmin`
+### Análisis — Dashboard CMI + Informes PDF (analytics.js + informes.js)
+- **Módulo fusionado** (2026-06-10): un único nav item **"📊 Análisis"** (`#nav-analisis`, grupo Administración) visible para `admin`/`director`/`jefatura`/`superadmin`. `#panel-analisis` con dos pills internas (`analisisTab()` en el script inline de `app.html`):
+  - **Dashboard** → `analytics.js` (renderiza en `#analytics-container`, init `initAnalyticsPanel`)
+  - **Informes PDF** → `informes.js` (renderiza en `#inf-container`, init `initInformes`)
+  - Cada pill hace lazy init del sub-módulo al activarse; la lógica interna de ambos módulos quedó intacta
+- (Histórico) Tab **"Analytics"** visible solo para `admin` y `superadmin`
 - **CMI tiles**: 6 KPIs en tiempo real — guardias sin cubrir, ausencias activas, incidencias abiertas, comensales hoy, ocupación espacios, usuarios activos
 - **Gráficos Chart.js**: línea de tendencia de incidencias (30 días), barras de guardias por profesor (trimestre), dona de distribución de tipos de ausencia
 - **Alertas predictivas psicosociales**: análisis automático de patrones anómalos (picos de absentismo, acumulación de incidencias por grupo/alumno, profesor con exceso de guardias). Llama Edge Function `alerta-psicosocial`
@@ -517,7 +521,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 | Administración | — | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ (su centro) | ✅ (todos) |
 | Planner | — | — | ✅ | ✅ |
-| Analytics CMI | — | — | ✅ | ✅ |
+| Análisis (Dashboard CMI + Informes PDF) | — | — | ✅ | ✅ |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
@@ -993,6 +997,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-10` — feat(login): **logo y color del centro en la pantalla de login** (antes de autenticar). `themeLoginScreen()` (en `js/auth.js`, llamada desde el boot de `js/config.js` tras crear el cliente) detecta el centro por la URL —`?centro=<uuid>` (por `id`) o `?centro=`/`?c=`/`?codigo=` con un código de acceso (cruza `codigo_familia`/`codigo_profesional`/`codigo_acceso`)— y aplica `applyTheme(color_primario, logo_url)` (que ya tematiza `#brand-logo` del login). Fallback: sin pista en URL → última marca usada en este navegador (`localStorage didactia_brand`, persistida por `_cacheBrand` tras login); sin nada → marca DidactIA por defecto. Todo en `try/catch` → nunca lanza error. No toca la lógica de autenticación.
+- `2026-06-10` — feat(analisis): **fusión Analytics CMI + Informes en un módulo único "📊 Análisis"** (`app.html` + `js/auth.js`; `analytics.js`/`informes.js` intactos). Un único nav item (grupo Administración, visible admin/director/jefatura/superadmin) y `#panel-analisis` con dos pills internas: **Dashboard** (contenedor `#analytics-container`) e **Informes PDF** (`#inf-container`). `analisisTab()`/`initAnalisis()` conmutan visibilidad y hacen lazy init del sub-módulo activo (`initAnalyticsPanel()`/`initInformes()`). Eliminados nav/tab/panel separados de Analytics e Informes; quitada de `auth.js#showTab` la rama `informes` y la visibilidad de `tab-informes`.
 - `2026-06-09` · **Multi-curso horarios_grupo** — `curso_escolar TEXT NOT NULL DEFAULT '2025-26'` + `info_centro.curso_activo`; global `cursoActivo` en `config.js`; auth.js carga `curso_activo` tras login (fire-and-forget); 7 queries `chat.js` + 4 `admin.js` filtran por `curso_escolar`; Planner Publicar: selector 2025-26/2026-27, aviso si es el curso activo, DELETE filtra por `centro_id+curso_escolar+grupo_horario`. Migración `horarios_curso_escolar.sql` PENDIENTE ejecutar manualmente.
 - `2026-06-09` · **Planner: HC-MATERIA-DIA en H-MRV-SA** — `TimetableSolver` añade `subjectDayOccupancy` y `maxPerDay=ceil(h/5)` en constructor; `getValidSlots` las comprueba; `assignBlock`/`removeBlock` las mantienen sincronizadas. Aplica en fase greedy (MRV) y SA (SWAP+RELOCATE) en los 3 Workers.
 - `2026-06-09` · **Planner fix: slots sin profesor_id** — `plannerElegirVariante` construía slots sin `profesor_id`, `materia_id`, `codocente_prof_ids` → `_slotSinProfesor()` = true → "⚠ Sin asignar" en todas las celdas. Fix: extraer `tIds=item.teacherIds`, poblar los tres campos + `sin_asignar`.
