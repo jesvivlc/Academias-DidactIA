@@ -126,6 +126,7 @@
   <div class="tab" id="tab-materiales"        onclick="showTab('materiales')"     style="display:none">📎 Materiales</div>
   <div class="tab" id="tab-orientacion"       onclick="showTab('orientacion')"    style="display:none">🧭 Orientación</div>
   <div class="tab" id="tab-salidas"           onclick="showTab('salidas')"        style="display:none">🚌 Salidas</div>
+  <div class="tab" id="tab-calidad"           onclick="showTab('calidad')"         style="display:none">⭐ Calidad</div>
 </nav>
 
 <!-- APP SHELL -->
@@ -242,6 +243,9 @@
         <div class="sb-group-label">Administración</div>
         <button class="nav-item" id="nav-analisis" data-tab="analisis" onclick="showTab('analisis')" style="display:none;--nav-color:#283593">
           <i class="ti ti-chart-histogram"></i><span class="nav-item-label">Análisis</span>
+        </button>
+        <button class="nav-item" id="nav-calidad" data-tab="calidad" onclick="showTab('calidad')" style="display:none;--nav-color:#7b5e2a">
+          <i class="ti ti-award"></i><span class="nav-item-label">Calidad</span>
         </button>
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
           <i class="ti ti-users"></i><span class="nav-item-label">Usuarios</span>
@@ -909,6 +913,13 @@
   <!-- SALIDAS DIDÁCTICAS PANEL — content rendered dynamically by js/salidas.js -->
   <div class="panel" id="panel-salidas" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);"></div><!-- /panel-salidas -->
 
+  <!-- CALIDAD PANEL -->
+  <div class="panel" id="panel-calidad" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
+    <div id="cal-container">
+      <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
+    </div>
+  </div>
+
   <!-- (panel-informes fusionado dentro de panel-analisis → pestaña "Informes PDF") -->
 
   <!-- USERS PANEL -->
@@ -1206,6 +1217,7 @@
 <script src="js/informes.js"></script>
 <script src="js/orientacion.js"></script>
 <script src="js/salidas.js"></script>
+<script src="js/calidad.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1225,7 +1237,7 @@
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
-    analisis:'Análisis', orientacion:'Orientación'
+    analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad'
   };
   var MAS_CFG = {
     ib:        { icon:'ti-school',          label:'IB' },
@@ -1236,6 +1248,7 @@
     admin:     { icon:'ti-settings',        label:'Administración' },
     planner:      { icon:'ti-calendar-event',  label:'Planner' },
     analisis:     { icon:'ti-chart-histogram', label:'Análisis' },
+    calidad:      { icon:'ti-award',           label:'Calidad' },
     comunicados:  { icon:'ti-speakerphone',    label:'Comunicados' }
   };
   /* IDs: tab → nav-item sidebar, nav-item bottom-nav */
@@ -1255,7 +1268,8 @@
     'tab-calificaciones': { nav:'nav-calificaciones', bn:null },
     'tab-materiales':      { nav:'nav-materiales',     bn:null },
     'tab-orientacion':     { nav:'nav-orientacion',    bn:null },
-    'tab-salidas':         { nav:'nav-salidas',        bn:null }
+    'tab-salidas':         { nav:'nav-salidas',        bn:null },
+    'tab-calidad':         { nav:'nav-calidad',        bn:null }
   };
   var BADGE_MAP = {
     'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
@@ -1350,6 +1364,7 @@
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
         if (t === 'orientacion' && typeof initOrientacion === 'function') initOrientacion();
+        if (t === 'calidad'     && typeof initCalidad      === 'function') initCalidad();
       };
     }
   }
@@ -1604,6 +1619,12 @@
     if (no) no.style.display = _verOri ? 'flex' : 'none';
     var to = document.getElementById('tab-orientacion');
     if (to) to.style.display = _verOri ? '' : 'none';
+    /* Calidad — jefatura/director/admin/admin_institucional/superadmin */
+    var _verCal = ['jefatura','director','admin','admin_institucional','superadmin'].indexOf(r) !== -1;
+    var ncal = document.getElementById('nav-calidad');
+    if (ncal) ncal.style.display = _verCal ? 'flex' : 'none';
+    var tcal = document.getElementById('tab-calidad');
+    if (tcal) tcal.style.display = _verCal ? '' : 'none';
 
     if (!_bentoObserversSetup) {
       _bentoObserversSetup = true;
