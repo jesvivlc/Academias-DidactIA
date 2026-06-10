@@ -130,6 +130,9 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
 | `cas_actividades` | centro_id, alumno_id, titulo, tipo, descripcion, reflexion, fecha_inicio, horas, estado, created_at | Actividades CAS del Diploma IB; tipo: creatividad/actividad/servicio; estado: en_curso/completada. Creada en `sql/demo-center.sql` |
 | `extended_essay` | centro_id, alumno_id, titulo, asignatura, supervisor_nombre, estado, fecha_entrega_limite, palabras_actuales, created_at | Extended Essay del Diploma IB; estado: en_proceso/primer_borrador/borrador_final/entregado. Creada en `sql/demo-center.sql` |
+| `salidas_didacticas` | centro_id, titulo, descripcion, fecha_salida, hora_salida, hora_regreso, curso_grupos (jsonb), coste, responsable_id, estado, datos_autobus (jsonb), created_at | Estado: borrador/publicada/cerrada/cancelada. `datos_autobus`: {empresa,matricula,telefono,plazas,notas} |
+| `participantes_salida` | centro_id, salida_id, alumno_id, autorizado, pagado, necesita_picnic, alergias_confirmadas, fecha_autorizacion, created_at | UNIQUE(salida_id,alumno_id). Generados en batch al crear la salida desde los grupos seleccionados |
+| `notificaciones_salida` | centro_id, salida_id, tipo, enviada, fecha_envio, created_at | tipo: recordatorio/cierre/llegada/cocina |
 
 ---
 
@@ -457,6 +460,20 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Edge Function `alerta-psicosocial`**: recibe `{centro_id}`, analiza últimos 30 días de datos de tres tablas, devuelve array de alertas con `nivel` (verde/amarillo/rojo), `mensaje` y `accion_sugerida`. Requiere tabla `alertas_predictivas` (pendiente ejecutar `sql/alertas-predictivas.sql`)
 - **Tabla `alertas_predictivas`**: `centro_id, tipo, nivel, mensaje, datos_json, leida, created_at` — **pendiente ejecutar SQL en Supabase**
 
+### Salidas Didácticas (salidas.js)
+- Tab **"🚌 Salidas"** visible para todos los roles; `#panel-salidas` renderizado completamente dinámico (sin HTML estático)
+- **Vista lista** (`initSalidasPanel`): genera el shell HTML + tabla + modal en el panel; filtros por estado/mes/grupo; familia solo ve salidas `publicada`
+- **Vista detalle** (`salidasAbrirDetalle(id)`): reemplaza el panel completo; "← Volver" llama `initSalidasPanel()`
+  - **Header**: título, fecha+hora, grupos (chips), responsable, coste, badge de estado, botón cambiar estado, botón Excel
+  - **Tab Dashboard**: 5 contadores (total/autorizados/pagados/picnic/alergias) con barras de progreso; tabla interactiva con checkboxes `autorizado`/`pagado`/`necesita_picnic` (admin/profesional); botón "✨ Generar circular para familias" (Gemini vía EF `chat`)
+  - **Tab Cocina**: banner RGPD; resumen agregado sin nombres; tabla alergenos por keyword (15 alergenos + catch-all); tabla de dietas (nombres permitidos para cocina); PDF jsPDF; registra en `notificaciones_salida` tipo='cocina'
+  - **Tab Autobús**: formulario editable (empresa/matrícula/teléfono/plazas/notas) → UPDATE `datos_autobus` jsonb; lista de embarque con checkboxes → localStorage key `checkin-{salidaId}`; alerta si alumno no autorizado
+  - **Tab Administración**: resumen económico (esperado/cobrado/pendiente); lista pagos pendientes con "Marcar pagado" individual y bulk; cambio de estado (publicar/cerrar/cancelar); al publicar → push a familias de los alumnos participantes vía EF `send-push`; log de `notificaciones_salida`
+  - **Vista familia** (role='familia'): reemplaza tabs con vista de autorización por hijo; consulta `familia_alumno` para filtrar participantes; formulario: autorizado, picnic, alergias_confirmadas; al guardar → push al responsable vía EF `send-push`
+- **Excel 3 hojas** (`_salExportarDetalle`): Participantes (7 cols) · Cocina (resumen + tabla dietas) · Económico (KPIs + detalle por alumno)
+- **Tablas**: `salidas_didacticas`, `participantes_salida`, `notificaciones_salida` (ver `supabase/migrations/salidas_didacticas.sql`, ejecutado en producción)
+- **`_salidasAlumnosPorGrupo`**: cache grupo→[alumno_ids] construida en `_salidasCargarGrupos()`, usada en `salGuardar()` para insertar batch de participantes sin query extra
+
 ---
 
 ## Estado del proyecto (2026-05-29)
@@ -545,6 +562,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 <script src="js/calificaciones.js"></script>
 <script src="js/materiales.js"></script>
 <script src="js/informes.js"></script>
+<script src="js/salidas.js"></script>
 ```
 
 ---
@@ -815,6 +833,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Landing actualizada: planes Operativa €249/mes · Internacional €399/mes, 8 módulos (+RRHH, Incidencias, Comunicados), FUNDAE €2.988–4.788 bonificable, © 2026
 - [x] Registro con código de centro opcional (`codigo_acceso`): si el campo queda vacío el usuario se registra sin centro asignado; `codigo_acceso` añadido al bucle de matching en `doRegisterStep1`
 - [x] Chatbot agente ejecutor — nuevas herramientas de tramos: `crear_tramos_centro` y `listar_tramos_centro` implementadas en EF `chat` y desplegadas a producción
+- [x] Módulo Salidas Didácticas: lista, detalle 4 tabs (Dashboard/Cocina/Autobús/Administración), vista familia con autorización por hijo, push notifications, Excel 3 hojas, circular IA
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
@@ -997,6 +1016,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-10 20:02` · `d19a492` — feat: salidas didácticas — detalle completo, cocina, autobús, administración y familias
 - `2026-06-10` — feat(login): **logo y color del centro en la pantalla de login** (antes de autenticar). `themeLoginScreen()` (en `js/auth.js`, llamada desde el boot de `js/config.js` tras crear el cliente) detecta el centro por la URL —`?centro=<uuid>` (por `id`) o `?centro=`/`?c=`/`?codigo=` con un código de acceso (cruza `codigo_familia`/`codigo_profesional`/`codigo_acceso`)— y aplica `applyTheme(color_primario, logo_url)` (que ya tematiza `#brand-logo` del login). Fallback: sin pista en URL → última marca usada en este navegador (`localStorage didactia_brand`, persistida por `_cacheBrand` tras login); sin nada → marca DidactIA por defecto. Todo en `try/catch` → nunca lanza error. No toca la lógica de autenticación.
 - `2026-06-10` — feat(analisis): **fusión Analytics CMI + Informes en un módulo único "📊 Análisis"** (`app.html` + `js/auth.js`; `analytics.js`/`informes.js` intactos). Un único nav item (grupo Administración, visible admin/director/jefatura/superadmin) y `#panel-analisis` con dos pills internas: **Dashboard** (contenedor `#analytics-container`) e **Informes PDF** (`#inf-container`). `analisisTab()`/`initAnalisis()` conmutan visibilidad y hacen lazy init del sub-módulo activo (`initAnalyticsPanel()`/`initInformes()`). Eliminados nav/tab/panel separados de Analytics e Informes; quitada de `auth.js#showTab` la rama `informes` y la visibilidad de `tab-informes`.
 - `2026-06-09` · **Multi-curso horarios_grupo** — `curso_escolar TEXT NOT NULL DEFAULT '2025-26'` + `info_centro.curso_activo`; global `cursoActivo` en `config.js`; auth.js carga `curso_activo` tras login (fire-and-forget); 7 queries `chat.js` + 4 `admin.js` filtran por `curso_escolar`; Planner Publicar: selector 2025-26/2026-27, aviso si es el curso activo, DELETE filtra por `centro_id+curso_escolar+grupo_horario`. Migración `horarios_curso_escolar.sql` PENDIENTE ejecutar manualmente.
