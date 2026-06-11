@@ -22,7 +22,10 @@ const SYSTEM_PROMPT =
   "Eres el agente de sustituciones de DidactIA. Tu tarea es encontrar profesores " +
   "disponibles para cubrir guardias. Cuando te den fecha y tramo, usa la herramienta " +
   "buscar_profesores_libres para obtener los profesores libres y presenta el resultado " +
-  "de forma clara.";
+  "de forma clara. " +
+  "El centro_id ya está disponible en cada llamada a la herramienta — nunca lo pidas al " +
+  "usuario. Tienes toda la información necesaria para ejecutar buscar_profesores_libres " +
+  "directamente.";
 
 const TOOL_DECLARATIONS = [
   {
@@ -193,8 +196,8 @@ serve(async (req) => {
         role: "user",
         parts: [{
           text:
-            `Encuentra los profesores libres para cubrir una guardia el ${fecha} ` +
-            `en el tramo ${tramoStr}.`,
+            `Busca los profesores libres para el centro ${centro_id}, fecha ${fecha}, ` +
+            `tramo ${tramoStr}. Ejecuta la herramienta directamente con estos datos.`,
         }],
       },
     ];
