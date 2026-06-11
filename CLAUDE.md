@@ -918,7 +918,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
 - [ ] Estadísticas avanzadas cross-centro para superadmin
 - [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
-- [ ] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real del secret VAPID_PUBLIC_KEY de Supabase (`npx supabase secrets list --project-ref rflfsbrdmgaidhvbuvwb`)
+- [x] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real ✅ (par regenerado 2026-06-11, secrets actualizados vía Management API, EF `send-push` redesplegada)
 - [ ] Bug menor `send-push`: el delete por 410/404 borra todas las filas del `user_id` en lugar de solo el endpoint fallido — si un usuario tiene varios dispositivos puede perder suscripciones válidas
 
 ---
@@ -1076,6 +1076,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-11 23:36` · `1e1302b` — docs: agent-sustituciones + push familias documentados en roadmap
 - `2026-06-11` — feat(push-familias): **suscripción a notificaciones push para familias** (`js/familias.js`, `js/auth.js`, `js/config.js`). `initPushFamilias()` llamada tras login de rol familia: comprueba soporte Push API, consulta si ya suscrito, muestra banner `#push-banner-familia` con botón Activar y ✕ persistente (localStorage). `_pushActivar()`: SW ready → `pushManager.subscribe` con VAPID → INSERT en `push_subscriptions` fire-and-forget → toast confirmación. `VAPID_PUBLIC_KEY` en `config.js` (TODO pendiente de sustituir con valor real). SW ya tenía handler push completo — sin cambios.
 - `2026-06-11` — feat(agent-sustituciones): **primer agente IA autónomo** (`supabase/functions/agent-sustituciones/index.ts`). Edge Function con Gemini function calling y 3 herramientas encadenadas: `obtener_ausencias_sin_cubrir` (sustituciones sin cubrir hoy), `buscar_profesores_libres` (cruza `horarios_grupo` con profesores del centro), `sugerir_sustituto` (ordena por equidad trimestral). El agente solo actúa cuando hay ausencias reales — si no hay, responde "No hay ausencias sin cubrir hoy." Integrado en la home del rol admin/director/jefatura como bloque "🤖 Resumen de guardias" (fire-and-forget, no bloquea carga). P0 seguridad `disponibilidad_profesor` cerrado (aislamiento garantizado por RLS + filtro cliente, no requería cambio).
 - `2026-06-11 10:27` · `d969c51` — Merge branch 'main' of https://github.com/jesvivlc/DidactIA

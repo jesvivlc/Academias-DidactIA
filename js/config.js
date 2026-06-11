@@ -4,8 +4,7 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const API = `${SB_URL}/functions/v1/chat`;
 const ANON_KEY = SB_KEY;
 // Clave pública VAPID para notificaciones push (es pública por diseño).
-// TODO:VAPID_PUBLIC_KEY — sustituir por el valor real del secret VAPID_PUBLIC_KEY de Supabase.
-const VAPID_PUBLIC_KEY = "TODO:VAPID_PUBLIC_KEY";
+const VAPID_PUBLIC_KEY = "BDwHDk1Kgkwg1F67IesUksYQhVJ6Zq5-nA6ZGruhfT3egNStIGj-TkbP8Zk-J4csMqf0kC09hi3cXYKWdhTie4c";
 
 let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
 let currentUser = null, currentUserName = "", currentUserAlumnos = [], modulosActivos = [];
