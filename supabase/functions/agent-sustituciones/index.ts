@@ -58,16 +58,22 @@ function jsonRes(data: unknown, status = 200) {
 
 /* Normaliza nombres para comparar (sin tildes, minúsculas, palabras ordenadas,
    sin comas) → "Cerro, Sara" ≡ "Sara Cerro". */
-function normNombre(n: string): string {
-  return String(n ?? "")
+function normalizarNombre(nombre: string): string {
+  return String(nombre ?? "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/,/g, " ")
-    .split(/\s+/)
-    .filter(Boolean)
-    .sort()
-    .join(" ");
+    .replace(/[̀-ͯ]/g, "") // tildes: á→a é→e í→i ó→o ú→u ü→u ñ→n
+    .replace(/[.,]/g, " ")           // comas y puntos
+    .split(/\s+/)                    // colapsa espacios múltiples
+    .filter((w) => w.length > 1)     // elimina palabras de 1 letra
+    .sort((a, b) => a.localeCompare(b)) // ordena alfabéticamente
+    .join(" ")
+    .trim();
+}
+
+// Placeholders del importador de cargas ("PENDIENTE-1ESOA-Mates"): no son profesores reales.
+function esPlaceholder(nombre: string): boolean {
+  return /^pendiente/i.test(String(nombre ?? "").trim());
 }
 
 async function callGemini(
@@ -115,22 +121,29 @@ async function buscarProfesoresLibres(
     return `El ${fecha} es ${dia}: no hay actividad lectiva, no aplica buscar guardias.`;
   }
 
-  // Universo: todos los profesores del centro
+  // Universo: profesores del centro, deduplicados por nombre normalizado.
+  // Map<normalizado, display>: el primer nombre encontrado gana como display.
   const { data: profes, error: pErr } = await sb
     .from("profesores")
     .select("nombre")
     .eq("centro_id", centro_id);
   if (pErr) throw new Error(`Error al leer profesores: ${pErr.message}`);
 
-  const universo = [
-    ...new Set((profes ?? []).map((p: { nombre: string }) => p.nombre).filter(Boolean)),
-  ] as string[];
+  const universo = new Map<string, string>();
+  for (const p of (profes ?? []) as { nombre: string }[]) {
+    const nombre = (p.nombre ?? "").trim();
+    if (!nombre || esPlaceholder(nombre)) continue;
+    const key = normalizarNombre(nombre);
+    if (!key) continue;
+    if (!universo.has(key)) universo.set(key, nombre);
+  }
 
-  if (!universo.length) {
+  if (!universo.size) {
     return "No hay profesores registrados en este centro.";
   }
 
-  // Ocupados: profesores con clase ese día y tramo (tramo se guarda como texto)
+  // Ocupados: profesores con clase ese día y tramo (tramo se guarda como texto).
+  // Se normaliza para cotejar formatos distintos ("CERRO, SARA" ≡ "Sara Cerro").
   const { data: ocupadosRows, error: oErr } = await sb
     .from("horarios_grupo")
     .select("profesor_nombre")
@@ -140,14 +153,18 @@ async function buscarProfesoresLibres(
     .not("profesor_nombre", "is", null);
   if (oErr) throw new Error(`Error al leer horarios: ${oErr.message}`);
 
-  const ocupadosNorm = new Set(
-    (ocupadosRows ?? [])
-      .map((r: { profesor_nombre: string }) => normNombre(r.profesor_nombre))
-      .filter(Boolean),
-  );
+  const ocupadosNorm = new Set<string>();
+  for (const r of (ocupadosRows ?? []) as { profesor_nombre: string }[]) {
+    const pn = (r.profesor_nombre ?? "").trim();
+    if (!pn || esPlaceholder(pn)) continue;
+    const key = normalizarNombre(pn);
+    if (key) ocupadosNorm.add(key);
+  }
 
-  const libres = universo
-    .filter((nombre) => !ocupadosNorm.has(normNombre(nombre)))
+  // Libres = universo − ocupados → nombres display únicos, ordenados alfabéticamente.
+  const libres = [...universo.entries()]
+    .filter(([key]) => !ocupadosNorm.has(key))
+    .map(([, display]) => display)
     .sort((a, b) => a.localeCompare(b, "es"));
 
   if (!libres.length) {
@@ -155,7 +172,7 @@ async function buscarProfesoresLibres(
   }
   return (
     `Profesores libres el ${fecha} (${dia}, tramo ${tramo}) — ${libres.length} de ` +
-    `${universo.length}: ${libres.join(", ")}.`
+    `${universo.size}: ${libres.join(", ")}.`
   );
 }
 
