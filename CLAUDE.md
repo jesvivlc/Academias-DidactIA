@@ -1074,6 +1074,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-11 10:27` · `d969c51` — Merge branch 'main' of https://github.com/jesvivlc/DidactIA
 - `2026-06-11 00:54` · `81de9b4` — docs(CLAUDE.md): sesión 2026-06-11 — Calidad NCs+CAPA+Feedback, roles orientador/admin_institucional, tablas calidad
 - `2026-06-11` · **Módulo Calidad — No Conformidades + CAPA + Feedback Familias** (`763bb5e`): implementación completa de las dos secciones principales de `js/calidad.js`. Bug crítico previo: `getElementById('cal-container')` devolvía el contenedor de Calificaciones (ID duplicado) → spinner infinito. Fix: renombrar a `calidad-cont` (`af8ac5e`). Secciones implementadas:
   - **No Conformidades**: lista paginada con filtros (estado/prioridad/categoría), NC ID `NC-{año}-{6HEX}`, ordenado por prioridad+fecha; modal con dictación por voz (`SpeechRecognition` + `try/catch` completo) + análisis IA en `onblur` que actualiza selectores automáticamente; detalle con cambio de estado inline + análisis 5 Porqués con Gemini; CAPA inline (modal causa/plan/responsable/fechas, eficacia, cierre automático cuando todas eficaces)
