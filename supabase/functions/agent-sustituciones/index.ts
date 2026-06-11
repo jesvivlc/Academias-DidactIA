@@ -19,13 +19,11 @@ const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 const SYSTEM_PROMPT =
-  "Eres el agente de sustituciones de DidactIA. Tu tarea es encontrar profesores " +
-  "disponibles para cubrir guardias. Cuando te den fecha y tramo, usa la herramienta " +
-  "buscar_profesores_libres para obtener los profesores libres y presenta el resultado " +
-  "de forma clara. " +
-  "El centro_id ya está disponible en cada llamada a la herramienta — nunca lo pidas al " +
-  "usuario. Tienes toda la información necesaria para ejecutar buscar_profesores_libres " +
-  "directamente.";
+  "Eres el agente de sustituciones de DidactIA. Para encontrar el mejor sustituto: " +
+  "primero usa buscar_profesores_libres para obtener quién está libre, luego usa " +
+  "sugerir_sustituto con esa lista para ordenar por equidad. Presenta el resultado final " +
+  "como una lista corta con el número de guardias de cada uno. Nunca pidas datos al " +
+  "usuario — tienes toda la información necesaria.";
 
 const TOOL_DECLARATIONS = [
   {
@@ -41,6 +39,27 @@ const TOOL_DECLARATIONS = [
         centro_id: { type: "STRING", description: "ID del centro (UUID)" },
       },
       required: ["fecha", "tramo", "centro_id"],
+    },
+  },
+  {
+    name: "sugerir_sustituto",
+    description:
+      "A partir de una lista de profesores libres, los ordena por equidad (menos guardias " +
+      "hechas en el trimestre actual primero) y devuelve los 5 mejores candidatos con su " +
+      "número de guardias. Úsala DESPUÉS de buscar_profesores_libres, pasándole la lista obtenida.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        fecha: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
+        tramo: { type: "STRING", description: "Número de tramo horario (ej: '1', '2', '3')" },
+        centro_id: { type: "STRING", description: "ID del centro (UUID)" },
+        profesores_libres: {
+          type: "ARRAY",
+          items: { type: "STRING" },
+          description: "Lista de nombres de profesores libres devuelta por buscar_profesores_libres.",
+        },
+      },
+      required: ["fecha", "tramo", "centro_id", "profesores_libres"],
     },
   },
 ];
@@ -97,32 +116,32 @@ async function callGemini(
   });
 }
 
-/* ── Herramienta: buscar_profesores_libres ──
-   Universo = profesores del centro. Ocupados = profesores con clase en
-   horarios_grupo ese día+tramo. Libres = universo − ocupados.
-   Filtra SIEMPRE por centro_id (el de confianza, recibido en el body, nunca
-   el que pudiera inventar el modelo). */
-async function buscarProfesoresLibres(
-  sb: SB,
-  fecha: string,
-  tramo: string,
-  centro_id: string,
-): Promise<string> {
+function validarFechaTramo(fecha: string, tramo: string, centro_id: string) {
   if (!centro_id) throw new Error("Falta centro_id.");
   if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     throw new Error("Fecha inválida; usa el formato YYYY-MM-DD.");
   }
   if (tramo == null || String(tramo).trim() === "") throw new Error("Falta el tramo.");
+}
 
+/* Núcleo reutilizable: calcula los profesores libres del centro en fecha+tramo.
+   Universo = profesores del centro (deduplicados por nombre normalizado, sin
+   placeholders PENDIENTE). Ocupados = profesores con clase en horarios_grupo ese
+   día+tramo. Libres = universo − ocupados. Filtra SIEMPRE por centro_id. */
+async function _calcularLibres(
+  sb: SB,
+  fecha: string,
+  tramo: string,
+  centro_id: string,
+): Promise<{ dia: string; finde: boolean; universoSize: number; libres: string[] }> {
   const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   const diaIdx = new Date(fecha + "T12:00:00Z").getUTCDay();
   const dia = DIAS[diaIdx];
   if (diaIdx === 0 || diaIdx === 6) {
-    return `El ${fecha} es ${dia}: no hay actividad lectiva, no aplica buscar guardias.`;
+    return { dia, finde: true, universoSize: 0, libres: [] };
   }
 
-  // Universo: profesores del centro, deduplicados por nombre normalizado.
-  // Map<normalizado, display>: el primer nombre encontrado gana como display.
+  // Universo: Map<normalizado, display> — el primer nombre encontrado gana como display.
   const { data: profes, error: pErr } = await sb
     .from("profesores")
     .select("nombre")
@@ -138,12 +157,7 @@ async function buscarProfesoresLibres(
     if (!universo.has(key)) universo.set(key, nombre);
   }
 
-  if (!universo.size) {
-    return "No hay profesores registrados en este centro.";
-  }
-
   // Ocupados: profesores con clase ese día y tramo (tramo se guarda como texto).
-  // Se normaliza para cotejar formatos distintos ("CERRO, SARA" ≡ "Sara Cerro").
   const { data: ocupadosRows, error: oErr } = await sb
     .from("horarios_grupo")
     .select("profesor_nombre")
@@ -161,19 +175,122 @@ async function buscarProfesoresLibres(
     if (key) ocupadosNorm.add(key);
   }
 
-  // Libres = universo − ocupados → nombres display únicos, ordenados alfabéticamente.
   const libres = [...universo.entries()]
     .filter(([key]) => !ocupadosNorm.has(key))
     .map(([, display]) => display)
     .sort((a, b) => a.localeCompare(b, "es"));
 
-  if (!libres.length) {
-    return `No hay profesores libres el ${fecha} (${dia}) en el tramo ${tramo}.`;
-  }
+  return { dia, finde: false, universoSize: universo.size, libres };
+}
+
+/* ── Herramienta 1: buscar_profesores_libres ── */
+async function buscarProfesoresLibres(
+  sb: SB,
+  fecha: string,
+  tramo: string,
+  centro_id: string,
+): Promise<string> {
+  validarFechaTramo(fecha, tramo, centro_id);
+  const { dia, finde, universoSize, libres } = await _calcularLibres(sb, fecha, tramo, centro_id);
+  if (finde) return `El ${fecha} es ${dia}: no hay actividad lectiva, no aplica buscar guardias.`;
+  if (!universoSize) return "No hay profesores registrados en este centro.";
+  if (!libres.length) return `No hay profesores libres el ${fecha} (${dia}) en el tramo ${tramo}.`;
   return (
     `Profesores libres el ${fecha} (${dia}, tramo ${tramo}) — ${libres.length} de ` +
-    `${universo.size}: ${libres.join(", ")}.`
+    `${universoSize}: ${libres.join(", ")}.`
   );
+}
+
+/* Trimestre actual (cálculo por mes, según la fecha de la guardia). */
+function trimestreDeFecha(fecha: string): { trimestre: string; from: string; to: string } {
+  const d = new Date(fecha + "T12:00:00Z");
+  const mes = d.getUTCMonth() + 1;
+  const y = d.getUTCFullYear();
+  if (mes <= 3) return { trimestre: "1T", from: `${y}-01-01`, to: `${y}-03-31` };
+  if (mes <= 5) return { trimestre: "2T", from: `${y}-04-01`, to: `${y}-05-31` };
+  if (mes <= 8) return { trimestre: "verano", from: `${y}-06-01`, to: `${y}-08-31` };
+  return { trimestre: "3T", from: `${y}-09-01`, to: `${y}-12-31` };
+}
+
+/* ── Herramienta 2: sugerir_sustituto ──
+   Ordena los profesores libres por equidad (menos guardias hechas en el trimestre
+   actual primero) y devuelve los 5 mejores con su conteo. */
+async function sugerirSustituto(
+  sb: SB,
+  fecha: string,
+  tramo: string,
+  centro_id: string,
+  profesoresLibres: unknown,
+): Promise<string> {
+  validarFechaTramo(fecha, tramo, centro_id);
+
+  // Lista de libres: la que pasa el modelo, o recalculada como fallback robusto.
+  let libres: string[] = Array.isArray(profesoresLibres)
+    ? (profesoresLibres as unknown[])
+        .map((x) => String(x ?? "").trim())
+        .filter((s) => s && !esPlaceholder(s))
+    : [];
+  if (!libres.length) {
+    const r = await _calcularLibres(sb, fecha, tramo, centro_id);
+    if (r.finde) return `El ${fecha} es ${r.dia}: no hay actividad lectiva, no aplica sugerir sustituto.`;
+    libres = r.libres;
+  }
+  if (!libres.length) return "No hay profesores libres para sugerir como sustituto.";
+
+  // Conteo de guardias del trimestre actual por profesor sustituto.
+  const { trimestre, from, to } = trimestreDeFecha(fecha);
+  const { data: subs, error: sErr } = await sb
+    .from("sustituciones")
+    .select("profesor_sustituto")
+    .eq("centro_id", centro_id)
+    .gte("fecha", from)
+    .lte("fecha", to)
+    .not("profesor_sustituto", "is", null);
+  if (sErr) throw new Error(`Error al leer sustituciones: ${sErr.message}`);
+
+  const conteoNorm = new Map<string, number>();
+  for (const s of (subs ?? []) as { profesor_sustituto: string }[]) {
+    const n = (s.profesor_sustituto ?? "").trim();
+    if (!n) continue;
+    const key = normalizarNombre(n);
+    if (!key) continue;
+    conteoNorm.set(key, (conteoNorm.get(key) ?? 0) + 1);
+  }
+
+  // Cruza: cada libre con sus guardias (0 si no aparece). Orden ASC, top 5.
+  const ranking = libres
+    .map((nombre) => ({ nombre, guardias: conteoNorm.get(normalizarNombre(nombre)) ?? 0 }))
+    .sort((a, b) => a.guardias - b.guardias || a.nombre.localeCompare(b.nombre, "es"))
+    .slice(0, 5);
+
+  const detalle = ranking
+    .map((r) => `${r.nombre} (${r.guardias} guardia${r.guardias === 1 ? "" : "s"})`)
+    .join(", ");
+  return (
+    `Sustitutos sugeridos por equidad (trimestre ${trimestre}, menos guardias primero): ` +
+    `${detalle}.`
+  );
+}
+
+/* Dispatcher: ejecuta la herramienta pedida por Gemini SIEMPRE con el centro_id
+   de confianza del body (nunca el que sugiera el modelo). */
+async function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+  sb: SB,
+  centro_id: string,
+  fecha: string,
+  tramo: string,
+): Promise<string> {
+  const f = (args.fecha as string) ?? fecha;
+  const t = (args.tramo != null ? String(args.tramo) : tramo);
+  if (name === "buscar_profesores_libres") {
+    return await buscarProfesoresLibres(sb, f, t, centro_id);
+  }
+  if (name === "sugerir_sustituto") {
+    return await sugerirSustituto(sb, f, t, centro_id, args.profesores_libres);
+  }
+  throw new Error(`Herramienta desconocida: ${name}`);
 }
 
 /* ── Main handler ── */
@@ -207,68 +324,59 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    // Mensaje inicial: Gemini decide llamar a la herramienta.
-    const contents: unknown[] = [
+    // Mensaje inicial: Gemini decide la secuencia de herramientas.
+    let convo: unknown[] = [
       {
         role: "user",
         parts: [{
           text:
-            `Busca los profesores libres para el centro ${centro_id}, fecha ${fecha}, ` +
-            `tramo ${tramoStr}. Ejecuta la herramienta directamente con estos datos.`,
+            `Encuentra el mejor sustituto para el centro ${centro_id}, fecha ${fecha}, ` +
+            `tramo ${tramoStr}. Usa buscar_profesores_libres y luego sugerir_sustituto. ` +
+            `Ejecuta las herramientas directamente con estos datos.`,
         }],
       },
     ];
 
-    const geminiRes = await callGemini(apiKey, contents, true, SYSTEM_PROMPT);
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      throw new Error(`Gemini ${geminiRes.status}: ${errText.slice(0, 300)}`);
-    }
-    const geminiData = await geminiRes.json();
-    if (!geminiData.candidates?.[0]) {
-      throw new Error("Sin candidatos en la respuesta de Gemini.");
-    }
+    // Bucle de tool-calling: itera mientras Gemini llame a herramientas (con las
+    // tools activas para permitir la secuencia de dos pasos). Tope de seguridad.
+    const MAX_PASOS = 6;
+    for (let i = 0; i < MAX_PASOS; i++) {
+      const res = await callGemini(apiKey, convo, true, SYSTEM_PROMPT);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Gemini ${res.status}: ${errText.slice(0, 300)}`);
+      }
+      const data = await res.json();
+      const cand = data.candidates?.[0];
+      if (!cand) throw new Error("Sin candidatos en la respuesta de Gemini.");
 
-    const parts: Record<string, unknown>[] =
-      geminiData.candidates[0].content?.parts ?? [];
-    const toolCallPart = parts.find((p) => p.functionCall);
+      const parts: Record<string, unknown>[] = cand.content?.parts ?? [];
+      const toolCallPart = parts.find((p) => p.functionCall);
 
-    if (toolCallPart) {
-      const { name, args } = toolCallPart.functionCall as {
-        name: string;
-        args: Record<string, string>;
-      };
-
-      if (name !== "buscar_profesores_libres") {
-        throw new Error(`Herramienta desconocida: ${name}`);
+      if (!toolCallPart) {
+        // Respuesta final en texto.
+        const content =
+          (parts.find((p) => p.text)?.text as string) ??
+          "No pude determinar una sugerencia.";
+        return jsonRes({ type: "text", content });
       }
 
-      // centro_id de confianza = el del body, nunca el que sugiera el modelo.
-      const toolResult = await buscarProfesoresLibres(
-        sb,
-        args.fecha ?? fecha,
-        args.tramo ?? tramoStr,
-        centro_id,
-      );
+      const { name, args } = toolCallPart.functionCall as {
+        name: string;
+        args: Record<string, unknown>;
+      };
 
-      // Segunda llamada (sin tools) para redactar la respuesta final.
-      const contentsWithResult = [
-        ...contents,
+      // centro_id de confianza = el del body, nunca el que sugiera el modelo.
+      const toolResult = await executeTool(name, args ?? {}, sb, centro_id, fecha, tramoStr);
+
+      convo = [
+        ...convo,
         { role: "model", parts: [{ functionCall: { name, args } }] },
         { role: "user", parts: [{ functionResponse: { name, response: { result: toolResult } } }] },
       ];
-      const geminiRes2 = await callGemini(apiKey, contentsWithResult, false, SYSTEM_PROMPT);
-      const geminiData2 = await geminiRes2.json();
-      const content =
-        geminiData2.candidates?.[0]?.content?.parts?.[0]?.text ?? toolResult;
-      return jsonRes({ type: "text", content });
     }
 
-    // Gemini respondió sin usar la herramienta.
-    const content =
-      (parts.find((p) => p.text)?.text as string) ??
-      "No pude determinar los profesores libres.";
-    return jsonRes({ type: "text", content });
+    return jsonRes({ type: "text", content: "No pude completar la consulta (demasiados pasos)." });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return jsonRes({ error: msg }, 500);
