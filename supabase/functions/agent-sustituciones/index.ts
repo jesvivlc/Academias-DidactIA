@@ -2,11 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   agent-sustituciones — primer agente autónomo de DidactIA.
-   Recibe { centro_id, fecha, tramo } + JWT del usuario (header Authorization).
-   Gemini 2.5 Flash con function calling decide cuándo llamar a la única
-   herramienta disponible: buscar_profesores_libres.
-   Mismo patrón de llamada a Gemini que supabase/functions/chat/index.ts.
+   agent-sustituciones — agente autónomo de sustituciones de DidactIA.
+   Recibe { centro_id, fecha } (+ tramo opcional, ya no se usa a nivel global)
+   + JWT del usuario (header Authorization). Gemini 2.5 Flash con function
+   calling. El agente SOLO actúa si hay ausencias sin cubrir.
+   Flujo: obtener_ausencias_sin_cubrir → (por cada una) buscar_profesores_libres
+   → sugerir_sustituto. Mismo patrón de Gemini que chat/index.ts.
    ────────────────────────────────────────────────────────────────────────── */
 
 const CORS = {
@@ -19,13 +20,30 @@ const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 const SYSTEM_PROMPT =
-  "Eres el agente de sustituciones de DidactIA. Para encontrar el mejor sustituto: " +
-  "primero usa buscar_profesores_libres para obtener quién está libre, luego usa " +
-  "sugerir_sustituto con esa lista para ordenar por equidad. Presenta el resultado final " +
-  "como una lista corta con el número de guardias de cada uno. Nunca pidas datos al " +
-  "usuario — tienes toda la información necesaria.";
+  "Eres el agente de sustituciones de DidactIA.\n" +
+  "Flujo obligatorio:\n" +
+  "1. Llama SIEMPRE primero a obtener_ausencias_sin_cubrir para ver si hay trabajo.\n" +
+  "2. Si no hay ausencias: responde 'No hay ausencias sin cubrir hoy.' y para.\n" +
+  "3. Si hay ausencias: para CADA ausencia llama a buscar_profesores_libres y luego a sugerir_sustituto.\n" +
+  "4. Presenta el resultado como: [Grupo] [Tramo] — Ausente: [nombre] → Sugeridos: [nombre (N guardias)], [nombre (N guardias)], [nombre (N guardias)]\n" +
+  "Nunca pidas datos al usuario. Tienes toda la información necesaria.";
 
 const TOOL_DECLARATIONS = [
+  {
+    name: "obtener_ausencias_sin_cubrir",
+    description:
+      "Devuelve las ausencias del centro en una fecha que todavía NO están cubiertas ni " +
+      "tienen sustituto asignado. Llámala SIEMPRE primero: si devuelve una lista vacía, no " +
+      "hay trabajo que hacer.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        fecha: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
+        centro_id: { type: "STRING", description: "ID del centro (UUID)" },
+      },
+      required: ["fecha", "centro_id"],
+    },
+  },
   {
     name: "buscar_profesores_libres",
     description:
@@ -45,7 +63,7 @@ const TOOL_DECLARATIONS = [
     name: "sugerir_sustituto",
     description:
       "A partir de una lista de profesores libres, los ordena por equidad (menos guardias " +
-      "hechas en el trimestre actual primero) y devuelve los 5 mejores candidatos con su " +
+      "hechas en el trimestre actual primero) y devuelve los 3 mejores candidatos con su " +
       "número de guardias. Úsala DESPUÉS de buscar_profesores_libres, pasándole la lista obtenida.",
     parameters: {
       type: "OBJECT",
@@ -75,24 +93,30 @@ function jsonRes(data: unknown, status = 200) {
   });
 }
 
-/* Normaliza nombres para comparar (sin tildes, minúsculas, palabras ordenadas,
-   sin comas) → "Cerro, Sara" ≡ "Sara Cerro". */
+/* Normaliza nombres para comparar y deduplicar:
+   minúsculas + sin tildes + sin comas/puntos + tokens ordenados alfabéticamente
+   (descarta tokens de 1 letra) → "Cerro, Sara" ≡ "Sara Cerro". */
 function normalizarNombre(nombre: string): string {
   return String(nombre ?? "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // tildes: á→a é→e í→i ó→o ú→u ü→u ñ→n
-    .replace(/[.,]/g, " ")           // comas y puntos
-    .split(/\s+/)                    // colapsa espacios múltiples
-    .filter((w) => w.length > 1)     // elimina palabras de 1 letra
-    .sort((a, b) => a.localeCompare(b)) // ordena alfabéticamente
+    .replace(/[.,]/g, " ") // comas y puntos
+    .split(/\s+/)
+    .filter((w) => w.length > 1)
+    .sort((a, b) => a.localeCompare(b))
     .join(" ")
     .trim();
 }
 
-// Placeholders del importador de cargas ("PENDIENTE-1ESOA-Mates"): no son profesores reales.
-function esPlaceholder(nombre: string): boolean {
-  return /^pendiente/i.test(String(nombre ?? "").trim());
+/* Nombre no válido como profesor real: placeholder del importador ("PENDIENTE-…")
+   o nombre con caracteres basura (? o /), típicos de filas mal importadas. */
+function nombreInvalido(nombre: string): boolean {
+  const n = String(nombre ?? "").trim();
+  if (!n) return true;
+  if (/^pendiente/i.test(n)) return true;
+  if (/[?/]/.test(n)) return true;
+  return false;
 }
 
 async function callGemini(
@@ -116,18 +140,60 @@ async function callGemini(
   });
 }
 
-function validarFechaTramo(fecha: string, tramo: string, centro_id: string) {
+function validarFecha(fecha: string, centro_id: string) {
   if (!centro_id) throw new Error("Falta centro_id.");
   if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     throw new Error("Fecha inválida; usa el formato YYYY-MM-DD.");
   }
+}
+function validarTramo(tramo: string) {
   if (tramo == null || String(tramo).trim() === "") throw new Error("Falta el tramo.");
 }
 
-/* Núcleo reutilizable: calcula los profesores libres del centro en fecha+tramo.
+/* ── Herramienta 1: obtener_ausencias_sin_cubrir ──
+   Ausencias del centro en la fecha que NO están cubiertas ni tienen sustituto.
+   Filtra SIEMPRE por centro_id (el de confianza del body). */
+async function obtenerAusenciasSinCubrir(
+  sb: SB,
+  fecha: string,
+  centro_id: string,
+): Promise<string> {
+  console.log("[agent-sustituciones] obtener_ausencias_sin_cubrir · centro_id:", centro_id, "· fecha:", fecha);
+  validarFecha(fecha, centro_id);
+
+  const { data, error } = await sb
+    .from("sustituciones")
+    .select("id, grupo_horario, tramo, profesor_ausente, observaciones, cubierta, profesor_sustituto")
+    .eq("centro_id", centro_id)
+    .eq("fecha", fecha);
+  if (error) throw new Error(`Error al leer sustituciones: ${error.message}`);
+
+  const sinCubrir = (data ?? []).filter((s: {
+    cubierta: boolean | null;
+    profesor_sustituto: string | null;
+  }) => {
+    const noCubierta = s.cubierta === false || s.cubierta == null;
+    const sinSustituto = s.profesor_sustituto == null || String(s.profesor_sustituto).trim() === "";
+    return noCubierta && sinSustituto;
+  }).map((s: {
+    id: string; grupo_horario: string | null; tramo: string | number | null;
+    profesor_ausente: string | null; observaciones: string | null;
+  }) => ({
+    id: s.id,
+    grupo_horario: s.grupo_horario ?? "",
+    tramo: s.tramo ?? "",
+    profesor_ausente: s.profesor_ausente ?? "",
+    observaciones: s.observaciones ?? "",
+  }));
+
+  if (!sinCubrir.length) return "No hay ausencias sin cubrir hoy.";
+  return JSON.stringify(sinCubrir);
+}
+
+/* Núcleo reutilizable: profesores libres del centro en fecha+tramo.
    Universo = profesores del centro (deduplicados por nombre normalizado, sin
-   placeholders PENDIENTE). Ocupados = profesores con clase en horarios_grupo ese
-   día+tramo. Libres = universo − ocupados. Filtra SIEMPRE por centro_id. */
+   placeholders ni nombres basura). Ocupados = profesores con clase en
+   horarios_grupo ese día+tramo. Libres = universo − ocupados. Filtra por centro_id. */
 async function _calcularLibres(
   sb: SB,
   fecha: string,
@@ -151,7 +217,7 @@ async function _calcularLibres(
   const universo = new Map<string, string>();
   for (const p of (profes ?? []) as { nombre: string }[]) {
     const nombre = (p.nombre ?? "").trim();
-    if (!nombre || esPlaceholder(nombre)) continue;
+    if (nombreInvalido(nombre)) continue;
     const key = normalizarNombre(nombre);
     if (!key) continue;
     if (!universo.has(key)) universo.set(key, nombre);
@@ -170,7 +236,7 @@ async function _calcularLibres(
   const ocupadosNorm = new Set<string>();
   for (const r of (ocupadosRows ?? []) as { profesor_nombre: string }[]) {
     const pn = (r.profesor_nombre ?? "").trim();
-    if (!pn || esPlaceholder(pn)) continue;
+    if (nombreInvalido(pn)) continue;
     const key = normalizarNombre(pn);
     if (key) ocupadosNorm.add(key);
   }
@@ -183,7 +249,7 @@ async function _calcularLibres(
   return { dia, finde: false, universoSize: universo.size, libres };
 }
 
-/* ── Herramienta 1: buscar_profesores_libres ── */
+/* ── Herramienta 2: buscar_profesores_libres ── */
 async function buscarProfesoresLibres(
   sb: SB,
   fecha: string,
@@ -191,7 +257,8 @@ async function buscarProfesoresLibres(
   centro_id: string,
 ): Promise<string> {
   console.log("[agent-sustituciones] buscar_profesores_libres · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo);
-  validarFechaTramo(fecha, tramo, centro_id);
+  validarFecha(fecha, centro_id);
+  validarTramo(tramo);
   const { dia, finde, universoSize, libres } = await _calcularLibres(sb, fecha, tramo, centro_id);
   if (finde) return `El ${fecha} es ${dia}: no hay actividad lectiva, no aplica buscar guardias.`;
   if (!universoSize) return "No hay profesores registrados en este centro.";
@@ -213,9 +280,10 @@ function trimestreDeFecha(fecha: string): { trimestre: string; from: string; to:
   return { trimestre: "3T", from: `${y}-09-01`, to: `${y}-12-31` };
 }
 
-/* ── Herramienta 2: sugerir_sustituto ──
-   Ordena los profesores libres por equidad (menos guardias hechas en el trimestre
-   actual primero) y devuelve los 5 mejores con su conteo. */
+/* ── Herramienta 3: sugerir_sustituto ──
+   Deduplica la lista de libres (por nombre normalizado) ANTES de cruzar con el
+   conteo de guardias del trimestre actual, ordena por equidad y devuelve los 3
+   mejores con su conteo. */
 async function sugerirSustituto(
   sb: SB,
   fecha: string,
@@ -224,20 +292,30 @@ async function sugerirSustituto(
   profesoresLibres: unknown,
 ): Promise<string> {
   console.log("[agent-sustituciones] sugerir_sustituto · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo);
-  validarFechaTramo(fecha, tramo, centro_id);
+  validarFecha(fecha, centro_id);
+  validarTramo(tramo);
 
   // Lista de libres: la que pasa el modelo, o recalculada como fallback robusto.
   let libres: string[] = Array.isArray(profesoresLibres)
-    ? (profesoresLibres as unknown[])
-        .map((x) => String(x ?? "").trim())
-        .filter((s) => s && !esPlaceholder(s))
+    ? (profesoresLibres as unknown[]).map((x) => String(x ?? "").trim())
     : [];
+  libres = libres.filter((s) => !nombreInvalido(s));
   if (!libres.length) {
     const r = await _calcularLibres(sb, fecha, tramo, centro_id);
     if (r.finde) return `El ${fecha} es ${r.dia}: no hay actividad lectiva, no aplica sugerir sustituto.`;
     libres = r.libres;
   }
   if (!libres.length) return "No hay profesores libres para sugerir como sustituto.";
+
+  // Deduplicar ANTES de cruzar con guardias (por nombre normalizado, 1º gana).
+  const vistos = new Set<string>();
+  const libresDedup: string[] = [];
+  for (const nombre of libres) {
+    const key = normalizarNombre(nombre);
+    if (!key || vistos.has(key)) continue;
+    vistos.add(key);
+    libresDedup.push(nombre);
+  }
 
   // Conteo de guardias del trimestre actual por profesor sustituto.
   const { trimestre, from, to } = trimestreDeFecha(fecha);
@@ -259,11 +337,11 @@ async function sugerirSustituto(
     conteoNorm.set(key, (conteoNorm.get(key) ?? 0) + 1);
   }
 
-  // Cruza: cada libre con sus guardias (0 si no aparece). Orden ASC, top 5.
-  const ranking = libres
+  // Cruza: cada libre con sus guardias (0 si no aparece). Orden ASC, top 3.
+  const ranking = libresDedup
     .map((nombre) => ({ nombre, guardias: conteoNorm.get(normalizarNombre(nombre)) ?? 0 }))
     .sort((a, b) => a.guardias - b.guardias || a.nombre.localeCompare(b.nombre, "es"))
-    .slice(0, 5);
+    .slice(0, 3);
 
   const detalle = ranking
     .map((r) => `${r.nombre} (${r.guardias} guardia${r.guardias === 1 ? "" : "s"})`)
@@ -275,17 +353,20 @@ async function sugerirSustituto(
 }
 
 /* Dispatcher: ejecuta la herramienta pedida por Gemini SIEMPRE con el centro_id
-   de confianza del body (nunca el que sugiera el modelo). */
+   de confianza del body (nunca el que sugiera el modelo). El tramo viene de los
+   argumentos del modelo (cada ausencia tiene su propio tramo). */
 async function executeTool(
   name: string,
   args: Record<string, unknown>,
   sb: SB,
   centro_id: string,
   fecha: string,
-  tramo: string,
 ): Promise<string> {
   const f = (args.fecha as string) ?? fecha;
-  const t = (args.tramo != null ? String(args.tramo) : tramo);
+  const t = args.tramo != null ? String(args.tramo) : "";
+  if (name === "obtener_ausencias_sin_cubrir") {
+    return await obtenerAusenciasSinCubrir(sb, f, centro_id);
+  }
   if (name === "buscar_profesores_libres") {
     return await buscarProfesoresLibres(sb, f, t, centro_id);
   }
@@ -302,18 +383,10 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { centro_id, fecha, tramo } = body as {
-      centro_id?: string;
-      fecha?: string;
-      tramo?: number | string;
-    };
+    const { centro_id, fecha } = body as { centro_id?: string; fecha?: string };
 
     if (!centro_id) return jsonRes({ error: "Falta centro_id." }, 400);
     if (!fecha) return jsonRes({ error: "Falta fecha (YYYY-MM-DD)." }, 400);
-    if (tramo == null || String(tramo).trim() === "") {
-      return jsonRes({ error: "Falta tramo." }, 400);
-    }
-    const tramoStr = String(tramo);
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) throw new Error("GEMINI_API_KEY no configurada.");
@@ -332,16 +405,15 @@ serve(async (req) => {
         role: "user",
         parts: [{
           text:
-            `Encuentra el mejor sustituto para el centro ${centro_id}, fecha ${fecha}, ` +
-            `tramo ${tramoStr}. Usa buscar_profesores_libres y luego sugerir_sustituto. ` +
-            `Ejecuta las herramientas directamente con estos datos.`,
+            `Centro ${centro_id}, fecha ${fecha}. Revisa si hay ausencias sin cubrir y, si las ` +
+            `hay, sugiere sustitutos para cada una. Ejecuta las herramientas directamente.`,
         }],
       },
     ];
 
-    // Bucle de tool-calling: itera mientras Gemini llame a herramientas (con las
-    // tools activas para permitir la secuencia de dos pasos). Tope de seguridad.
-    const MAX_PASOS = 6;
+    // Bucle de tool-calling: itera mientras Gemini llame a herramientas. Cada
+    // ausencia consume ~2 llamadas (buscar + sugerir), por eso un tope amplio.
+    const MAX_PASOS = 20;
     for (let i = 0; i < MAX_PASOS; i++) {
       const res = await callGemini(apiKey, convo, true, SYSTEM_PROMPT);
       if (!res.ok) {
@@ -356,7 +428,6 @@ serve(async (req) => {
       const toolCallPart = parts.find((p) => p.functionCall);
 
       if (!toolCallPart) {
-        // Respuesta final en texto.
         const content =
           (parts.find((p) => p.text)?.text as string) ??
           "No pude determinar una sugerencia.";
@@ -369,7 +440,7 @@ serve(async (req) => {
       };
 
       // centro_id de confianza = el del body, nunca el que sugiera el modelo.
-      const toolResult = await executeTool(name, args ?? {}, sb, centro_id, fecha, tramoStr);
+      const toolResult = await executeTool(name, args ?? {}, sb, centro_id, fecha);
 
       convo = [
         ...convo,
