@@ -310,6 +310,63 @@ async function registrarSustitucion() {
   }
 }
 
+// ── AGENTE: buscar profesor libre (EF agent-sustituciones) ──
+// Lee fecha+tramo del formulario y llama a la EF con el JWT del usuario.
+// No modifica registrarSustitucion ni initSustPanel.
+async function buscarProfesorLibreAgente() {
+  const btn = document.getElementById("agent-buscar-btn");
+  const out = document.getElementById("agent-result");
+  if (!out) return;
+
+  const fecha = document.getElementById("sust-fecha")?.value;
+  const tramo = document.getElementById("sust-tramo")?.value;
+
+  const _mostrar = (html) => { out.innerHTML = html; out.style.display = "block"; };
+  const _error = (txt) =>
+    _mostrar('<div style="margin-top:10px;color:var(--danger,#c0392b);font-size:13px;">' + txt + '</div>');
+
+  if (!fecha) { _error("Selecciona una fecha primero."); return; }
+  if (!tramo) { _error("Selecciona un tramo primero."); return; }
+
+  const _label = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Buscando…"; }
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { _error("Sesión no válida. Vuelve a iniciar sesión."); return; }
+
+    const res = await fetch(`${SB_URL}/functions/v1/agent-sustituciones`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "apikey": ANON_KEY,
+      },
+      body: JSON.stringify({ centro_id: ctrId, fecha, tramo: parseInt(tramo, 10) }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || data.error) {
+      _error("Error: " + (data.error || `el agente respondió ${res.status}`));
+      return;
+    }
+
+    const content = data.content || "Sin respuesta del agente.";
+    _mostrar(
+      '<div style="margin-top:10px;background:var(--paper-2);border:1px solid var(--line);' +
+      'border-radius:var(--r-sm);padding:12px 14px;font-size:13px;color:var(--txt);white-space:pre-wrap;">' +
+      '<div style="font-size:11px;color:var(--txt3);margin-bottom:6px;">🤖 Agente de sustituciones</div>' +
+      content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+      '</div>'
+    );
+  } catch (e) {
+    _error("Error de conexión con el agente. Inténtalo de nuevo.");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = _label || "🤖 Buscar profesor libre"; }
+  }
+}
+
 async function cargarProfesoresLibresEnSelect(tramoOverride) {
   const tramoData = {
     1: { hi: "08:50", hf: "09:45" }, 2: { hi: "09:45", hf: "10:40" },

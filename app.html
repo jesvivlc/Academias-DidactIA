@@ -530,10 +530,12 @@
           <label class="lbl">Instrucciones / observaciones</label>
           <input class="fi" id="sust-obs" placeholder="Instrucciones del profesor ausente o notas de jefatura" />
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
+          <button class="btn" id="agent-buscar-btn" onclick="buscarProfesorLibreAgente()" style="border:1px solid var(--line);background:var(--paper-2);">🤖 Buscar profesor libre</button>
           <div id="sust-msg" style="display:none;font-size:13px;"></div>
         </div>
+        <div id="agent-result" style="display:none;"></div>
         <div id="sust-filter-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;margin-top:14px;">
           <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')"    style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
           <button id="sust-btn-semana" onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
