@@ -359,6 +359,66 @@ async function renderHomeMetrics(force) {
     var unread = (c.data || []).filter(function (x) { return leidos.indexOf(x.id) === -1; }).length;
     setMetric("com", unread, unread > 0);
   } catch (e) { setMetric("com", 0); }
+
+  // Resumen proactivo de guardias (agente IA) — fire-and-forget, no bloquea el inicio
+  _renderAgentBriefing();
+}
+
+// Llama a la EF agent-sustituciones con la fecha+tramo actual y muestra el resumen.
+// Silencioso: si hay error o no hay tramo activo ahora, no muestra nada.
+async function _renderAgentBriefing() {
+  try {
+    if (["admin", "director", "jefatura", "superadmin"].indexOf(role) === -1) return;
+    var box = document.getElementById("agent-briefing");
+    if (!box) return;
+
+    // Tramo activo ahora mismo vs tramos_centro del centro (null si fuera de horario)
+    var ahora = new Date();
+    var ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+    var tramoActual = null;
+    var tr = await sb.from("tramos_centro")
+      .select("numero,hora_inicio,hora_fin,es_descanso")
+      .eq("centro_id", ctrId).order("numero");
+    (tr.data || []).forEach(function (t) {
+      if (t.es_descanso || tramoActual != null) return;
+      var hi = String(t.hora_inicio || "").split(":");
+      var hf = String(t.hora_fin || "").split(":");
+      var ini = (parseInt(hi[0], 10) || 0) * 60 + (parseInt(hi[1], 10) || 0);
+      var fin = (parseInt(hf[0], 10) || 0) * 60 + (parseInt(hf[1], 10) || 0);
+      if (ahoraMin >= ini && ahoraMin < fin) tramoActual = t.numero;
+    });
+    if (tramoActual == null) { box.style.display = "none"; return; } // fuera de horario lectivo
+
+    var hoy = ahora.toISOString().split("T")[0];
+    var session = (await sb.auth.getSession()).data.session;
+    var token = session && session.access_token;
+    if (!token) return;
+
+    var res = await fetch(SB_URL + "/functions/v1/agent-sustituciones", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token,
+        "apikey": ANON_KEY,
+      },
+      body: JSON.stringify({ centro_id: ctrId, fecha: hoy, tramo: tramoActual }),
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok || data.error || !data.content) return; // silencioso
+
+    var cont = document.getElementById("agent-briefing-content");
+    var time = document.getElementById("agent-briefing-time");
+    if (cont) {
+      cont.style.cssText = "font-size:13px;color:var(--txt);white-space:pre-wrap;line-height:1.5;";
+      cont.textContent = data.content;
+    }
+    if (time) {
+      var hh = String(ahora.getHours()).padStart(2, "0");
+      var mm = String(ahora.getMinutes()).padStart(2, "0");
+      time.textContent = "Actualizado a las " + hh + ":" + mm;
+    }
+    box.style.display = "block";
+  } catch (e) { /* silencioso: no interrumpe el inicio */ }
 }
 
 // ── MEJORA 8: HISTORIAL RECIENTE ──
