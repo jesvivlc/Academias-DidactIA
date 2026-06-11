@@ -911,7 +911,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
 
 ### Backlog
-- [ ] **P0 seguridad:** `disponibilidad_profesor` query en `planner.js` no filtra por `centro_id` → fuga cross-tenant. Añadir `.eq("centro_id", ctrId)` a esa query
+- [x] **P0 seguridad (cerrado):** `disponibilidad_profesor` no tiene columna `centro_id`. El aislamiento ya está garantizado por dos capas: (1) cliente filtra por `profesor_id IN (profIds)` donde `profIds` viene de `profesores` filtrado por `centro_id`; (2) RLS con policy `centro_isolation` aísla vía FK `profesor_id → profesores.centro_id`. No hay fuga cross-tenant. Sin cambios necesarios.
 - [x] **P0 deploy resuelto:** EF `chat` redesplegada el 2026-06-03 con 7 herramientas. Deploy vía `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
 - [ ] **P1 versionar EFs:** `invite-user`, `notify-role`, `notify-sustitucion` existen en producción pero no están en el repo (`supabase/functions/`)
 - [ ] Ejecutar `sql/alertas-predictivas.sql` en Supabase para activar tabla `alertas_predictivas` (Analytics CMI)
