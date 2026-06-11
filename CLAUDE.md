@@ -905,7 +905,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ### Próximo sprint — App Familias / Portal familias
 - [ ] **App Familias (PWA separada o tab nuevo)** — onboarding, dashboard hijo, chat con el centro, notificaciones push
-- [ ] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor
+- [x] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor (pendiente: sustituir TODO `VAPID_PUBLIC_KEY` en `config.js` con el valor real del secret de Supabase)
 - [ ] **Módulo IB en la app** — gestión de `plazos_ib`, CAS tracker, Extended Essay status (para centros con IB)
 - [ ] **Página de recuperación de contraseña** — UX mejorable; actualmente funciona via hash
 - [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
@@ -918,6 +918,8 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
 - [ ] Estadísticas avanzadas cross-centro para superadmin
 - [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
+- [ ] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real del secret VAPID_PUBLIC_KEY de Supabase (`npx supabase secrets list --project-ref rflfsbrdmgaidhvbuvwb`)
+- [ ] Bug menor `send-push`: el delete por 410/404 borra todas las filas del `user_id` en lugar de solo el endpoint fallido — si un usuario tiene varios dispositivos puede perder suscripciones válidas
 
 ---
 
@@ -1074,6 +1076,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-11` — feat(push-familias): **suscripción a notificaciones push para familias** (`js/familias.js`, `js/auth.js`, `js/config.js`). `initPushFamilias()` llamada tras login de rol familia: comprueba soporte Push API, consulta si ya suscrito, muestra banner `#push-banner-familia` con botón Activar y ✕ persistente (localStorage). `_pushActivar()`: SW ready → `pushManager.subscribe` con VAPID → INSERT en `push_subscriptions` fire-and-forget → toast confirmación. `VAPID_PUBLIC_KEY` en `config.js` (TODO pendiente de sustituir con valor real). SW ya tenía handler push completo — sin cambios.
+- `2026-06-11` — feat(agent-sustituciones): **primer agente IA autónomo** (`supabase/functions/agent-sustituciones/index.ts`). Edge Function con Gemini function calling y 3 herramientas encadenadas: `obtener_ausencias_sin_cubrir` (sustituciones sin cubrir hoy), `buscar_profesores_libres` (cruza `horarios_grupo` con profesores del centro), `sugerir_sustituto` (ordena por equidad trimestral). El agente solo actúa cuando hay ausencias reales — si no hay, responde "No hay ausencias sin cubrir hoy." Integrado en la home del rol admin/director/jefatura como bloque "🤖 Resumen de guardias" (fire-and-forget, no bloquea carga). P0 seguridad `disponibilidad_profesor` cerrado (aislamiento garantizado por RLS + filtro cliente, no requería cambio).
 - `2026-06-11 10:27` · `d969c51` — Merge branch 'main' of https://github.com/jesvivlc/DidactIA
 - `2026-06-11 00:54` · `81de9b4` — docs(CLAUDE.md): sesión 2026-06-11 — Calidad NCs+CAPA+Feedback, roles orientador/admin_institucional, tablas calidad
 - `2026-06-11` · **Módulo Calidad — No Conformidades + CAPA + Feedback Familias** (`763bb5e`): implementación completa de las dos secciones principales de `js/calidad.js`. Bug crítico previo: `getElementById('cal-container')` devolvía el contenedor de Calificaciones (ID duplicado) → spinner infinito. Fix: renombrar a `calidad-cont` (`af8ac5e`). Secciones implementadas:
