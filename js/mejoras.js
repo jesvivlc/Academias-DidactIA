@@ -577,9 +577,228 @@ function initWelcomeExtras() {
   renderHistorial();
 }
 
-// ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
+// ── HOME FAMILIA ─────────────────────────────────────────────────────────────
+var _homeFamiliaHijoIdx = 0;
+var _homeFamiliaKey = "";
 
-const VAPID_PUBLIC_KEY = 'BC7YNMiAwyGQZitoyhKtyAfRa2xhMcGvaDOMBy6aUXtE7aw_KoXpG9ce87qUEmLltbWOuebfQQVupXq9gGKTpc4';
+async function renderHomeFamilia(force) {
+  var cont = document.getElementById("familia-home-content");
+  if (!cont) return;
+  if (role !== "familia") return;
+
+  var alumnos = currentUserAlumnos || [];
+  if (!alumnos.length) {
+    cont.innerHTML = '<div class="home-card" style="color:var(--muted);font-size:13px;">No hay alumnos vinculados a esta cuenta.</div>';
+    return;
+  }
+
+  var key = (ctrId || "") + "|" + alumnos.map(function(a) { return a.id; }).join(",") + "|" + _homeFamiliaHijoIdx;
+  if (!force && key === _homeFamiliaKey) return;
+  _homeFamiliaKey = key;
+
+  if (_homeFamiliaHijoIdx >= alumnos.length) _homeFamiliaHijoIdx = 0;
+  var alumno = alumnos[_homeFamiliaHijoIdx];
+
+  // Selector de hijo (solo si hay más de uno)
+  var selectorHtml = "";
+  if (alumnos.length > 1) {
+    var chips = alumnos.map(function(a, i) {
+      var active = (i === _homeFamiliaHijoIdx);
+      return '<button onclick="window._fhSelectHijo(' + i + ')" style="' +
+        'border:none;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;' +
+        'font-family:var(--font-ui);transition:background .15s;' +
+        (active ? 'background:var(--ink);color:#fff;' : 'background:var(--paper-2);color:var(--txt);border:1px solid var(--line);') +
+        '">' + _mhEsc(a.nombre) + '</button>';
+    }).join("");
+    selectorHtml = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">' + chips + '</div>';
+  }
+
+  cont.innerHTML =
+    selectorHtml +
+    '<div id="fh-horario" class="home-card" style="margin-bottom:8px;">' +
+      '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span></div>' +
+      '<div style="font-size:13px;color:var(--muted);">Cargando…</div>' +
+    '</div>' +
+    '<div id="fh-comedor"  class="home-card" style="margin-bottom:8px;display:none;"></div>' +
+    '<div id="fh-incidencias" class="home-card" style="margin-bottom:8px;display:none;"></div>' +
+    '<div id="fh-salidas"  class="home-card" style="margin-bottom:8px;display:none;"></div>' +
+    '<div id="fh-comunicados" class="home-card" style="margin-bottom:8px;display:none;"></div>';
+
+  window._fhSelectHijo = function(idx) {
+    _homeFamiliaHijoIdx = idx;
+    _homeFamiliaKey = "";
+    renderHomeFamilia(true);
+  };
+
+  var DIAS = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  var now  = new Date();
+  var dia  = DIAS[now.getDay()];
+  var today = now.toISOString().split("T")[0];
+  var finde = (now.getDay() === 0 || now.getDay() === 6);
+  var nowMin = now.getHours() * 60 + now.getMinutes();
+  var hm = function(t) { if (!t) return null; var p = String(t).split(":"); return (+p[0]) * 60 + (+p[1]); };
+
+  // ── Horario de hoy ──
+  (async function() {
+    var box = document.getElementById("fh-horario");
+    if (!box) return;
+    try {
+      var grupo = alumno.grupo_horario;
+      if (!grupo) {
+        box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span></div>' +
+          '<div style="font-size:13px;color:var(--muted);">Grupo no asignado.</div>';
+        return;
+      }
+      if (finde) {
+        box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span></div>' +
+          '<div style="font-size:13px;color:var(--muted);"><i class="ti ti-coffee"></i> ¡Buen fin de semana!</div>';
+        return;
+      }
+      var r = await sb.from("horarios_grupo")
+        .select("tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
+        .eq("centro_id", ctrId).eq("grupo_horario", grupo).eq("dia", dia)
+        .eq("curso_escolar", cursoActivo).order("tramo");
+      var filas = r.data || [];
+      if (!filas.length) {
+        box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span></div>' +
+          '<div style="font-size:13px;color:var(--muted);">No hay clases hoy para ' + _mhEsc(grupo) + '.</div>';
+        return;
+      }
+      var rowsHtml = filas.map(function(row) {
+        var ini = hm(row.hora_inicio), fin = hm(row.hora_fin);
+        var ahora = (ini != null && fin != null && nowMin >= ini && nowMin < fin);
+        var horaTxt = (row.hora_inicio || "").slice(0,5) + (row.hora_fin ? "–" + String(row.hora_fin).slice(0,5) : "");
+        return '<div class="home-horario-row' + (ahora ? " is-now" : "") + '">' +
+          '<div class="hh-tramo">' + (row.tramo != null ? row.tramo + "ª" : "—") + (ahora ? '<span class="hh-now">AHORA</span>' : "") + '</div>' +
+          '<div class="hh-main">' +
+            '<div class="hh-asig">' + _mhEsc(row.actividad_nombre || "—") + '</div>' +
+            '<div class="hh-meta">' + _mhEsc(horaTxt) +
+              (row.aula ? " · " + _mhEsc(row.aula) : "") +
+              (row.profesor_nombre ? " · " + _mhEsc(row.profesor_nombre) : "") +
+            '</div>' +
+          '</div></div>';
+      }).join("");
+      box.innerHTML = '<div class="home-card-hdr">' +
+        '<span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span>' +
+        '<span style="font-size:12px;color:var(--muted);">' + _mhEsc(grupo) + '</span>' +
+        '</div>' + rowsHtml;
+    } catch(e) {
+      var b = document.getElementById("fh-horario");
+      if (b) b.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span></div>' +
+        '<div style="font-size:13px;color:var(--muted);">No disponible.</div>';
+    }
+  })();
+
+  // ── Comedor hoy ──
+  (async function() {
+    if (!modulosActivos.includes("comedor")) return;
+    var box = document.getElementById("fh-comedor");
+    if (!box) return;
+    try {
+      var r = await sb.from("asistencia_comedor")
+        .select("se_queda,plaza_fija").eq("centro_id", ctrId)
+        .eq("alumno_id", alumno.id).eq("fecha", today).maybeSingle();
+      var txt, col;
+      if (!r.data)             { txt = "Sin confirmar";          col = "var(--warning)"; }
+      else if (r.data.se_queda){ txt = "Se queda a comer ✓";     col = "var(--success)"; }
+      else                      { txt = "No se queda a comer";   col = "var(--muted)"; }
+      box.style.display = "";
+      box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-tools-kitchen-2"></i> Comedor hoy</span></div>' +
+        '<div style="font-size:14px;font-weight:500;color:' + col + ';">' + txt + '</div>' +
+        (r.data && r.data.plaza_fija ? '<div style="font-size:11px;color:var(--muted-2);margin-top:2px;">Plaza fija</div>' : '');
+    } catch(e) {}
+  })();
+
+  // ── Incidencias recientes ──
+  (async function() {
+    var box = document.getElementById("fh-incidencias");
+    if (!box) return;
+    try {
+      var r = await sb.from("incidencias")
+        .select("fecha,gravedad,descripcion")
+        .eq("centro_id", ctrId)
+        .ilike("alumno_nombre", "%" + alumno.nombre + "%")
+        .order("created_at", { ascending: false }).limit(3);
+      if (!r.data || !r.data.length) return;
+      var gravCol = { leve:"var(--success)", grave:"var(--warning)", muy_grave:"var(--danger)" };
+      var rowsHtml = r.data.map(function(inc) {
+        var col = gravCol[inc.gravedad] || "var(--muted)";
+        var desc = (inc.descripcion || "").slice(0, 70) + ((inc.descripcion || "").length > 70 ? "…" : "");
+        return '<div style="padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;display:flex;gap:8px;align-items:baseline;">' +
+          '<span style="color:var(--muted);white-space:nowrap;">' + _mhEsc(inc.fecha || "") + '</span>' +
+          '<span style="background:' + col + ';color:#fff;border-radius:8px;padding:1px 6px;font-size:10px;font-weight:600;white-space:nowrap;">' + _mhEsc(inc.gravedad || "") + '</span>' +
+          '<span style="color:var(--txt);">' + _mhEsc(desc) + '</span>' +
+          '</div>';
+      }).join("");
+      box.style.display = "";
+      box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-alert-triangle"></i> Incidencias recientes</span></div>' + rowsHtml;
+    } catch(e) {}
+  })();
+
+  // ── Próximas salidas ──
+  (async function() {
+    var box = document.getElementById("fh-salidas");
+    if (!box) return;
+    try {
+      var rPart = await sb.from("participantes_salida")
+        .select("salida_id,autorizado,pagado")
+        .eq("centro_id", ctrId).eq("alumno_id", alumno.id);
+      if (!rPart.data || !rPart.data.length) return;
+      var salidaIds = rPart.data.map(function(p) { return p.salida_id; });
+      var partMap = {};
+      rPart.data.forEach(function(p) { partMap[p.salida_id] = p; });
+      var rSal = await sb.from("salidas_didacticas")
+        .select("id,titulo,fecha_salida,hora_salida")
+        .eq("centro_id", ctrId).in("id", salidaIds)
+        .eq("estado", "publicada").gte("fecha_salida", today)
+        .order("fecha_salida").limit(3);
+      if (!rSal.data || !rSal.data.length) return;
+      var rowsHtml = rSal.data.map(function(sal) {
+        var part = partMap[sal.id] || {};
+        var aut = part.autorizado
+          ? '<span style="color:var(--success);font-size:11px;">✓ Autorizado</span>'
+          : '<span style="color:var(--warning);font-size:11px;">⚠ Pendiente autorización</span>';
+        return '<div style="padding:6px 0;border-bottom:1px solid var(--line);">' +
+          '<div style="font-size:13px;font-weight:500;color:var(--txt);">' + _mhEsc(sal.titulo || "") + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);display:flex;gap:8px;align-items:center;margin-top:2px;">' +
+            _mhEsc(sal.fecha_salida || "") + (sal.hora_salida ? " " + _mhEsc(String(sal.hora_salida).slice(0,5)) : "") +
+            " " + aut +
+          '</div></div>';
+      }).join("");
+      box.style.display = "";
+      box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-bus"></i> Próximas salidas</span></div>' + rowsHtml;
+    } catch(e) {}
+  })();
+
+  // ── Comunicados no leídos ──
+  (async function() {
+    var box = document.getElementById("fh-comunicados");
+    if (!box) return;
+    try {
+      var leidos = (typeof _comGetLeidos === "function") ? _comGetLeidos() : [];
+      var r = await sb.from("comunicados")
+        .select("id,titulo,fecha").eq("centro_id", ctrId)
+        .order("created_at", { ascending: false }).limit(50);
+      var unread = (r.data || []).filter(function(c) { return leidos.indexOf(c.id) === -1; }).slice(0, 3);
+      if (!unread.length) return;
+      var rowsHtml = unread.map(function(c) {
+        return '<div style="padding:5px 0;border-bottom:1px solid var(--line);">' +
+          '<div style="font-size:13px;font-weight:500;color:var(--txt);">' + _mhEsc(c.titulo || "") + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);">' + _mhEsc(c.fecha || "") + '</div>' +
+          '</div>';
+      }).join("");
+      box.style.display = "";
+      box.innerHTML = '<div class="home-card-hdr">' +
+        '<span class="home-card-title"><i class="ti ti-speakerphone"></i> Comunicados no leídos</span>' +
+        '<span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600;">' + unread.length + '</span>' +
+        '</div>' + rowsHtml +
+        '<div style="margin-top:8px;"><button onclick="showTab(\'comunicados\')" style="font-size:12px;color:var(--ink);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">Ver todos los comunicados →</button></div>';
+    } catch(e) {}
+  })();
+}
+
+// ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
+// VAPID_PUBLIC_KEY ya definido en config.js — no redeclarar aquí.
 
 function _urlBase64ToUint8Array(base64String) {
   var padding = '='.repeat((4 - (base64String.length % 4)) % 4);

@@ -431,6 +431,7 @@
           <h1 class="home-greeting"><span id="inicio-greeting-txt-fam">Buenos días,</span> <em id="inicio-first-name-fam">—</em></h1>
           <div class="home-subline" id="inicio-subline-fam">—</div>
         </div>
+        <div id="familia-home-content"></div>
         <div id="mis-hijos-container" style="display:none">
           <div class="cls-section-label" style="margin-top:16px">Mis hijos</div>
           <div id="mis-hijos-list" class="bento-card-list"></div>
@@ -1607,6 +1608,8 @@
     if (isStaff && typeof renderMiHorarioHoy === 'function') { try { renderMiHorarioHoy(); } catch (e) {} }
     /* Métricas accionables (Cambio 4) — solo staff/admin */
     if (isStaff && typeof renderHomeMetrics === 'function') { try { renderHomeMetrics(); } catch (e) {} }
+    /* Home familia — hijo selector + horario + comedor + incidencias + salidas + comunicados */
+    if (isFamilia && typeof renderHomeFamilia === 'function') { try { renderHomeFamilia(); } catch (e) {} }
 
     /* Compat: wb-actions (los módulos externos esperan estos IDs) */
     var actStaff = document.getElementById('wb-actions-staff');
