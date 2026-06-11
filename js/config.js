@@ -3,6 +3,9 @@ const SB_URL = "https://rflfsbrdmgaidhvbuvwb.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbGZzYnJkbWdhaWRodmJ1dndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTAxNDgsImV4cCI6MjA4Nzc2NjE0OH0.tJuFxAZCSxdukUvL9BbhdxtCbudCmmv2HLZr6qp7LPs";
 const API = `${SB_URL}/functions/v1/chat`;
 const ANON_KEY = SB_KEY;
+// Clave pública VAPID para notificaciones push (es pública por diseño).
+// TODO:VAPID_PUBLIC_KEY — sustituir por el valor real del secret VAPID_PUBLIC_KEY de Supabase.
+const VAPID_PUBLIC_KEY = "TODO:VAPID_PUBLIC_KEY";
 
 let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
 let currentUser = null, currentUserName = "", currentUserAlumnos = [], modulosActivos = [];

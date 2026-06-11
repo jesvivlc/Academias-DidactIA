@@ -202,3 +202,92 @@ async function loadAvisos() {
 
   inner.innerHTML = html;
 }
+
+// ── NOTIFICACIONES PUSH (FAMILIA) ────────────────────────────────────
+// Conversión estándar de la clave VAPID base64url → Uint8Array.
+function urlBase64ToUint8Array(base64String) {
+  var padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  var raw = atob(base64);
+  var output = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+// Si la familia no tiene suscripción push y no ha cerrado el banner antes,
+// muestra un banner suave en la home para activarlas. Todo en try/catch.
+async function initPushFamilias() {
+  try {
+    if (typeof role !== "undefined" && role !== "familia") return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (!currentUser || !currentUser.id) return;
+
+    // ¿ya tiene una suscripción activa?
+    var ex = await sb.from("push_subscriptions").select("id").eq("user_id", currentUser.id).limit(1);
+    if (ex.data && ex.data.length) return;
+
+    // ¿el usuario cerró el banner anteriormente?
+    var dismissKey = "push_dismissed_" + currentUser.id;
+    try { if (localStorage.getItem(dismissKey) === "1") return; } catch (e) {}
+
+    _pushMostrarBanner(dismissKey);
+  } catch (e) { /* silencioso */ }
+}
+
+function _pushMostrarBanner(dismissKey) {
+  var host = document.getElementById("inicio-familia");
+  if (!host || document.getElementById("push-banner-familia")) return;
+
+  var banner = document.createElement("div");
+  banner.id = "push-banner-familia";
+  banner.style.cssText =
+    "display:flex;align-items:center;gap:12px;background:var(--paper-2);border:1px solid var(--line);" +
+    "border-radius:var(--r-sm,8px);padding:12px 14px;margin-top:14px;font-size:13px;color:var(--txt);";
+  banner.innerHTML =
+    '<span style="flex:1;">🔔 Activa las notificaciones para recibir avisos del centro</span>' +
+    '<button id="push-activar-btn" class="btn btn-p" style="font-size:12px;padding:6px 12px;">Activar</button>' +
+    '<button id="push-cerrar-btn" aria-label="Cerrar" style="background:none;border:none;cursor:pointer;color:var(--muted,#888);font-size:16px;line-height:1;">✕</button>';
+
+  var head = host.querySelector(".home-head");
+  if (head && head.parentNode === host) head.insertAdjacentElement("afterend", banner);
+  else host.insertBefore(banner, host.firstChild);
+
+  var actBtn = document.getElementById("push-activar-btn");
+  if (actBtn) actBtn.onclick = function () { _pushActivar(); };
+  var cerBtn = document.getElementById("push-cerrar-btn");
+  if (cerBtn) cerBtn.onclick = function () {
+    try { localStorage.setItem(dismissKey, "1"); } catch (e) {}
+    banner.remove();
+  };
+}
+
+async function _pushActivar() {
+  var btn = document.getElementById("push-activar-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Activando…"; }
+  try {
+    if (!VAPID_PUBLIC_KEY || /TODO/.test(VAPID_PUBLIC_KEY)) {
+      // Clave pública aún no configurada — no continuar.
+      if (btn) { btn.disabled = false; btn.textContent = "Activar"; }
+      return;
+    }
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+
+    // INSERT fire-and-forget en push_subscriptions.
+    sb.from("push_subscriptions").insert({
+      user_id: currentUser.id,
+      centro_id: ctrId,
+      subscription: sub.toJSON ? sub.toJSON() : JSON.parse(JSON.stringify(sub)),
+    }).then(function () {}, function () {});
+
+    var banner = document.getElementById("push-banner-familia");
+    if (banner) banner.remove();
+    if (typeof showToast === "function") showToast("✅ Notificaciones activadas");
+  } catch (e) {
+    // Permiso denegado u otro fallo: restaurar el botón, sin error visible.
+    if (btn) { btn.disabled = false; btn.textContent = "Activar"; }
+  }
+}

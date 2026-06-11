@@ -422,6 +422,8 @@ async function loadUserProfile(user) {
       _cacheBrand(ctr?.color_primario, ctr?.logo_url);
     }
     document.getElementById("ctr-name-hdr").textContent = ctrName;
+    // Notificaciones push: solo familias (fire-and-forget, no bloquea el login)
+    if (role === "familia" && typeof initPushFamilias === "function") initPushFamilias();
   }
 
   // Load linked alumnos if familia
