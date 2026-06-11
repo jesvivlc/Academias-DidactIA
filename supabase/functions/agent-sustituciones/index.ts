@@ -190,6 +190,7 @@ async function buscarProfesoresLibres(
   tramo: string,
   centro_id: string,
 ): Promise<string> {
+  console.log("[agent-sustituciones] buscar_profesores_libres · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo);
   validarFechaTramo(fecha, tramo, centro_id);
   const { dia, finde, universoSize, libres } = await _calcularLibres(sb, fecha, tramo, centro_id);
   if (finde) return `El ${fecha} es ${dia}: no hay actividad lectiva, no aplica buscar guardias.`;
@@ -222,6 +223,7 @@ async function sugerirSustituto(
   centro_id: string,
   profesoresLibres: unknown,
 ): Promise<string> {
+  console.log("[agent-sustituciones] sugerir_sustituto · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo);
   validarFechaTramo(fecha, tramo, centro_id);
 
   // Lista de libres: la que pasa el modelo, o recalculada como fallback robusto.
