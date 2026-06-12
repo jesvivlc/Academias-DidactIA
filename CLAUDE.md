@@ -914,7 +914,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 ### Backlog
 - [x] **P0 seguridad (cerrado):** `disponibilidad_profesor` no tiene columna `centro_id`. El aislamiento ya está garantizado por dos capas: (1) cliente filtra por `profesor_id IN (profIds)` donde `profIds` viene de `profesores` filtrado por `centro_id`; (2) RLS con policy `centro_isolation` aísla vía FK `profesor_id → profesores.centro_id`. No hay fuga cross-tenant. Sin cambios necesarios.
 - [x] **P0 deploy resuelto:** EF `chat` redesplegada el 2026-06-03 con 7 herramientas. Deploy vía `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
-- [ ] **P1 versionar EFs:** `invite-user`, `notify-role`, `notify-sustitucion` existen en producción pero no están en el repo (`supabase/functions/`)
+- [x] **P1 versionar EFs:** `invite-user` y `notify-role` extraídos del bundle ESZIP de producción y añadidos al repo (`c232c38`). `notify-sustitucion` ya estaba versionada (no está deployada actualmente). Nota: en producción también existen `rapid-processor` y `cas-analyzer` sin versionar en el repo.
 - [ ] Ejecutar `sql/alertas-predictivas.sql` en Supabase para activar tabla `alertas_predictivas` (Analytics CMI)
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
 - [ ] Estadísticas avanzadas cross-centro para superadmin
@@ -1077,6 +1077,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-12 07:26` · `c232c38` — feat: versionar EFs `invite-user` y `notify-role` — código extraído del bundle ESZIP de producción vía Management API. `notify-sustitucion` ya estaba en el repo (sin deploy activo). Funciones en prod no versionadas aún: `rapid-processor`, `cas-analyzer`.
+- `2026-06-12 01:16` · `a0ca561` — docs(CLAUDE.md): home familia documentada — renderHomeFamilia, VAPID fix
 - `2026-06-12 00:56` · `967a728` — feat(familia): home mejorada — `renderHomeFamilia()` en `mejoras.js`; 5 bloques fire-and-forget (horario hoy, comedor, incidencias, salidas, comunicados no leídos); selector de hijo con chips; render target `#familia-home-content` en `app.html`; fix `const VAPID_PUBLIC_KEY` duplicado (eliminado de `mejoras.js`, permanece solo en `config.js`)
 - `2026-06-11 23:50` · `6fd3497` — fix: VAPID_PUBLIC_KEY real en config.js — par regenerado, secrets actualizados, send-push redesplegada
 - `2026-06-11 23:36` · `1e1302b` — docs: agent-sustituciones + push familias documentados en roadmap
