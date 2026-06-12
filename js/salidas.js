@@ -498,14 +498,16 @@ async function salidasAbrirDetalle(salidaId) {
   }
 
   var { data: parts } = await sb.from('participantes_salida')
-    .select('*, alumnos(nombre,grupo_horario)')
+    .select('*, alumnos(nombre,grupo_horario,alergias,dieta_especial)')
     .eq('salida_id', salidaId).eq('centro_id', ctrId);
 
   _salDet = sal;
   _salDetParts = (parts || []).map(function(p) {
     return Object.assign({}, p, {
-      alumno_nombre: (p.alumnos && p.alumnos.nombre) || '—',
-      alumno_grupo:  (p.alumnos && p.alumnos.grupo_horario) || '—'
+      alumno_nombre:      (p.alumnos && p.alumnos.nombre)        || '—',
+      alumno_grupo:       (p.alumnos && p.alumnos.grupo_horario) || '—',
+      alumno_alergias:    (p.alumnos && p.alumnos.alergias)      || null,
+      alumno_dieta:       (p.alumnos && p.alumnos.dieta_especial)|| null
     });
   }).sort(function(a,b) { return a.alumno_nombre.localeCompare(b.alumno_nombre,'es'); });
 
@@ -1281,8 +1283,15 @@ async function _salDetRenderFamilia() {
               '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;">' +
                 '<input type="checkbox" id="fam-pic-' + p.id + '" ' + (p.necesita_picnic ? 'checked' : '') + ' style="width:18px;height:18px;accent-color:var(--warning);"> ' +
                 '🥪 Necesita picnic</label>' +
-              '<div><label class="lbl" style="font-size:12px;">Alergias alimentarias o dieta especial (si procede)</label>' +
-                '<input class="fi" id="fam-aler-' + p.id + '" type="text" placeholder="Ej: intolerante a la lactosa, alérgico a los frutos secos…" value="' + _salEsc(p.alergias_confirmadas||'') + '"></div>' +
+              (function() {
+                var perfilAler = [p.alumno_alergias, p.alumno_dieta].filter(Boolean).join('; ');
+                var valorInic  = p.alergias_confirmadas || perfilAler || '';
+                var ayuda = perfilAler && !p.alergias_confirmadas
+                  ? '<div style="font-size:11px;color:var(--txt3);margin-top:3px;">📋 Pre-rellenado desde el perfil del alumno. Confirma o ajusta si es necesario.</div>'
+                  : '';
+                return '<div><label class="lbl" style="font-size:12px;">Alergias alimentarias o dieta especial (si procede)</label>' +
+                  '<input class="fi" id="fam-aler-' + p.id + '" type="text" placeholder="Ej: intolerante a la lactosa, alérgico a los frutos secos…" value="' + _salEsc(valorInic) + '">' + ayuda + '</div>';
+              })() +
               '<div id="fam-msg-' + p.id + '" style="display:none;font-size:12px;"></div>' +
               '<button onclick="_salFamGuardar(\'' + p.id + '\')" class="btn btn-p" style="align-self:flex-start;">Guardar autorización</button>' +
             '</div>' +

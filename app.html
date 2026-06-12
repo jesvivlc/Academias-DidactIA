@@ -464,6 +464,7 @@
           <div class="home-subline" id="inicio-subline-fam">—</div>
         </div>
         <div id="familia-home-content"></div>
+        <div id="panel-perfil-alim"></div>
         <div id="mis-hijos-container" style="display:none">
           <div class="cls-section-label" style="margin-top:16px">Mis hijos</div>
           <div id="mis-hijos-list" class="bento-card-list"></div>
@@ -1673,6 +1674,13 @@
     if (isStaff && typeof renderHomeMetrics === 'function') { try { renderHomeMetrics(); } catch (e) {} }
     /* Home familia — hijo selector + horario + comedor + incidencias + salidas + comunicados */
     if (isFamilia && typeof renderHomeFamilia === 'function') { try { renderHomeFamilia(); } catch (e) {} }
+    /* Perfil alimentario familia — solo si módulo comedor activo */
+    if (isFamilia && typeof loadPerfilAlimentario === 'function') {
+      try {
+        var _maComedor = typeof modulosActivos !== 'undefined' && Array.isArray(modulosActivos) && modulosActivos.includes('comedor');
+        if (_maComedor) loadPerfilAlimentario();
+      } catch (e) {}
+    }
 
     /* Compat: wb-actions (los módulos externos esperan estos IDs) */
     var actStaff = document.getElementById('wb-actions-staff');

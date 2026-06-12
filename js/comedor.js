@@ -6,6 +6,11 @@ let historicoData = [];
 let _comedorTramoActual   = null;   // tramo activo en este momento
 let _comedorGruposProfesor = [];    // todos los grupos del profesor logueado
 
+function _cEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function changeComedorFecha(delta) {
   var d = new Date(comedorFecha);
   d.setDate(d.getDate() + delta);
@@ -136,9 +141,9 @@ async function loadComedor() {
     if (el) { el.style.display = "none"; el.innerHTML = ""; }
   }
 
-  // Query alumnos según rol y contexto
+  // Query alumnos según rol y contexto — incluye perfil alimentario
   let alumnosQuery = sb.from("alumnos")
-    .select("id,nombre,curso,grupo_horario")
+    .select("id,nombre,curso,grupo_horario,alergias,dieta_especial")
     .eq("centro_id", ctrId).order("curso").order("nombre");
 
   if (role === "profesional" && currentUserName) {
@@ -147,18 +152,15 @@ async function loadComedor() {
       const sel = document.getElementById("comedor-filtro-grupo");
       if (sel) sel.value = grupoActual;
     } else if (_comedorGruposProfesor.length) {
-      // Sin clase activa → mostrar solo los grupos del profesor, no todo el centro
       alumnosQuery = alumnosQuery.in("grupo_horario", _comedorGruposProfesor);
       const sel = document.getElementById("comedor-filtro-grupo");
       if (sel) sel.value = "";
     }
-    // Si el profesor no tiene grupos en BD → sin filtro (muestra todos)
   }
-  // Admin/superadmin: sin filtro → todos los alumnos del centro
 
   const { data: alumnos } = await alumnosQuery;
 
-  // Asistencia del día
+  // Asistencia del día (incluye nota_dia)
   const { data: asistencia } = await sb.from("asistencia_comedor")
     .select("*").eq("centro_id", ctrId).eq("fecha", fechaStr);
 
@@ -166,13 +168,16 @@ async function loadComedor() {
   (asistencia || []).forEach(a => { asistMap[a.alumno_id] = a; });
 
   comedorData = (alumnos || []).map(a => ({
-    alumno_id:    a.id,
-    nombre:       a.nombre,
-    curso:        a.curso,
+    alumno_id:     a.id,
+    nombre:        a.nombre,
+    curso:         a.curso,
     grupo_horario: a.grupo_horario || null,
-    se_queda:     asistMap[a.id]?.se_queda ?? false,
-    plaza_fija:   asistMap[a.id]?.plaza_fija ?? false,
-    db_id:        asistMap[a.id]?.id ?? null
+    alergias:      a.alergias     || null,
+    dieta_especial:a.dieta_especial || null,
+    se_queda:      asistMap[a.id]?.se_queda ?? false,
+    plaza_fija:    asistMap[a.id]?.plaza_fija ?? false,
+    nota_dia:      asistMap[a.id]?.nota_dia  ?? null,
+    db_id:         asistMap[a.id]?.id ?? null
   }));
 
   updateComedorStats();
@@ -193,6 +198,17 @@ function filterComedor(f) {
   renderComedorList();
 }
 
+function _comedorAlergiasBadges(a) {
+  let badges = '';
+  if (a.alergias)
+    badges += `<span style="background:#fde8e8;color:#b71c1c;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:600;white-space:nowrap;">⚠️ ${_cEsc(a.alergias)}</span>`;
+  if (a.dieta_especial)
+    badges += `<span style="background:#fff3e0;color:#e65100;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:600;white-space:nowrap;">🥗 ${_cEsc(a.dieta_especial)}</span>`;
+  if (a.nota_dia)
+    badges += `<span style="background:#e3eafa;color:#1565c0;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:600;white-space:nowrap;">📝 ${_cEsc(a.nota_dia)}</span>`;
+  return badges ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${badges}</div>` : '';
+}
+
 function renderComedorList() {
   const container = document.getElementById("comedor-list");
   const grupoFiltro = document.getElementById("comedor-filtro-grupo") ? document.getElementById("comedor-filtro-grupo").value : "";
@@ -207,30 +223,112 @@ function renderComedorList() {
   }
 
   populateGruposComedor();
-  container.innerHTML = filtered.map(a => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${a.se_queda?"var(--ink-ll)":"var(--srf2)"};border:1.5px solid ${a.se_queda?"var(--ink-l)":"var(--bdr)"};border-radius:var(--r-sm);transition:all .15s;">
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:500;color:var(--txt);">${a.nombre}</div>
-        <div style="font-size:11px;color:var(--txt3);">${a.curso || ""}${a.plaza_fija?' · <span style="color:var(--ink);font-weight:500;">Plaza fija</span>':''}</div>
+  container.innerHTML = filtered.map(a => {
+    const badges = _comedorAlergiasBadges(a);
+    return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:${a.se_queda?"var(--ink-ll)":"var(--srf2)"};border:1.5px solid ${a.se_queda?"var(--ink-l)":"var(--bdr)"};border-radius:var(--r-sm);transition:all .15s;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:500;color:var(--txt);">${_cEsc(a.nombre)}</div>
+        <div style="font-size:11px;color:var(--txt3);">${_cEsc(a.curso || "")}${a.plaza_fija?' · <span style="color:var(--ink);font-weight:500;">Plaza fija</span>':''}</div>
+        ${badges}
+        <div style="display:flex;align-items:center;gap:6px;margin-top:5px;">
+          <button onclick="_comedorEditarNota('${a.alumno_id}')" title="Nota del día"
+            style="background:none;border:1px solid var(--bdr);border-radius:6px;padding:2px 7px;font-size:11px;cursor:pointer;color:var(--txt3);">
+            📝 ${a.nota_dia ? 'Editar nota' : 'Nota del día'}
+          </button>
+        </div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;flex-shrink:0;">
         <span style="font-size:13px;color:var(--txt2);">${a.se_queda?"✅ Se queda":"❌ No se queda"}</span>
-        <input type="checkbox" ${a.se_queda?"checked":""} 
+        <input type="checkbox" ${a.se_queda?"checked":""}
           style="width:18px;height:18px;cursor:pointer;accent-color:var(--ink);"
           onchange="toggleAsistencia('${a.alumno_id}', this.checked)">
       </label>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
+
+async function _comedorEditarNota(alumnoId) {
+  const alumno = comedorData.find(a => a.alumno_id === alumnoId);
+  if (!alumno) return;
+
+  const existing = document.getElementById('comedor-nota-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'comedor-nota-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--srf);border-radius:var(--r);padding:24px;width:100%;max-width:400px;box-shadow:var(--sh-lg);';
+  modal.innerHTML =
+    `<div style="font-size:15px;font-weight:600;margin-bottom:8px;color:var(--txt);">📝 Nota del día — ${_cEsc(alumno.nombre)}</div>` +
+    `<div style="font-size:11px;color:var(--txt3);margin-bottom:12px;">Solo para hoy (${_cEsc(comedorFecha)}). Se muestra como badge en la lista.</div>` +
+    `<textarea id="comedor-nota-input" rows="3"
+      style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--bg);color:var(--txt);resize:vertical;margin-bottom:14px;"
+      placeholder="Ej: Alergia confirmada hoy, menú alternativo…"></textarea>` +
+    `<div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button id="comedor-nota-cancel" style="padding:7px 16px;border:1px solid var(--bdr);background:var(--srf2);color:var(--txt);border-radius:var(--r-sm);cursor:pointer;font-size:13px;">Cancelar</button>
+      <button id="comedor-nota-borrar" style="padding:7px 16px;border:1px solid var(--bdr);background:var(--srf2);color:var(--red,#c62828);border-radius:var(--r-sm);cursor:pointer;font-size:13px;">Borrar</button>
+      <button id="comedor-nota-save"   style="padding:7px 16px;background:var(--ink);color:#fff;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:13px;">Guardar</button>
+    </div>`;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  document.getElementById('comedor-nota-input').value = alumno.nota_dia || '';
+  document.getElementById('comedor-nota-cancel').onclick = () => overlay.remove();
+  document.getElementById('comedor-nota-borrar').onclick = () => _comedorGuardarNota(alumnoId, '', overlay);
+  document.getElementById('comedor-nota-save').onclick   = () => {
+    const val = (document.getElementById('comedor-nota-input').value || '').trim();
+    _comedorGuardarNota(alumnoId, val, overlay);
+  };
+}
+
+async function _comedorGuardarNota(alumnoId, nota, overlay) {
+  const alumno = comedorData.find(a => a.alumno_id === alumnoId);
+  if (!alumno) return;
+
+  if (alumno.db_id) {
+    const { error } = await sb.from("asistencia_comedor")
+      .update({ nota_dia: nota || null }).eq("id", alumno.db_id);
+    if (error) { alert("Error al guardar nota: " + error.message); return; }
+  } else {
+    // Crear registro si no existe
+    const { data: profile } = await sb.from("profiles").select("id").eq("user_id", currentUser.id).single();
+    const { data } = await sb.from("asistencia_comedor").insert({
+      centro_id: ctrId, alumno_id: alumnoId, fecha: comedorFecha,
+      se_queda: alumno.se_queda, plaza_fija: false,
+      registrado_por: profile?.id, nota_dia: nota || null
+    }).select().single();
+    if (data) alumno.db_id = data.id;
+  }
+
+  alumno.nota_dia = nota || null;
+  if (overlay) overlay.remove();
+  renderComedorList();
+}
+window._comedorEditarNota = _comedorEditarNota;
 
 async function toggleAsistencia(alumnoId, seQueda) {
   const alumno = comedorData.find(a => a.alumno_id === alumnoId);
   if (!alumno) return;
 
-  // Get current user profile id
+  // Aviso si el alumno tiene alergia o dieta especial registrada
+  if (seQueda && (alumno.alergias || alumno.dieta_especial)) {
+    var avisoMsg = '';
+    if (alumno.alergias)      avisoMsg += `⚠️ ALERGIA: ${alumno.alergias}`;
+    if (alumno.dieta_especial) avisoMsg += (avisoMsg ? '\n' : '') + `🥗 DIETA: ${alumno.dieta_especial}`;
+    const toast = document.createElement("div");
+    toast.style.cssText = "position:fixed;top:24px;right:24px;background:#b71c1c;color:#fff;padding:12px 18px;border-radius:var(--r-sm);font-size:13px;z-index:9999;box-shadow:var(--sh-lg);max-width:320px;white-space:pre-line;";
+    toast.textContent = avisoMsg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  }
+
   const { data: profile } = await sb.from("profiles").select("id").eq("user_id", currentUser.id).single();
 
   if (alumno.db_id) {
-    await sb.from("asistencia_comedor").update({ se_queda: seQueda, updated_at: new Date().toISOString() }).eq("id", alumno.db_id);
+    await sb.from("asistencia_comedor").update({ se_queda: seQueda }).eq("id", alumno.db_id);
   } else {
     const { data } = await sb.from("asistencia_comedor").insert({
       centro_id: ctrId, alumno_id: alumnoId, fecha: comedorFecha,
@@ -256,11 +354,11 @@ function printComedor() {
   const html = `<html><head><title>Comedor ${fechaStr}</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;}h1{font-size:18px;}table{width:100%;border-collapse:collapse;}
     th,td{border:1px solid #ccc;padding:8px 12px;text-align:left;}th{background:#f0f0f0;}
-    .total{font-size:16px;font-weight:bold;margin:16px 0;}</style></head>
+    .total{font-size:16px;font-weight:bold;margin:16px 0;}.badge{display:inline-block;background:#fde8e8;color:#b71c1c;border-radius:10px;padding:1px 7px;font-size:11px;margin-right:4px;}</style></head>
     <body><h1>Lista comedor — ${ctrName} — ${fechaStr}</h1>
     <div class="total">Total comensales: ${seQuedan.length}</div>
-    <table><thead><tr><th>#</th><th>Nombre</th><th>Curso</th><th>Plaza</th></tr></thead>
-    <tbody>${seQuedan.map((a,i)=>`<tr><td>${i+1}</td><td>${a.nombre}</td><td>${a.curso||""}</td><td>${a.plaza_fija?"Fija":"Esporádica"}</td></tr>`).join("")}
+    <table><thead><tr><th>#</th><th>Nombre</th><th>Curso</th><th>Plaza</th><th>Alergias / Dieta</th></tr></thead>
+    <tbody>${seQuedan.map((a,i)=>`<tr><td>${i+1}</td><td>${a.nombre}</td><td>${a.curso||""}</td><td>${a.plaza_fija?"Fija":"Esporádica"}</td><td>${a.alergias?`<span class="badge">⚠️ ${a.alergias}</span>`:""}${a.dieta_especial?`<span class="badge" style="background:#fff3e0;color:#e65100;">🥗 ${a.dieta_especial}</span>`:""}</td></tr>`).join("")}
     </tbody></table></body></html>`;
   const w = window.open("","_blank");
   w.document.write(html);

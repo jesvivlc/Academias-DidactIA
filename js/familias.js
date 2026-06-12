@@ -203,6 +203,78 @@ async function loadAvisos() {
   inner.innerHTML = html;
 }
 
+// ── PERFIL ALIMENTARIO (FAMILIA) ─────────────────────────────────────
+
+async function loadPerfilAlimentario() {
+  var panel = document.getElementById("panel-perfil-alim");
+  if (!panel) return;
+  panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--txt3);"><span class="spin">⟳</span> Cargando…</div>';
+
+  var profRes = await sb.from("profiles").select("id").eq("user_id", currentUser.id).single();
+  if (!profRes.data) { panel.innerHTML = ''; return; }
+
+  var vinRes = await sb.from("familia_alumno")
+    .select("alumno_id, alumnos(id,nombre,curso,alergias,dieta_especial)")
+    .eq("profile_id", profRes.data.id);
+
+  var alumnos = (vinRes.data || []).map(function(v) {
+    return Object.assign({ id: v.alumno_id }, v.alumnos);
+  }).filter(function(a) { return a.id; });
+
+  if (!alumnos.length) { panel.innerHTML = ''; return; }
+
+  var html = '<div style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:18px 20px;margin-top:16px;">' +
+    '<div style="font-size:15px;font-weight:600;margin-bottom:4px;">🥗 Perfil alimentario</div>' +
+    '<div style="font-size:12px;color:var(--txt3);margin-bottom:14px;">Esta información se comparte con el comedor y se pre-rellena en autorizaciones de salidas.</div>' +
+    alumnos.map(function(a) {
+      return '<div style="border-top:1px solid var(--bdr);padding-top:12px;margin-top:12px;">' +
+        '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">👤 ' + _famEsc(a.nombre) + '<span style="font-size:11px;font-weight:400;color:var(--txt3);margin-left:6px;">' + _famEsc(a.curso||'') + '</span></div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+          '<div><label style="font-size:11px;font-weight:600;color:var(--txt2);display:block;margin-bottom:3px;">⚠️ Alergias alimentarias</label>' +
+            '<input type="text" id="peral-aler-' + a.id + '" value="' + _famEsc(a.alergias||'') + '" placeholder="Ej: frutos secos, marisco, gluten…" ' +
+            'style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--bg);color:var(--txt);"></div>' +
+          '<div><label style="font-size:11px;font-weight:600;color:var(--txt2);display:block;margin-bottom:3px;">🥗 Dieta especial</label>' +
+            '<input type="text" id="peral-diet-' + a.id + '" value="' + _famEsc(a.dieta_especial||'') + '" placeholder="Ej: vegetariana, sin lactosa, halal…" ' +
+            'style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--bg);color:var(--txt);"></div>' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<button onclick="_famGuardarPerfil(\'' + a.id + '\')" style="background:var(--ink);color:#fff;border:none;border-radius:var(--r-sm);padding:7px 16px;font-size:13px;cursor:pointer;">Guardar</button>' +
+            '<span id="peral-msg-' + a.id + '" style="font-size:12px;display:none;"></span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('') +
+  '</div>';
+
+  panel.innerHTML = html;
+}
+
+function _famEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function _famGuardarPerfil(alumnoId) {
+  var aler = ((document.getElementById('peral-aler-' + alumnoId) || {}).value || '').trim();
+  var diet = ((document.getElementById('peral-diet-' + alumnoId) || {}).value || '').trim();
+  var msgEl = document.getElementById('peral-msg-' + alumnoId);
+
+  var { error } = await sb.from('alumnos')
+    .update({ alergias: aler || null, dieta_especial: diet || null })
+    .eq('id', alumnoId).eq('centro_id', ctrId);
+
+  if (error) {
+    if (msgEl) { msgEl.textContent = '❌ Error: ' + error.message; msgEl.style.color = 'var(--red,#c62828)'; msgEl.style.display = 'inline'; }
+    return;
+  }
+  if (msgEl) {
+    msgEl.textContent = '✅ Guardado';
+    msgEl.style.color = 'var(--success,#2e7d32)';
+    msgEl.style.display = 'inline';
+    setTimeout(function() { if (msgEl) msgEl.style.display = 'none'; }, 3000);
+  }
+}
+window._famGuardarPerfil = _famGuardarPerfil;
+
 // ── NOTIFICACIONES PUSH (FAMILIA) ────────────────────────────────────
 // Conversión estándar de la clave VAPID base64url → Uint8Array.
 function urlBase64ToUint8Array(base64String) {

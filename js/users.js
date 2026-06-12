@@ -395,7 +395,7 @@ async function cargarAlumnosEditar() {
   lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">Cargando…</div>';
 
   const [{ data: alumnos }, { data: vinculos }] = await Promise.all([
-    sb.from("alumnos").select("id,nombre,curso").eq("centro_id", _editingProfile.centro_id).order("curso").order("nombre"),
+    sb.from("alumnos").select("id,nombre,curso,alergias,dieta_especial").eq("centro_id", _editingProfile.centro_id).order("curso").order("nombre"),
     sb.from("familia_alumno").select("alumno_id").eq("profile_id", _editingProfile.id)
   ]);
 
@@ -405,13 +405,38 @@ async function cargarAlumnosEditar() {
     lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">No hay alumnos en este centro.</div>';
     return;
   }
+
+  const vinculados = (alumnos || []).filter(a => _editingAlumnoIds.has(a.id));
+
   lista.innerHTML = alumnos.map(a => {
     const sel = _editingAlumnoIds.has(a.id);
     return `<div id="edit-al-${a.id}" onclick="toggleEditAlumno('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;background:${sel ? "var(--ink-ll)" : "var(--srf2)"};">
       <div id="edit-chk-${a.id}" style="width:16px;height:16px;border-radius:4px;border:2px solid ${sel ? "var(--ink)" : "var(--bdr)"};background:${sel ? "var(--ink)" : "var(--srf)"};display:flex;align-items:center;justify-content:center;font-size:10px;color:${sel ? "#fff" : "transparent"};">✓</div>
       <div style="font-size:13px;">${a.nombre} <span style="color:var(--txt3);font-size:12px;">${a.curso || ""}</span></div>
     </div>`;
-  }).join("");
+  }).join("") +
+  // Perfil alimentario (solo vinculados, solo admin/superadmin/director)
+  (vinculados.length && ["admin","superadmin","director"].includes(role) ? `
+    <div style="margin-top:12px;border-top:1px solid var(--bdr);padding-top:10px;">
+      <div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:8px;">🥗 Perfil alimentario</div>
+      ${vinculados.map(a => `
+        <div style="margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:500;margin-bottom:4px;">${a.nombre}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <input type="text" id="usr-aler-${a.id}" value="${_esc(a.alergias||"")}"
+              placeholder="Alergias…"
+              style="padding:6px 8px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;background:var(--bg);color:var(--txt);width:100%;box-sizing:border-box;">
+            <input type="text" id="usr-diet-${a.id}" value="${_esc(a.dieta_especial||"")}"
+              placeholder="Dieta especial…"
+              style="padding:6px 8px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;background:var(--bg);color:var(--txt);width:100%;box-sizing:border-box;">
+          </div>
+        </div>`).join("")}
+      <button onclick="_usersGuardarAlim()" style="background:var(--srf2);border:1px solid var(--bdr);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--txt2);">💾 Guardar perfil alimentario</button>
+      <span id="usr-alim-msg" style="font-size:12px;margin-left:8px;display:none;"></span>
+    </div>` : "");
+
+  // Store vinculados for save handler
+  window._editingAlumnosConPerfil = vinculados;
 }
 
 function toggleEditAlumno(id) {
@@ -658,3 +683,23 @@ function _centroCreadoExito(centro, codigos) {
     '</div>';
   document.body.appendChild(ov);
 }
+
+async function _usersGuardarAlim() {
+  const alumnos = window._editingAlumnosConPerfil || [];
+  if (!alumnos.length) return;
+  const msgEl = document.getElementById("usr-alim-msg");
+
+  try {
+    for (const a of alumnos) {
+      const aler = ((document.getElementById("usr-aler-" + a.id) || {}).value || "").trim();
+      const diet = ((document.getElementById("usr-diet-" + a.id) || {}).value || "").trim();
+      await sb.from("alumnos")
+        .update({ alergias: aler || null, dieta_especial: diet || null })
+        .eq("id", a.id).eq("centro_id", _editingProfile?.centro_id || ctrId);
+    }
+    if (msgEl) { msgEl.textContent = "✅ Guardado"; msgEl.style.color = "var(--success,#2e7d32)"; msgEl.style.display = "inline"; setTimeout(() => { if (msgEl) msgEl.style.display = "none"; }, 3000); }
+  } catch(e) {
+    if (msgEl) { msgEl.textContent = "❌ Error: " + e.message; msgEl.style.color = "var(--red,#c62828)"; msgEl.style.display = "inline"; }
+  }
+}
+window._usersGuardarAlim = _usersGuardarAlim;
