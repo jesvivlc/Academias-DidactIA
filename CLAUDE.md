@@ -899,7 +899,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Design tokens v2 + layout shell
 - [x] Logo brand SVG + wordmark sidebar
 - [x] Inicio admin (Classroom-style: banner ink, metrics pills, modules grid con colores)
-- [ ] Inicio profesor (horario del día, stats distintas)
+- [x] Inicio profesor (`#inicio-staff`): "Mi horario de hoy" como hero (borde izq `--ink`) + franja "Acciones rápidas" del docente (Notificar ausencia/Registrar incidencia/Materiales/Calificaciones, navegación pura) + métricas bajo "Estado del centro hoy". Solo `app.html`+`styles.css` (`.home-quick`/`.home-quick-btn`/`.home-quick-label`), sin tocar JS ni IDs
 - [ ] Alumnos — split tabla/perfil drawer (`02-alumnos.png`)
 - [ ] Asistente IA — pantalla full-screen chat split (`06-chat.png`)
 - [ ] Sustituciones — tabla densa + popover + banner IA (`04-sustituciones.png`)
