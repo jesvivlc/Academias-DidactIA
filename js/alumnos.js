@@ -240,10 +240,14 @@ async function alumnosAbrirFicha(alumnoId) {
     var box = document.getElementById("al-ficha-familias");
     if (!box) return;
     try {
-      var r = await sb.from("familia_alumno")
-        .select("profiles(full_name,email,rol)")
-        .eq("alumno_id", alumnoId);
-      var fams = (r.data || []).map(function(x) { return x.profiles; }).filter(Boolean);
+      // Dos pasos (no embed) para no depender de la FK familia_alumno→profiles.
+      var rv = await sb.from("familia_alumno").select("profile_id").eq("alumno_id", alumnoId);
+      var pids = (rv.data || []).map(function(x) { return x.profile_id; }).filter(Boolean);
+      var fams = [];
+      if (pids.length) {
+        var rp = await sb.from("profiles").select("full_name,email,rol").in("id", pids);
+        fams = rp.data || [];
+      }
       if (!fams.length) { box.innerHTML = '<span style="color:var(--txt3);">Sin familias vinculadas.</span>'; return; }
       box.innerHTML = '<div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;">Familias vinculadas</div>' +
         fams.map(function(f) {
@@ -401,9 +405,12 @@ async function alumnosExportarFichaPDF(alumnoId) {
     // ── Datos (cada query tolerante a fallos) ──
     var familias = [], horario = [], comedor = { dias: 0, queda: 0 }, incidencias = [], calif = [];
     try {
-      var rf = await sb.from("familia_alumno").select("profiles(full_name,email)").eq("alumno_id", alumnoId);
-      familias = (rf.data || []).map(function(x) { return x.profiles; }).filter(Boolean)
-        .map(function(f) { return [f.full_name || "—", f.email || "—"]; });
+      var rfv = await sb.from("familia_alumno").select("profile_id").eq("alumno_id", alumnoId);
+      var fpids = (rfv.data || []).map(function(x) { return x.profile_id; }).filter(Boolean);
+      if (fpids.length) {
+        var rfp = await sb.from("profiles").select("full_name,email").in("id", fpids);
+        familias = (rfp.data || []).map(function(f) { return [f.full_name || "—", f.email || "—"]; });
+      }
     } catch (e) {}
     if (grupo) {
       try {
