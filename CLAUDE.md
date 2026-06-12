@@ -911,7 +911,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 ### Próximo sprint — App Familias / Portal familias
 - [ ] **App Familias (PWA separada o tab nuevo)** — onboarding, dashboard hijo, chat con el centro, notificaciones push
 - [x] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor (pendiente: sustituir TODO `VAPID_PUBLIC_KEY` en `config.js` con el valor real del secret de Supabase)
-- [ ] **Módulo IB en la app** — gestión de `plazos_ib`, CAS tracker, Extended Essay status (para centros con IB)
+- [x] **Módulo IB en la app** (`js/ib.js`, ya implementado — verificado 2026-06-12): 3 sub-paneles (Plazos IB: marcar/reabrir/crear; CAS: actividades por alumno, aprobar/rechazar, editar Learning Outcomes + sugerencia IA; Extended Essay: ver/editar estado). Cableado `#tab-ib`/`#nav-ib`/`#panel-ib` + `showTab('ib')→loadIbPanel()`. Cubierto por la suite (`demo-check`, módulo 15)
 - [x] **Recuperación de contraseña** (2026-06-12): enlace "¿Olvidaste tu contraseña?" en login + form `#form-reset-request` → `doRequestReset()` llama `sb.auth.resetPasswordForEmail(email, {redirectTo: app.html})` con mensaje neutro anti-enumeración; `_hideAuthForms()` helper. El enlace del email vuelve a `app.html` (`type=recovery`) → `config.js` → `showRecovery()` → `doRecovery()`. Allowlist de Auth ampliada con `https://didactia.eu/**` y `https://www.didactia.eu/**` (Management API) para permitir el redirect a `/app.html`
 - [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
 

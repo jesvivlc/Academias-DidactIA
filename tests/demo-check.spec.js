@@ -149,6 +149,9 @@ test('DidactIA — pre-demo check', async ({ page }) => {
   // ── 14. Salidas didácticas ────────────────────────────────────────────────
   await check('14-salidas', 'Salidas didácticas', () => navTo('salidas'));
 
+  // ── 15. IB (CAS / Extended Essay / Plazos) ────────────────────────────────
+  await check('15-ib', 'IB (CAS/EE/Plazos)', () => navTo('ib'));
+
   // ── Generar demo-check.html ───────────────────────────────────────────────
   generateReport(results);
 
