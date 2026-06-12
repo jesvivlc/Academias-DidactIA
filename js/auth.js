@@ -518,9 +518,9 @@ async function loadUserProfile(user) {
   const tabRrhh = document.getElementById("tab-rrhh");
   if (tabRrhh) tabRrhh.style.display = (["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
 
-  // Calificaciones: profesores y dirección (no familia)
+  // Calificaciones: profesores, dirección y familias (familia = solo lectura de sus hijos)
   const tabCal = document.getElementById("tab-calificaciones");
-  if (tabCal) tabCal.style.display = (["profesional","admin","admin_institucional","superadmin","jefatura","director"].includes(role)) ? "block" : "none";
+  if (tabCal) tabCal.style.display = (["profesional","admin","admin_institucional","superadmin","jefatura","director","familia"].includes(role)) ? "block" : "none";
 
   // Materiales: lectura para todos los roles del centro (incl. familia)
   const tabMat = document.getElementById("tab-materiales");
