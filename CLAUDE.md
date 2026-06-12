@@ -911,7 +911,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [ ] **App Familias (PWA separada o tab nuevo)** — onboarding, dashboard hijo, chat con el centro, notificaciones push
 - [x] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor (pendiente: sustituir TODO `VAPID_PUBLIC_KEY` en `config.js` con el valor real del secret de Supabase)
 - [ ] **Módulo IB en la app** — gestión de `plazos_ib`, CAS tracker, Extended Essay status (para centros con IB)
-- [ ] **Página de recuperación de contraseña** — UX mejorable; actualmente funciona via hash
+- [x] **Recuperación de contraseña** (2026-06-12): enlace "¿Olvidaste tu contraseña?" en login + form `#form-reset-request` → `doRequestReset()` llama `sb.auth.resetPasswordForEmail(email, {redirectTo: app.html})` con mensaje neutro anti-enumeración; `_hideAuthForms()` helper. El enlace del email vuelve a `app.html` (`type=recovery`) → `config.js` → `showRecovery()` → `doRecovery()`. Allowlist de Auth ampliada con `https://didactia.eu/**` y `https://www.didactia.eu/**` (Management API) para permitir el redirect a `/app.html`
 - [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
 
 ### Backlog
