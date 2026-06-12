@@ -34,3 +34,7 @@ node_modules/
 # Supabase CLI build artifacts
 supabase/.temp/
 .vercel
+
+# Artefactos / volcados que no deben versionarse
+repomix-output.xml
+edubot-supabase (1).html

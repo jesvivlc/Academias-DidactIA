@@ -330,7 +330,7 @@ async function loadUserProfile(user) {
 
     ctrId = allCentros[0].id;
     ctrName = allCentros[0].nombre;
-    modulosActivos = allCentros?.[0]?.modulos_activos || [];
+    modulosActivos = _conModulosBase(allCentros?.[0]?.modulos_activos);
     setTimeout(() => applyTheme(allCentros?.[0]?.color_primario, allCentros?.[0]?.logo_url), 100);
     // Build centro selector for superadmin
     const hdrRight = document.getElementById("ctr-name-hdr");
@@ -348,7 +348,7 @@ async function loadUserProfile(user) {
         if (ds) ds.value = id;
         if (ms) ms.value = id;
         const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
-        modulosActivos = ctr?.modulos_activos || [];
+        modulosActivos = _conModulosBase(ctr?.modulos_activos);
         const cTab = document.getElementById("tab-comedor");
         if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
         const eTab = document.getElementById("tab-espacios");
@@ -384,7 +384,7 @@ async function loadUserProfile(user) {
       if (ctrId) {
         const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
         ctrName = ctr?.nombre || "Mi centro";
-        modulosActivos = ctr?.modulos_activos || [];
+        modulosActivos = _conModulosBase(ctr?.modulos_activos);
         applyTheme(ctr?.color_primario, ctr?.logo_url);
         _cacheBrand(ctr?.color_primario, ctr?.logo_url);
       }
@@ -404,7 +404,7 @@ async function loadUserProfile(user) {
         const activeCentro = match || instCentros[0];
         ctrId = activeCentro.id;
         ctrName = activeCentro.nombre;
-        modulosActivos = activeCentro.modulos_activos || [];
+        modulosActivos = _conModulosBase(activeCentro.modulos_activos);
         applyTheme(activeCentro.color_primario, activeCentro.logo_url);
         _cacheBrand(activeCentro.color_primario, activeCentro.logo_url);
 
@@ -425,7 +425,7 @@ async function loadUserProfile(user) {
             if (ds) ds.value = id;
             if (ms) ms.value = id;
             const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
-            modulosActivos = ctr?.modulos_activos || [];
+            modulosActivos = _conModulosBase(ctr?.modulos_activos);
             const cTab = document.getElementById("tab-comedor");
             if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
             const eTab = document.getElementById("tab-espacios");
@@ -460,7 +460,7 @@ async function loadUserProfile(user) {
     if (ctrId) {
       const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
       ctrName = ctr?.nombre || "Mi centro";
-      modulosActivos = ctr?.modulos_activos || [];
+      modulosActivos = _conModulosBase(ctr?.modulos_activos);
       applyTheme(ctr?.color_primario, ctr?.logo_url);
       _cacheBrand(ctr?.color_primario, ctr?.logo_url);
     }

@@ -363,7 +363,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - Badge "Pendiente" + botón "Reenviar invitación" para usuarios sin `email_confirmed_at`
 - **Eliminar** solo disponible para usuarios **pendientes** (sin `email_confirmed_at`) — los confirmados solo se pueden desactivar para evitar huérfanos en `auth.users`
 - Seguridad: admin no puede crear superadmins ni cambiar/desactivar su propio perfil
-- Toggle de módulos por centro (comedor, espacios, incidencias) — solo superadmin
+- **Sin toggles de módulos por centro**: todos los módulos (comedor, espacios, incidencias) están **siempre disponibles para todos los centros**. El gating por `centros.modulos_activos` se neutraliza en carga vía `_conModulosBase()` (config.js), que fuerza `MODULOS_BASE = ["comedor","espacios","incidencias"]` en `modulosActivos`. El único módulo que sigue siendo opcional es **IB** (gestión aparte). La pestaña Usuarios solo muestra la lista de centros (solo lectura, `renderModulosLista`) + botón "Nuevo centro"; el wizard crea el centro con los módulos base ya activos
 
 ### Administración (admin.js)
 - Editor de `info_centro` (10 campos, con visibilidad por rol)
@@ -863,7 +863,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Bolsa de guardias con equidad (ranking trimestral, barra de progreso, selector ordenado)
 - [x] Dashboard por rol con contadores live y búsqueda rápida de alumno
 - [x] Gestión de usuarios: invitar, editar, desactivar, reenviar invitación, badges de estado
-- [x] Toggle de módulos por centro (superadmin)
+- [x] Módulos siempre disponibles para todos los centros (excepto IB) — eliminados los toggles de módulos en Usuarios (`_conModulosBase` en config.js)
 - [x] Módulo incidencias: buscador de alumno en tiempo real (autorellena grupo), gravedad, filtro por grupo, CSV, contador en tab, notificación familia
 - [x] Módulo incidencias — tipificación IA: botón Tipificar con IA, modal con normativa CCAA (5 regiones), informe borrador editable, pre-relleno automático del formulario
 - [x] Módulo incidencias — flujo convivencia: guardar informe/normativa/medidas/PREVI en BD, notificación automática a jefatura (grave/muy_grave) vía Edge Function notify-jefatura
@@ -925,7 +925,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI) **ya en producción** (verificado 2026-06-12: tabla + RLS `centro_isolation` + índice `idx_alertas_centro_activas` presentes; el SQL coincide con el esquema vivo). No requiere acción.
 - [x] Importación masiva de alumnos/familias via CSV (`scripts/importar_alumnos.mjs`, 2026-06-12): cabeceras flexibles (nombre/curso/grupo_horario/familia_email/relacion), dedupe por nombre normalizado, vínculos `familia_alumno` por email de perfil, `--dry-run`. **Seguridad:** los 3 importadores (`importar_alumnos.mjs`, `importar_horarios_profes.mjs`/`.py`, `importar_cargas_eso.mjs`) ya NO hardcodean la `service_role` key — la leen de `SUPABASE_SERVICE_ROLE_KEY` (0 JWTs literales en el repo)
 - [x] Estadísticas cross-centro para superadmin (`js/analytics.js`, 2026-06-12): vista multicentro ampliada en el Dashboard de Análisis (solo superadmin, `#cmi-mc-wrap`): tabla comparativa por centro (alumnos, sustituciones pendientes hoy, incidencias abiertas, comensales hoy, usuarios, alertas) con semáforo y fila de TOTALES. Fix: sustituciones sin cubrir ahora incluye `cubierta IS NULL`
-- [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
+- [x] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadidos a `.gitignore`; `edubot-supabase (1).html` quitado del index con `git rm --cached`) ✅ 2026-06-12
 - [x] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real ✅ (par regenerado 2026-06-11, secrets actualizados vía Management API, EF `send-push` redesplegada)
 - [x] Bug menor `send-push` (cerrado 2026-06-12): el delete por 410/404 ahora borra **solo la fila fallida** (`.eq("id", row.id)`, con `id` añadido al select), no todas las del `user_id` — un usuario con varios dispositivos conserva sus suscripciones válidas. EF redesplegada.
 

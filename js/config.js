@@ -10,6 +10,11 @@ let sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy 
 let currentUser = null, currentUserName = "", currentUserAlumnos = [], modulosActivos = [];
 let cursoActivo = '2025-26'; // se actualiza tras login leyendo info_centro.curso_activo
 
+// Todos los módulos (excepto IB) están disponibles para todos los centros: estos
+// siempre se consideran activos, independientemente de centros.modulos_activos.
+const MODULOS_BASE = ["comedor", "espacios", "incidencias"];
+function _conModulosBase(arr) { return [...new Set([...(arr || []), ...MODULOS_BASE])]; }
+
 // ── BOOT ──
 window.addEventListener("DOMContentLoaded", async () => {
   if (!window.supabase || typeof window.supabase.createClient !== "function") {

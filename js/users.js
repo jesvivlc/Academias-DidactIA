@@ -164,44 +164,22 @@ function renderUsersTable() {
   </table></div>`;
 }
 
-// ── MÓDULOS POR CENTRO ──
+// ── CENTROS (lista solo lectura) ──
+// Todos los módulos (excepto IB) están disponibles para todos los centros, así que
+// ya no se gestionan toggles por centro: solo se listan los centros existentes.
 function renderModulosLista(centros) {
-  const MODULOS = [
-    { key: "comedor",   label: "🍽️ Comedor" },
-    { key: "espacios",  label: "🏫 Espacios" },
-    { key: "incidencias", label: "⚠️ Incidencias" },
-  ];
   const container = document.getElementById("centros-modulos-list");
   if (!container) return;
-  container.innerHTML = centros.map(c => {
-    const activos = c.modulos_activos || [];
-    const toggles = MODULOS.map(m => {
-      const on = activos.includes(m.key);
-      return `<div class="toggle-wrap" onclick="toggleModulo('${c.id}','${m.key}',${!on},this)">` +
-        `<div class="${on ? "toggle-track on" : "toggle-track"}"><div class="toggle-thumb"></div></div>` +
-        `<span style="font-size:13px;color:var(--txt2);">${m.label}</span></div>`;
-    }).join("");
-    return `<div style="padding:14px 0;border-bottom:1px solid var(--bdr);">` +
-      `<div style="font-size:14px;font-weight:600;color:var(--txt);margin-bottom:10px;">${c.nombre}</div>` +
-      `<div style="display:flex;flex-wrap:wrap;gap:16px;">${toggles}</div></div>`;
-  }).join("");
-}
-
-async function toggleModulo(centroId, modulo, activate, el) {
-  el.querySelector(".toggle-track").classList.toggle("on", activate);
-  const { data: centro } = await sb.from("centros").select("modulos_activos").eq("id", centroId).single();
-  let modulos = centro?.modulos_activos || [];
-  modulos = activate
-    ? (modulos.includes(modulo) ? modulos : [...modulos, modulo])
-    : modulos.filter(m => m !== modulo);
-  await sb.from("centros").update({ modulos_activos: modulos }).eq("id", centroId);
-  if (centroId === ctrId) {
-    modulosActivos = modulos;
-    ["comedor","espacios"].forEach(k => {
-      const t = document.getElementById("tab-" + k);
-      if (t) t.style.display = modulosActivos.includes(k) ? "block" : "none";
-    });
+  if (!centros || !centros.length) {
+    container.innerHTML = `<div style="font-size:13px;color:var(--txt3);padding:8px 0;">No hay centros.</div>`;
+    return;
   }
+  container.innerHTML = centros.map(c =>
+    `<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--bdr);">` +
+      `<span style="font-size:18px;">🏫</span>` +
+      `<span style="font-size:14px;font-weight:600;color:var(--txt);">${(c.nombre || "").replace(/</g, "&lt;")}</span>` +
+    `</div>`
+  ).join("");
 }
 
 // ── MODAL INVITAR ──
@@ -568,11 +546,6 @@ function _centroEsc(s) {
 function nuevoCentroWizard() {
   if (role !== "superadmin") return;
   _ncSlugTouched = false; // reset por si se reabre el wizard
-  const MODULOS = [
-    { key: "comedor", label: "🍽️ Comedor" },
-    { key: "espacios", label: "🏫 Espacios" },
-    { key: "incidencias", label: "⚠️ Incidencias" },
-  ];
   let ov = document.getElementById("nuevo-centro-modal");
   if (ov) ov.remove();
   ov = document.createElement("div");
@@ -593,9 +566,6 @@ function nuevoCentroWizard() {
           '<div style="flex:1;"><label class="lbl">Color primario</label><input class="fi" id="nc-color" type="color" value="#1a73e8" style="height:42px;padding:4px;" /></div>' +
           '<div style="flex:2;"><label class="lbl">Logo URL (opcional)</label><input class="fi" id="nc-logo" placeholder="https://…/logo.png" /></div>' +
         '</div>' +
-        '<div><label class="lbl">Módulos activos</label><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">' +
-          MODULOS.map(m => '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--txt);"><input type="checkbox" class="nc-mod" value="' + m.key + '" style="width:16px;height:16px;accent-color:var(--ink);"> ' + m.label + '</label>').join("") +
-        '</div></div>' +
         '<div style="border-top:1px solid var(--bdr);padding-top:12px;"><div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px;">Códigos de acceso (autogenerados, editables)</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px;">' +
             '<div><label class="lbl">Código familias</label><input class="fi" id="nc-cod-fam" value="' + _centroGenCodigo("FAM-") + '" /></div>' +
@@ -637,7 +607,8 @@ async function guardarNuevoCentro() {
 
   const color = document.getElementById("nc-color")?.value || null;
   const logo = document.getElementById("nc-logo")?.value.trim() || null;
-  const modulos = Array.from(document.querySelectorAll(".nc-mod:checked")).map(c => c.value);
+  // Todos los centros tienen los módulos base disponibles (excepto IB, que se gestiona aparte).
+  const modulos = (typeof MODULOS_BASE !== "undefined") ? [...MODULOS_BASE] : ["comedor", "espacios", "incidencias"];
   const codFam = document.getElementById("nc-cod-fam")?.value.trim() || null;
   const codPro = document.getElementById("nc-cod-prof")?.value.trim() || null;
   const codAcc = document.getElementById("nc-cod-acc")?.value.trim() || null;
