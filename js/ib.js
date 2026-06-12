@@ -6,6 +6,36 @@ function _ibEsAlumnoReal(a) {
   return !/^total(es)?\b/i.test((a.nombre || '').trim());
 }
 
+function _ibEsc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Carga alumnos IB reales del centro (1IB/2IB por defecto), ordenados.
+async function _ibLoadAlumnos(grupos) {
+  const { data } = await sb.from("alumnos")
+    .select("id,nombre,grupo_horario")
+    .eq("centro_id", ctrId)
+    .in("grupo_horario", grupos || ["1IB", "2IB"])
+    .order("grupo_horario").order("nombre");
+  return (data || []).filter(_ibEsAlumnoReal);
+}
+
+// Matriz oficial de puntos core del Diploma (TOK × EE → 0..3, "F" = condición de fallo).
+function _ibCorePoints(tok, ee) {
+  const M = {
+    A: { A: 3, B: 3, C: 2, D: 2, E: "F" },
+    B: { A: 3, B: 2, C: 2, D: 1, E: "F" },
+    C: { A: 2, B: 2, C: 1, D: 0, E: "F" },
+    D: { A: 2, B: 1, C: 0, D: 0, E: "F" },
+    E: { A: "F", B: "F", C: "F", D: "F", E: "F" },
+  };
+  const t = (tok || "").toUpperCase(), e = (ee || "").toUpperCase();
+  if (!M[t] || M[t][e] === undefined) return null; // faltan notas
+  return M[t][e]; // número 0-3 o "F"
+}
+
 const IB_LOS = ["LO1","LO2","LO3","LO4","LO5","LO6","LO7"];
 const IB_LO_DESC = {
   LO1: "Identifica fortalezas y áreas de mejora",
@@ -32,33 +62,46 @@ async function loadIbPanel() {
 async function _renderIbPanels() {
   const container = document.getElementById("ib-container");
 
+  // Pestañas del módulo IB. 'coord' (Coordinador) es la vista global por defecto.
+  const tabs = [
+    { id: "coord",   label: "🧭 Coordinador" },
+    { id: "cas",     label: "🎭 CAS" },
+    { id: "tok",     label: "🧠 TOK" },
+    { id: "ee",      label: "📄 Extended Essay" },
+    { id: "result",  label: "🎯 Predicciones/Resultados" },
+    { id: "plazos",  label: "📅 Plazos" },
+  ];
+  const DEFAULT_TAB = "coord";
+
   container.innerHTML = `
     <div class="pg-hdr" style="margin-bottom:8px;">
       <div>
         <div class="pg-title">Diploma IB</div>
-        <div class="pg-sub">Seguimiento CAS, Extended Essay y Plazos</div>
+        <div class="pg-sub">Coordinación, CAS, TOK, Extended Essay, predicciones/resultados y plazos</div>
       </div>
       <button class="btn btn-p" onclick="loadIbPanel()">↺ Recargar</button>
     </div>
-    <div style="display:flex;gap:8px;border-bottom:2px solid var(--bdr);margin-bottom:20px;flex-wrap:wrap;" id="ib-subtabs">
-      <div class="ib-stab active" onclick="ibShowTab('cas')" id="ib-stab-cas" style="padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);border-bottom:2px solid var(--ink);margin-bottom:-2px;">🎭 CAS</div>
-      <div class="ib-stab" onclick="ibShowTab('ee')" id="ib-stab-ee" style="padding:8px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--txt3);border-bottom:2px solid transparent;margin-bottom:-2px;">📄 Extended Essay</div>
-      <div class="ib-stab" onclick="ibShowTab('plazos')" id="ib-stab-plazos" style="padding:8px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--txt3);border-bottom:2px solid transparent;margin-bottom:-2px;">📅 Plazos</div>
+    <div style="display:flex;gap:6px;border-bottom:2px solid var(--bdr);margin-bottom:20px;flex-wrap:wrap;" id="ib-subtabs">
+      ${tabs.map(t => {
+        const act = t.id === DEFAULT_TAB;
+        return `<div class="ib-stab${act ? ' active' : ''}" onclick="ibShowTab('${t.id}')" id="ib-stab-${t.id}" style="padding:8px 16px;cursor:pointer;font-size:13px;font-weight:${act ? 600 : 500};color:${act ? 'var(--ink)' : 'var(--txt3)'};border-bottom:2px solid ${act ? 'var(--ink)' : 'transparent'};margin-bottom:-2px;">${t.label}</div>`;
+      }).join("")}
     </div>
-    <div id="ib-panel-cas"></div>
-    <div id="ib-panel-ee" style="display:none;"></div>
-    <div id="ib-panel-plazos" style="display:none;"></div>
+    ${tabs.map(t => `<div id="ib-panel-${t.id}"${t.id === DEFAULT_TAB ? '' : ' style="display:none;"'}></div>`).join("")}
   `;
 
   await Promise.all([
+    _loadCoordinadorPanel(),
     _loadCasPanel(),
+    _loadTokPanel(),
     _loadEePanel(),
+    _loadResultadosPanel(),
     _loadPlazosPanel()
   ]);
 }
 
 function ibShowTab(tab) {
-  ["cas","ee","plazos"].forEach(t => {
+  ["coord","cas","tok","ee","result","plazos"].forEach(t => {
     const panel = document.getElementById("ib-panel-" + t);
     const stab = document.getElementById("ib-stab-" + t);
     if (!panel || !stab) return;
@@ -451,6 +494,15 @@ async function ibVerEe(alumnoId, alumnoNombre) {
   const canEdit = ["admin","superadmin"].includes(role);
   const today = new Date();
 
+  // Borradores + feedback del supervisor (solo si el EE ya existe)
+  let borradores = [];
+  if (ee && ee.id) {
+    const { data: br } = await sb.from("ee_borradores")
+      .select("*").eq("centro_id", ctrId).eq("extended_essay_id", ee.id)
+      .order("version", { ascending: false });
+    borradores = br || [];
+  }
+
   const estadoOpts = [
     { val: "sin_empezar", label: "Sin empezar" },
     { val: "en_proceso", label: "En proceso" },
@@ -501,12 +553,48 @@ async function ibVerEe(alumnoId, alumnoNombre) {
             ${estadoOpts.map(o => `<option value="${o.val}" ${(ee?.estado || 'sin_empezar') === o.val ? 'selected' : ''}>${o.label}</option>`).join('')}
           </select>
         </div>
+        <div>
+          <label class="lbl">Nota final EE (A–E)</label>
+          <select class="fi" id="ee-nota" ${canEdit ? '' : 'disabled'}>
+            <option value="">Sin nota</option>
+            ${['A','B','C','D','E'].map(n => `<option value="${n}" ${ee?.nota === n ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
         ${canEdit ? `
           <button class="btn btn-p" onclick="ibGuardarEe('${alumnoId}', ${ee ? `'${ee.id}'` : 'null'})">💾 Guardar cambios</button>
           <div id="ee-err" style="display:none;color:var(--red);font-size:12px;"></div>` : ''}
+
+        ${ee && ee.id ? `
+        <div style="border-top:1px solid var(--bdr);margin-top:6px;padding-top:14px;">
+          <div style="font-size:13px;font-weight:600;color:var(--txt);margin-bottom:8px;">Borradores y feedback (${borradores.length})</div>
+          ${borradores.length ? borradores.map(b => `
+            <div style="border:1px solid var(--bdr);border-radius:var(--r-sm);padding:8px 10px;margin-bottom:6px;font-size:12px;">
+              <div style="display:flex;gap:8px;color:var(--txt2);flex-wrap:wrap;"><strong>v${b.version}</strong><span>${b.fecha || ''}</span>${b.palabras != null ? `<span>· ${b.palabras} palabras</span>` : ''}</div>
+              ${b.comentario_supervisor ? `<div style="margin-top:4px;color:var(--txt);white-space:pre-wrap;">${_ibEsc(b.comentario_supervisor)}</div>` : ''}
+            </div>`).join('') : '<div style="font-size:12px;color:var(--txt3);">Aún no hay borradores registrados.</div>'}
+          ${canEdit ? `
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+              <input class="fi" id="ee-br-palabras" type="number" placeholder="Palabras de este borrador" />
+              <textarea class="fi" id="ee-br-coment" rows="2" placeholder="Feedback del supervisor sobre este borrador…" style="resize:vertical;"></textarea>
+              <button class="btn" onclick="ibAddBorrador('${ee.id}','${alumnoId}','${_ibEsc(alumnoNombre).replace(/'/g, "\\'")}', ${borradores.length})" style="border:1px solid var(--bdr);background:var(--srf2);font-size:12px;">+ Registrar borrador + feedback</button>
+            </div>` : ''}
+        </div>` : ''}
       </div>
     </div>`;
   document.body.appendChild(div);
+}
+
+async function ibAddBorrador(eeId, alumnoId, alumnoNombre, prevCount) {
+  const pal = parseInt(document.getElementById("ee-br-palabras")?.value) || null;
+  const com = document.getElementById("ee-br-coment")?.value.trim() || null;
+  if (!pal && !com) return;
+  const { error } = await sb.from("ee_borradores").insert({
+    centro_id: ctrId, extended_essay_id: eeId,
+    version: (prevCount || 0) + 1, palabras: pal, comentario_supervisor: com,
+  });
+  if (error) { alert("Error: " + error.message); return; }
+  document.querySelector("[style*='fixed'][style*='z-index:2000']")?.remove();
+  ibVerEe(alumnoId, alumnoNombre);
 }
 
 async function ibGuardarEe(alumnoId, eeId) {
@@ -521,7 +609,8 @@ async function ibGuardarEe(alumnoId, eeId) {
     supervisor_nombre: document.getElementById("ee-sup")?.value.trim() || null,
     palabras_actuales: parseInt(document.getElementById("ee-palabras")?.value) || 0,
     fecha_entrega_limite: document.getElementById("ee-fecha")?.value || null,
-    estado: document.getElementById("ee-estado")?.value || "sin_empezar"
+    estado: document.getElementById("ee-estado")?.value || "sin_empezar",
+    nota: document.getElementById("ee-nota")?.value || null
   };
 
   let error;
@@ -724,4 +813,245 @@ async function ibGuardarPlazo() {
   }
   document.querySelector("[style*='fixed'][style*='z-index:2000']")?.remove();
   _loadPlazosPanel();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TOK (Theory of Knowledge) — ensayo + exhibición
+// ════════════════════════════════════════════════════════════════════════════
+const IB_TOK_EST = {
+  pendiente: { bg: "#ffebee", color: "#b71c1c", label: "Pendiente" },
+  borrador:  { bg: "#fff3e0", color: "#e65100", label: "Borrador" },
+  entregado: { bg: "#e3f2fd", color: "#1565c0", label: "Entregado" },
+  evaluado:  { bg: "#e8f5e9", color: "#1e6b3a", label: "Evaluado" },
+};
+function _ibTokBadge(est) {
+  const c = IB_TOK_EST[est || "pendiente"] || IB_TOK_EST.pendiente;
+  return `<span style="background:${c.bg};color:${c.color};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;">${c.label}</span>`;
+}
+
+async function _loadTokPanel() {
+  const container = document.getElementById("ib-panel-tok");
+  if (!container) return;
+  const alumnos = await _ibLoadAlumnos(["1IB", "2IB"]);
+  if (!alumnos.length) { container.innerHTML = '<div style="color:var(--txt3);padding:16px;font-size:13px;">No hay alumnos IB registrados.</div>'; return; }
+  const { data: toks } = await sb.from("ib_tok").select("*").eq("centro_id", ctrId).in("alumno_id", alumnos.map(a => a.id));
+  const byAl = {}; (toks || []).forEach(t => byAl[t.alumno_id] = t);
+
+  let html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:var(--srf2);">' +
+    ["Alumno", "Ensayo", "Nota", "Exhibición", "Nota", ""].map(h => `<th style="text-align:left;padding:10px 12px;font-weight:600;color:var(--txt2);border-bottom:2px solid var(--bdr);">${h}</th>`).join("") +
+    "</tr></thead><tbody>";
+  alumnos.forEach(a => {
+    const t = byAl[a.id] || {};
+    html += `<tr style="border-bottom:1px solid var(--bdr);cursor:pointer;" onclick="ibVerTok('${a.id}','${_ibEsc(a.nombre).replace(/'/g, "\\'")}')" onmouseover="this.style.background='var(--srf2)'" onmouseout="this.style.background=''">
+      <td style="padding:10px 12px;font-weight:500;color:var(--txt);">${_ibEsc(a.nombre)} <span style="color:var(--txt3);font-size:11px;">${a.grupo_horario}</span></td>
+      <td style="padding:10px 12px;">${_ibTokBadge(t.ensayo_estado)}</td>
+      <td style="padding:10px 12px;font-weight:600;color:var(--ink);">${t.ensayo_nota || "—"}</td>
+      <td style="padding:10px 12px;">${_ibTokBadge(t.exhibicion_estado)}</td>
+      <td style="padding:10px 12px;font-weight:600;color:var(--ink);">${t.exhibicion_nota || "—"}</td>
+      <td style="padding:10px 12px;color:var(--ink);font-size:12px;">Ver ›</td></tr>`;
+  });
+  container.innerHTML = html + "</tbody></table></div>";
+}
+
+async function ibVerTok(alumnoId, alumnoNombre) {
+  const { data: t } = await sb.from("ib_tok").select("*").eq("centro_id", ctrId).eq("alumno_id", alumnoId).maybeSingle();
+  const canEdit = ["admin", "superadmin"].includes(role);
+  const estOpts = ["pendiente", "borrador", "entregado", "evaluado"];
+  const notaOpts = ["", "A", "B", "C", "D", "E"];
+  const selEst = (id, val) => `<select class="fi" id="${id}" ${canEdit ? "" : "disabled"}>${estOpts.map(o => `<option value="${o}" ${(val || "pendiente") === o ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+  const selNota = (id, val) => `<select class="fi" id="${id}" ${canEdit ? "" : "disabled"}>${notaOpts.map(o => `<option value="${o}" ${(val || "") === o ? "selected" : ""}>${o || "Sin nota"}</option>`).join("")}</select>`;
+  const div = document.createElement("div");
+  div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;";
+  div.innerHTML = `<div style="background:var(--srf);border-radius:var(--r);padding:28px;width:100%;max-width:min(520px,calc(100vw - 24px));max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+      <div><div style="font-size:17px;font-weight:600;color:var(--txt);">${_ibEsc(alumnoNombre)}</div><div style="font-size:12px;color:var(--txt3);">Theory of Knowledge</div></div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt3);">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--txt2);">📝 Ensayo TOK</div>
+      <div><label class="lbl">Título / pregunta prescrita</label><input class="fi" id="tok-ens-tit" value="${_ibEsc(t?.ensayo_titulo || "")}" ${canEdit ? "" : "disabled"}/></div>
+      <div style="display:flex;gap:10px;"><div style="flex:1;"><label class="lbl">Estado</label>${selEst("tok-ens-est", t?.ensayo_estado)}</div><div style="width:120px;"><label class="lbl">Nota</label>${selNota("tok-ens-nota", t?.ensayo_nota)}</div></div>
+      <div style="font-size:12px;font-weight:700;color:var(--txt2);border-top:1px solid var(--bdr);padding-top:12px;">🖼️ Exhibición TOK</div>
+      <div><label class="lbl">Tema / pregunta IA</label><input class="fi" id="tok-exh-tema" value="${_ibEsc(t?.exhibicion_tema || "")}" ${canEdit ? "" : "disabled"}/></div>
+      <div style="display:flex;gap:10px;"><div style="flex:1;"><label class="lbl">Estado</label>${selEst("tok-exh-est", t?.exhibicion_estado)}</div><div style="width:120px;"><label class="lbl">Nota</label>${selNota("tok-exh-nota", t?.exhibicion_nota)}</div></div>
+      <div><label class="lbl">Comentarios</label><textarea class="fi" id="tok-coment" rows="2" style="resize:vertical;" ${canEdit ? "" : "disabled"}>${_ibEsc(t?.comentarios || "")}</textarea></div>
+      ${canEdit ? `<button class="btn btn-p" onclick="ibGuardarTok('${alumnoId}')">💾 Guardar</button><div id="tok-err" style="display:none;color:var(--red);font-size:12px;"></div>` : ""}
+    </div></div>`;
+  document.body.appendChild(div);
+}
+
+async function ibGuardarTok(alumnoId) {
+  const errEl = document.getElementById("tok-err");
+  if (errEl) errEl.style.display = "none";
+  const payload = {
+    centro_id: ctrId, alumno_id: alumnoId,
+    ensayo_titulo: document.getElementById("tok-ens-tit")?.value.trim() || null,
+    ensayo_estado: document.getElementById("tok-ens-est")?.value || "pendiente",
+    ensayo_nota: document.getElementById("tok-ens-nota")?.value || null,
+    exhibicion_tema: document.getElementById("tok-exh-tema")?.value.trim() || null,
+    exhibicion_estado: document.getElementById("tok-exh-est")?.value || "pendiente",
+    exhibicion_nota: document.getElementById("tok-exh-nota")?.value || null,
+    comentarios: document.getElementById("tok-coment")?.value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await sb.from("ib_tok").upsert(payload, { onConflict: "centro_id,alumno_id" });
+  if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  document.querySelector("[style*='fixed'][style*='z-index:2000']")?.remove();
+  _loadTokPanel(); _loadCoordinadorPanel();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PREDICCIONES / RESULTADOS (IBIS-adjacent)
+// ════════════════════════════════════════════════════════════════════════════
+async function _loadResultadosPanel() {
+  const container = document.getElementById("ib-panel-result");
+  if (!container) return;
+  const alumnos = await _ibLoadAlumnos(["1IB", "2IB"]);
+  if (!alumnos.length) { container.innerHTML = '<div style="color:var(--txt3);padding:16px;font-size:13px;">No hay alumnos IB registrados.</div>'; return; }
+  const { data: res } = await sb.from("ib_resultados").select("*").eq("centro_id", ctrId).in("alumno_id", alumnos.map(a => a.id));
+  const byAl = {}; (res || []).forEach(r => { (byAl[r.alumno_id] = byAl[r.alumno_id] || []).push(r); });
+
+  let html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:var(--srf2);">' +
+    ["Alumno", "Asignaturas", "Σ Predicción", "Σ Final", ""].map(h => `<th style="text-align:left;padding:10px 12px;font-weight:600;color:var(--txt2);border-bottom:2px solid var(--bdr);">${h}</th>`).join("") +
+    "</tr></thead><tbody>";
+  alumnos.forEach(a => {
+    const rs = byAl[a.id] || [];
+    const sumP = rs.reduce((s, r) => s + (r.prediccion || 0), 0);
+    const sumF = rs.reduce((s, r) => s + (r.nota_final || 0), 0);
+    html += `<tr style="border-bottom:1px solid var(--bdr);cursor:pointer;" onclick="ibVerResultados('${a.id}','${_ibEsc(a.nombre).replace(/'/g, "\\'")}')" onmouseover="this.style.background='var(--srf2)'" onmouseout="this.style.background=''">
+      <td style="padding:10px 12px;font-weight:500;color:var(--txt);">${_ibEsc(a.nombre)} <span style="color:var(--txt3);font-size:11px;">${a.grupo_horario}</span></td>
+      <td style="padding:10px 12px;color:var(--txt2);">${rs.length}</td>
+      <td style="padding:10px 12px;font-weight:600;color:var(--ink);">${sumP || "—"}</td>
+      <td style="padding:10px 12px;font-weight:600;color:#1e6b3a;">${sumF || "—"}</td>
+      <td style="padding:10px 12px;color:var(--ink);font-size:12px;">Editar ›</td></tr>`;
+  });
+  container.innerHTML = html + "</tbody></table></div>";
+}
+
+async function ibVerResultados(alumnoId, alumnoNombre) {
+  const { data: rs } = await sb.from("ib_resultados").select("*").eq("centro_id", ctrId).eq("alumno_id", alumnoId).order("asignatura");
+  const canEdit = ["admin", "superadmin"].includes(role);
+  window._ibResRows = (rs || []).map(r => ({ ...r }));
+  const div = document.createElement("div");
+  div.id = "ib-res-modal";
+  div.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;";
+  div.innerHTML = `<div style="background:var(--srf);border-radius:var(--r);padding:28px;width:100%;max-width:min(620px,calc(100vw - 24px));max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div><div style="font-size:17px;font-weight:600;color:var(--txt);">${_ibEsc(alumnoNombre)}</div><div style="font-size:12px;color:var(--txt3);">Predicciones y resultados (1–7 por asignatura)</div></div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt3);">✕</button>
+    </div>
+    <div id="ib-res-body"></div>
+    ${canEdit ? `<button class="btn" onclick="ibAddResRow()" style="border:1px solid var(--bdr);background:var(--srf2);font-size:12px;margin-top:8px;">+ Añadir asignatura</button>
+    <button class="btn btn-p" onclick="ibGuardarResultados('${alumnoId}')" style="margin-top:8px;width:100%;">💾 Guardar todo</button>
+    <div id="ib-res-err" style="display:none;color:var(--red);font-size:12px;margin-top:6px;"></div>` : ""}
+  </div>`;
+  document.body.appendChild(div);
+  _ibRenderResRows(canEdit);
+}
+
+function _ibRenderResRows(canEdit) {
+  const body = document.getElementById("ib-res-body");
+  if (!body) return;
+  const rows = window._ibResRows || [];
+  if (!rows.length) { body.innerHTML = '<div style="font-size:12px;color:var(--txt3);padding:6px 0;">Sin asignaturas. Añade una.</div>'; return; }
+  const niveles = ["HL", "SL"];
+  body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>' +
+    ["Asignatura", "Nivel", "Predic.", "Final", ""].map(h => `<th style="text-align:left;padding:4px;color:var(--txt3);">${h}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map((r, i) => `<tr>
+      <td style="padding:3px;"><input class="fi" style="font-size:12px;padding:5px 8px;" value="${_ibEsc(r.asignatura || "")}" oninput="window._ibResRows[${i}].asignatura=this.value" ${canEdit ? "" : "disabled"}/></td>
+      <td style="padding:3px;width:70px;"><select class="fi" style="font-size:12px;padding:5px;" onchange="window._ibResRows[${i}].nivel=this.value" ${canEdit ? "" : "disabled"}>${niveles.map(n => `<option ${r.nivel === n ? "selected" : ""}>${n}</option>`).join("")}</select></td>
+      <td style="padding:3px;width:64px;"><input class="fi" type="number" min="1" max="7" style="font-size:12px;padding:5px;" value="${r.prediccion ?? ""}" oninput="window._ibResRows[${i}].prediccion=this.value?parseInt(this.value):null" ${canEdit ? "" : "disabled"}/></td>
+      <td style="padding:3px;width:64px;"><input class="fi" type="number" min="1" max="7" style="font-size:12px;padding:5px;" value="${r.nota_final ?? ""}" oninput="window._ibResRows[${i}].nota_final=this.value?parseInt(this.value):null" ${canEdit ? "" : "disabled"}/></td>
+      <td style="padding:3px;">${canEdit ? `<button onclick="window._ibResRows.splice(${i},1);_ibRenderResRows(true)" style="background:none;border:none;cursor:pointer;color:var(--red);">✕</button>` : ""}</td>
+    </tr>`).join("") + "</tbody></table>";
+}
+
+function ibAddResRow() {
+  window._ibResRows = window._ibResRows || [];
+  window._ibResRows.push({ asignatura: "", nivel: "HL", prediccion: null, nota_final: null });
+  _ibRenderResRows(true);
+}
+
+async function ibGuardarResultados(alumnoId) {
+  const errEl = document.getElementById("ib-res-err");
+  if (errEl) errEl.style.display = "none";
+  const rows = (window._ibResRows || []).filter(r => (r.asignatura || "").trim());
+  const payload = rows.map(r => ({
+    centro_id: ctrId, alumno_id: alumnoId, asignatura: r.asignatura.trim(),
+    nivel: r.nivel || "HL", prediccion: r.prediccion ?? null, nota_final: r.nota_final ?? null,
+    updated_at: new Date().toISOString(),
+  }));
+  if (payload.length) {
+    const { error } = await sb.from("ib_resultados").upsert(payload, { onConflict: "centro_id,alumno_id,asignatura" });
+    if (error) { if (errEl) { errEl.textContent = "Error: " + error.message; errEl.style.display = "block"; } return; }
+  }
+  // Borrar asignaturas que se quitaron de la rejilla (la rejilla es la fuente de verdad)
+  const { data: existentes } = await sb.from("ib_resultados").select("id,asignatura").eq("centro_id", ctrId).eq("alumno_id", alumnoId);
+  const keep = new Set(payload.map(p => p.asignatura.toLowerCase()));
+  const borrar = (existentes || []).filter(e => !keep.has((e.asignatura || "").toLowerCase())).map(e => e.id);
+  if (borrar.length) await sb.from("ib_resultados").delete().in("id", borrar);
+
+  document.getElementById("ib-res-modal")?.remove();
+  _loadResultadosPanel(); _loadCoordinadorPanel();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  COORDINADOR IB — vista global de todos los alumnos IB
+// ════════════════════════════════════════════════════════════════════════════
+function _ibKpi(val, label) {
+  return `<div style="background:var(--srf2);border:1px solid var(--bdr);border-radius:var(--r-sm);padding:12px 14px;"><div style="font-size:22px;font-weight:700;color:var(--ink);">${val}</div><div style="font-size:11px;color:var(--txt3);margin-top:2px;">${label}</div></div>`;
+}
+function _ibEstadoCorto(est) {
+  const m = { en_proceso: "En proceso", primer_borrador: "1er borr.", borrador_final: "Borr. final", entregado: "Entregado", sin_empezar: "Sin empezar" };
+  return `<span style="color:var(--txt2);font-size:11px;">${m[est] || est}</span>`;
+}
+
+async function _loadCoordinadorPanel() {
+  const container = document.getElementById("ib-panel-coord");
+  if (!container) return;
+  const alumnos = await _ibLoadAlumnos(["1IB", "2IB"]);
+  if (!alumnos.length) { container.innerHTML = '<div style="color:var(--txt3);padding:16px;font-size:13px;">No hay alumnos IB registrados en este centro.</div>'; return; }
+  const ids = alumnos.map(a => a.id);
+
+  const [cas, ee, tok, res] = await Promise.all([
+    sb.from("cas_actividades").select("alumno_id,estado").eq("centro_id", ctrId).in("alumno_id", ids),
+    sb.from("extended_essay").select("alumno_id,estado,nota").eq("centro_id", ctrId).in("alumno_id", ids),
+    sb.from("ib_tok").select("alumno_id,ensayo_estado,ensayo_nota").eq("centro_id", ctrId).in("alumno_id", ids),
+    sb.from("ib_resultados").select("alumno_id,prediccion,nota_final").eq("centro_id", ctrId).in("alumno_id", ids),
+  ]);
+  const casBy = {}, eeBy = {}, tokBy = {}, resBy = {};
+  (cas.data || []).forEach(c => { (casBy[c.alumno_id] = casBy[c.alumno_id] || { tot: 0, comp: 0 }); casBy[c.alumno_id].tot++; if (c.estado === "completada") casBy[c.alumno_id].comp++; });
+  (ee.data || []).forEach(e => eeBy[e.alumno_id] = e);
+  (tok.data || []).forEach(t => tokBy[t.alumno_id] = t);
+  (res.data || []).forEach(r => { (resBy[r.alumno_id] = resBy[r.alumno_id] || { p: 0, f: 0 }); resBy[r.alumno_id].p += (r.prediccion || 0); resBy[r.alumno_id].f += (r.nota_final || 0); });
+
+  const n = alumnos.length;
+  const eeEntregados = (ee.data || []).filter(e => e.estado === "entregado").length;
+  const tokConNota = (tok.data || []).filter(t => t.ensayo_nota).length;
+
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px;">
+    ${_ibKpi(n, "Alumnos IB")}${_ibKpi(eeEntregados + "/" + n, "EE entregados")}${_ibKpi(tokConNota + "/" + n, "TOK con nota")}
+  </div>`;
+  html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr style="background:var(--srf2);">' +
+    ["Alumno", "Grupo", "CAS", "EE", "TOK", "Σ Pred.", "Σ Final", "Core", "Total /45"].map(h => `<th style="text-align:left;padding:9px 10px;font-weight:600;color:var(--txt2);border-bottom:2px solid var(--bdr);white-space:nowrap;">${h}</th>`).join("") +
+    "</tr></thead><tbody>";
+  alumnos.forEach(a => {
+    const c = casBy[a.id] || { tot: 0, comp: 0 }, e = eeBy[a.id] || {}, t = tokBy[a.id] || {}, r = resBy[a.id] || { p: 0, f: 0 };
+    const core = _ibCorePoints(t.ensayo_nota, e.nota);
+    const coreStr = core == null ? "—" : core === "F" ? '<span style="color:var(--red);font-weight:700;">F</span>' : core;
+    const total = (core == null || core === "F") ? (r.p || 0) : (r.p || 0) + core;
+    const totalStr = r.p ? (core === "F" ? `<span style="color:var(--red);">${total} ⚠</span>` : `${total}`) : "—";
+    html += `<tr style="border-bottom:1px solid var(--bdr);">
+      <td style="padding:9px 10px;font-weight:500;color:var(--txt);">${_ibEsc(a.nombre)}</td>
+      <td style="padding:9px 10px;color:var(--txt3);">${a.grupo_horario}</td>
+      <td style="padding:9px 10px;">${c.comp}/${c.tot || "—"}</td>
+      <td style="padding:9px 10px;">${e.nota ? `<strong>${e.nota}</strong>` : (e.estado ? _ibEstadoCorto(e.estado) : "—")}</td>
+      <td style="padding:9px 10px;">${t.ensayo_nota ? `<strong>${t.ensayo_nota}</strong>` : (t.ensayo_estado || "—")}</td>
+      <td style="padding:9px 10px;font-weight:600;">${r.p || "—"}</td>
+      <td style="padding:9px 10px;font-weight:600;color:#1e6b3a;">${r.f || "—"}</td>
+      <td style="padding:9px 10px;">${coreStr}</td>
+      <td style="padding:9px 10px;font-weight:700;color:var(--ink);">${totalStr}</td></tr>`;
+  });
+  html += '</tbody></table></div><div style="font-size:11px;color:var(--txt3);margin-top:8px;">Total /45 = Σ predicción (asignaturas) + puntos core (matriz TOK×EE). "F" = condición de no diploma (nota E en TOK o EE).</div>';
+  container.innerHTML = html;
 }
