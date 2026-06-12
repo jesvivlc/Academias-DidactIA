@@ -1448,9 +1448,29 @@
       var bn = document.getElementById(cfg.bn);
       if (bn) bn.style.display = visible ? 'flex' : 'none';
     }
+    syncGroupLabels();
+  }
+  /* Oculta el encabezado de un grupo del sidebar cuando todos sus items quedan
+     ocultos (p.ej. la familia no ve "Administración"). */
+  function syncGroupLabels() {
+    var navWrap = document.querySelector('#app-sidebar .sb-nav');
+    if (!navWrap) return;
+    var currentLabel = null, visibleCount = 0;
+    var flush = function () {
+      if (currentLabel) currentLabel.style.display = visibleCount > 0 ? '' : 'none';
+    };
+    Array.prototype.forEach.call(navWrap.children, function (el) {
+      if (el.classList && el.classList.contains('sb-group-label')) {
+        flush(); currentLabel = el; visibleCount = 0;
+      } else if (el.classList && el.classList.contains('nav-item')) {
+        if (el.style.display !== 'none') visibleCount++;
+      }
+    });
+    flush();
   }
   function syncAllVisibility() {
     Object.keys(TAB_MAP).forEach(syncTabItem);
+    syncGroupLabels();
   }
 
   Object.keys(TAB_MAP).forEach(function (tabId) {
