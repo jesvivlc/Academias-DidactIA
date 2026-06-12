@@ -1,0 +1,57 @@
+name: Weekly demo-check (salud de la app)
+
+# Verificación semanal automática de los módulos clave contra producción
+# (https://didactia.eu). Ejecuta tests/demo-check.spec.js y publica el informe
+# como artefacto. Si algún módulo está roto, el job falla y GitHub avisa por email.
+
+on:
+  schedule:
+    # Lunes a las 07:00 UTC (~08:00/09:00 hora peninsular)
+    - cron: "0 7 * * 1"
+  workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña Actions
+
+jobs:
+  demo-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEMO_ADMIN_EMAIL: ${{ secrets.DEMO_ADMIN_EMAIL }}
+      DEMO_ADMIN_PASSWORD: ${{ secrets.DEMO_ADMIN_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Comprobar secrets de credenciales
+        run: |
+          if [ -z "$DEMO_ADMIN_EMAIL" ] || [ -z "$DEMO_ADMIN_PASSWORD" ]; then
+            echo "::error::Faltan los secrets DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD."
+            echo "Configúralos en Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar navegador Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar demo-check (14 módulos)
+        run: npm run test:demo
+
+      - name: Publicar informe (demo-check.html + capturas)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-check-report
+          path: |
+            demo-check.html
+            demo-screenshots/
+            playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore
