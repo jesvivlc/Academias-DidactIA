@@ -923,7 +923,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [ ] Estadísticas avanzadas cross-centro para superadmin
 - [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
 - [x] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real ✅ (par regenerado 2026-06-11, secrets actualizados vía Management API, EF `send-push` redesplegada)
-- [ ] Bug menor `send-push`: el delete por 410/404 borra todas las filas del `user_id` en lugar de solo el endpoint fallido — si un usuario tiene varios dispositivos puede perder suscripciones válidas
+- [x] Bug menor `send-push` (cerrado 2026-06-12): el delete por 410/404 ahora borra **solo la fila fallida** (`.eq("id", row.id)`, con `id` añadido al select), no todas las del `user_id` — un usuario con varios dispositivos conserva sus suscripciones válidas. EF redesplegada.
 
 ---
 

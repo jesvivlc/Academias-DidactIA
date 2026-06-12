@@ -43,7 +43,7 @@ serve(async (req) => {
     // Fetch subscriptions for the requested user IDs
     const { data: rows, error } = await sb
       .from("push_subscriptions")
-      .select("user_id, subscription")
+      .select("id, user_id, subscription")
       .in("user_id", user_ids);
 
     if (error) throw new Error("Error fetching subscriptions: " + error.message);
@@ -64,9 +64,10 @@ serve(async (req) => {
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         errors.push(`${row.user_id}: ${msg}`);
-        // If subscription is expired/invalid, remove it
+        // If this subscription is expired/invalid, remove ONLY this row (by id),
+        // not every subscription of the user (un usuario puede tener varios dispositivos).
         if (msg.includes("410") || msg.includes("404")) {
-          await sb.from("push_subscriptions").delete().eq("user_id", row.user_id);
+          await sb.from("push_subscriptions").delete().eq("id", row.id);
         }
       }
     }
