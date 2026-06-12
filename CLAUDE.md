@@ -61,7 +61,7 @@ index.html                      Landing page (Playfair + Geist, Navy/Blue/Amber)
 app.html                        Aplicación: login, header, tabs, paneles
 css/styles.css          Tokens CSS + estilos globales
 js/
-  config.js             SB_URL, SB_KEY, variables globales, boot DOMContentLoaded (llama themeLoginScreen pre-login)
+  config.js             SB_URL, SB_KEY, VAPID_PUBLIC_KEY, variables globales, boot DOMContentLoaded (llama themeLoginScreen pre-login)
   auth.js               doLogin, loadUserProfile, showTab, applyTheme, themeLoginScreen (marca centro pre-login), goHome
   chat.js               sendMsg, buildContext, horarios por grupo, Gemini fetch
   comedor.js            loadComedor, toggleAsistencia, histórico 30 días, export Excel
@@ -74,7 +74,7 @@ js/
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
   ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
   comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
-  familias.js           (stub — portal familias, pendiente)
+  familias.js           initFamiliaView, loadFamiliaComedor, loadAvisos, initPushFamilias (suscripción Web Push: banner + pushManager.subscribe + INSERT push_subscriptions)
   planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab, Importar (.xlsx → planner_inputs)
   analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales (pill "Dashboard" del módulo Análisis)
   calificaciones.js     initCalificaciones (gradebook): vista profesor (entrada notas) / vista dirección (consulta + export CSV/PDF)
@@ -150,6 +150,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `feedback_familias` | centro_id, familia_user_id, alumno_id, canal, texto_raw, categoria_ia, sentimiento_ia (numeric −1..1), resumen_ia, requiere_accion (bool), respuesta_borrador, estado, created_at | Feedback de familias. `canal`: formulario/email/chat/presencial; `estado`: pendiente/en_gestion/resuelto. Análisis IA asíncrono post-INSERT |
 | `documentos_calidad` | centro_id, titulo, tipo, contenido, created_at | Documentos del SGC (sistema de gestión de calidad) |
 | `plantillas_calidad` | centro_id, nombre, tipo, contenido_plantilla, campos_requeridos (jsonb) | Plantillas de documentos (entrevista familia, acta reunión, informe incidencia, plan mejora). Seed: `supabase/seeds/plantillas_calidad_default.sql` |
+| `push_subscriptions` | id, user_id (NOT NULL), centro_id (nullable), subscription (jsonb), created_at | Suscripciones Web Push. RLS `push_own` + `push_superadmin`. La EF `send-push` lee de aquí (service_role); las familias se suscriben desde `js/familias.js` (`initPushFamilias`) |
 
 ---
 
@@ -167,6 +168,8 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `notify-jefatura` | Email de alerta a admins del centro cuando se registra incidencia grave/muy_grave. Recibe `{ incidencia_id }`. Incluye informe borrador, medidas y banner PREVI si aplica |
 | `send-comunicado` | Envía comunicado por email a los destinatarios del centro vía Resend. Recibe `{ comunicado_id }`. Enruta por `destinatarios`: todos/solo_profesores/solo_familias/grupo:XXXX |
 | `parse-restricciones` | Analiza texto libre y/o audio con Gemini 2.5 Flash multimodal. Recibe `{ texto?, audio_base64?, mime_type?, centro_id }`. Devuelve `{ materias[], restricciones_profesor[], restricciones_materia[], necesidades[], preguntas[] }`. Contexto del centro (profesores y materias existentes) inyectado para matching exacto de nombres. |
+| `agent-sustituciones` | **Agente autónomo** (Gemini 2.5 Flash, function calling en bucle). Recibe `{centro_id, fecha}` + JWT del usuario (cliente con RLS por centro). 3 herramientas en secuencia: `obtener_ausencias_sin_cubrir` (siempre 1ª; si vacío → para), `buscar_profesores_libres`, `sugerir_sustituto` (equidad por guardias del trimestre, top 3). `centro_id` SIEMPRE el del body; `.eq("centro_id", …)` en las 3 queries. Devuelve `{type:"text", content}`. Código: `supabase/functions/agent-sustituciones/index.ts` |
+| `send-push` | Envía Web Push (web-push + VAPID) a `user_ids[]`. Lee suscripciones de `push_subscriptions` (service_role), payload `{title, body, tag}`. Auto-borra suscripciones `410/404`. Secrets `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` configurados |
 
 ---
 
@@ -1085,6 +1088,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 - `2026-06-11` — feat(push-familias): **suscripción a notificaciones push para familias** (`js/familias.js`, `js/auth.js`, `js/config.js`). `initPushFamilias()` llamada tras login de rol familia: comprueba soporte Push API, consulta si ya suscrito, muestra banner `#push-banner-familia` con botón Activar y ✕ persistente (localStorage). `_pushActivar()`: SW ready → `pushManager.subscribe` con VAPID → INSERT en `push_subscriptions` fire-and-forget → toast confirmación. `VAPID_PUBLIC_KEY` en `config.js` (TODO pendiente de sustituir con valor real). SW ya tenía handler push completo — sin cambios.
 - `2026-06-11` — feat(agent-sustituciones): **primer agente IA autónomo** (`supabase/functions/agent-sustituciones/index.ts`). Edge Function con Gemini function calling y 3 herramientas encadenadas: `obtener_ausencias_sin_cubrir` (sustituciones sin cubrir hoy), `buscar_profesores_libres` (cruza `horarios_grupo` con profesores del centro), `sugerir_sustituto` (ordena por equidad trimestral). El agente solo actúa cuando hay ausencias reales — si no hay, responde "No hay ausencias sin cubrir hoy." Integrado en la home del rol admin/director/jefatura como bloque "🤖 Resumen de guardias" (fire-and-forget, no bloquea carga). P0 seguridad `disponibilidad_profesor` cerrado (aislamiento garantizado por RLS + filtro cliente, no requería cambio).
 - `2026-06-11 10:27` · `d969c51` — Merge branch 'main' of https://github.com/jesvivlc/DidactIA
+- `2026-06-12` — feat(agent): detalle adicional de `agent-sustituciones` — el `centro_id` es SIEMPRE el del body (nunca el del modelo), `.eq("centro_id", …)` en las 3 queries, log por herramienta; herramientas dedup por nombre normalizado y filtro de PENDIENTE / nombres con `?`/`/`; `sugerir_sustituto` top 3; integración UI: botón "🤖 Buscar profesor libre" en `#sust-vista-admin` (`buscarProfesorLibreAgente`) + briefing `_renderAgentBriefing` en home admin.
 - `2026-06-11 00:54` · `81de9b4` — docs(CLAUDE.md): sesión 2026-06-11 — Calidad NCs+CAPA+Feedback, roles orientador/admin_institucional, tablas calidad
 - `2026-06-11` · **Módulo Calidad — No Conformidades + CAPA + Feedback Familias** (`763bb5e`): implementación completa de las dos secciones principales de `js/calidad.js`. Bug crítico previo: `getElementById('cal-container')` devolvía el contenedor de Calificaciones (ID duplicado) → spinner infinito. Fix: renombrar a `calidad-cont` (`af8ac5e`). Secciones implementadas:
   - **No Conformidades**: lista paginada con filtros (estado/prioridad/categoría), NC ID `NC-{año}-{6HEX}`, ordenado por prioridad+fecha; modal con dictación por voz (`SpeechRecognition` + `try/catch` completo) + análisis IA en `onblur` que actualiza selectores automáticamente; detalle con cambio de estado inline + análisis 5 Porqués con Gemini; CAPA inline (modal causa/plan/responsable/fechas, eficacia, cierre automático cuando todas eficaces)
