@@ -1,21 +1,64 @@
 // ── AUTH UI ──
+function _hideAuthForms() {
+  ["form-login", "form-register", "form-recovery", "form-reset-request"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+}
 function showRegister() {
-  document.getElementById("form-login").style.display = "none";
+  _hideAuthForms();
   document.getElementById("form-register").style.display = "block";
   document.getElementById("auth-title").textContent = "Crear cuenta";
   document.getElementById("auth-sub").textContent = "Regístrate para acceder a tu centro educativo.";
 }
 function showLogin() {
-  document.getElementById("form-register").style.display = "none";
+  _hideAuthForms();
   document.getElementById("form-login").style.display = "block";
-  document.getElementById("form-recovery").style.display = "none";
   document.getElementById("auth-title").textContent = "Bienvenido a DidactIA";
   document.getElementById("auth-sub").textContent = "Accede con tu cuenta para continuar.";
 }
 
+// Vista para SOLICITAR el email de recuperación (la mitad que faltaba).
+function showResetRequest() {
+  _hideAuthForms();
+  document.getElementById("form-reset-request").style.display = "block";
+  document.getElementById("auth-title").textContent = "Recuperar contraseña";
+  document.getElementById("auth-sub").textContent = "Te enviaremos un enlace a tu email para restablecerla.";
+  // Prerellena con el email ya escrito en el login, si lo había.
+  var le = document.getElementById("login-email");
+  var re = document.getElementById("reset-email");
+  if (le && re && le.value && !re.value) re.value = le.value;
+  var msg = document.getElementById("reset-msg");
+  if (msg) msg.style.display = "none";
+}
+
+async function doRequestReset() {
+  var email = (document.getElementById("reset-email").value || "").trim();
+  var msg = document.getElementById("reset-msg");
+  var btn = document.getElementById("reset-btn");
+  msg.style.display = "none";
+
+  if (!email || email.indexOf("@") === -1) {
+    msg.textContent = "Introduce un email válido.";
+    msg.style.cssText = "display:block;color:var(--red,#c0392b);font-size:13px;margin:4px 0;";
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "Enviando…"; }
+  try {
+    await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+  } catch (e) { /* nunca revelamos si la cuenta existe */ }
+
+  // Mensaje neutro (evita enumeración de cuentas): no decimos si el email existe.
+  msg.textContent = "Si existe una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña. Revisa tu bandeja de entrada (y la carpeta de spam).";
+  msg.style.cssText = "display:block;color:#1e6b3a;font-size:13px;background:var(--ink-ll);border-radius:8px;padding:10px 12px;margin:4px 0;";
+  if (btn) { btn.disabled = false; btn.textContent = "Reenviar enlace"; }
+}
+
 function showRecovery(type) {
-  document.getElementById("form-login").style.display = "none";
-  document.getElementById("form-register").style.display = "none";
+  _hideAuthForms();
   document.getElementById("form-recovery").style.display = "block";
   const isInvite = type === "invite";
   document.getElementById("auth-title").textContent = isInvite ? "Crea tu contraseña" : "Nueva contraseña";

@@ -39,7 +39,19 @@
       </div>
       <button class="setup-btn" onclick="doLogin()">Entrar a DidactIA</button>
       <div class="setup-err" id="login-err"></div>
+      <span class="setup-link" onclick="showResetRequest()">¿Olvidaste tu contraseña?</span>
       <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
+    </div>
+
+    <!-- RESET REQUEST FORM — solicitar email de recuperación -->
+    <div id="form-reset-request" style="display:none">
+      <div class="setup-field">
+        <label class="setup-label">Email</label>
+        <input class="setup-input" id="reset-email" type="email" placeholder="tu@email.com" />
+      </div>
+      <button class="setup-btn" id="reset-btn" onclick="doRequestReset()">Enviar enlace de recuperación</button>
+      <div id="reset-msg" style="display:none"></div>
+      <span class="setup-link" onclick="showLogin()">← Volver a iniciar sesión</span>
     </div>
 
     <!-- RECOVERY FORM -->
