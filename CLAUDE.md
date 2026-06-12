@@ -478,8 +478,8 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **CMI tiles**: 6 KPIs en tiempo real — guardias sin cubrir, ausencias activas, incidencias abiertas, comensales hoy, ocupación espacios, usuarios activos
 - **Gráficos Chart.js**: línea de tendencia de incidencias (30 días), barras de guardias por profesor (trimestre), dona de distribución de tipos de ausencia
 - **Alertas predictivas psicosociales**: análisis automático de patrones anómalos (picos de absentismo, acumulación de incidencias por grupo/alumno, profesor con exceso de guardias). Llama Edge Function `alerta-psicosocial`
-- **Edge Function `alerta-psicosocial`**: recibe `{centro_id}`, analiza últimos 30 días de datos de tres tablas, devuelve array de alertas con `nivel` (verde/amarillo/rojo), `mensaje` y `accion_sugerida`. Requiere tabla `alertas_predictivas` (pendiente ejecutar `sql/alertas-predictivas.sql`)
-- **Tabla `alertas_predictivas`**: `centro_id, tipo, nivel, mensaje, datos_json, leida, created_at` — **pendiente ejecutar SQL en Supabase**
+- **Edge Function `alerta-psicosocial`**: recibe `{centro_id}`, analiza últimos 30 días de datos de tres tablas, devuelve array de alertas con `nivel` y descripción. Persiste en `alertas_predictivas`
+- **Tabla `alertas_predictivas`** (✅ ya en producción): `id, centro_id, alumno_id, tipo (DEFAULT 'riesgo_abandono'), nivel (DEFAULT 'medio'), descripcion, condicion_a/b/c (bool), resuelta (bool), created_at`. RLS `centro_isolation` + índice `idx_alertas_centro_activas(centro_id, resuelta, created_at DESC)`. DDL: `sql/alertas-predictivas.sql`
 
 ### Salidas Didácticas (salidas.js)
 - Tab **"🚌 Salidas"** visible para todos los roles; `#panel-salidas` renderizado completamente dinámico (sin HTML estático)
@@ -918,7 +918,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] **P0 seguridad (cerrado):** `disponibilidad_profesor` no tiene columna `centro_id`. El aislamiento ya está garantizado por dos capas: (1) cliente filtra por `profesor_id IN (profIds)` donde `profIds` viene de `profesores` filtrado por `centro_id`; (2) RLS con policy `centro_isolation` aísla vía FK `profesor_id → profesores.centro_id`. No hay fuga cross-tenant. Sin cambios necesarios.
 - [x] **P0 deploy resuelto:** EF `chat` redesplegada el 2026-06-03 con 7 herramientas. Deploy vía `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
 - [x] **P1 versionar EFs:** `invite-user` y `notify-role` extraídos del bundle ESZIP de producción y añadidos al repo (`c232c38`). `notify-sustitucion` ya estaba versionada (no está deployada actualmente). Nota: en producción también existen `rapid-processor` y `cas-analyzer` sin versionar en el repo.
-- [ ] Ejecutar `sql/alertas-predictivas.sql` en Supabase para activar tabla `alertas_predictivas` (Analytics CMI)
+- [x] `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI) **ya en producción** (verificado 2026-06-12: tabla + RLS `centro_isolation` + índice `idx_alertas_centro_activas` presentes; el SQL coincide con el esquema vivo). No requiere acción.
 - [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
 - [ ] Estadísticas avanzadas cross-centro para superadmin
 - [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
