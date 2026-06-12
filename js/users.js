@@ -546,3 +546,144 @@ async function changeRole(profileId, newRol) {
   } catch(e) { console.warn("notify-role falló:", e); }
   await loadUsers();
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ONBOARDING DE NUEVO CENTRO (solo superadmin)
+// ════════════════════════════════════════════════════════════════════════════
+function _centroSlugify(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+}
+function _centroGenCodigo(prefix) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin caracteres ambiguos
+  let s = "";
+  for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return (prefix || "") + s;
+}
+function _centroEsc(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function nuevoCentroWizard() {
+  if (role !== "superadmin") return;
+  _ncSlugTouched = false; // reset por si se reabre el wizard
+  const MODULOS = [
+    { key: "comedor", label: "🍽️ Comedor" },
+    { key: "espacios", label: "🏫 Espacios" },
+    { key: "incidencias", label: "⚠️ Incidencias" },
+  ];
+  let ov = document.getElementById("nuevo-centro-modal");
+  if (ov) ov.remove();
+  ov = document.createElement("div");
+  ov.id = "nuevo-centro-modal";
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:18px;";
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.innerHTML =
+    '<div style="background:var(--srf);border-radius:var(--r);max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;box-shadow:var(--sh-lg);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+        '<div><div style="font-size:18px;font-weight:600;color:var(--txt);">Nuevo centro</div>' +
+        '<div style="font-size:12px;color:var(--txt3);">Crea un centro educativo y sus códigos de acceso.</div></div>' +
+        '<button onclick="document.getElementById(\'nuevo-centro-modal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt3);">✕</button>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:13px;margin-top:14px;">' +
+        '<div><label class="lbl">Nombre del centro *</label><input class="fi" id="nc-nombre" placeholder="IES Ejemplo" oninput="_ncAutoSlug()" /></div>' +
+        '<div><label class="lbl">Identificador (slug) *</label><input class="fi" id="nc-slug" placeholder="ies-ejemplo" /></div>' +
+        '<div style="display:flex;gap:12px;">' +
+          '<div style="flex:1;"><label class="lbl">Color primario</label><input class="fi" id="nc-color" type="color" value="#1a73e8" style="height:42px;padding:4px;" /></div>' +
+          '<div style="flex:2;"><label class="lbl">Logo URL (opcional)</label><input class="fi" id="nc-logo" placeholder="https://…/logo.png" /></div>' +
+        '</div>' +
+        '<div><label class="lbl">Módulos activos</label><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">' +
+          MODULOS.map(m => '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--txt);"><input type="checkbox" class="nc-mod" value="' + m.key + '" style="width:16px;height:16px;accent-color:var(--ink);"> ' + m.label + '</label>').join("") +
+        '</div></div>' +
+        '<div style="border-top:1px solid var(--bdr);padding-top:12px;"><div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px;">Códigos de acceso (autogenerados, editables)</div>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;">' +
+            '<div><label class="lbl">Código familias</label><input class="fi" id="nc-cod-fam" value="' + _centroGenCodigo("FAM-") + '" /></div>' +
+            '<div><label class="lbl">Código profesionales</label><input class="fi" id="nc-cod-prof" value="' + _centroGenCodigo("PRO-") + '" /></div>' +
+            '<div><label class="lbl">Código de acceso general</label><input class="fi" id="nc-cod-acc" value="' + _centroGenCodigo("") + '" /></div>' +
+          '</div></div>' +
+        '<div id="nc-err" style="display:none;color:var(--red);font-size:12px;"></div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+          '<button class="btn" onclick="document.getElementById(\'nuevo-centro-modal\').remove()" style="border:1px solid var(--bdr);background:var(--srf);">Cancelar</button>' +
+          '<button class="btn btn-p" id="nc-guardar" onclick="guardarNuevoCentro()">Crear centro</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  setTimeout(() => { const i = document.getElementById("nc-nombre"); if (i) i.focus(); }, 50);
+}
+
+// Auto-rellena el slug desde el nombre mientras el usuario no lo haya tocado a mano.
+let _ncSlugTouched = false;
+function _ncAutoSlug() {
+  const slug = document.getElementById("nc-slug");
+  const nombre = document.getElementById("nc-nombre");
+  if (!slug || !nombre) return;
+  if (slug.value && _ncSlugTouched) return;
+  slug.value = _centroSlugify(nombre.value);
+  slug.oninput = function () { _ncSlugTouched = true; };
+}
+
+async function guardarNuevoCentro() {
+  const errEl = document.getElementById("nc-err");
+  const btn = document.getElementById("nc-guardar");
+  const showErr = (m) => { if (errEl) { errEl.textContent = m; errEl.style.display = "block"; } };
+  if (errEl) errEl.style.display = "none";
+
+  const nombre = document.getElementById("nc-nombre")?.value.trim();
+  let slug = _centroSlugify(document.getElementById("nc-slug")?.value || "");
+  if (!nombre) { showErr("El nombre es obligatorio."); return; }
+  if (!slug) { showErr("El identificador (slug) es obligatorio."); return; }
+
+  const color = document.getElementById("nc-color")?.value || null;
+  const logo = document.getElementById("nc-logo")?.value.trim() || null;
+  const modulos = Array.from(document.querySelectorAll(".nc-mod:checked")).map(c => c.value);
+  const codFam = document.getElementById("nc-cod-fam")?.value.trim() || null;
+  const codPro = document.getElementById("nc-cod-prof")?.value.trim() || null;
+  const codAcc = document.getElementById("nc-cod-acc")?.value.trim() || null;
+
+  if (btn) { btn.disabled = true; btn.textContent = "Creando…"; }
+  try {
+    // Slug único: si existe, añade sufijo numérico.
+    const { data: existentes } = await sb.from("centros").select("slug");
+    const slugs = new Set((existentes || []).map(c => c.slug));
+    if (slugs.has(slug)) { let i = 2; while (slugs.has(slug + "-" + i)) i++; slug = slug + "-" + i; }
+
+    const { data: nuevo, error } = await sb.from("centros").insert({
+      nombre, slug, color_primario: color, logo_url: logo,
+      modulos_activos: modulos,
+      codigo_familia: codFam, codigo_profesional: codPro, codigo_acceso: codAcc,
+    }).select("id,nombre").single();
+    if (error) { showErr("Error al crear el centro: " + error.message); if (btn) { btn.disabled = false; btn.textContent = "Crear centro"; } return; }
+
+    document.getElementById("nuevo-centro-modal")?.remove();
+    if (typeof loadUsersPanel === "function") loadUsersPanel(); // refresca lista de centros/módulos
+    _centroCreadoExito(nuevo, { codFam, codPro, codAcc });
+  } catch (e) {
+    showErr("Error: " + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = "Crear centro"; }
+  }
+}
+
+// Modal de éxito: muestra los códigos y ofrece invitar al primer admin.
+function _centroCreadoExito(centro, codigos) {
+  let ov = document.createElement("div");
+  ov.id = "centro-exito-modal";
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:18px;";
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  const codRow = (lbl, val) => val ? '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--paper-2,var(--srf2));border:1px solid var(--line,var(--bdr));border-radius:8px;font-size:13px;"><span style="color:var(--txt3);">' + lbl + '</span><strong style="font-family:monospace;letter-spacing:.05em;">' + _centroEsc(val) + '</strong></div>' : "";
+  ov.innerHTML =
+    '<div style="background:var(--srf);border-radius:var(--r);max-width:440px;width:100%;padding:26px;box-shadow:var(--sh-lg);text-align:center;">' +
+      '<div style="font-size:40px;margin-bottom:8px;">🏫</div>' +
+      '<div style="font-size:17px;font-weight:600;color:var(--txt);margin-bottom:4px;">Centro creado</div>' +
+      '<div style="font-size:13px;color:var(--txt3);margin-bottom:16px;">' + _centroEsc(centro.nombre) + ' ya está disponible. Comparte estos códigos para que el personal y las familias se registren:</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;text-align:left;margin-bottom:18px;">' +
+        codRow("Familias", codigos.codFam) + codRow("Profesionales", codigos.codPro) + codRow("Acceso general", codigos.codAcc) +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
+        '<button class="btn" onclick="document.getElementById(\'centro-exito-modal\').remove()" style="border:1px solid var(--bdr);background:var(--srf);">Cerrar</button>' +
+        '<button class="btn btn-p" onclick="document.getElementById(\'centro-exito-modal\').remove(); if(typeof mostrarModalInvitar===\'function\') mostrarModalInvitar();">Invitar primer admin →</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+}

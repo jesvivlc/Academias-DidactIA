@@ -975,8 +975,12 @@
     </div>
     <!-- Centros y módulos (superadmin only) -->
     <div class="card" id="centros-modulos-card" style="display:none;">
-      <div class="card-hdr"><div class="card-ico g">🏫</div><div><div class="card-title">Centros y módulos activos</div></div></div>
-      <div class="card-desc">Activa o desactiva módulos para cada centro educativo.</div>
+      <div class="card-hdr" style="align-items:center;">
+        <div class="card-ico g">🏫</div>
+        <div style="flex:1;"><div class="card-title">Centros y módulos activos</div></div>
+        <button class="btn btn-p" onclick="nuevoCentroWizard()" style="font-size:13px;">+ Nuevo centro</button>
+      </div>
+      <div class="card-desc">Crea un centro nuevo o activa/desactiva sus módulos.</div>
       <div id="centros-modulos-list"></div>
     </div>
     <!-- Filtros y lista -->
