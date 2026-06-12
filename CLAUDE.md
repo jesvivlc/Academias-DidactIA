@@ -96,7 +96,8 @@ n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (imp
 tests/
   aislamiento-centros.spec.js   Playwright e2e: RLS multi-tenant (Agora vs Buñol)
 scripts/
-  importar_horarios_profes.py   Import CSV de horarios → Supabase
+  importar_horarios_profes.py   Import CSV de horarios → Supabase (service_role desde env)
+  importar_alumnos.mjs          Import CSV masivo de alumnos + vínculos de familia (idempotente; `SUPABASE_SERVICE_ROLE_KEY` desde env). Uso: `SUPABASE_SERVICE_ROLE_KEY=… node scripts/importar_alumnos.mjs <csv> <centro_id> [--dry-run]`
 playwright.config.js            Config Playwright: chromium, baseURL didactia.eu, dotenv
 .env.example                    Plantilla de credenciales para tests (nunca commitear .env)
 ```
@@ -919,7 +920,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] **P0 deploy resuelto:** EF `chat` redesplegada el 2026-06-03 con 7 herramientas. Deploy vía `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
 - [x] **P1 versionar EFs:** `invite-user` y `notify-role` extraídos del bundle ESZIP de producción y añadidos al repo (`c232c38`). `notify-sustitucion` ya estaba versionada (no está deployada actualmente). Nota: en producción también existen `rapid-processor` y `cas-analyzer` sin versionar en el repo.
 - [x] `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI) **ya en producción** (verificado 2026-06-12: tabla + RLS `centro_isolation` + índice `idx_alertas_centro_activas` presentes; el SQL coincide con el esquema vivo). No requiere acción.
-- [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
+- [x] Importación masiva de alumnos/familias via CSV (`scripts/importar_alumnos.mjs`, 2026-06-12): cabeceras flexibles (nombre/curso/grupo_horario/familia_email/relacion), dedupe por nombre normalizado, vínculos `familia_alumno` por email de perfil, `--dry-run`. **Seguridad:** los 3 importadores (`importar_alumnos.mjs`, `importar_horarios_profes.mjs`/`.py`, `importar_cargas_eso.mjs`) ya NO hardcodean la `service_role` key — la leen de `SUPABASE_SERVICE_ROLE_KEY` (0 JWTs literales en el repo)
 - [ ] Estadísticas avanzadas cross-centro para superadmin
 - [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
 - [x] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real ✅ (par regenerado 2026-06-11, secrets actualizados vía Management API, EF `send-push` redesplegada)
