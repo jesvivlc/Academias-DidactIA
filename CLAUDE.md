@@ -510,7 +510,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Voz `_calIniciarVoz(taId, btnId, onStop)`**: `window.SpeechRecognition || window.webkitSpeechRecognition`, `lang='es-ES'`, modo continuo. `try/catch` completo — si el navegador no soporta reconocimiento muestra toast informativo sin romper el flujo.
 - **XSS**: `_calEsc()` en todos los `innerHTML` con datos de usuario (mismo patrón que `_esc()` en planner.js)
 - **`_calParseJson(txt)`**: strip ` ```json ``` ` antes de `JSON.parse`
-- **Tablas**: `no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad` — pendiente ejecutar DDL en Supabase SQL Editor (`sql/calidad-tables.sql`)
+- **Tablas** (✅ ya en producción): `no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad`, `evaluaciones_platinum` — todas con RLS habilitada y políticas por centro (verificado 2026-06-12). DDL: `sql/calidad-tables.sql`
 
 ### Orientación — departamento de orientación (orientacion.js)
 - Nav **"🧭 Orientación"** (grupo Centro), visible `orientador`/`jefatura`/`director`/`admin`/`superadmin` (familia solo ve el portal de trámites). Tablas: ver arriba (6 de `orientacion_base.sql`). Todas las queries filtran `centro_id`; la IA va vía EF `chat` con `role:"familia"` (texto puro) y **nunca persiste sin acción manual del orientador**.
@@ -1057,9 +1057,9 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
 > - `supabase/migrations/horarios_curso_escolar.sql` — `horarios_grupo.curso_escolar` + `info_centro.curso_activo` + índice. **Ejecutar antes de que el código multi-curso entre en producción.**
-> - `sql/calidad-tables.sql` — tablas `no_conformidades` + `acciones_capa` + `feedback_familias` + `documentos_calidad` + `plantillas_calidad` + `evaluaciones_platinum` + RLS por centro. **Pendiente crear el archivo y ejecutarlo.** El módulo Calidad mostrará error hasta que existan las tablas.
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `sql/calidad-tables.sql` — 6 tablas del módulo Calidad (`no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad`, `evaluaciones_platinum`) + RLS + políticas por centro ✅ verificado en producción 2026-06-12
 > - `supabase/migrations/20260609_push_subscriptions.sql` — tabla `push_subscriptions` + RLS + índices ✅ 2026-06-09 vía Management API (confirmado)
 > - `supabase/migrations/orientacion_base.sql` — 6 tablas de Orientación (`expedientes_orientacion`, `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `tramites_orientacion`, `alertas_orientacion`) + índices + RLS por centro ✅ ejecutado 2026-06-11 vía Management API
 > - `supabase/migrations/planner_inputs.sql` — 7 tablas de entrada del Planner (`planner_profesores/cargas/tramos/restricciones/disponibilidad/espacios/reglas`) + RLS por centro ✅ ejecutado 2026-06-09 vía Management API
