@@ -219,21 +219,28 @@
 
   async function _fetchMulticentro() {
     const hoy = _hoy();
-    const [cRes, sRes, iRes, aRes] = await Promise.all([
+    const [cRes, alRes, sRes, iRes, comRes, uRes, aRes] = await Promise.all([
       sb.from('centros').select('id, nombre'),
-      sb.from('sustituciones').select('centro_id').eq('fecha', hoy).eq('cubierta', false),
+      sb.from('alumnos').select('centro_id'),
+      // Sin cubrir = cubierta false O null (la versión anterior omitía los null)
+      sb.from('sustituciones').select('centro_id').eq('fecha', hoy).or('cubierta.is.null,cubierta.eq.false'),
       sb.from('incidencias').select('centro_id').eq('estado', 'abierta'),
+      sb.from('asistencia_comedor').select('centro_id').eq('fecha', hoy).eq('se_queda', true),
+      sb.from('profiles').select('centro_id'),
       sb.from('alertas_predictivas').select('centro_id').eq('resuelta', false),
     ]);
-    const sMap = {}, iMap = {}, aMap = {};
-    (sRes.data || []).forEach(r => { sMap[r.centro_id] = (sMap[r.centro_id] || 0) + 1; });
-    (iRes.data || []).forEach(r => { iMap[r.centro_id] = (iMap[r.centro_id] || 0) + 1; });
-    (aRes.data || []).forEach(r => { aMap[r.centro_id] = (aMap[r.centro_id] || 0) + 1; });
+    const tally = (rows) => { const m = {}; (rows || []).forEach(r => { if (r.centro_id) m[r.centro_id] = (m[r.centro_id] || 0) + 1; }); return m; };
+    const alMap = tally(alRes.data), sMap = tally(sRes.data), iMap = tally(iRes.data),
+          comMap = tally(comRes.data), uMap = tally(uRes.data), aMap = tally(aRes.data);
     return (cRes.data || []).map(c => {
       const s = sMap[c.id] || 0, i = iMap[c.id] || 0, a = aMap[c.id] || 0;
-      return { id: c.id, nombre: c.nombre, sust: s, inc: i, alertas: a,
-        semaforo: (s + a) > 5 ? 'danger' : (s + a) > 2 ? 'warn' : 'ok' };
-    });
+      return {
+        id: c.id, nombre: c.nombre,
+        alumnos: alMap[c.id] || 0, sust: s, inc: i,
+        comensales: comMap[c.id] || 0, usuarios: uMap[c.id] || 0, alertas: a,
+        semaforo: (s + a) > 5 ? 'danger' : (s + a) > 2 ? 'warn' : 'ok',
+      };
+    }).sort((x, y) => y.alumnos - x.alumnos);
   }
 
   /* ══════════════════════════════════════════
@@ -420,25 +427,44 @@
   function _renderMulticentro(datos) {
     if (!datos || !datos.length) return '';
     const semEmoji = { ok: '🟢', warn: '🟡', danger: '🔴' };
+    const tot = datos.reduce((t, c) => ({
+      alumnos: t.alumnos + c.alumnos, sust: t.sust + c.sust, inc: t.inc + c.inc,
+      comensales: t.comensales + c.comensales, usuarios: t.usuarios + c.usuarios, alertas: t.alertas + c.alertas,
+    }), { alumnos: 0, sust: 0, inc: 0, comensales: 0, usuarios: 0, alertas: 0 });
+
     const rows = datos.map(c => `<tr>
-      <td class="cmi-td">${_esc(c.nombre)}</td>
+      <td class="cmi-td">${_esc(c.nombre)} ${semEmoji[c.semaforo]}</td>
+      <td class="cmi-td cmi-td--r">${c.alumnos}</td>
       <td class="cmi-td cmi-td--r">${c.sust > 0 ? `<span class="cmi-badge-n cmi-badge-n--warn">${c.sust}</span>` : '0'}</td>
       <td class="cmi-td cmi-td--r">${c.inc}</td>
+      <td class="cmi-td cmi-td--r">${c.comensales}</td>
+      <td class="cmi-td cmi-td--r">${c.usuarios}</td>
       <td class="cmi-td cmi-td--r">${c.alertas > 0 ? `<span class="cmi-badge-n cmi-badge-n--danger">${c.alertas}</span>` : '0'}</td>
-      <td class="cmi-td cmi-td--r">${semEmoji[c.semaforo]}</td>
     </tr>`).join('');
 
     return `<div class="cmi-multicentro">
-      <div class="cmi-subsec-lbl" style="margin-bottom:10px">Vista multicentro</div>
+      <div class="cmi-subsec-lbl" style="margin-bottom:10px">Vista multicentro · ${datos.length} centros</div>
       <table class="cmi-table">
         <thead><tr>
           <th class="cmi-th">Centro</th>
-          <th class="cmi-th cmi-th--r">Sust. pendientes hoy</th>
-          <th class="cmi-th cmi-th--r">Incidencias abiertas</th>
-          <th class="cmi-th cmi-th--r">Alertas activas</th>
-          <th class="cmi-th cmi-th--r">Estado</th>
+          <th class="cmi-th cmi-th--r">Alumnos</th>
+          <th class="cmi-th cmi-th--r">Sust. pend. hoy</th>
+          <th class="cmi-th cmi-th--r">Incid. abiertas</th>
+          <th class="cmi-th cmi-th--r">Comensales hoy</th>
+          <th class="cmi-th cmi-th--r">Usuarios</th>
+          <th class="cmi-th cmi-th--r">Alertas</th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows}
+          <tr style="border-top:2px solid var(--bdr);">
+            <td class="cmi-td"><strong>TOTAL (${datos.length})</strong></td>
+            <td class="cmi-td cmi-td--r"><strong>${tot.alumnos}</strong></td>
+            <td class="cmi-td cmi-td--r"><strong>${tot.sust}</strong></td>
+            <td class="cmi-td cmi-td--r"><strong>${tot.inc}</strong></td>
+            <td class="cmi-td cmi-td--r"><strong>${tot.comensales}</strong></td>
+            <td class="cmi-td cmi-td--r"><strong>${tot.usuarios}</strong></td>
+            <td class="cmi-td cmi-td--r"><strong>${tot.alertas}</strong></td>
+          </tr>
+        </tbody>
       </table>
     </div>`;
   }
