@@ -217,7 +217,10 @@ async function alumnosAbrirFicha(alumnoId) {
     '<div style="padding:28px;display:flex;flex-direction:column;gap:16px;background:var(--bg);min-height:100%;">' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;">' +
         '<button class="btn btn-s" onclick="initAlumnos()">← Volver a Alumnos</button>' +
-        accionInc +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button class="btn btn-s" id="al-pdf-btn" onclick="alumnosExportarFichaPDF(' + _alArg(alumnoId) + ')">⬇ PDF</button>' +
+          accionInc +
+        '</div>' +
       '</div>' +
       '<div class="card"><div class="card-hdr">' +
         '<div class="card-ico b" style="font-size:20px;background:var(--ink-ll);color:var(--ink);">🎓</div>' +
@@ -373,4 +376,149 @@ async function alumnosAbrirFicha(alumnoId) {
         '</tr></thead><tbody>' + rows + '</tbody></table></div>';
     } catch(e) {}
   })();
+}
+
+// ── EXPORTAR FICHA A PDF ─────────────────────────────────────────────
+// Reutiliza los helpers globales de informes.js (jsPDF + autotable, logo/color).
+async function alumnosExportarFichaPDF(alumnoId) {
+  var btn = document.getElementById("al-pdf-btn");
+  var rest = function () { if (btn) { btn.disabled = false; btn.textContent = "⬇ PDF"; } };
+  if (typeof _infEnsureLibs !== "function") { if (typeof showToast === "function") showToast("Exportación no disponible"); return; }
+  if (btn) { btn.disabled = true; btn.textContent = "Generando…"; }
+  try {
+    var a = _alData.find(function(x) { return x.id === alumnoId; });
+    if (!a) {
+      var ra = await sb.from("alumnos").select("id,nombre,curso,grupo_horario").eq("centro_id", ctrId).eq("id", alumnoId).maybeSingle();
+      a = ra.data || {};
+    }
+    var grupo = a.grupo_horario || "";
+
+    await _infEnsureLibs();
+    var centro  = await _infCentroInfo();
+    var logoImg = await _infImgToDataURL(centro.logo);
+    var rgb     = _infHexToRgb(centro.color);
+
+    // ── Datos (cada query tolerante a fallos) ──
+    var familias = [], horario = [], comedor = { dias: 0, queda: 0 }, incidencias = [], calif = [];
+    try {
+      var rf = await sb.from("familia_alumno").select("profiles(full_name,email)").eq("alumno_id", alumnoId);
+      familias = (rf.data || []).map(function(x) { return x.profiles; }).filter(Boolean)
+        .map(function(f) { return [f.full_name || "—", f.email || "—"]; });
+    } catch (e) {}
+    if (grupo) {
+      try {
+        var rh = await sb.from("horarios_grupo")
+          .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
+          .eq("centro_id", ctrId).eq("grupo_horario", grupo).eq("curso_escolar", cursoActivo);
+        var ORD = { lunes:1, martes:2, miercoles:3, "miércoles":3, jueves:4, viernes:5 };
+        horario = (rh.data || []).sort(function(x, y) {
+          var dx = ORD[(x.dia||"").toLowerCase()] || 9, dy = ORD[(y.dia||"").toLowerCase()] || 9;
+          return dx - dy || (x.tramo||0) - (y.tramo||0);
+        }).map(function(f) {
+          var dia = (f.dia||""); dia = dia.charAt(0).toUpperCase() + dia.slice(1);
+          var hh = String(f.hora_inicio||"").slice(0,5) + (f.hora_fin ? "–" + String(f.hora_fin).slice(0,5) : "");
+          return [dia, String(f.tramo!=null?f.tramo:"—"), hh, f.actividad_nombre||"—", f.profesor_nombre||"—", f.aula||"—"];
+        });
+      } catch (e) {}
+    }
+    try {
+      var desde = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+      var hoy = new Date().toISOString().split("T")[0];
+      var rc = await sb.from("asistencia_comedor").select("se_queda").eq("centro_id", ctrId)
+        .eq("alumno_id", alumnoId).gte("fecha", desde).lte("fecha", hoy).limit(60);
+      var recs = rc.data || [];
+      comedor = { dias: recs.length, queda: recs.filter(function(x) { return x.se_queda; }).length };
+    } catch (e) {}
+    try {
+      if (a.nombre) {
+        var ri = await sb.from("incidencias").select("fecha,gravedad,tipo,estado,descripcion")
+          .eq("centro_id", ctrId).ilike("alumno_nombre", "%" + a.nombre + "%")
+          .order("created_at", { ascending: false }).limit(20);
+        incidencias = (ri.data || []).map(function(i) {
+          return [i.fecha||"", i.gravedad||"", i.tipo||"", i.estado||"", (i.descripcion||"").slice(0, 90)];
+        });
+      }
+    } catch (e) {}
+    try {
+      var rg = await sb.from("calificaciones").select("asignatura,evaluacion,nota,observaciones")
+        .eq("centro_id", ctrId).eq("alumno_id", alumnoId).order("asignatura", { ascending: true });
+      calif = (rg.data || []).map(function(c) {
+        return [c.asignatura||"—", c.evaluacion||"—", (c.nota!=null?String(c.nota):"—"), (c.observaciones||"").slice(0, 60)];
+      });
+    } catch (e) {}
+
+    // ── PDF ──
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    var W = doc.internal.pageSize.getWidth();
+    var Hh = doc.internal.pageSize.getHeight();
+    var fechaEmision = new Date().toLocaleDateString("es-ES", { day:"numeric", month:"long", year:"numeric" });
+
+    var pageDraw = function() {
+      doc.setFillColor(rgb.r, rgb.g, rgb.b);
+      doc.rect(0, 0, W, 26, "F");
+      var x = 12;
+      if (logoImg && logoImg.dataURL) {
+        try {
+          var h = 16, w = h * (logoImg.w / logoImg.h);
+          if (w > 38) { w = 38; h = w * (logoImg.h / logoImg.w); }
+          doc.addImage(logoImg.dataURL, "PNG", 12, 5, w, h); x = 12 + w + 6;
+        } catch (e) {}
+      }
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13); doc.setFont(undefined, "bold");
+      doc.text(centro.nombre || "Centro", x, 11);
+      doc.setFontSize(10); doc.setFont(undefined, "normal");
+      doc.text("FICHA DEL ALUMNO", x, 18);
+      doc.setFontSize(8.5);
+      doc.text(fechaEmision, W - 12, 11, { align: "right" });
+      var pg = 1;
+      try { pg = doc.internal.getCurrentPageInfo().pageNumber; } catch (e) {}
+      doc.setTextColor(130, 130, 130); doc.setFontSize(8); doc.setFont(undefined, "normal");
+      doc.text(centro.nombre || "Centro", 12, Hh - 8);
+      doc.text("Página " + pg, W - 12, Hh - 8, { align: "right" });
+      doc.setTextColor(40, 40, 40);
+    };
+
+    // Bloque de identificación
+    pageDraw();
+    var y = 38;
+    doc.setFontSize(16); doc.setFont(undefined, "bold"); doc.setTextColor(40, 40, 40);
+    doc.text(a.nombre || "Alumno", 12, y);
+    doc.setFontSize(10); doc.setFont(undefined, "normal"); doc.setTextColor(90, 90, 90);
+    doc.text((a.curso || "") + (grupo ? "   ·   Grupo " + grupo : ""), 12, y + 6);
+    y += 14;
+
+    var section = function(titulo, head, rows, sinTxt) {
+      if (y > Hh - 36) { doc.addPage(); y = 38; }
+      doc.setFontSize(12); doc.setFont(undefined, "bold"); doc.setTextColor(rgb.r, rgb.g, rgb.b);
+      doc.text(titulo, 12, y);
+      var body = (rows && rows.length) ? rows
+        : [[{ content: sinTxt || "Sin registros", colSpan: head.length, styles: { halign:"center", textColor:[140,140,140], fontStyle:"italic" } }]];
+      doc.autoTable({
+        head: [head], body: body, startY: y + 3,
+        margin: { top: 32, bottom: 16 },
+        styles: { fontSize: 8.5, cellPadding: 1.8, overflow: "linebreak" },
+        headStyles: { fillColor: [rgb.r, rgb.g, rgb.b], textColor: 255, fontSize: 9 },
+        alternateRowStyles: { fillColor: [244, 242, 238] },
+        didDrawPage: pageDraw
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    };
+
+    section("Familias vinculadas", ["Nombre", "Email"], familias, "Sin familias vinculadas");
+    section("Horario semanal · " + (grupo || "—"), ["Día", "Tramo", "Hora", "Asignatura", "Profesor/a", "Aula"], horario, "Sin horario para el curso " + cursoActivo);
+    section("Comedor (últimos 30 días)", ["Días registrados", "Se queda", "No se queda"],
+      comedor.dias ? [[String(comedor.dias), String(comedor.queda), String(comedor.dias - comedor.queda)]] : [], "Sin registros de comedor");
+    section("Incidencias", ["Fecha", "Gravedad", "Tipo", "Estado", "Descripción"], incidencias, "Sin incidencias");
+    section("Calificaciones", ["Asignatura", "Evaluación", "Nota", "Observaciones"], calif, "Sin calificaciones");
+
+    var safe = (a.nombre || "alumno").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "_").toLowerCase();
+    doc.save("ficha_" + safe + "_" + new Date().toISOString().split("T")[0] + ".pdf");
+    if (typeof showToast === "function") showToast("✅ Ficha exportada");
+  } catch (e) {
+    if (typeof showToast === "function") showToast("No se pudo generar el PDF");
+  } finally {
+    rest();
+  }
 }
