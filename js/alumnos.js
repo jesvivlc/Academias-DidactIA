@@ -72,6 +72,29 @@ window.alumnosVerFicha = function(alumnoId) {
   if (typeof showTab === "function") showTab("alumnos");
 };
 
+// Abre el tab Incidencias (vista admin) con el alumno y grupo ya prerrellenados.
+// initIncidenciasPanel renderiza de forma asíncrona → reintenta hasta encontrar el form.
+window.alumnosRegistrarIncidencia = function(nombre, grupo) {
+  if (typeof showTab === "function") showTab("incidencias");
+  var intentos = 0;
+  var prefill = function() {
+    intentos++;
+    var inp = document.getElementById("inc-alumno");
+    var grp = document.getElementById("inc-grupo");
+    var desc = document.getElementById("inc-desc");
+    var vistaAdmin = document.getElementById("inc-vista-admin");
+    var visible = vistaAdmin && vistaAdmin.style.display !== "none";
+    if (inp && visible) {
+      inp.value = nombre || "";
+      if (grp) grp.value = grupo || "";
+      if (desc) { try { desc.focus(); } catch (e) {} }
+      return;
+    }
+    if (intentos < 25) setTimeout(prefill, 100);
+  };
+  setTimeout(prefill, 150);
+};
+
 function _alOnSearch(v) {
   _alSearch = v || "";
   _alRenderList();
@@ -181,9 +204,21 @@ async function alumnosAbrirFicha(alumnoId) {
     } catch (e) { a = {}; }
   }
 
+  // Acción "Registrar incidencia": solo roles con acceso a la vista admin de incidencias
+  // (misma visibilidad que el tab Incidencias en auth.js; la vista profesional limita el
+  // selector a sus propios alumnos → prerrelleno no fiable desde el directorio completo).
+  var rolesIncAdmin = ["admin", "admin_institucional", "superadmin"];
+  var puedeInc = (typeof role !== "undefined") && rolesIncAdmin.indexOf(role) !== -1;
+  var accionInc = puedeInc
+    ? '<button class="btn btn-p" onclick="alumnosRegistrarIncidencia(' + _alArg(a.nombre || "") + ',' + _alArg(a.grupo_horario || "") + ')">⚠️ Registrar incidencia</button>'
+    : "";
+
   panel.innerHTML =
     '<div style="padding:28px;display:flex;flex-direction:column;gap:16px;background:var(--bg);min-height:100%;">' +
-      '<button class="btn btn-s" style="align-self:flex-start;" onclick="initAlumnos()">← Volver a Alumnos</button>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;">' +
+        '<button class="btn btn-s" onclick="initAlumnos()">← Volver a Alumnos</button>' +
+        accionInc +
+      '</div>' +
       '<div class="card"><div class="card-hdr">' +
         '<div class="card-ico b" style="font-size:20px;background:var(--ink-ll);color:var(--ink);">🎓</div>' +
         '<div><div class="card-title">' + _alEsc(a.nombre || "Alumno") + '</div>' +
