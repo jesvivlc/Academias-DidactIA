@@ -78,16 +78,21 @@ test('DidactIA — pre-demo check', async ({ page }) => {
       .toContainText('IES Demo', { timeout: 10_000 });
     // Sección admin visible (updateBentoDashboard la muestra para rol admin)
     await expect(page.locator('#inicio-admin')).toBeVisible({ timeout: 8_000 });
-    // Los 4 KPI tiles del dashboard admin
-    for (const id of ['#bento-guardias', '#bento-ausentes', '#bento-incidencias', '#bento-comunicados']) {
-      await expect(page.locator(id)).toBeVisible({ timeout: 5_000 });
+    // Métricas accionables de la home (rediseño 2026-06-05; sustituyen a los #bento-*)
+    for (const m of ['sust', 'com', 'inc']) {
+      await expect(page.locator(`[data-metric="${m}"]`).first()).toBeVisible({ timeout: 5_000 });
     }
   });
 
   // ── 3. Chatbot — enviar pregunta y verificar respuesta ────────────────────
   await check('03-chat', 'Chatbot IA', async () => {
+    // El chat vive en una burbuja flotante (rediseño 2026-06-05): hay que abrirla.
+    await page.evaluate(() => {
+      if (typeof openAsistente === 'function') openAsistente();
+      else if (typeof toggleAsistente === 'function') toggleAsistente();
+    });
     const inp = page.locator('#chat-inp');
-    await expect(inp).toBeVisible({ timeout: 5_000 });
+    await expect(inp).toBeVisible({ timeout: 6_000 });
     const before = await page.locator('#chat-msgs')
       .evaluate(el => el.children.length);
     await inp.fill('¿Qué profesores hay disponibles?');
