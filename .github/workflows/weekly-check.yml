@@ -1,0 +1,116 @@
+name: Weekly checks (salud de la app)
+
+# Verificación semanal automática contra producción (https://didactia.eu):
+#  - demo-check: los 14 módulos clave están operativos.
+#  - rls-check : aislamiento multi-tenant (RLS) entre centros.
+# Cada job publica su informe y, si algo falla, GitHub avisa por email.
+#
+# SECRETS necesarios (Settings → Secrets and variables → Actions):
+#   DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD            (demo-check)
+#   AGORA_ADMIN_EMAIL, AGORA_ADMIN_PASSWORD          (rls-check)
+#   SUPABASE_SERVICE_ROLE_KEY                        (rls-check: provisión de usuarios de test)
+# La service_role key NO va en el repo: solo como secret de GitHub.
+
+on:
+  schedule:
+    # Lunes a las 07:00 UTC (~08:00/09:00 hora peninsular)
+    - cron: "0 7 * * 1"
+  workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña Actions
+
+jobs:
+  demo-check:
+    name: demo-check (14 módulos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEMO_ADMIN_EMAIL: ${{ secrets.DEMO_ADMIN_EMAIL }}
+      DEMO_ADMIN_PASSWORD: ${{ secrets.DEMO_ADMIN_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Comprobar secrets de credenciales
+        run: |
+          if [ -z "$DEMO_ADMIN_EMAIL" ] || [ -z "$DEMO_ADMIN_PASSWORD" ]; then
+            echo "::error::Faltan los secrets DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD."
+            echo "Configúralos en Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar navegador Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar demo-check (14 módulos)
+        run: npm run test:demo
+
+      - name: Publicar informe (demo-check.html + capturas)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-check-report
+          path: |
+            demo-check.html
+            demo-screenshots/
+            playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  rls-check:
+    name: rls-check (aislamiento multi-tenant)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      AGORA_ADMIN_EMAIL: ${{ secrets.AGORA_ADMIN_EMAIL }}
+      AGORA_ADMIN_PASSWORD: ${{ secrets.AGORA_ADMIN_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Comprobar secrets de RLS
+        run: |
+          if [ -z "$AGORA_ADMIN_EMAIL" ] || [ -z "$AGORA_ADMIN_PASSWORD" ]; then
+            echo "::error::Faltan los secrets AGORA_ADMIN_EMAIL / AGORA_ADMIN_PASSWORD."
+            echo "Configúralos en Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar navegador Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      # Provisión idempotente de los usuarios de test (requiere service_role).
+      # Si no se ha configurado la key, se omite sin bloquear el test RLS.
+      - name: Provisionar usuarios de test (si hay service_role)
+        if: ${{ env.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        continue-on-error: true
+        run: npm run setup:test-users
+
+      - name: Ejecutar test de aislamiento RLS
+        run: npm run test:e2e
+
+      - name: Publicar informe (playwright-report)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rls-check-report
+          path: playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore

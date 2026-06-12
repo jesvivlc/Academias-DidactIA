@@ -1,21 +1,64 @@
 // ── AUTH UI ──
+function _hideAuthForms() {
+  ["form-login", "form-register", "form-recovery", "form-reset-request"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+}
 function showRegister() {
-  document.getElementById("form-login").style.display = "none";
+  _hideAuthForms();
   document.getElementById("form-register").style.display = "block";
   document.getElementById("auth-title").textContent = "Crear cuenta";
   document.getElementById("auth-sub").textContent = "Regístrate para acceder a tu centro educativo.";
 }
 function showLogin() {
-  document.getElementById("form-register").style.display = "none";
+  _hideAuthForms();
   document.getElementById("form-login").style.display = "block";
-  document.getElementById("form-recovery").style.display = "none";
   document.getElementById("auth-title").textContent = "Bienvenido a DidactIA";
   document.getElementById("auth-sub").textContent = "Accede con tu cuenta para continuar.";
 }
 
+// Vista para SOLICITAR el email de recuperación (la mitad que faltaba).
+function showResetRequest() {
+  _hideAuthForms();
+  document.getElementById("form-reset-request").style.display = "block";
+  document.getElementById("auth-title").textContent = "Recuperar contraseña";
+  document.getElementById("auth-sub").textContent = "Te enviaremos un enlace a tu email para restablecerla.";
+  // Prerellena con el email ya escrito en el login, si lo había.
+  var le = document.getElementById("login-email");
+  var re = document.getElementById("reset-email");
+  if (le && re && le.value && !re.value) re.value = le.value;
+  var msg = document.getElementById("reset-msg");
+  if (msg) msg.style.display = "none";
+}
+
+async function doRequestReset() {
+  var email = (document.getElementById("reset-email").value || "").trim();
+  var msg = document.getElementById("reset-msg");
+  var btn = document.getElementById("reset-btn");
+  msg.style.display = "none";
+
+  if (!email || email.indexOf("@") === -1) {
+    msg.textContent = "Introduce un email válido.";
+    msg.style.cssText = "display:block;color:var(--red,#c0392b);font-size:13px;margin:4px 0;";
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "Enviando…"; }
+  try {
+    await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+  } catch (e) { /* nunca revelamos si la cuenta existe */ }
+
+  // Mensaje neutro (evita enumeración de cuentas): no decimos si el email existe.
+  msg.textContent = "Si existe una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña. Revisa tu bandeja de entrada (y la carpeta de spam).";
+  msg.style.cssText = "display:block;color:#1e6b3a;font-size:13px;background:var(--ink-ll);border-radius:8px;padding:10px 12px;margin:4px 0;";
+  if (btn) { btn.disabled = false; btn.textContent = "Reenviar enlace"; }
+}
+
 function showRecovery(type) {
-  document.getElementById("form-login").style.display = "none";
-  document.getElementById("form-register").style.display = "none";
+  _hideAuthForms();
   document.getElementById("form-recovery").style.display = "block";
   const isInvite = type === "invite";
   document.getElementById("auth-title").textContent = isInvite ? "Crea tu contraseña" : "Nueva contraseña";
@@ -287,7 +330,7 @@ async function loadUserProfile(user) {
 
     ctrId = allCentros[0].id;
     ctrName = allCentros[0].nombre;
-    modulosActivos = allCentros?.[0]?.modulos_activos || [];
+    modulosActivos = _conModulosBase(allCentros?.[0]?.modulos_activos);
     setTimeout(() => applyTheme(allCentros?.[0]?.color_primario, allCentros?.[0]?.logo_url), 100);
     // Build centro selector for superadmin
     const hdrRight = document.getElementById("ctr-name-hdr");
@@ -305,7 +348,7 @@ async function loadUserProfile(user) {
         if (ds) ds.value = id;
         if (ms) ms.value = id;
         const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
-        modulosActivos = ctr?.modulos_activos || [];
+        modulosActivos = _conModulosBase(ctr?.modulos_activos);
         const cTab = document.getElementById("tab-comedor");
         if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
         const eTab = document.getElementById("tab-espacios");
@@ -341,7 +384,7 @@ async function loadUserProfile(user) {
       if (ctrId) {
         const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
         ctrName = ctr?.nombre || "Mi centro";
-        modulosActivos = ctr?.modulos_activos || [];
+        modulosActivos = _conModulosBase(ctr?.modulos_activos);
         applyTheme(ctr?.color_primario, ctr?.logo_url);
         _cacheBrand(ctr?.color_primario, ctr?.logo_url);
       }
@@ -361,7 +404,7 @@ async function loadUserProfile(user) {
         const activeCentro = match || instCentros[0];
         ctrId = activeCentro.id;
         ctrName = activeCentro.nombre;
-        modulosActivos = activeCentro.modulos_activos || [];
+        modulosActivos = _conModulosBase(activeCentro.modulos_activos);
         applyTheme(activeCentro.color_primario, activeCentro.logo_url);
         _cacheBrand(activeCentro.color_primario, activeCentro.logo_url);
 
@@ -382,7 +425,7 @@ async function loadUserProfile(user) {
             if (ds) ds.value = id;
             if (ms) ms.value = id;
             const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
-            modulosActivos = ctr?.modulos_activos || [];
+            modulosActivos = _conModulosBase(ctr?.modulos_activos);
             const cTab = document.getElementById("tab-comedor");
             if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
             const eTab = document.getElementById("tab-espacios");
@@ -417,7 +460,7 @@ async function loadUserProfile(user) {
     if (ctrId) {
       const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
       ctrName = ctr?.nombre || "Mi centro";
-      modulosActivos = ctr?.modulos_activos || [];
+      modulosActivos = _conModulosBase(ctr?.modulos_activos);
       applyTheme(ctr?.color_primario, ctr?.logo_url);
       _cacheBrand(ctr?.color_primario, ctr?.logo_url);
     }
@@ -452,6 +495,10 @@ async function loadUserProfile(user) {
   const hasComedor = modulosActivos.includes("comedor");
   if (comedorTab) comedorTab.style.display = (hasComedor && (role === "familia" || ["profesional","admin","admin_institucional","superadmin"].includes(role))) ? "block" : "none";
 
+  // Alumnos: directorio del centro — staff y dirección (no familia)
+  const tabAlumnos = document.getElementById("tab-alumnos");
+  if (tabAlumnos) tabAlumnos.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","orientador"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -471,9 +518,9 @@ async function loadUserProfile(user) {
   const tabRrhh = document.getElementById("tab-rrhh");
   if (tabRrhh) tabRrhh.style.display = (["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
 
-  // Calificaciones: profesores y dirección (no familia)
+  // Calificaciones: profesores, dirección y familias (familia = solo lectura de sus hijos)
   const tabCal = document.getElementById("tab-calificaciones");
-  if (tabCal) tabCal.style.display = (["profesional","admin","admin_institucional","superadmin","jefatura","director"].includes(role)) ? "block" : "none";
+  if (tabCal) tabCal.style.display = (["profesional","admin","admin_institucional","superadmin","jefatura","director","familia"].includes(role)) ? "block" : "none";
 
   // Materiales: lectura para todos los roles del centro (incl. familia)
   const tabMat = document.getElementById("tab-materiales");

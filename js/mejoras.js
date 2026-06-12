@@ -615,6 +615,7 @@ async function renderHomeFamilia(force) {
 
   cont.innerHTML =
     selectorHtml +
+    '<div id="fh-avisos"></div>' +
     '<div id="fh-horario" class="home-card" style="margin-bottom:8px;">' +
       '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span></div>' +
       '<div style="font-size:13px;color:var(--muted);">Cargando…</div>' +
@@ -630,6 +631,23 @@ async function renderHomeFamilia(force) {
     renderHomeFamilia(true);
   };
 
+  // Avisar al comedor que el hijo no come mañana, directamente desde el home.
+  window._fhAvisoManana = async function(alumnoId) {
+    try {
+      var t = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      var res = await sb.from("asistencia_comedor").upsert({
+        centro_id: ctrId, alumno_id: alumnoId, fecha: t,
+        se_queda: false, plaza_fija: false,
+        registrado_por: currentUserName || (currentUser && currentUser.email) || "familia",
+      }, { onConflict: "centro_id,alumno_id,fecha" });
+      if (res.error) throw res.error;
+      if (typeof showToast === "function") showToast("✅ Aviso enviado: no come mañana");
+      renderHomeFamilia(true);
+    } catch (e) {
+      if (typeof showToast === "function") showToast("No se pudo enviar el aviso");
+    }
+  };
+
   var DIAS = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
   var now  = new Date();
   var dia  = DIAS[now.getDay()];
@@ -637,6 +655,52 @@ async function renderHomeFamilia(force) {
   var finde = (now.getDay() === 0 || now.getDay() === 6);
   var nowMin = now.getHours() * 60 + now.getMinutes();
   var hm = function(t) { if (!t) return null; var p = String(t).split(":"); return (+p[0]) * 60 + (+p[1]); };
+
+  // ── Avisos del centro + cambios de clase hoy ──
+  (async function() {
+    var box = document.getElementById("fh-avisos");
+    if (!box) return;
+    var parts = "";
+    // Aviso importante del centro (respeta visible_para)
+    try {
+      var av = await sb.from("info_centro")
+        .select("datos,visible_para").eq("centro_id", ctrId)
+        .eq("nombre_config", "aviso_activo").maybeSingle();
+      var avTxt = (av.data && av.data.datos && av.data.datos.valor) ? String(av.data.datos.valor).trim() : "";
+      var vis = (av.data && av.data.visible_para) || "todos";
+      if (avTxt && (vis === "todos" || /famil/i.test(vis))) {
+        parts += '<div class="home-card" style="margin-bottom:8px;border-left:3px solid var(--warning);background:var(--warning-soft);">' +
+          '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-alert-circle"></i> Aviso del centro</span></div>' +
+          '<div style="font-size:13px;color:var(--txt);">' + _mhEsc(avTxt) + '</div></div>';
+      }
+    } catch(e) {}
+    // Cambios en clases hoy (sustituciones del grupo del hijo)
+    try {
+      var grupo = alumno.grupo_horario;
+      if (grupo && !finde) {
+        var sr = await sb.from("sustituciones")
+          .select("tramo,hora_inicio,hora_fin,profesor_ausente,profesor_sustituto,cubierta")
+          .eq("centro_id", ctrId).eq("fecha", today)
+          .eq("grupo_horario", grupo).order("tramo");
+        var subs = sr.data || [];
+        if (subs.length) {
+          var rows = subs.map(function(s) {
+            var hi = String(s.hora_inicio || "").slice(0,5), hf = String(s.hora_fin || "").slice(0,5);
+            var badge = s.cubierta
+              ? '<span style="background:var(--success-soft);color:var(--success);border-radius:8px;padding:1px 8px;font-size:10px;font-weight:600;white-space:nowrap;">Cubierta ✓</span>'
+              : '<span style="background:var(--warning-soft);color:var(--warning);border-radius:8px;padding:1px 8px;font-size:10px;font-weight:600;white-space:nowrap;">Pendiente</span>';
+            return '<div style="padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:baseline;">' +
+              '<div><div style="font-size:13px;font-weight:500;color:var(--txt);">' + _mhEsc(hi + (hf ? "–" + hf : "")) + '</div>' +
+              '<div style="font-size:11px;color:var(--muted);">Falta: ' + _mhEsc(s.profesor_ausente || "—") +
+              (s.profesor_sustituto ? ' · cubre ' + _mhEsc(s.profesor_sustituto) : '') + '</div></div>' + badge + '</div>';
+          }).join("");
+          parts += '<div class="home-card" style="margin-bottom:8px;">' +
+            '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-replace"></i> Cambios en clases hoy</span></div>' + rows + '</div>';
+        }
+      }
+    } catch(e) {}
+    box.innerHTML = parts;
+  })();
 
   // ── Horario de hoy ──
   (async function() {
@@ -689,23 +753,31 @@ async function renderHomeFamilia(force) {
     }
   })();
 
-  // ── Comedor hoy ──
+  // ── Comedor: estado de hoy + acción "no come mañana" ──
   (async function() {
     if (!modulosActivos.includes("comedor")) return;
     var box = document.getElementById("fh-comedor");
     if (!box) return;
     try {
+      var tmrw = new Date(now.getTime() + 86400000).toISOString().split("T")[0];
       var r = await sb.from("asistencia_comedor")
-        .select("se_queda,plaza_fija").eq("centro_id", ctrId)
-        .eq("alumno_id", alumno.id).eq("fecha", today).maybeSingle();
+        .select("fecha,se_queda,plaza_fija").eq("centro_id", ctrId)
+        .eq("alumno_id", alumno.id).in("fecha", [today, tmrw]);
+      var recs = r.data || [];
+      var hoy = recs.find(function(x) { return x.fecha === today; });
+      var man = recs.find(function(x) { return x.fecha === tmrw; });
       var txt, col;
-      if (!r.data)             { txt = "Sin confirmar";          col = "var(--warning)"; }
-      else if (r.data.se_queda){ txt = "Se queda a comer ✓";     col = "var(--success)"; }
-      else                      { txt = "No se queda a comer";   col = "var(--muted)"; }
+      if (!hoy)              { txt = "Sin confirmar";        col = "var(--warning)"; }
+      else if (hoy.se_queda) { txt = "Se queda a comer ✓";   col = "var(--success)"; }
+      else                    { txt = "No se queda a comer";  col = "var(--muted)"; }
+      var manHtml = (man && man.se_queda === false)
+        ? '<div style="margin-top:10px;font-size:12px;color:var(--success);">✅ Avisado: no come mañana</div>'
+        : '<button class="btn btn-s" style="margin-top:10px;font-size:12px;padding:6px 12px;" onclick="window._fhAvisoManana(\'' + alumno.id + '\')">📩 Avisar que no come mañana</button>';
       box.style.display = "";
-      box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-tools-kitchen-2"></i> Comedor hoy</span></div>' +
-        '<div style="font-size:14px;font-weight:500;color:' + col + ';">' + txt + '</div>' +
-        (r.data && r.data.plaza_fija ? '<div style="font-size:11px;color:var(--muted-2);margin-top:2px;">Plaza fija</div>' : '');
+      box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-tools-kitchen-2"></i> Comedor</span></div>' +
+        '<div style="font-size:14px;font-weight:500;color:' + col + ';">Hoy: ' + txt + '</div>' +
+        (hoy && hoy.plaza_fija ? '<div style="font-size:11px;color:var(--muted-2);margin-top:2px;">Plaza fija</div>' : '') +
+        manHtml;
     } catch(e) {}
   })();
 
@@ -714,14 +786,16 @@ async function renderHomeFamilia(force) {
     var box = document.getElementById("fh-incidencias");
     if (!box) return;
     try {
-      var r = await sb.from("incidencias")
-        .select("fecha,gravedad,descripcion")
-        .eq("centro_id", ctrId)
-        .ilike("alumno_nombre", "%" + alumno.nombre + "%")
-        .order("created_at", { ascending: false }).limit(3);
-      if (!r.data || !r.data.length) return;
+      // RPC SECURITY DEFINER: solo incidencias de los hijos de la familia (campos
+      // visibles, sin informe interno). Filtramos por el hijo seleccionado.
+      var rr = await sb.rpc("familia_incidencias_hijos");
+      var nom = (alumno.nombre || "").toLowerCase();
+      var data = (rr.data || []).filter(function(x) {
+        return (x.alumno_nombre || "").toLowerCase().indexOf(nom) !== -1;
+      }).slice(0, 3);
+      if (!data.length) return;
       var gravCol = { leve:"var(--success)", grave:"var(--warning)", muy_grave:"var(--danger)" };
-      var rowsHtml = r.data.map(function(inc) {
+      var rowsHtml = data.map(function(inc) {
         var col = gravCol[inc.gravedad] || "var(--muted)";
         var desc = (inc.descripcion || "").slice(0, 70) + ((inc.descripcion || "").length > 70 ? "…" : "");
         return '<div style="padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;display:flex;gap:8px;align-items:baseline;">' +

@@ -39,7 +39,19 @@
       </div>
       <button class="setup-btn" onclick="doLogin()">Entrar a DidactIA</button>
       <div class="setup-err" id="login-err"></div>
+      <span class="setup-link" onclick="showResetRequest()">¿Olvidaste tu contraseña?</span>
       <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
+    </div>
+
+    <!-- RESET REQUEST FORM — solicitar email de recuperación -->
+    <div id="form-reset-request" style="display:none">
+      <div class="setup-field">
+        <label class="setup-label">Email</label>
+        <input class="setup-input" id="reset-email" type="email" placeholder="tu@email.com" />
+      </div>
+      <button class="setup-btn" id="reset-btn" onclick="doRequestReset()">Enviar enlace de recuperación</button>
+      <div id="reset-msg" style="display:none"></div>
+      <span class="setup-link" onclick="showLogin()">← Volver a iniciar sesión</span>
     </div>
 
     <!-- RECOVERY FORM -->
@@ -111,6 +123,7 @@
 </header>
 <nav class="tabs" id="app-tabs" style="display:none">
   <div class="tab active" id="tab-chat"        onclick="showTab('chat')">💬 Chatbot</div>
+  <div class="tab" id="tab-alumnos"            onclick="showTab('alumnos')"     style="display:none">🎓 Alumnos</div>
   <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
   <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
   <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
@@ -202,6 +215,9 @@
         </button>
 
         <div class="sb-group-label">Docencia</div>
+        <button class="nav-item" id="nav-alumnos" data-tab="alumnos" onclick="showTab('alumnos')" style="display:none;--nav-color:#2A7DA3">
+          <i class="ti ti-users-group"></i><span class="nav-item-label">Alumnos</span>
+        </button>
         <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none;--nav-color:#185FA5">
           <i class="ti ti-replace"></i><span class="nav-item-label">Sustituciones</span>
           <span class="nav-badge" id="sb-badge-sust" style="display:none">0</span>
@@ -386,8 +402,8 @@
           </div>
         </div>
 
-        <!-- Mi horario de hoy (Cambio 3) -->
-        <div class="home-card home-horario">
+        <!-- Mi horario de hoy — protagonista de la home del profesor -->
+        <div class="home-card home-horario home-horario--hero">
           <div class="home-card-hdr">
             <div class="home-card-title"><i class="ti ti-clock-hour-4"></i> Mi horario de hoy</div>
             <div class="home-horario-count" data-horario-count></div>
@@ -397,7 +413,25 @@
           </div>
         </div>
 
-        <!-- Métricas accionables (Cambio 4) -->
+        <!-- Acciones diarias del profesor (navegación directa, sin solapar el sidebar) -->
+        <div class="home-quick-label">Acciones rápidas</div>
+        <div class="home-quick">
+          <button class="home-quick-btn" onclick="showTab('sust');setTimeout(function(){if(typeof initSustPanel==='function')initSustPanel();},120)">
+            <i class="ti ti-calendar-off"></i><span>Notificar ausencia</span>
+          </button>
+          <button class="home-quick-btn" onclick="showTab('incidencias')">
+            <i class="ti ti-alert-triangle"></i><span>Registrar incidencia</span>
+          </button>
+          <button class="home-quick-btn" onclick="showTab('materiales')">
+            <i class="ti ti-paperclip"></i><span>Mis materiales</span>
+          </button>
+          <button class="home-quick-btn" onclick="showTab('calificaciones')">
+            <i class="ti ti-clipboard-list"></i><span>Calificaciones</span>
+          </button>
+        </div>
+
+        <!-- Estado del centro hoy (métricas accionables, rellenadas por renderHomeMetrics) -->
+        <div class="home-quick-label">Estado del centro hoy</div>
         <div class="home-metrics">
           <button class="home-metric" onclick="showTab('sust');setTimeout(function(){if(typeof loadSustituciones==='function')loadSustituciones('hoy');},150)">
             <div class="home-metric-main">
@@ -421,8 +455,6 @@
             <i class="ti ti-chevron-right home-metric-chev"></i>
           </button>
         </div>
-
-        <!-- Cambio 5: grid "Acceso rápido" eliminado (redundante con el sidebar) -->
       </div><!-- /#inicio-staff -->
 
       <!-- ── FAMILIA ── -->
@@ -800,6 +832,9 @@
     </div>
   </div>
 
+  <!-- ALUMNOS PANEL -->
+  <div class="panel" id="panel-alumnos" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
+
   <!-- COMEDOR PANEL -->
   <div class="panel" id="panel-comedor">
     <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
@@ -945,10 +980,14 @@
       <div><div class="pg-title">Gestión de usuarios</div><div class="pg-sub" id="users-counters">—</div></div>
       <button class="btn btn-p" onclick="mostrarModalInvitar()">+ Invitar usuario</button>
     </div>
-    <!-- Centros y módulos (superadmin only) -->
+    <!-- Centros (superadmin only) -->
     <div class="card" id="centros-modulos-card" style="display:none;">
-      <div class="card-hdr"><div class="card-ico g">🏫</div><div><div class="card-title">Centros y módulos activos</div></div></div>
-      <div class="card-desc">Activa o desactiva módulos para cada centro educativo.</div>
+      <div class="card-hdr" style="align-items:center;">
+        <div class="card-ico g">🏫</div>
+        <div style="flex:1;"><div class="card-title">Centros</div></div>
+        <button class="btn btn-p" onclick="nuevoCentroWizard()" style="font-size:13px;">+ Nuevo centro</button>
+      </div>
+      <div class="card-desc">Todos los módulos (salvo IB) están disponibles para cualquier centro.</div>
       <div id="centros-modulos-list"></div>
     </div>
     <!-- Filtros y lista -->
@@ -1235,6 +1274,7 @@
 <script src="js/orientacion.js"></script>
 <script src="js/salidas.js"></script>
 <script src="js/calidad.js"></script>
+<script src="js/alumnos.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1250,13 +1290,14 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', alumnos:'Alumnos', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
     analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad'
   };
   var MAS_CFG = {
+    alumnos:   { icon:'ti-users-group',     label:'Alumnos' },
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
     espacios:  { icon:'ti-door',            label:'Espacios' },
@@ -1271,6 +1312,7 @@
   /* IDs: tab → nav-item sidebar, nav-item bottom-nav */
   var TAB_MAP = {
     'tab-chat':        { nav:'nav-chat',        bn:'bn-chat' },
+    'tab-alumnos':     { nav:'nav-alumnos',      bn:null },
     'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
     'tab-admin':       { nav:'nav-admin',        bn:null },
     'tab-sust':        { nav:'nav-sust',         bn:'bn-sust' },
@@ -1378,6 +1420,7 @@
         var titleEl = document.getElementById('topbar-title');
         if (titleEl) titleEl.textContent = TITLES[t] || t;
         closeMasDrawer();
+        if (t === 'alumnos' && typeof initAlumnos === 'function') initAlumnos();
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
         if (t === 'orientacion' && typeof initOrientacion === 'function') initOrientacion();
@@ -1416,9 +1459,29 @@
       var bn = document.getElementById(cfg.bn);
       if (bn) bn.style.display = visible ? 'flex' : 'none';
     }
+    syncGroupLabels();
+  }
+  /* Oculta el encabezado de un grupo del sidebar cuando todos sus items quedan
+     ocultos (p.ej. la familia no ve "Administración"). */
+  function syncGroupLabels() {
+    var navWrap = document.querySelector('#app-sidebar .sb-nav');
+    if (!navWrap) return;
+    var currentLabel = null, visibleCount = 0;
+    var flush = function () {
+      if (currentLabel) currentLabel.style.display = visibleCount > 0 ? '' : 'none';
+    };
+    Array.prototype.forEach.call(navWrap.children, function (el) {
+      if (el.classList && el.classList.contains('sb-group-label')) {
+        flush(); currentLabel = el; visibleCount = 0;
+      } else if (el.classList && el.classList.contains('nav-item')) {
+        if (el.style.display !== 'none') visibleCount++;
+      }
+    });
+    flush();
   }
   function syncAllVisibility() {
     Object.keys(TAB_MAP).forEach(syncTabItem);
+    syncGroupLabels();
   }
 
   Object.keys(TAB_MAP).forEach(function (tabId) {

@@ -61,7 +61,7 @@ index.html                      Landing page (Playfair + Geist, Navy/Blue/Amber)
 app.html                        Aplicación: login, header, tabs, paneles
 css/styles.css          Tokens CSS + estilos globales
 js/
-  config.js             SB_URL, SB_KEY, variables globales, boot DOMContentLoaded (llama themeLoginScreen pre-login)
+  config.js             SB_URL, SB_KEY, VAPID_PUBLIC_KEY, variables globales, boot DOMContentLoaded (llama themeLoginScreen pre-login)
   auth.js               doLogin, loadUserProfile, showTab, applyTheme, themeLoginScreen (marca centro pre-login), goHome
   chat.js               sendMsg, buildContext, horarios por grupo, Gemini fetch
   comedor.js            loadComedor, toggleAsistencia, histórico 30 días, export Excel
@@ -74,14 +74,15 @@ js/
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
   ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
   comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
-  familias.js           (stub — portal familias, pendiente)
+  familias.js           initFamiliaView, loadFamiliaComedor, loadAvisos, initPushFamilias (suscripción Web Push: banner + pushManager.subscribe + INSERT push_subscriptions)
   planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab, Importar (.xlsx → planner_inputs)
   analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales (pill "Dashboard" del módulo Análisis)
-  calificaciones.js     initCalificaciones (gradebook): vista profesor (entrada notas) / vista dirección (consulta + export CSV/PDF)
+  calificaciones.js     initCalificaciones (gradebook): vista profesor (entrada notas) / vista dirección (consulta + export CSV/PDF) / vista familia (solo lectura: tabla pivote asignatura×evaluación de sus hijos, selector si >1 hijo)
   materiales.js         initMateriales (hub de materiales): subida multi-grupo a Storage privado/enlace, descarga signed URL, toggle "Mis materiales/Todos", form "solo mis clases"
   informes.js           initInformes (Informes de dirección): PDF consolidado por periodo (jsPDF + autotable, logo+color del centro); solo lee tablas existentes (pill "Informes PDF" del módulo Análisis)
   orientacion.js        initOrientacion (módulo Orientación): lista de expedientes, expediente individual (4 pestañas), IA (borrador informe + síntesis cuestionarios vía EF chat), panel de riesgo (detección IA), exportación RGPD (PDF) + estadísticas (Chart.js/PDF/Excel), push (send-push), portal familias
   calidad.js            initCalidad (módulo Calidad): dashboard 5 métricas, No Conformidades (lista/filtros/modal+voz+IA/CAPA), Feedback Familias (lista/sentimiento IA/respuesta IA); helper _calGemini reutilizable
+  alumnos.js            initAlumnos (módulo Alumnos): directorio del centro (lista+búsqueda+filtro por grupo) + ficha individual (alumnosAbrirFicha: familias vinculadas, horario semanal, comedor 14d, incidencias, calificaciones). No familia
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -96,7 +97,8 @@ n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (imp
 tests/
   aislamiento-centros.spec.js   Playwright e2e: RLS multi-tenant (Agora vs Buñol)
 scripts/
-  importar_horarios_profes.py   Import CSV de horarios → Supabase
+  importar_horarios_profes.py   Import CSV de horarios → Supabase (service_role desde env)
+  importar_alumnos.mjs          Import CSV masivo de alumnos + vínculos de familia (idempotente; `SUPABASE_SERVICE_ROLE_KEY` desde env). Uso: `SUPABASE_SERVICE_ROLE_KEY=… node scripts/importar_alumnos.mjs <csv> <centro_id> [--dry-run]`
 playwright.config.js            Config Playwright: chromium, baseURL didactia.eu, dotenv
 .env.example                    Plantilla de credenciales para tests (nunca commitear .env)
 ```
@@ -107,7 +109,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 
 | Tabla | Campos clave | Notas |
 |-------|-------------|-------|
-| `centros` | id, nombre, modulos_activos[], color_primario, logo_url, ccaa | `ccaa` determina normativa convivencia: 'valenciana'\|'madrid'\|'andalucia'\|'cataluna'\|NULL (estatal) |
+| `centros` | id, nombre, **slug** (NOT NULL), codigo_familia, codigo_profesional, codigo_acceso, modulos_activos[], color_primario, logo_url, institucion_id, created_at | Centros educativos. Se crean desde el panel de Usuarios (superadmin → "+ Nuevo centro", `nuevoCentroWizard`). **Nota:** la columna `ccaa` NO existe en producción (la EF `tipificar-incidencia` la lee → cae al fallback estatal). |
 | `profiles` | id, user_id, full_name, email, rol, centro_id, activo (bool DEFAULT true), created_at | Extiende auth.users. `id = user_id` (ambos = auth UUID). `activo=false` bloquea el login |
 <!-- info_centro actualizado en línea horarios_grupo arriba -->
 | `horarios` | centro_id, dia, hora, profesor, actividad | Tabla legacy — chatbot búsqueda por apellido |
@@ -127,7 +129,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `disponibilidad_profesor` | profesor_id, dia_semana, tramo_horario, estado | Restricciones de disponibilidad para el CSP |
 | `necesidades_lectivas` | centro_id, grupo_horario, materia_id, profesor_id, horas_semanales, tipo_aula_requerida | Input del generador: X horas/sem de materia Y con prof Z para grupo G |
 | `horario_generado` | centro_id, grupo_horario, materia_id, profesor_id (**nullable**), aula_id, dia_semana, tramo_horario, es_fijo | Output del CSP antes de publicar; UNIQUE(profesor_id,dia,tramo) y UNIQUE(grupo,dia,tramo). `profesor_id` nullable → soporta horarios "sin profesores" (slots a asignar después) |
-| `calificaciones` | centro_id, alumno_id, alumno_nombre, grupo, asignatura, evaluacion, nota (NUMERIC 0–10), observaciones, profesor_id, profesor_nombre, updated_at | Gradebook. `evaluacion` CHECK ('1ª/2ª/3ª Evaluación','Final'); UNIQUE(centro_id,alumno_id,asignatura,evaluacion). RLS: lectura mismo centro/superadmin; insert/update por profesor dueño (`profesor_id=auth.uid()`) o admin; delete solo dirección. Módulo `js/calificaciones.js` |
+| `calificaciones` | centro_id, alumno_id, alumno_nombre, grupo, asignatura, evaluacion, nota (NUMERIC 0–10), observaciones, profesor_id, profesor_nombre, updated_at | Gradebook. `evaluacion` CHECK ('1ª/2ª/3ª Evaluación','Final'); UNIQUE(centro_id,alumno_id,asignatura,evaluacion). RLS: lectura staff del mismo centro + superadmin; **familia solo las notas de sus hijos** (`alumno_id ∈ familia_alumno(profile_id=auth.uid())`, ver `calificaciones_familia_rls.sql`); insert/update por profesor dueño (`profesor_id=auth.uid()`) o admin; delete solo dirección. Módulo `js/calificaciones.js` (vista profesor/dirección/familia) |
 | `materiales` | centro_id, grupo, asignatura, titulo, tipo ('archivo'\|'enlace'), url, storage_path, descripcion, profesor_id, profesor_nombre, created_at | Hub de materiales. RLS: lectura todos los roles del centro; insert/update docente+dirección; delete subidor o admin. Archivos en **bucket privado `materiales`** (`{centro_id}/…`, signed URL). Módulo `js/materiales.js` |
 | `expedientes_orientacion` | centro_id, alumno_id, orientador_id (→profiles), fecha_apertura, estado ('activo'\|'archivado'), notas_internas, created_at; UNIQUE(centro_id,alumno_id) | Uno por alumno. RLS `orientacion_centro` (superadmin + centro). Módulo `js/orientacion.js` |
 | `informes_psicopedagogicos` | centro_id, expediente_id (CASCADE), tipo ('evaluacion_inicial'\|'revision'\|'dictamen'\|'otro'), borrador_texto, texto_final, estado ('borrador'\|'validado'\|'firmado'), creado_por, fecha_validacion, created_at | `texto_final` NUNCA se sobreescribe si `estado='firmado'` (guardia en UI). Borrador IA vía EF chat |
@@ -141,7 +143,10 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `reservas_espacios` | centro_id, espacio_id, fecha, tramo, hora_inicio, hora_fin, reservado_por, motivo, created_at | `espacio_id` FK → espacios |
 | `plazos_ib` | centro_id, curso_escolar, titulo, descripcion, fecha_limite, tipo, afecta_a, estado, created_at | Estado: pendiente/completado; tipo: entrega_ia/tok/cas/examen/formulario/reunion/otro |
 | `cas_actividades` | centro_id, alumno_id, titulo, tipo, descripcion, reflexion, fecha_inicio, horas, estado, created_at | Actividades CAS del Diploma IB; tipo: creatividad/actividad/servicio; estado: en_curso/completada. Creada en `sql/demo-center.sql` |
-| `extended_essay` | centro_id, alumno_id, titulo, asignatura, supervisor_nombre, estado, fecha_entrega_limite, palabras_actuales, created_at | Extended Essay del Diploma IB; estado: en_proceso/primer_borrador/borrador_final/entregado. Creada en `sql/demo-center.sql` |
+| `extended_essay` | centro_id, alumno_id, titulo, asignatura, supervisor_nombre, estado, fecha_entrega_limite, palabras_actuales, **nota** (A–E), created_at | Extended Essay del Diploma IB; estado: en_proceso/primer_borrador/borrador_final/entregado. `nota` para la matriz core. Creada en `sql/demo-center.sql` |
+| `ib_tok` | centro_id, alumno_id, ensayo_titulo, ensayo_estado, ensayo_nota (A–E), exhibicion_tema, exhibicion_estado, exhibicion_nota, comentarios, updated_at; UNIQUE(centro_id,alumno_id) | TOK (Theory of Knowledge): ensayo + exhibición. RLS `ib_tok_centro`. Módulo `js/ib.js` |
+| `ee_borradores` | centro_id, extended_essay_id (CASCADE), version, palabras, comentario_supervisor, fecha, created_at | Borradores y feedback del supervisor del Extended Essay |
+| `ib_resultados` | centro_id, alumno_id, asignatura, nivel (HL/SL), prediccion (1–7), nota_final (1–7), updated_at; UNIQUE(centro_id,alumno_id,asignatura) | Predicciones y resultados por asignatura (IBIS-adjacent). Σ + matriz core = total /45 |
 | `salidas_didacticas` | centro_id, titulo, descripcion, fecha_salida, hora_salida, hora_regreso, curso_grupos (jsonb), coste, responsable_id, estado, datos_autobus (jsonb), created_at | Estado: borrador/publicada/cerrada/cancelada. `datos_autobus`: {empresa,matricula,telefono,plazas,notas} |
 | `participantes_salida` | centro_id, salida_id, alumno_id, autorizado, pagado, necesita_picnic, alergias_confirmadas, fecha_autorizacion, created_at | UNIQUE(salida_id,alumno_id). Generados en batch al crear la salida desde los grupos seleccionados |
 | `notificaciones_salida` | centro_id, salida_id, tipo, enviada, fecha_envio, created_at | tipo: recordatorio/cierre/llegada/cocina |
@@ -150,6 +155,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `feedback_familias` | centro_id, familia_user_id, alumno_id, canal, texto_raw, categoria_ia, sentimiento_ia (numeric −1..1), resumen_ia, requiere_accion (bool), respuesta_borrador, estado, created_at | Feedback de familias. `canal`: formulario/email/chat/presencial; `estado`: pendiente/en_gestion/resuelto. Análisis IA asíncrono post-INSERT |
 | `documentos_calidad` | centro_id, titulo, tipo, contenido, created_at | Documentos del SGC (sistema de gestión de calidad) |
 | `plantillas_calidad` | centro_id, nombre, tipo, contenido_plantilla, campos_requeridos (jsonb) | Plantillas de documentos (entrevista familia, acta reunión, informe incidencia, plan mejora). Seed: `supabase/seeds/plantillas_calidad_default.sql` |
+| `push_subscriptions` | id, user_id (NOT NULL), centro_id (nullable), subscription (jsonb), created_at | Suscripciones Web Push. RLS `push_own` + `push_superadmin`. La EF `send-push` lee de aquí (service_role); las familias se suscriben desde `js/familias.js` (`initPushFamilias`) |
 
 ---
 
@@ -167,6 +173,8 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `notify-jefatura` | Email de alerta a admins del centro cuando se registra incidencia grave/muy_grave. Recibe `{ incidencia_id }`. Incluye informe borrador, medidas y banner PREVI si aplica |
 | `send-comunicado` | Envía comunicado por email a los destinatarios del centro vía Resend. Recibe `{ comunicado_id }`. Enruta por `destinatarios`: todos/solo_profesores/solo_familias/grupo:XXXX |
 | `parse-restricciones` | Analiza texto libre y/o audio con Gemini 2.5 Flash multimodal. Recibe `{ texto?, audio_base64?, mime_type?, centro_id }`. Devuelve `{ materias[], restricciones_profesor[], restricciones_materia[], necesidades[], preguntas[] }`. Contexto del centro (profesores y materias existentes) inyectado para matching exacto de nombres. |
+| `agent-sustituciones` | **Agente autónomo** (Gemini 2.5 Flash, function calling en bucle). Recibe `{centro_id, fecha}` + JWT del usuario (cliente con RLS por centro). 3 herramientas en secuencia: `obtener_ausencias_sin_cubrir` (siempre 1ª; si vacío → para), `buscar_profesores_libres`, `sugerir_sustituto` (equidad por guardias del trimestre, top 3). `centro_id` SIEMPRE el del body; `.eq("centro_id", …)` en las 3 queries. Devuelve `{type:"text", content}`. Código: `supabase/functions/agent-sustituciones/index.ts` |
+| `send-push` | Envía Web Push (web-push + VAPID) a `user_ids[]`. Lee suscripciones de `push_subscriptions` (service_role), payload `{title, body, tag}`. Auto-borra suscripciones `410/404`. Secrets `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` configurados |
 
 ---
 
@@ -256,7 +264,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Topbar minimalista**: logo (`#app-brand-logo`, tematizado por `applyTheme`) + nombre del centro (`#topbar-ctr-name`) + lupa (`#topbar-search-btn` → palette) + avatar. Sin role-switch/IA/campana.
 - **"Mi horario de hoy"** `.home-card` (`renderMiHorarioHoy` en `js/mejoras.js`): consulta `horarios_grupo` por centro+día (día en minúsculas sin tilde), cruza `full_name` vs `profesor_nombre` por tokens normalizados, resalta la clase AHORA por `hora_inicio/fin` reales.
 - **Métricas accionables** `.home-metric` (`renderHomeMetrics`): Sustituciones hoy / Comunicados nuevos (rojo si >0) / Incidencias abiertas, clicables a su sección.
-- **Home familia** (`renderHomeFamilia` en `js/mejoras.js`): render en `#familia-home-content` dentro de `#inicio-familia`. Estado `_homeFamiliaHijoIdx` (chip selector si hay >1 hijo). 5 bloques async fire-and-forget (cada uno con try/catch independiente): (1) Horario de hoy — `horarios_grupo` por `grupo_horario+dia+curso_escolar`; (2) Comedor hoy — `asistencia_comedor.maybeSingle`, solo si módulo activo; (3) Incidencias recientes — `incidencias ilike alumno_nombre`, limit 3, solo si hay datos; (4) Próximas salidas — `participantes_salida` → `salidas_didacticas` estado publicada ≥ hoy, limit 3; (5) Comunicados no leídos — reutiliza `_comGetLeidos()`, limit 3. `window._fhSelectHijo(idx)` cambia el hijo activo y fuerza recarga.
+- **Home familia** (`renderHomeFamilia` en `js/mejoras.js`): render en `#familia-home-content` dentro de `#inicio-familia`. Estado `_homeFamiliaHijoIdx` (chip selector si hay >1 hijo). Es el **hub del portal familiar**: 7 bloques async fire-and-forget (cada uno con try/catch independiente), en orden: (0) **Avisos** (`#fh-avisos`) — aviso importante del centro (`info_centro.aviso_activo`, respeta `visible_para`) + **Cambios en clases hoy** (`sustituciones` del `grupo_horario` del hijo, hoy, con badge Cubierta/Pendiente); (1) Horario de hoy — `horarios_grupo` por `grupo_horario+dia+curso_escolar`; (2) **Comedor accionable** — estado de hoy + botón "📩 Avisar que no come mañana" (`window._fhAvisoManana` → upsert `asistencia_comedor` se_queda=false para mañana + `renderHomeFamilia(true)`), solo si módulo activo; (3) Incidencias recientes — RPC `familia_incidencias_hijos()` (SECURITY DEFINER; la tabla `incidencias` es staff-only por RLS), filtrado en cliente por el hijo, limit 3; (4) Próximas salidas — `participantes_salida` → `salidas_didacticas` estado publicada ≥ hoy, limit 3; (5) Comunicados no leídos — reutiliza `_comGetLeidos()`, limit 3. `window._fhSelectHijo(idx)` cambia el hijo activo y fuerza recarga. Los bloques (0) consolidan el contenido del antiguo panel `panel-avisos`/`loadAvisos` (huérfano: no tiene `nav-avisos` en el sidebar). El sidebar oculta los encabezados de grupo (`.sb-group-label`) cuyo grupo queda sin items visibles vía `syncGroupLabels()` (script inline de `app.html`), así la familia no ve "Administración" vacío.
 - **Grids "Módulos"/"Acceso rápido" eliminados** (redundantes con el sidebar).
 - **Command palette ⌘K** (`js/palette.js`): overlay global `#cmd-palette`, atajo ⌘K/Ctrl+K + lupa del topbar; busca alumnos, profesores y aulas (profesores/aulas se sacan de `profesores`/`espacios` **y** de `horarios_grupo`, deduplicados, porque muchos centros sólo tienen los datos en `horarios_grupo`).
 
@@ -356,7 +364,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - Badge "Pendiente" + botón "Reenviar invitación" para usuarios sin `email_confirmed_at`
 - **Eliminar** solo disponible para usuarios **pendientes** (sin `email_confirmed_at`) — los confirmados solo se pueden desactivar para evitar huérfanos en `auth.users`
 - Seguridad: admin no puede crear superadmins ni cambiar/desactivar su propio perfil
-- Toggle de módulos por centro (comedor, espacios, incidencias) — solo superadmin
+- **Sin toggles de módulos por centro**: todos los módulos (comedor, espacios, incidencias) están **siempre disponibles para todos los centros**. El gating por `centros.modulos_activos` se neutraliza en carga vía `_conModulosBase()` (config.js), que fuerza `MODULOS_BASE = ["comedor","espacios","incidencias"]` en `modulosActivos`. El único módulo que sigue siendo opcional es **IB** (gestión aparte). La pestaña Usuarios solo muestra la lista de centros (solo lectura, `renderModulosLista`) + botón "Nuevo centro"; el wizard crea el centro con los módulos base ya activos
 
 ### Administración (admin.js)
 - Editor de `info_centro` (10 campos, con visibilidad por rol)
@@ -464,7 +472,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **IES Buñol** (f91b7c02): no tenía `tramos_centro` → mostraba los de Agora Lledó. Fix: TRAMOS_DEFAULT genérico + banner. El centro debe configurar sus tramos reales desde la pestaña Tramos
 - **Agora Lledó tramos 26-27**: cargados vía Management API — 10 filas (8 lectivos + Recreo 11:20–11:50 + Comida 14:20–15:20). Tramos lectivos: 08:50–09:40, 09:40–10:30, 10:30–11:20, 11:50–12:40, 12:40–13:30, 13:30–14:20, 15:20–16:10, 16:10–17:00.
 - **`scripts/importar_cargas_eso.mjs`**: importa `data/Cargas_ESO_limpia.xlsx` hoja "Cargas ESO" para los 6 grupos 1ºESO+3ºESO → borra necesidades_lectivas del centro, get-or-create materias y profesores por nombre normalizado, crea placeholders `PENDIENTE-<Grupo>-<Materia>` para celdas sin profesor. Resultado: 75 filas, 16 materias distintas, 29 profesores, 0 nulls en materia_id/profesor_id. Uso: `node scripts/importar_cargas_eso.mjs`
-- **Soporte multi-curso**: `horarios_grupo.curso_escolar TEXT NOT NULL DEFAULT '2025-26'`; `info_centro.curso_activo TEXT NOT NULL DEFAULT '2025-26'`; global `cursoActivo` en `config.js` actualizado tras login desde `info_centro`; 7 queries en `chat.js` y 4 en `admin.js` filtran por `curso_escolar` con fallback `'2025-26'`. Migración: `supabase/migrations/horarios_curso_escolar.sql` (PENDIENTE ejecutar en SQL Editor)
+- **Soporte multi-curso** (✅ migración aplicada): `horarios_grupo.curso_escolar TEXT NOT NULL DEFAULT '2025-26'` + índice `idx_hg_curso(centro_id, curso_escolar)`; `info_centro.curso_activo TEXT NOT NULL DEFAULT '2025-26'`; global `cursoActivo` en `config.js` actualizado tras login desde `info_centro`; 7 queries en `chat.js` y 4 en `admin.js` filtran por `curso_escolar` con fallback `'2025-26'`. Verificado en producción 2026-06-12 (2.733 filas en '2025-26'). DDL: `supabase/migrations/horarios_curso_escolar.sql`
 
 ### Análisis — Dashboard CMI + Informes PDF (analytics.js + informes.js)
 - **Módulo fusionado** (2026-06-10): un único nav item **"📊 Análisis"** (`#nav-analisis`, grupo Administración) visible para `admin`/`director`/`jefatura`/`superadmin`. `#panel-analisis` con dos pills internas (`analisisTab()` en el script inline de `app.html`):
@@ -475,8 +483,8 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **CMI tiles**: 6 KPIs en tiempo real — guardias sin cubrir, ausencias activas, incidencias abiertas, comensales hoy, ocupación espacios, usuarios activos
 - **Gráficos Chart.js**: línea de tendencia de incidencias (30 días), barras de guardias por profesor (trimestre), dona de distribución de tipos de ausencia
 - **Alertas predictivas psicosociales**: análisis automático de patrones anómalos (picos de absentismo, acumulación de incidencias por grupo/alumno, profesor con exceso de guardias). Llama Edge Function `alerta-psicosocial`
-- **Edge Function `alerta-psicosocial`**: recibe `{centro_id}`, analiza últimos 30 días de datos de tres tablas, devuelve array de alertas con `nivel` (verde/amarillo/rojo), `mensaje` y `accion_sugerida`. Requiere tabla `alertas_predictivas` (pendiente ejecutar `sql/alertas-predictivas.sql`)
-- **Tabla `alertas_predictivas`**: `centro_id, tipo, nivel, mensaje, datos_json, leida, created_at` — **pendiente ejecutar SQL en Supabase**
+- **Edge Function `alerta-psicosocial`**: recibe `{centro_id}`, analiza últimos 30 días de datos de tres tablas, devuelve array de alertas con `nivel` y descripción. Persiste en `alertas_predictivas`
+- **Tabla `alertas_predictivas`** (✅ ya en producción): `id, centro_id, alumno_id, tipo (DEFAULT 'riesgo_abandono'), nivel (DEFAULT 'medio'), descripcion, condicion_a/b/c (bool), resuelta (bool), created_at`. RLS `centro_isolation` + índice `idx_alertas_centro_activas(centro_id, resuelta, created_at DESC)`. DDL: `sql/alertas-predictivas.sql`
 
 ### Salidas Didácticas (salidas.js)
 - Tab **"🚌 Salidas"** visible para todos los roles; `#panel-salidas` renderizado completamente dinámico (sin HTML estático)
@@ -507,7 +515,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Voz `_calIniciarVoz(taId, btnId, onStop)`**: `window.SpeechRecognition || window.webkitSpeechRecognition`, `lang='es-ES'`, modo continuo. `try/catch` completo — si el navegador no soporta reconocimiento muestra toast informativo sin romper el flujo.
 - **XSS**: `_calEsc()` en todos los `innerHTML` con datos de usuario (mismo patrón que `_esc()` en planner.js)
 - **`_calParseJson(txt)`**: strip ` ```json ``` ` antes de `JSON.parse`
-- **Tablas**: `no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad` — pendiente ejecutar DDL en Supabase SQL Editor (`sql/calidad-tables.sql`)
+- **Tablas** (✅ ya en producción): `no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad`, `evaluaciones_platinum` — todas con RLS habilitada y políticas por centro (verificado 2026-06-12). DDL: `sql/calidad-tables.sql`
 
 ### Orientación — departamento de orientación (orientacion.js)
 - Nav **"🧭 Orientación"** (grupo Centro), visible `orientador`/`jefatura`/`director`/`admin`/`superadmin` (familia solo ve el portal de trámites). Tablas: ver arriba (6 de `orientacion_base.sql`). Todas las queries filtran `centro_id`; la IA va vía EF `chat` con `role:"familia"` (texto puro) y **nunca persiste sin acción manual del orientador**.
@@ -521,7 +529,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Exportación RGPD** (`oriExportarExpedienteCompleto`, role-gated admin/director/jefatura/superadmin): **un PDF** (jsPDF+autotable) con portada (logo+color, nota legal Art. 15 RGPD/LOPDGDD), 5 secciones (medidas, informes con texto completo, observaciones docentes, trámites, alertas), pie con nº de página y nota de cierre.
 - **Estadísticas** (`oriEstadisticas`): 6 bloques (4 tarjetas, barras por medida, línea de alertas 6m por nivel, donut estado de informes, top-10 cuestionarios pendientes, trámites por estado) con Chart.js; export **PDF** (tablas) y **Excel** (6 hojas).
 - **Notificaciones push** (helper `_oriPush` → EF `send-push`, silencioso/no bloqueante): cuestionario completado→orientador; nueva alerta→orientador/jefatura/director/admin; informe validado→director/admin; trámite `visible_familia`→familias (`familia_alumno.profile_id`).
-- **Portal de familias** (`oriRenderTramitesFamilia`): sección autocontenida inyectada en la home de la familia (MutationObserver, sin tocar otros archivos); muestra trámites de hijos vinculados con `visible_familia=true` — **sin datos clínicos**.
+- **Portal de familias** (`oriRenderTramitesFamilia`): sección autocontenida inyectada en la home de la familia (MutationObserver, sin tocar otros archivos); muestra trámites de hijos vinculados con `visible_familia=true` — **sin datos clínicos**. Lee vía RPC `familia_tramites_visibles()` (SECURITY DEFINER); `expedientes_orientacion`/`tramites_orientacion` son staff-only por RLS (la familia no las consulta directamente).
 - **Responsive** (CSS inyectado una vez, sin tocar `styles.css`): tabla→tarjetas en <768px, pestañas→`<select>`, modales 95%+×, FAB "Nuevo expediente", ellipsis. Toasts verde/rojo reutilizan `_calToast`/`showToast`.
 
 ---
@@ -592,6 +600,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 | Calidad (NCs + Feedback + CAPA) | — | — | ✅ | ✅ |
 | Orientación | (portal trámites visible_familia) | — | ✅ | ✅ (+orientador/jefatura/director) |
 | Salidas Didácticas | ✅ (autorización) | ✅ | ✅ | ✅ |
+| Alumnos (directorio + ficha) | — | ✅ | ✅ | ✅ (+orientador/director/jefatura) |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
@@ -618,6 +627,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 <script src="js/orientacion.js"></script>
 <script src="js/calidad.js"></script>
 <script src="js/salidas.js"></script>
+<script src="js/alumnos.js"></script>
 ```
 
 ---
@@ -849,6 +859,25 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ## Roadmap
 
+### 📍 Punto de retomar — sesión 2026-06-12
+
+**Hecho hoy (todo en `main`, último commit `3388eeb`, desplegado en Vercel + Supabase):**
+1. **Módulos siempre disponibles para todos los centros (excepto IB)** — `_conModulosBase()` en `config.js`; eliminados los toggles de módulos del panel Usuarios. Limpieza: `.gitignore` ignora `repomix-output.xml` y `edubot-supabase (1).html`.
+2. **Portal familia consolidado** — `renderHomeFamilia` ahora es el hub: bloque Avisos (aviso del centro + cambios de clase hoy, antes huérfano en `panel-avisos`) y comedor accionable ("avisar que no come mañana"). `syncGroupLabels()` oculta encabezados de grupo vacíos en el sidebar.
+3. **Módulo Alumnos nuevo** (`js/alumnos.js`) — directorio (buscar/filtrar/**export Excel**) + ficha individual (familias vinculadas, horario, comedor 14d, incidencias, calificaciones) + acciones (**registrar incidencia** prerrellenada, **export PDF** de la ficha) + integración **⌘K** (abre ficha) + acceso desde sidebar (grupo Docencia, `nav-alumnos`). Visible a staff, no familia.
+4. **Calificaciones para familias** (solo lectura) — `_calRenderFamilia` (tabla pivote asignatura×evaluación, selector de hijo); tab visible para familia.
+5. **🔒 Auditoría RLS + cierre de fuga RGPD sistémica** (lo más importante). Las cuentas `familia` (que tienen `centro_id`) podían leer por API datos de TODOS los alumnos. Aplicado y verificado en producción:
+   - `calificaciones_familia_rls.sql` — familia solo notas de sus hijos.
+   - `rls_familia_lockdown_fase1.sql` — 7 tablas staff-only (informes/medidas/cuestionarios/alertas de orientación, alertas_predictivas, no_conformidades, acciones_capa).
+   - `rls_familia_lockdown_fase2.sql` — expedientes/tramites_orientacion + incidencias → staff-only con RPCs `SECURITY DEFINER` (`familia_tramites_visibles`, `familia_incidencias_hijos`); `feedback_familias` → propio. JS acoplado desplegado.
+
+**Pendiente / próximos pasos:**
+- ⚠️ **Rotar el token de Management API `sbp_…`** (tarea del usuario; Account → Access Tokens). Se usó en esta sesión para aplicar las migraciones RLS.
+- **Verificación funcional RLS con un usuario familia real**: loguearse como familia y comprobar que (a) ve sus notas/trámites/incidencias y (b) NO puede leer las de otros alumnos por API. Las migraciones están verificadas a nivel de política/RPC, falta la prueba e2e con sesión de familia.
+- **Revisar otras tablas con el mismo patrón** `centro_id = mi_centro` por si alguna sensible quedó fuera de la auditoría (se cubrieron orientación, calidad, calificaciones, incidencias, feedback; faltaría repasar p.ej. `ausencias_profesor`, `sustituciones`, `salidas`/`participantes_salida`, `comunicados` — menos críticas pero conviene mirar).
+- **Redesign visual** (Alumnos/Asistente/Sustituciones/Incidencias): **bloqueado** — faltan las capturas de `design_handoff_didactia/screenshots/` (el directorio no está en el repo). Si se quiere retomar, hay que aportar las capturas de referencia.
+- **App Familias**: el portal está consolidado; quedaría (opcional) una PWA/onboarding dedicado.
+
 ### Completado ✅
 - [x] Chatbot con Gemini 2.5 Flash, contexto multi-rol, resolución directa de horarios
 - [x] Módulo comedor: asistencia diaria, histórico 30 días, CSV export
@@ -856,7 +885,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Bolsa de guardias con equidad (ranking trimestral, barra de progreso, selector ordenado)
 - [x] Dashboard por rol con contadores live y búsqueda rápida de alumno
 - [x] Gestión de usuarios: invitar, editar, desactivar, reenviar invitación, badges de estado
-- [x] Toggle de módulos por centro (superadmin)
+- [x] Módulos siempre disponibles para todos los centros (excepto IB) — eliminados los toggles de módulos en Usuarios (`_conModulosBase` en config.js)
 - [x] Módulo incidencias: buscador de alumno en tiempo real (autorellena grupo), gravedad, filtro por grupo, CSV, contador en tab, notificación familia
 - [x] Módulo incidencias — tipificación IA: botón Tipificar con IA, modal con normativa CCAA (5 regiones), informe borrador editable, pre-relleno automático del formulario
 - [x] Módulo incidencias — flujo convivencia: guardar informe/normativa/medidas/PREVI en BD, notificación automática a jefatura (grave/muy_grave) vía Edge Function notify-jefatura
@@ -891,12 +920,15 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Módulo Salidas Didácticas: lista, detalle 4 tabs (Dashboard/Cocina/Autobús/Administración), vista familia con autorización por hijo, push notifications, Excel 3 hojas, circular IA
 - [x] Roles `orientador` y `admin_institucional`: nuevas opciones en selectores de invitación/edición de usuarios; `admin_institucional` tiene selector multi-centro propio
 - [x] Módulo Calidad base: dashboard 5 KPIs, No Conformidades (lista+filtros+modal voz+IA+detalle+CAPA), Feedback Familias (lista+sentimiento+análisis IA asíncrono+respuesta IA); tablas `no_conformidades`/`acciones_capa`/`feedback_familias` (DDL pendiente ejecutar)
+- [x] Módulo Alumnos (`js/alumnos.js`): directorio del centro (buscar/filtrar por grupo/export Excel) + ficha individual (familias, horario, comedor, incidencias, calificaciones) + acciones (registrar incidencia prerrellenada, export PDF) + integración ⌘K. Staff only.
+- [x] Calificaciones para familias (solo lectura): vista pivote asignatura×evaluación de sus hijos (`_calRenderFamilia`)
+- [x] Auditoría RLS + cierre de fuga RGPD (familias podían leer datos de todos los alumnos): calificaciones + fase 1 (7 tablas staff-only) + fase 2 (orientación/incidencias vía RPCs SECURITY DEFINER + feedback propio). Las 3 migraciones aplicadas y verificadas en producción
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
 - [x] Logo brand SVG + wordmark sidebar
 - [x] Inicio admin (Classroom-style: banner ink, metrics pills, modules grid con colores)
-- [ ] Inicio profesor (horario del día, stats distintas)
+- [x] Inicio profesor (`#inicio-staff`): "Mi horario de hoy" como hero (borde izq `--ink`) + franja "Acciones rápidas" del docente (Notificar ausencia/Registrar incidencia/Materiales/Calificaciones, navegación pura) + métricas bajo "Estado del centro hoy". Solo `app.html`+`styles.css` (`.home-quick`/`.home-quick-btn`/`.home-quick-label`), sin tocar JS ni IDs
 - [ ] Alumnos — split tabla/perfil drawer (`02-alumnos.png`)
 - [ ] Asistente IA — pantalla full-screen chat split (`06-chat.png`)
 - [ ] Sustituciones — tabla densa + popover + banner IA (`04-sustituciones.png`)
@@ -907,20 +939,20 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 ### Próximo sprint — App Familias / Portal familias
 - [ ] **App Familias (PWA separada o tab nuevo)** — onboarding, dashboard hijo, chat con el centro, notificaciones push
 - [x] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor (pendiente: sustituir TODO `VAPID_PUBLIC_KEY` en `config.js` con el valor real del secret de Supabase)
-- [ ] **Módulo IB en la app** — gestión de `plazos_ib`, CAS tracker, Extended Essay status (para centros con IB)
-- [ ] **Página de recuperación de contraseña** — UX mejorable; actualmente funciona via hash
-- [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
+- [x] **Módulo IB en la app** (`js/ib.js`): 6 sub-paneles. Base: CAS (actividades por alumno, aprobar/rechazar, editar Learning Outcomes + sugerencia IA), Extended Essay, Plazos. Ampliación 2026-06-12: **TOK** (ensayo+exhibición, estado/nota A–E), **EE mejorado** (nota final + borradores/feedback del supervisor `ee_borradores`), **Predicciones/Resultados** (rejilla por asignatura HL/SL, 1–7), **Coordinador** (vista global: CAS/EE/TOK/Σpredicción/Σfinal/puntos core matriz TOK×EE/total /45). Cableado `#tab-ib`/`#nav-ib`/`#panel-ib` + `showTab('ib')→loadIbPanel()`. Cubierto por `demo-check` (módulo 15)
+- [x] **Recuperación de contraseña** (2026-06-12): enlace "¿Olvidaste tu contraseña?" en login + form `#form-reset-request` → `doRequestReset()` llama `sb.auth.resetPasswordForEmail(email, {redirectTo: app.html})` con mensaje neutro anti-enumeración; `_hideAuthForms()` helper. El enlace del email vuelve a `app.html` (`type=recovery`) → `config.js` → `showRecovery()` → `doRecovery()`. Allowlist de Auth ampliada con `https://didactia.eu/**` y `https://www.didactia.eu/**` (Management API) para permitir el redirect a `/app.html`
+- [x] **Onboarding de nuevo centro** (`js/users.js`, 2026-06-12): botón "+ Nuevo centro" en el panel de Usuarios (solo superadmin) → wizard modal (`nuevoCentroWizard`) con nombre, slug autogenerado/único, color, logo, módulos activos y **códigos de acceso autogenerados** (familia/profesional/general) → `INSERT centros` → modal de éxito que muestra los códigos y enlaza a "Invitar primer admin". Siguiente paso del onboarding (alumnos) ya cubierto por `scripts/importar_alumnos.mjs`
 
 ### Backlog
 - [x] **P0 seguridad (cerrado):** `disponibilidad_profesor` no tiene columna `centro_id`. El aislamiento ya está garantizado por dos capas: (1) cliente filtra por `profesor_id IN (profIds)` donde `profIds` viene de `profesores` filtrado por `centro_id`; (2) RLS con policy `centro_isolation` aísla vía FK `profesor_id → profesores.centro_id`. No hay fuga cross-tenant. Sin cambios necesarios.
 - [x] **P0 deploy resuelto:** EF `chat` redesplegada el 2026-06-03 con 7 herramientas. Deploy vía `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
-- [x] **P1 versionar EFs:** `invite-user` y `notify-role` añadidos al repo (`c232c38`); `notify-sustitucion` deployada a producción (`2026-06-12`). Nota: `rapid-processor` y `cas-analyzer` están en prod sin versionar.
-- [ ] Ejecutar `sql/alertas-predictivas.sql` en Supabase para activar tabla `alertas_predictivas` (Analytics CMI)
-- [ ] Importación masiva de alumnos via CSV (existe script Python para horarios, falta alumnos/familias)
-- [ ] Estadísticas avanzadas cross-centro para superadmin
-- [ ] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadir a `.gitignore`)
+- [x] **P1 versionar EFs:** `invite-user` y `notify-role` extraídos del bundle ESZIP de producción y añadidos al repo (`c232c38`); `notify-sustitucion` deployada a producción (`2026-06-12`). Nota: `rapid-processor` y `cas-analyzer` están en prod sin versionar.
+- [x] `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI) **ya en producción** (verificado 2026-06-12: tabla + RLS `centro_isolation` + índice `idx_alertas_centro_activas` presentes; el SQL coincide con el esquema vivo). No requiere acción.
+- [x] Importación masiva de alumnos/familias via CSV (`scripts/importar_alumnos.mjs`, 2026-06-12): cabeceras flexibles (nombre/curso/grupo_horario/familia_email/relacion), dedupe por nombre normalizado, vínculos `familia_alumno` por email de perfil, `--dry-run`. **Seguridad:** los 3 importadores (`importar_alumnos.mjs`, `importar_horarios_profes.mjs`/`.py`, `importar_cargas_eso.mjs`) ya NO hardcodean la `service_role` key — la leen de `SUPABASE_SERVICE_ROLE_KEY` (0 JWTs literales en el repo)
+- [x] Estadísticas cross-centro para superadmin (`js/analytics.js`, 2026-06-12): vista multicentro ampliada en el Dashboard de Análisis (solo superadmin, `#cmi-mc-wrap`): tabla comparativa por centro (alumnos, sustituciones pendientes hoy, incidencias abiertas, comensales hoy, usuarios, alertas) con semáforo y fila de TOTALES. Fix: sustituciones sin cubrir ahora incluye `cubierta IS NULL`
+- [x] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadidos a `.gitignore`; `edubot-supabase (1).html` quitado del index con `git rm --cached`) ✅ 2026-06-12
 - [x] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real ✅ (par regenerado 2026-06-11, secrets actualizados vía Management API, EF `send-push` redesplegada)
-- [ ] Bug menor `send-push`: el delete por 410/404 borra todas las filas del `user_id` en lugar de solo el endpoint fallido — si un usuario tiene varios dispositivos puede perder suscripciones válidas
+- [x] Bug menor `send-push` (cerrado 2026-06-12): el delete por 410/404 ahora borra **solo la fila fallida** (`.eq("id", row.id)`, con `id` añadido al select), no todas las del `user_id` — un usuario con varios dispositivos conserva sus suscripciones válidas. EF redesplegada.
 
 ---
 
@@ -1053,10 +1085,15 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `supabase/migrations/horarios_curso_escolar.sql` — `horarios_grupo.curso_escolar` + `info_centro.curso_activo` + índice. **Ejecutar antes de que el código multi-curso entre en producción.**
-> - `sql/calidad-tables.sql` — tablas `no_conformidades` + `acciones_capa` + `feedback_familias` + `documentos_calidad` + `plantillas_calidad` + `evaluaciones_platinum` + RLS por centro. **Pendiente crear el archivo y ejecutarlo.** El módulo Calidad mostrará error hasta que existan las tablas.
+> - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/rls_familia_lockdown_fase2.sql` — **fix privacidad RGPD (fase 2)**: `expedientes_orientacion`, `tramites_orientacion`, `incidencias` → staff-only; las familias obtienen sus datos vía RPCs `SECURITY DEFINER` `familia_tramites_visibles()` (trámites `visible_familia` de sus hijos) y `familia_incidencias_hijos()` (incidencias de sus hijos, solo campos visibles — no `informe_borrador`/`normativa_ref`); `feedback_familias`: `cal_fb_read`/`cal_fb_update` restringidas a staff (familia conserva lo suyo vía `feedback_centro`). JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` → RPC). ✅ aplicado y verificado 2026-06-12 vía Management API (políticas + RPCs SECURITY DEFINER con EXECUTE para `authenticated`, ejecutan sin error).
+> - `supabase/migrations/rls_familia_lockdown_fase1.sql` — **fix privacidad RGPD (fase 1)**: 7 tablas que ninguna vista de familia consume pasan a staff-only (`rol <> 'familia'`): `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `alertas_orientacion`, `alertas_predictivas`, `no_conformidades`, `acciones_capa`. Antes, cualquier cuenta `familia` (que tiene `centro_id`) podía leer por API datos psicopedagógicos y de riesgo de TODOS los alumnos. ✅ aplicado y verificado 2026-06-12 vía Management API (9 políticas, todas excluyen `familia`). Fase 2 (tablas con lectura legítima de familia) pendiente — ver migraciones pendientes.
+> - `supabase/migrations/calificaciones_familia_rls.sql` — **fix privacidad RGPD**: `cal_read` restringe a las familias a leer solo las notas de sus hijos (`familia_alumno.profile_id=auth.uid()`); staff lee su centro; superadmin todo. ✅ ejecutado y verificado 2026-06-12 vía Management API (qual incluye el subselect de `familia_alumno`)
+> - `supabase/migrations/ib_avanzado.sql` — IB avanzado: tablas `ib_tok`, `ee_borradores`, `ib_resultados` (+RLS por centro) + `extended_essay.nota` ✅ ejecutado 2026-06-12 vía Management API
+> - `supabase/migrations/horarios_curso_escolar.sql` — `horarios_grupo.curso_escolar` + `info_centro.curso_activo` + índice `idx_hg_curso` ✅ verificado en producción 2026-06-12 (columnas NOT NULL DEFAULT '2025-26', 2.733 filas pobladas)
+> - `sql/calidad-tables.sql` — 6 tablas del módulo Calidad (`no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad`, `evaluaciones_platinum`) + RLS + políticas por centro ✅ verificado en producción 2026-06-12
 > - `supabase/migrations/20260609_push_subscriptions.sql` — tabla `push_subscriptions` + RLS + índices ✅ 2026-06-09 vía Management API (confirmado)
 > - `supabase/migrations/orientacion_base.sql` — 6 tablas de Orientación (`expedientes_orientacion`, `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `tramites_orientacion`, `alertas_orientacion`) + índices + RLS por centro ✅ ejecutado 2026-06-11 vía Management API
 > - `supabase/migrations/planner_inputs.sql` — 7 tablas de entrada del Planner (`planner_profesores/cargas/tramos/restricciones/disponibilidad/espacios/reglas`) + RLS por centro ✅ ejecutado 2026-06-09 vía Management API
@@ -1077,7 +1114,14 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-12` — fix(seguridad RGPD): **auditoría RLS — fuga sistémica a familias**. El patrón `centro_id = mi_centro` en políticas de SELECT/ALL dejaba a las cuentas `familia` (que tienen `centro_id`) leer por API datos sensibles de TODOS los alumnos. **Fase 1 aplicada** (`rls_familia_lockdown_fase1.sql`): 7 tablas sin lectura de familia → staff-only (orientación clínica: informes/medidas/cuestionarios/alertas; alertas_predictivas; calidad: NC/CAPA). **Fase 2 aplicada** (`rls_familia_lockdown_fase2.sql`): expedientes/tramites_orientacion + incidencias → staff-only con RPCs `SECURITY DEFINER` (`familia_tramites_visibles`/`familia_incidencias_hijos`) para que las familias vean solo lo suyo (la RLS no filtra columnas → el RPC evita exponer `notas_internas`/`informe_borrador`); `feedback_familias` → propio. JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` ahora llaman al RPC).
+- `2026-06-12` — fix(seguridad)+feat(calificaciones): **calificaciones para familias (solo lectura) + cierre de fuga RGPD**. Hallazgo: la política `cal_read` permitía a cualquier usuario del centro (incl. `familia`) leer TODAS las calificaciones por API. Migración `supabase/migrations/calificaciones_familia_rls.sql` (✅ **aplicada y verificada en producción 2026-06-12**): staff lee su centro; familia solo `alumno_id ∈ familia_alumno(profile_id=auth.uid())`; superadmin todo. Vista familia en `js/calificaciones.js` (`_calRenderFamilia`: tabla pivote asignatura×evaluación, selector de hijo si >1, solo lectura). Tab Calificaciones visible para `familia` en `auth.js`.
+- `2026-06-12` — fix(alumnos): familias vinculadas leídas en dos pasos (sin embed FK `familia_alumno→profiles`).
+- `2026-06-12` — feat(alumnos): **módulo Alumnos nuevo** (`js/alumnos.js`). Directorio del centro: `initAlumnos()` (lista + buscador por nombre + chips de filtro por grupo, contador, **export Excel** `_alExportar` de la lista filtrada con SheetJS). Ficha individual `alumnosAbrirFicha(id)` con 5 bloques async fire-and-forget: familias vinculadas (`familia_alumno→profiles`), horario semanal por día (`horarios_grupo` por grupo+curso), comedor últimos 14 días lectivos, incidencias (`ilike alumno_nombre`), calificaciones (`calificaciones` por `alumno_id`). XSS: `_alEsc`; argumentos onclick seguros: `_alArg` (evita romper el atributo con UUIDs/grupos). **Integración ⌘K**: el command palette (`js/palette.js`) al elegir un alumno abre su ficha vía `window.alumnosVerFicha(id)` para staff (familia mantiene fallback al chatbot); `alumnosAbrirFicha` hace fetch del alumno por id si la lista no estaba cargada (apertura directa). **Acción "Registrar incidencia"** desde la ficha (`alumnosRegistrarIncidencia`, solo admin/admin_institucional/superadmin = visibilidad real del tab Incidencias): navega a Incidencias y prerrellena `inc-alumno`/`inc-grupo` (reintenta hasta que la vista admin renderice). **Export PDF de la ficha** (`alumnosExportarFichaPDF`, botón "⬇ PDF" para cualquier rol que ve la ficha): reutiliza los helpers globales de `informes.js` (`_infEnsureLibs`/`_infCentroInfo`/`_infImgToDataURL`/`_infHexToRgb`) → jsPDF + autotable con cabecera logo+color del centro; 5 secciones (familias, horario semanal, comedor 30d, incidencias, calificaciones), una fila "Sin registros" por sección vacía. Cableado en `app.html` (`tab-alumnos`/`nav-alumnos` grupo Docencia/`panel-alumnos`/TAB_MAP/MAS_CFG/TITLES/patch showTab/script) + `auth.js` (visibilidad: profesional/admin/admin_institucional/superadmin/director/jefatura/orientador, **no familia**). También: `syncGroupLabels()` oculta encabezados de grupo del sidebar sin items visibles.
+- `2026-06-12` — feat(familia): **home consolidado como portal** (`renderHomeFamilia` en `js/mejoras.js`). Bloque "Avisos" (aviso del centro + cambios de clase hoy, antes huérfano en `panel-avisos`) + comedor accionable ("avisar que no come mañana", `window._fhAvisoManana`).
+- `2026-06-12` — feat: **módulos siempre disponibles para todos los centros (excepto IB)** (`config.js` `_conModulosBase`, `auth.js`, `users.js`, `app.html`). Eliminados los toggles de módulos del panel Usuarios. Limpieza: `.gitignore` ignora `repomix-output.xml` y `edubot-supabase (1).html` (este último sacado del index).
 - `2026-06-12 07:40` · `938602f` — docs(CLAUDE.md): P1 EFs versionadas — marcar completado + nota rapid-processor/cas-analyzer
+- `2026-06-12` — fix: deploy `notify-sustitucion` a producción (estaba versionada pero no deployada)
 - `2026-06-12 07:26` · `c232c38` — feat: versionar EFs `invite-user` y `notify-role` — código extraído del bundle ESZIP de producción vía Management API. `notify-sustitucion` ya estaba en el repo (sin deploy activo). Funciones en prod no versionadas aún: `rapid-processor`, `cas-analyzer`.
 - `2026-06-12 01:16` · `a0ca561` — docs(CLAUDE.md): home familia documentada — renderHomeFamilia, VAPID fix
 - `2026-06-12 00:56` · `967a728` — feat(familia): home mejorada — `renderHomeFamilia()` en `mejoras.js`; 5 bloques fire-and-forget (horario hoy, comedor, incidencias, salidas, comunicados no leídos); selector de hijo con chips; render target `#familia-home-content` en `app.html`; fix `const VAPID_PUBLIC_KEY` duplicado (eliminado de `mejoras.js`, permanece solo en `config.js`)
@@ -1086,6 +1130,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 - `2026-06-11` — feat(push-familias): **suscripción a notificaciones push para familias** (`js/familias.js`, `js/auth.js`, `js/config.js`). `initPushFamilias()` llamada tras login de rol familia: comprueba soporte Push API, consulta si ya suscrito, muestra banner `#push-banner-familia` con botón Activar y ✕ persistente (localStorage). `_pushActivar()`: SW ready → `pushManager.subscribe` con VAPID → INSERT en `push_subscriptions` fire-and-forget → toast confirmación. `VAPID_PUBLIC_KEY` en `config.js` (TODO pendiente de sustituir con valor real). SW ya tenía handler push completo — sin cambios.
 - `2026-06-11` — feat(agent-sustituciones): **primer agente IA autónomo** (`supabase/functions/agent-sustituciones/index.ts`). Edge Function con Gemini function calling y 3 herramientas encadenadas: `obtener_ausencias_sin_cubrir` (sustituciones sin cubrir hoy), `buscar_profesores_libres` (cruza `horarios_grupo` con profesores del centro), `sugerir_sustituto` (ordena por equidad trimestral). El agente solo actúa cuando hay ausencias reales — si no hay, responde "No hay ausencias sin cubrir hoy." Integrado en la home del rol admin/director/jefatura como bloque "🤖 Resumen de guardias" (fire-and-forget, no bloquea carga). P0 seguridad `disponibilidad_profesor` cerrado (aislamiento garantizado por RLS + filtro cliente, no requería cambio).
 - `2026-06-11 10:27` · `d969c51` — Merge branch 'main' of https://github.com/jesvivlc/DidactIA
+- `2026-06-12` — feat(agent): detalle adicional de `agent-sustituciones` — el `centro_id` es SIEMPRE el del body (nunca el del modelo), `.eq("centro_id", …)` en las 3 queries, log por herramienta; herramientas dedup por nombre normalizado y filtro de PENDIENTE / nombres con `?`/`/`; `sugerir_sustituto` top 3; integración UI: botón "🤖 Buscar profesor libre" en `#sust-vista-admin` (`buscarProfesorLibreAgente`) + briefing `_renderAgentBriefing` en home admin.
 - `2026-06-11 00:54` · `81de9b4` — docs(CLAUDE.md): sesión 2026-06-11 — Calidad NCs+CAPA+Feedback, roles orientador/admin_institucional, tablas calidad
 - `2026-06-11` · **Módulo Calidad — No Conformidades + CAPA + Feedback Familias** (`763bb5e`): implementación completa de las dos secciones principales de `js/calidad.js`. Bug crítico previo: `getElementById('cal-container')` devolvía el contenedor de Calificaciones (ID duplicado) → spinner infinito. Fix: renombrar a `calidad-cont` (`af8ac5e`). Secciones implementadas:
   - **No Conformidades**: lista paginada con filtros (estado/prioridad/categoría), NC ID `NC-{año}-{6HEX}`, ordenado por prioridad+fecha; modal con dictación por voz (`SpeechRecognition` + `try/catch` completo) + análisis IA en `onblur` que actualiza selectores automáticamente; detalle con cambio de estado inline + análisis 5 Porqués con Gemini; CAPA inline (modal causa/plan/responsable/fechas, eficacia, cierre automático cuando todas eficaces)
@@ -1109,7 +1154,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 - `2026-06-11` — feat(orientación): **módulo nuevo + tablas** (`js/orientacion.js`, `supabase/migrations/orientacion_base.sql` ejecutado vía Management API). 6 tablas (`expedientes_orientacion`, `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `tramites_orientacion`, `alertas_orientacion`) + RLS por centro. Lista de expedientes (JOIN alumno+orientador, medida más grave activa, nivel de riesgo, filtros, contador, export XLSX, modal nuevo expediente). Nav item "🧭 Orientación" (grupo Centro, visible orientador/jefatura/director/admin/superadmin).
 - `2026-06-10` — feat(login): **logo y color del centro en la pantalla de login** (antes de autenticar). `themeLoginScreen()` (en `js/auth.js`, llamada desde el boot de `js/config.js` tras crear el cliente) detecta el centro por la URL —`?centro=<uuid>` (por `id`) o `?centro=`/`?c=`/`?codigo=` con un código de acceso (cruza `codigo_familia`/`codigo_profesional`/`codigo_acceso`)— y aplica `applyTheme(color_primario, logo_url)` (que ya tematiza `#brand-logo` del login). Fallback: sin pista en URL → última marca usada en este navegador (`localStorage didactia_brand`, persistida por `_cacheBrand` tras login); sin nada → marca DidactIA por defecto. Todo en `try/catch` → nunca lanza error. No toca la lógica de autenticación.
 - `2026-06-10` — feat(analisis): **fusión Analytics CMI + Informes en un módulo único "📊 Análisis"** (`app.html` + `js/auth.js`; `analytics.js`/`informes.js` intactos). Un único nav item (grupo Administración, visible admin/director/jefatura/superadmin) y `#panel-analisis` con dos pills internas: **Dashboard** (contenedor `#analytics-container`) e **Informes PDF** (`#inf-container`). `analisisTab()`/`initAnalisis()` conmutan visibilidad y hacen lazy init del sub-módulo activo (`initAnalyticsPanel()`/`initInformes()`). Eliminados nav/tab/panel separados de Analytics e Informes; quitada de `auth.js#showTab` la rama `informes` y la visibilidad de `tab-informes`.
-- `2026-06-09` · **Multi-curso horarios_grupo** — `curso_escolar TEXT NOT NULL DEFAULT '2025-26'` + `info_centro.curso_activo`; global `cursoActivo` en `config.js`; auth.js carga `curso_activo` tras login (fire-and-forget); 7 queries `chat.js` + 4 `admin.js` filtran por `curso_escolar`; Planner Publicar: selector 2025-26/2026-27, aviso si es el curso activo, DELETE filtra por `centro_id+curso_escolar+grupo_horario`. Migración `horarios_curso_escolar.sql` PENDIENTE ejecutar manualmente.
+- `2026-06-09` · **Multi-curso horarios_grupo** — `curso_escolar TEXT NOT NULL DEFAULT '2025-26'` + `info_centro.curso_activo`; global `cursoActivo` en `config.js`; auth.js carga `curso_activo` tras login (fire-and-forget); 7 queries `chat.js` + 4 `admin.js` filtran por `curso_escolar`; Planner Publicar: selector 2025-26/2026-27, aviso si es el curso activo, DELETE filtra por `centro_id+curso_escolar+grupo_horario`. Migración `horarios_curso_escolar.sql` ✅ aplicada y verificada en producción (2026-06-12).
 - `2026-06-09` · **Planner: HC-MATERIA-DIA en H-MRV-SA** — `TimetableSolver` añade `subjectDayOccupancy` y `maxPerDay=ceil(h/5)` en constructor; `getValidSlots` las comprueba; `assignBlock`/`removeBlock` las mantienen sincronizadas. Aplica en fase greedy (MRV) y SA (SWAP+RELOCATE) en los 3 Workers.
 - `2026-06-09` · **Planner fix: slots sin profesor_id** — `plannerElegirVariante` construía slots sin `profesor_id`, `materia_id`, `codocente_prof_ids` → `_slotSinProfesor()` = true → "⚠ Sin asignar" en todas las celdas. Fix: extraer `tIds=item.teacherIds`, poblar los tres campos + `sin_asignar`.
 - `2026-06-09` · **Agora tramos 26-27** — 10 tramos cargados vía Management API: 8 lectivos (08:50–17:00) + Recreo (11:20–11:50) + Comida (14:20–15:20). Anteriores 7 genéricos borrados.

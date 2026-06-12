@@ -1,6 +1,6 @@
 // Pre-demo check para DidactIA.
-// Verifica que los 8 módulos clave están operativos antes de una reunión de ventas.
-// Genera demo-check.html con capturas y estado de cada módulo.
+// Verifica que los módulos clave están operativos antes de una reunión de ventas.
+// Genera demo-check.html con capturas y estado de cada módulo (conteo dinámico).
 // Ejecutar: npm run test:demo  (requiere DEMO_ADMIN_EMAIL y DEMO_ADMIN_PASSWORD en .env)
 
 const { test, expect } = require('@playwright/test');
@@ -14,7 +14,7 @@ const EMAIL = process.env.DEMO_ADMIN_EMAIL;
 const PASS  = process.env.DEMO_ADMIN_PASSWORD;
 
 test('DidactIA — pre-demo check', async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   test.skip(!EMAIL || !PASS,
     'Configura DEMO_ADMIN_EMAIL y DEMO_ADMIN_PASSWORD en .env antes de ejecutar');
 
@@ -78,16 +78,21 @@ test('DidactIA — pre-demo check', async ({ page }) => {
       .toContainText('IES Demo', { timeout: 10_000 });
     // Sección admin visible (updateBentoDashboard la muestra para rol admin)
     await expect(page.locator('#inicio-admin')).toBeVisible({ timeout: 8_000 });
-    // Los 4 KPI tiles del dashboard admin
-    for (const id of ['#bento-guardias', '#bento-ausentes', '#bento-incidencias', '#bento-comunicados']) {
-      await expect(page.locator(id)).toBeVisible({ timeout: 5_000 });
+    // Métricas accionables de la home (rediseño 2026-06-05; sustituyen a los #bento-*)
+    for (const m of ['sust', 'com', 'inc']) {
+      await expect(page.locator(`[data-metric="${m}"]`).first()).toBeVisible({ timeout: 5_000 });
     }
   });
 
   // ── 3. Chatbot — enviar pregunta y verificar respuesta ────────────────────
   await check('03-chat', 'Chatbot IA', async () => {
+    // El chat vive en una burbuja flotante (rediseño 2026-06-05): hay que abrirla.
+    await page.evaluate(() => {
+      if (typeof openAsistente === 'function') openAsistente();
+      else if (typeof toggleAsistente === 'function') toggleAsistente();
+    });
     const inp = page.locator('#chat-inp');
-    await expect(inp).toBeVisible({ timeout: 5_000 });
+    await expect(inp).toBeVisible({ timeout: 6_000 });
     const before = await page.locator('#chat-msgs')
       .evaluate(el => el.children.length);
     await inp.fill('¿Qué profesores hay disponibles?');
@@ -126,6 +131,27 @@ test('DidactIA — pre-demo check', async ({ page }) => {
   // ── 8. Planner ────────────────────────────────────────────────────────────
   await check('08-planner', 'Planner', () => navTo('planner'));
 
+  // ── 9. Análisis (Dashboard CMI + Informes PDF) ────────────────────────────
+  await check('09-analisis', 'Análisis (CMI + Informes)', () => navTo('analisis'));
+
+  // ── 10. Calificaciones ────────────────────────────────────────────────────
+  await check('10-calificaciones', 'Calificaciones', () => navTo('calificaciones'));
+
+  // ── 11. Materiales ────────────────────────────────────────────────────────
+  await check('11-materiales', 'Materiales', () => navTo('materiales'));
+
+  // ── 12. Orientación ───────────────────────────────────────────────────────
+  await check('12-orientacion', 'Orientación', () => navTo('orientacion'));
+
+  // ── 13. Calidad (SGC) ─────────────────────────────────────────────────────
+  await check('13-calidad', 'Calidad (SGC)', () => navTo('calidad'));
+
+  // ── 14. Salidas didácticas ────────────────────────────────────────────────
+  await check('14-salidas', 'Salidas didácticas', () => navTo('salidas'));
+
+  // ── 15. IB (CAS / Extended Essay / Plazos) ────────────────────────────────
+  await check('15-ib', 'IB (CAS/EE/Plazos)', () => navTo('ib'));
+
   // ── Generar demo-check.html ───────────────────────────────────────────────
   generateReport(results);
 
@@ -147,7 +173,7 @@ function generateReport(results) {
     ? `<div class="banner banner--fail">❌ ${fails} módulo(s) ROTO(S) — NO hagas la demo hasta resolverlo</div>`
     : warns
     ? `<div class="banner banner--warn">⚠️ ${warns} módulo(s) con errores de consola — revisar</div>`
-    : `<div class="banner banner--ok">✅ Todo OK — ${ok}/8 módulos operativos</div>`;
+    : `<div class="banner banner--ok">✅ Todo OK — ${ok}/${results.length} módulos operativos</div>`;
 
   const rows = results.map(r => {
     const icon = r.status === 'ok' ? '✅' : r.status === 'warn' ? '⚠️' : '❌';
@@ -238,7 +264,7 @@ function generateReport(results) {
 <div class="wrap">
   <div class="header">
     <h1>DidactIA — Pre-demo check</h1>
-    <p>Ejecutado: <strong>${now}</strong> &nbsp;·&nbsp; Resultado: <strong>${ok}/8</strong> módulos OK</p>
+    <p>Ejecutado: <strong>${now}</strong> &nbsp;·&nbsp; Resultado: <strong>${ok}/${results.length}</strong> módulos OK</p>
   </div>
   ${banner}
   <table>

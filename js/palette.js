@@ -107,7 +107,7 @@
           alumnos.forEach(function (a) {
             var meta = (a.curso || "") + (a.grupo_horario ? " · " + a.grupo_horario : "");
             var prim = (a.nombre || "").split(",")[0].trim();
-            html += '<div class="cmdp-item" onclick="_cmdpAlumno(' + esc(JSON.stringify(prim)) + ')">' +
+            html += '<div class="cmdp-item" onclick="_cmdpAlumno(' + esc(JSON.stringify(a.id)) + ',' + esc(JSON.stringify(prim)) + ')">' +
               '<i class="ti ti-user cmdp-item-ico"></i>' +
               '<div class="cmdp-item-main"><div class="cmdp-item-title">' + esc(a.nombre) + "</div>" +
               '<div class="cmdp-item-meta">' + esc(meta) + "</div></div>" +
@@ -140,8 +140,14 @@
     }, 220);
   };
 
-  window._cmdpAlumno = function (prim) {
+  window._cmdpAlumno = function (id, prim) {
     window.closeCommandPalette();
+    // Staff: abre la ficha del alumno. Familia: pregunta al chatbot (no ve fichas).
+    var esStaff = (typeof role === "undefined") || role !== "familia";
+    if (id && esStaff && typeof window.alumnosVerFicha === "function") {
+      window.alumnosVerFicha(id);
+      return;
+    }
     if (typeof askQ === "function") askQ("¿Qué clase tiene " + prim + " ahora?");
   };
   window._cmdpProfesor = function (nombre) {

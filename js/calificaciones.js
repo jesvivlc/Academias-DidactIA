@@ -52,7 +52,99 @@ async function initCalificaciones() {
   cont.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>';
   if (_calEsAdmin()) await _calRenderAdmin();
   else if (_calEsProfesor()) await _calRenderProfesor();
+  else if (role === 'familia') await _calRenderFamilia();
   else cont.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;">No tienes acceso a las calificaciones.</div>';
+}
+
+/* ════════════════════════════════════════════════════
+   VISTA FAMILIA — solo lectura de las notas de los hijos
+   ════════════════════════════════════════════════════ */
+var _calFamHijoIdx = 0;
+
+async function _calRenderFamilia() {
+  var cont = document.getElementById('cal-container');
+  if (!cont) return;
+  var hijos = (typeof currentUserAlumnos !== 'undefined' && currentUserAlumnos) ? currentUserAlumnos : [];
+  if (!hijos.length) {
+    cont.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;">No hay alumnos vinculados a tu cuenta.</div>';
+    return;
+  }
+  if (_calFamHijoIdx >= hijos.length) _calFamHijoIdx = 0;
+  var hijo = hijos[_calFamHijoIdx];
+
+  var selectorHtml = '';
+  if (hijos.length > 1) {
+    selectorHtml = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">' +
+      hijos.map(function(h, i) {
+        var active = (i === _calFamHijoIdx);
+        return '<button onclick="_calFamSelectHijo(' + i + ')" style="border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;font-family:var(--font-ui);' +
+          (active ? 'background:var(--ink);color:#fff;border:1px solid var(--ink);' : 'background:var(--paper-2,var(--srf));color:var(--txt);border:1px solid var(--line,var(--bdr));') +
+          '">' + _calEsc(h.nombre) + '</button>';
+      }).join('') + '</div>';
+  }
+
+  cont.innerHTML =
+    '<div style="padding:28px;display:flex;flex-direction:column;gap:8px;background:var(--bg);min-height:100%;">' +
+      '<div class="pg-hdr"><div><div class="pg-title">Calificaciones</div>' +
+        '<div class="pg-sub">' + _calEsc(hijo.nombre) + (hijo.grupo_horario ? ' · ' + _calEsc(hijo.grupo_horario) : '') + '</div></div>' +
+        '<button class="btn btn-p" onclick="initCalificaciones()">↺ Actualizar</button></div>' +
+      selectorHtml +
+      '<div id="cal-fam-tabla"><div style="text-align:center;color:var(--txt3);padding:30px;"><span class="spin">⟳</span> Cargando…</div></div>' +
+    '</div>';
+
+  var box = document.getElementById('cal-fam-tabla');
+  try {
+    var r = await sb.from('calificaciones')
+      .select('asignatura,evaluacion,nota,observaciones,profesor_nombre')
+      .eq('centro_id', ctrId).eq('alumno_id', hijo.id);
+    var data = r.data || [];
+    if (!data.length) {
+      box.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:14px;padding:36px;">Aún no hay calificaciones publicadas.</div>';
+      return;
+    }
+    var EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
+    var EVALS_LBL = ['1ª Ev.', '2ª Ev.', '3ª Ev.', 'Final'];
+    // Pivot por asignatura
+    var porAsig = {};
+    data.forEach(function(c) {
+      var k = c.asignatura || '—';
+      if (!porAsig[k]) porAsig[k] = { obs: '', prof: c.profesor_nombre || '' };
+      porAsig[k][c.evaluacion] = c.nota;
+      if (c.observaciones) porAsig[k].obs = c.observaciones;
+    });
+    var asigs = Object.keys(porAsig).sort(function(a, b) { return a.localeCompare(b, 'es'); });
+
+    var celNota = function(n) {
+      if (n == null || n === '') return '<span style="color:var(--txt3);">—</span>';
+      var num = Number(n);
+      var col = num < 5 ? 'var(--danger,#C24D2F)' : 'var(--success,#3F9367)';
+      return '<span style="font-weight:600;color:' + col + ';">' + _calEsc(num) + '</span>';
+    };
+    var rows = asigs.map(function(a) {
+      var row = porAsig[a];
+      return '<tr style="border-bottom:1px solid var(--line,var(--bdr));">' +
+        '<td style="padding:10px 12px;font-weight:500;color:var(--txt);">' + _calEsc(a) +
+          (row.prof ? '<div style="font-size:11px;color:var(--txt3);font-weight:400;">' + _calEsc(row.prof) + '</div>' : '') + '</td>' +
+        EVALS.map(function(e) { return '<td style="padding:10px 12px;text-align:center;">' + celNota(row[e]) + '</td>'; }).join('') +
+        '</tr>';
+    }).join('');
+
+    box.innerHTML =
+      '<div style="overflow-x:auto;background:var(--srf);border:1px solid var(--line,var(--bdr));border-radius:var(--r);">' +
+        '<table style="width:100%;border-collapse:collapse;font-size:14px;min-width:520px;">' +
+          '<thead><tr style="text-align:left;border-bottom:2px solid var(--line,var(--bdr));background:var(--paper-2,var(--srf2));">' +
+            '<th style="padding:9px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);">Asignatura</th>' +
+            EVALS_LBL.map(function(e) { return '<th style="padding:9px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);text-align:center;">' + _calEsc(e) + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + rows + '</tbody>' +
+        '</table></div>';
+  } catch (e) {
+    box.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:14px;padding:36px;">No se pudieron cargar las calificaciones.</div>';
+  }
+}
+
+function _calFamSelectHijo(idx) {
+  _calFamHijoIdx = idx;
+  _calRenderFamilia();
 }
 
 /* ════════════════════════════════════════════════════
