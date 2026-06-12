@@ -859,6 +859,25 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ## Roadmap
 
+### 📍 Punto de retomar — sesión 2026-06-12
+
+**Hecho hoy (todo en `main`, último commit `3388eeb`, desplegado en Vercel + Supabase):**
+1. **Módulos siempre disponibles para todos los centros (excepto IB)** — `_conModulosBase()` en `config.js`; eliminados los toggles de módulos del panel Usuarios. Limpieza: `.gitignore` ignora `repomix-output.xml` y `edubot-supabase (1).html`.
+2. **Portal familia consolidado** — `renderHomeFamilia` ahora es el hub: bloque Avisos (aviso del centro + cambios de clase hoy, antes huérfano en `panel-avisos`) y comedor accionable ("avisar que no come mañana"). `syncGroupLabels()` oculta encabezados de grupo vacíos en el sidebar.
+3. **Módulo Alumnos nuevo** (`js/alumnos.js`) — directorio (buscar/filtrar/**export Excel**) + ficha individual (familias vinculadas, horario, comedor 14d, incidencias, calificaciones) + acciones (**registrar incidencia** prerrellenada, **export PDF** de la ficha) + integración **⌘K** (abre ficha) + acceso desde sidebar (grupo Docencia, `nav-alumnos`). Visible a staff, no familia.
+4. **Calificaciones para familias** (solo lectura) — `_calRenderFamilia` (tabla pivote asignatura×evaluación, selector de hijo); tab visible para familia.
+5. **🔒 Auditoría RLS + cierre de fuga RGPD sistémica** (lo más importante). Las cuentas `familia` (que tienen `centro_id`) podían leer por API datos de TODOS los alumnos. Aplicado y verificado en producción:
+   - `calificaciones_familia_rls.sql` — familia solo notas de sus hijos.
+   - `rls_familia_lockdown_fase1.sql` — 7 tablas staff-only (informes/medidas/cuestionarios/alertas de orientación, alertas_predictivas, no_conformidades, acciones_capa).
+   - `rls_familia_lockdown_fase2.sql` — expedientes/tramites_orientacion + incidencias → staff-only con RPCs `SECURITY DEFINER` (`familia_tramites_visibles`, `familia_incidencias_hijos`); `feedback_familias` → propio. JS acoplado desplegado.
+
+**Pendiente / próximos pasos:**
+- ⚠️ **Rotar el token de Management API `sbp_…`** (tarea del usuario; Account → Access Tokens). Se usó en esta sesión para aplicar las migraciones RLS.
+- **Verificación funcional RLS con un usuario familia real**: loguearse como familia y comprobar que (a) ve sus notas/trámites/incidencias y (b) NO puede leer las de otros alumnos por API. Las migraciones están verificadas a nivel de política/RPC, falta la prueba e2e con sesión de familia.
+- **Revisar otras tablas con el mismo patrón** `centro_id = mi_centro` por si alguna sensible quedó fuera de la auditoría (se cubrieron orientación, calidad, calificaciones, incidencias, feedback; faltaría repasar p.ej. `ausencias_profesor`, `sustituciones`, `salidas`/`participantes_salida`, `comunicados` — menos críticas pero conviene mirar).
+- **Redesign visual** (Alumnos/Asistente/Sustituciones/Incidencias): **bloqueado** — faltan las capturas de `design_handoff_didactia/screenshots/` (el directorio no está en el repo). Si se quiere retomar, hay que aportar las capturas de referencia.
+- **App Familias**: el portal está consolidado; quedaría (opcional) una PWA/onboarding dedicado.
+
 ### Completado ✅
 - [x] Chatbot con Gemini 2.5 Flash, contexto multi-rol, resolución directa de horarios
 - [x] Módulo comedor: asistencia diaria, histórico 30 días, CSV export
@@ -901,6 +920,9 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Módulo Salidas Didácticas: lista, detalle 4 tabs (Dashboard/Cocina/Autobús/Administración), vista familia con autorización por hijo, push notifications, Excel 3 hojas, circular IA
 - [x] Roles `orientador` y `admin_institucional`: nuevas opciones en selectores de invitación/edición de usuarios; `admin_institucional` tiene selector multi-centro propio
 - [x] Módulo Calidad base: dashboard 5 KPIs, No Conformidades (lista+filtros+modal voz+IA+detalle+CAPA), Feedback Familias (lista+sentimiento+análisis IA asíncrono+respuesta IA); tablas `no_conformidades`/`acciones_capa`/`feedback_familias` (DDL pendiente ejecutar)
+- [x] Módulo Alumnos (`js/alumnos.js`): directorio del centro (buscar/filtrar por grupo/export Excel) + ficha individual (familias, horario, comedor, incidencias, calificaciones) + acciones (registrar incidencia prerrellenada, export PDF) + integración ⌘K. Staff only.
+- [x] Calificaciones para familias (solo lectura): vista pivote asignatura×evaluación de sus hijos (`_calRenderFamilia`)
+- [x] Auditoría RLS + cierre de fuga RGPD (familias podían leer datos de todos los alumnos): calificaciones + fase 1 (7 tablas staff-only) + fase 2 (orientación/incidencias vía RPCs SECURITY DEFINER + feedback propio). Las 3 migraciones aplicadas y verificadas en producción
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
