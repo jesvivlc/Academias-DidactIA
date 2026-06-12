@@ -82,6 +82,7 @@ js/
   informes.js           initInformes (Informes de dirección): PDF consolidado por periodo (jsPDF + autotable, logo+color del centro); solo lee tablas existentes (pill "Informes PDF" del módulo Análisis)
   orientacion.js        initOrientacion (módulo Orientación): lista de expedientes, expediente individual (4 pestañas), IA (borrador informe + síntesis cuestionarios vía EF chat), panel de riesgo (detección IA), exportación RGPD (PDF) + estadísticas (Chart.js/PDF/Excel), push (send-push), portal familias
   calidad.js            initCalidad (módulo Calidad): dashboard 5 métricas, No Conformidades (lista/filtros/modal+voz+IA/CAPA), Feedback Familias (lista/sentimiento IA/respuesta IA); helper _calGemini reutilizable
+  alumnos.js            initAlumnos (módulo Alumnos): directorio del centro (lista+búsqueda+filtro por grupo) + ficha individual (alumnosAbrirFicha: familias vinculadas, horario semanal, comedor 14d, incidencias, calificaciones). No familia
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -599,6 +600,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 | Calidad (NCs + Feedback + CAPA) | — | — | ✅ | ✅ |
 | Orientación | (portal trámites visible_familia) | — | ✅ | ✅ (+orientador/jefatura/director) |
 | Salidas Didácticas | ✅ (autorización) | ✅ | ✅ | ✅ |
+| Alumnos (directorio + ficha) | — | ✅ | ✅ | ✅ (+orientador/director/jefatura) |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
@@ -625,6 +627,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 <script src="js/orientacion.js"></script>
 <script src="js/calidad.js"></script>
 <script src="js/salidas.js"></script>
+<script src="js/alumnos.js"></script>
 ```
 
 ---
@@ -1086,6 +1089,9 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-12` — feat(alumnos): **módulo Alumnos nuevo** (`js/alumnos.js`). Directorio del centro: `initAlumnos()` (lista + buscador por nombre + chips de filtro por grupo, contador). Ficha individual `alumnosAbrirFicha(id)` con 5 bloques async fire-and-forget: familias vinculadas (`familia_alumno→profiles`), horario semanal por día (`horarios_grupo` por grupo+curso), comedor últimos 14 días lectivos, incidencias (`ilike alumno_nombre`), calificaciones (`calificaciones` por `alumno_id`). XSS: `_alEsc`; argumentos onclick seguros: `_alArg` (evita romper el atributo con UUIDs/grupos). Cableado en `app.html` (`tab-alumnos`/`nav-alumnos` grupo Docencia/`panel-alumnos`/TAB_MAP/MAS_CFG/TITLES/patch showTab/script) + `auth.js` (visibilidad: profesional/admin/admin_institucional/superadmin/director/jefatura/orientador, **no familia**). También: `syncGroupLabels()` oculta encabezados de grupo del sidebar sin items visibles.
+- `2026-06-12` — feat(familia): **home consolidado como portal** (`renderHomeFamilia` en `js/mejoras.js`). Bloque "Avisos" (aviso del centro + cambios de clase hoy, antes huérfano en `panel-avisos`) + comedor accionable ("avisar que no come mañana", `window._fhAvisoManana`).
+- `2026-06-12` — feat: **módulos siempre disponibles para todos los centros (excepto IB)** (`config.js` `_conModulosBase`, `auth.js`, `users.js`, `app.html`). Eliminados los toggles de módulos del panel Usuarios. Limpieza: `.gitignore` ignora `repomix-output.xml` y `edubot-supabase (1).html` (este último sacado del index).
 - `2026-06-12 07:26` · `c232c38` — feat: versionar EFs `invite-user` y `notify-role` — código extraído del bundle ESZIP de producción vía Management API. `notify-sustitucion` ya estaba en el repo (sin deploy activo). Funciones en prod no versionadas aún: `rapid-processor`, `cas-analyzer`.
 - `2026-06-12 01:16` · `a0ca561` — docs(CLAUDE.md): home familia documentada — renderHomeFamilia, VAPID fix
 - `2026-06-12 00:56` · `967a728` — feat(familia): home mejorada — `renderHomeFamilia()` en `mejoras.js`; 5 bloques fire-and-forget (horario hoy, comedor, incidencias, salidas, comunicados no leídos); selector de hijo con chips; render target `#familia-home-content` en `app.html`; fix `const VAPID_PUBLIC_KEY` duplicado (eliminado de `mejoras.js`, permanece solo en `config.js`)

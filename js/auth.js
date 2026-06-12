@@ -495,6 +495,10 @@ async function loadUserProfile(user) {
   const hasComedor = modulosActivos.includes("comedor");
   if (comedorTab) comedorTab.style.display = (hasComedor && (role === "familia" || ["profesional","admin","admin_institucional","superadmin"].includes(role))) ? "block" : "none";
 
+  // Alumnos: directorio del centro — staff y dirección (no familia)
+  const tabAlumnos = document.getElementById("tab-alumnos");
+  if (tabAlumnos) tabAlumnos.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","orientador"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
