@@ -408,7 +408,7 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
     .eq("centro_id", ctrId)
     .eq("curso_escolar", _ca)
     .eq("dia", diaActual)
-    .ilike("actividad", "%guardia%")
+    .ilike("actividad_nombre", "%guardia%")
     .filter("hora_inicio", "lte", horaRefGuardia + ":00")
     .filter("hora_fin", "gt", horaRefGuardia + ":00");
 
