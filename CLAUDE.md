@@ -115,9 +115,9 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `horarios` | centro_id, dia, hora, profesor, actividad | Tabla legacy — chatbot búsqueda por apellido |
 | `horarios_grupo` | centro_id, grupo_horario, **curso_escolar** (TEXT NOT NULL DEFAULT '2025-26'), dia, tramo, hora_inicio, hora_fin, actividad_nombre, profesor_nombre, aula | Tabla principal — lógica horaria directa. Multi-curso: filtrar siempre por `curso_escolar = cursoActivo` (global en config.js). Índice: `idx_hg_curso(centro_id, curso_escolar)` |
 | `info_centro` | centro_id, nombre_config, datos (jsonb), visible_para, **curso_activo** (TEXT NOT NULL DEFAULT '2025-26') | Contexto del chatbot. `curso_activo` controla qué horario ven chat y sustituciones |
-| `alumnos` | centro_id, nombre, curso, grupo_horario | Vinculados vía familia_alumno |
+| `alumnos` | centro_id, nombre, curso, grupo_horario, **alergias** (text), **dieta_especial** (text) | Vinculados vía familia_alumno. `alergias`/`dieta_especial`: perfil alimentario permanente — editables por familia (portal) y admin (modal usuarios); mostrados como badge en comedor; pre-rellenados en autorizaciones de salidas |
 | `familia_alumno` | profile_id, alumno_id | N:M familias↔alumnos |
-| `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por | Una fila por alumno/día |
+| `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por, **nota_dia** (text) | Una fila por alumno/día. `nota_dia`: nota puntual editable por el docente desde el módulo comedor (ej: "menú alternativo confirmado"), mostrada como badge azul 📝 |
 | `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | `cubierta` tiene toggle en la tabla. Se auto-genera desde RRHH al aprobar ausencias |
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
 | `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre (NOT NULL), curso_escolar (NOT NULL), tramo (nullable), created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. Las instrucciones para el sustituto van en `sustituciones.observaciones`, NO aquí. `trabajo_alumnos` y `justificante_url` NO existen en el esquema real. |
@@ -307,6 +307,11 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 - **Crítico:** `toggleAsistencia` usa `comedorFecha` (no `new Date()`) para insertar — editar histórico no corrompe el día actual
 - **Crítico:** `comedorData` incluye `grupo_horario` para que el filtro de grupo funcione
 - Ya no usa la tabla legacy `horarios` — toda la lógica usa `tramos_centro` + `horarios_grupo`
+- **Sistema de alergias/dietas** (`alumnos.alergias`, `alumnos.dieta_especial`, `asistencia_comedor.nota_dia`):
+  - `_comedorAlergiasBadges()`: renderiza badges por alumno — rojo "⚠️ ALERGIA: [texto]", naranja "🥗 DIETA: [texto]", azul "📝 [nota_dia]"
+  - `_comedorEditarNota(alumnoId)`: modal para editar `nota_dia` del día (UPSERT en `asistencia_comedor`); si no existe registro lo crea
+  - `toggleAsistencia`: si el alumno tiene alergia o dieta y se marca como asistente → toast rojo 5s con el aviso (no bloquea el toggle)
+  - `_cEsc()`: helper XSS local (no usa el global `_esc` que es de `users.js`)
 
 ### Sustituciones (admin.js) — vistas diferenciadas por rol
 
@@ -1088,6 +1093,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/alergias_dietas.sql` — `alumnos.alergias` + `alumnos.dieta_especial` + `asistencia_comedor.nota_dia` ✅ ejecutado 2026-06-12 vía Management API
 > - `supabase/migrations/rls_familia_lockdown_fase2.sql` — **fix privacidad RGPD (fase 2)**: `expedientes_orientacion`, `tramites_orientacion`, `incidencias` → staff-only; las familias obtienen sus datos vía RPCs `SECURITY DEFINER` `familia_tramites_visibles()` (trámites `visible_familia` de sus hijos) y `familia_incidencias_hijos()` (incidencias de sus hijos, solo campos visibles — no `informe_borrador`/`normativa_ref`); `feedback_familias`: `cal_fb_read`/`cal_fb_update` restringidas a staff (familia conserva lo suyo vía `feedback_centro`). JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` → RPC). ✅ aplicado y verificado 2026-06-12 vía Management API (políticas + RPCs SECURITY DEFINER con EXECUTE para `authenticated`, ejecutan sin error).
 > - `supabase/migrations/rls_familia_lockdown_fase1.sql` — **fix privacidad RGPD (fase 1)**: 7 tablas que ninguna vista de familia consume pasan a staff-only (`rol <> 'familia'`): `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `alertas_orientacion`, `alertas_predictivas`, `no_conformidades`, `acciones_capa`. Antes, cualquier cuenta `familia` (que tiene `centro_id`) podía leer por API datos psicopedagógicos y de riesgo de TODOS los alumnos. ✅ aplicado y verificado 2026-06-12 vía Management API (9 políticas, todas excluyen `familia`). Fase 2 (tablas con lectura legítima de familia) pendiente — ver migraciones pendientes.
 > - `supabase/migrations/calificaciones_familia_rls.sql` — **fix privacidad RGPD**: `cal_read` restringe a las familias a leer solo las notas de sus hijos (`familia_alumno.profile_id=auth.uid()`); staff lee su centro; superadmin todo. ✅ ejecutado y verificado 2026-06-12 vía Management API (qual incluye el subselect de `familia_alumno`)
@@ -1114,6 +1120,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-12 22:47` · `8aa7436` — feat(comedor): sistema unificado alergias/dieta — perfil permanente + nota diaria + pre-relleno salidas
+- `2026-06-12 21:13` · `115a95b` — fix: resolver conflicto CLAUDE.md + deploy notify-sustitucion documentado
 - `2026-06-12` — fix(seguridad RGPD): **auditoría RLS — fuga sistémica a familias**. El patrón `centro_id = mi_centro` en políticas de SELECT/ALL dejaba a las cuentas `familia` (que tienen `centro_id`) leer por API datos sensibles de TODOS los alumnos. **Fase 1 aplicada** (`rls_familia_lockdown_fase1.sql`): 7 tablas sin lectura de familia → staff-only (orientación clínica: informes/medidas/cuestionarios/alertas; alertas_predictivas; calidad: NC/CAPA). **Fase 2 aplicada** (`rls_familia_lockdown_fase2.sql`): expedientes/tramites_orientacion + incidencias → staff-only con RPCs `SECURITY DEFINER` (`familia_tramites_visibles`/`familia_incidencias_hijos`) para que las familias vean solo lo suyo (la RLS no filtra columnas → el RPC evita exponer `notas_internas`/`informe_borrador`); `feedback_familias` → propio. JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` ahora llaman al RPC).
 - `2026-06-12` — fix(seguridad)+feat(calificaciones): **calificaciones para familias (solo lectura) + cierre de fuga RGPD**. Hallazgo: la política `cal_read` permitía a cualquier usuario del centro (incl. `familia`) leer TODAS las calificaciones por API. Migración `supabase/migrations/calificaciones_familia_rls.sql` (✅ **aplicada y verificada en producción 2026-06-12**): staff lee su centro; familia solo `alumno_id ∈ familia_alumno(profile_id=auth.uid())`; superadmin todo. Vista familia en `js/calificaciones.js` (`_calRenderFamilia`: tabla pivote asignatura×evaluación, selector de hijo si >1, solo lectura). Tab Calificaciones visible para `familia` en `auth.js`.
 - `2026-06-12` — fix(alumnos): familias vinculadas leídas en dos pasos (sin embed FK `familia_alumno→profiles`).
