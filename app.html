@@ -386,8 +386,8 @@
           </div>
         </div>
 
-        <!-- Mi horario de hoy (Cambio 3) -->
-        <div class="home-card home-horario">
+        <!-- Mi horario de hoy — protagonista de la home del profesor -->
+        <div class="home-card home-horario home-horario--hero">
           <div class="home-card-hdr">
             <div class="home-card-title"><i class="ti ti-clock-hour-4"></i> Mi horario de hoy</div>
             <div class="home-horario-count" data-horario-count></div>
@@ -397,7 +397,25 @@
           </div>
         </div>
 
-        <!-- Métricas accionables (Cambio 4) -->
+        <!-- Acciones diarias del profesor (navegación directa, sin solapar el sidebar) -->
+        <div class="home-quick-label">Acciones rápidas</div>
+        <div class="home-quick">
+          <button class="home-quick-btn" onclick="showTab('sust');setTimeout(function(){if(typeof initSustPanel==='function')initSustPanel();},120)">
+            <i class="ti ti-calendar-off"></i><span>Notificar ausencia</span>
+          </button>
+          <button class="home-quick-btn" onclick="showTab('incidencias')">
+            <i class="ti ti-alert-triangle"></i><span>Registrar incidencia</span>
+          </button>
+          <button class="home-quick-btn" onclick="showTab('materiales')">
+            <i class="ti ti-paperclip"></i><span>Mis materiales</span>
+          </button>
+          <button class="home-quick-btn" onclick="showTab('calificaciones')">
+            <i class="ti ti-clipboard-list"></i><span>Calificaciones</span>
+          </button>
+        </div>
+
+        <!-- Estado del centro hoy (métricas accionables, rellenadas por renderHomeMetrics) -->
+        <div class="home-quick-label">Estado del centro hoy</div>
         <div class="home-metrics">
           <button class="home-metric" onclick="showTab('sust');setTimeout(function(){if(typeof loadSustituciones==='function')loadSustituciones('hoy');},150)">
             <div class="home-metric-main">
@@ -421,8 +439,6 @@
             <i class="ti ti-chevron-right home-metric-chev"></i>
           </button>
         </div>
-
-        <!-- Cambio 5: grid "Acceso rápido" eliminado (redundante con el sidebar) -->
       </div><!-- /#inicio-staff -->
 
       <!-- ── FAMILIA ── -->
