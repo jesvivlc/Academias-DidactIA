@@ -10,7 +10,12 @@ import XLSX from 'xlsx';
 const __dir = dirname(fileURLToPath(import.meta.url));
 
 const SUPABASE_URL = 'https://rflfsbrdmgaidhvbuvwb.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbGZzYnJkbWdhaWRodmJ1dndiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjE5MDE0OCwiZXhwIjoyMDg3NzY2MTQ4fQ.OHKwIXQK59zJTIzULkCWcMaW9w37t3Uwa8tvswPw23w';
+// La service_role key se lee del entorno (NUNCA hardcodeada en el repo).
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_KEY) {
+  console.error('ERROR: Falta SUPABASE_SERVICE_ROLE_KEY en el entorno.');
+  process.exit(1);
+}
 const CENTRO_ID   = 'ad0168e8-6c24-4597-8917-ee54cac8234b';
 
 const XLSX_PATH   = join(__dir, '..', 'data', 'Cargas_ESO_limpia.xlsx');

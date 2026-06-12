@@ -9,7 +9,11 @@ if hasattr(sys.stdout, "reconfigure"):
 
 # ── CONFIGURACIÓN ─────────────────────────────────────────────────────────────
 SUPABASE_URL = "https://rflfsbrdmgaidhvbuvwb.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbGZzYnJkbWdhaWRodmJ1dndiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjE5MDE0OCwiZXhwIjoyMDg3NzY2MTQ4fQ.OHKwIXQK59zJTIzULkCWcMaW9w37t3Uwa8tvswPw23w"
+# La service_role key se lee del entorno (NUNCA hardcodeada en el repo).
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+if not SUPABASE_KEY:
+    print("ERROR: Falta SUPABASE_SERVICE_ROLE_KEY en el entorno.")
+    sys.exit(1)
 CENTRO_ID    = "ad0168e8-6c24-4597-8917-ee54cac8234b"
 CSV_PATH     = r"C:\Users\Bruno\Desktop\DidactIA\scripts\A Horarios profes TODOS 25-26(Hoja1).csv"
 # ──────────────────────────────────────────────────────────────────────────────
