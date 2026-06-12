@@ -786,14 +786,16 @@ async function renderHomeFamilia(force) {
     var box = document.getElementById("fh-incidencias");
     if (!box) return;
     try {
-      var r = await sb.from("incidencias")
-        .select("fecha,gravedad,descripcion")
-        .eq("centro_id", ctrId)
-        .ilike("alumno_nombre", "%" + alumno.nombre + "%")
-        .order("created_at", { ascending: false }).limit(3);
-      if (!r.data || !r.data.length) return;
+      // RPC SECURITY DEFINER: solo incidencias de los hijos de la familia (campos
+      // visibles, sin informe interno). Filtramos por el hijo seleccionado.
+      var rr = await sb.rpc("familia_incidencias_hijos");
+      var nom = (alumno.nombre || "").toLowerCase();
+      var data = (rr.data || []).filter(function(x) {
+        return (x.alumno_nombre || "").toLowerCase().indexOf(nom) !== -1;
+      }).slice(0, 3);
+      if (!data.length) return;
       var gravCol = { leve:"var(--success)", grave:"var(--warning)", muy_grave:"var(--danger)" };
-      var rowsHtml = r.data.map(function(inc) {
+      var rowsHtml = data.map(function(inc) {
         var col = gravCol[inc.gravedad] || "var(--muted)";
         var desc = (inc.descripcion || "").slice(0, 70) + ((inc.descripcion || "").length > 70 ? "…" : "");
         return '<div style="padding:5px 0;border-bottom:1px solid var(--line);font-size:12px;display:flex;gap:8px;align-items:baseline;">' +

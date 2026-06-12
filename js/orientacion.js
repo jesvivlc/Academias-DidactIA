@@ -1814,27 +1814,10 @@ async function oriRenderTramitesFamilia() {
   const list = document.getElementById("ori-tramites-familia-list");
   if (!sec || !list) return;
 
-  // Alumnos vinculados: primero currentUserAlumnos; si no, familia_alumno por profile_id
-  let alumnoIds = (currentUserAlumnos || []).map(a => a && a.id).filter(Boolean);
-  if (!alumnoIds.length && currentUser) {
-    const { data: vin } = await sb.from("familia_alumno")
-      .select("alumno_id").eq("profile_id", currentUser.id);
-    alumnoIds = (vin || []).map(v => v.alumno_id).filter(Boolean);
-  }
-  if (!alumnoIds.length) { sec.style.display = "none"; return; }
-
-  // Expedientes de esos alumnos en este centro
-  const { data: exps } = await sb.from("expedientes_orientacion")
-    .select("id,alumno_id").eq("centro_id", ctrId).in("alumno_id", alumnoIds);
-  const expIds = (exps || []).map(e => e.id);
-  if (!expIds.length) { sec.style.display = "none"; return; }
-
-  // Solo trámites visibles para la familia (sin datos clínicos)
-  const { data: tramites } = await sb.from("tramites_orientacion")
-    .select("tipo,estado_tramite,descripcion,fecha_estimada")
-    .eq("centro_id", ctrId).eq("visible_familia", true).in("expediente_id", expIds)
-    .order("created_at", { ascending: false });
-
+  // RPC SECURITY DEFINER: trámites visibles (visible_familia=true) de los hijos de
+  // la familia, solo campos no clínicos. La familia NO lee expedientes/tramites
+  // directamente (esas tablas son staff-only por RLS).
+  const { data: tramites } = await sb.rpc("familia_tramites_visibles");
   if (!tramites || !tramites.length) { sec.style.display = "none"; return; }
 
   list.innerHTML = tramites.map(t =>
