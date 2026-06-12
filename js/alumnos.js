@@ -7,6 +7,7 @@ var _alData = [];          // todos los alumnos del centro
 var _alSearch = "";
 var _alGrupo = "";         // filtro de grupo activo ("" = todos)
 var _alLoaded = false;
+var _alPendingFicha = null; // id de ficha a abrir tras cargar la lista (desde ⌘K u otros)
 
 function _alEsc(s) {
   return String(s == null ? "" : s)
@@ -28,7 +29,10 @@ async function initAlumnos() {
     '<div style="padding:28px;display:flex;flex-direction:column;gap:18px;background:var(--bg);min-height:100%;">' +
       '<div class="pg-hdr"><div><div class="pg-title">Alumnos</div>' +
         '<div class="pg-sub" id="al-sub">Directorio del centro</div></div>' +
-        '<button class="btn btn-p" onclick="initAlumnos(true)">↺ Actualizar</button></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-s" onclick="_alExportar()">⬇ Excel</button>' +
+          '<button class="btn btn-p" onclick="initAlumnos(true)">↺ Actualizar</button>' +
+        '</div></div>' +
       '<input class="fi" id="al-search" placeholder="🔍 Buscar alumno por nombre…" ' +
         'style="max-width:420px;" oninput="_alOnSearch(this.value)" />' +
       '<div id="al-grupos" style="display:flex;gap:8px;flex-wrap:wrap;"></div>' +
@@ -52,7 +56,21 @@ async function initAlumnos() {
   }
   _alRenderGrupos();
   _alRenderList();
+
+  // Si se pidió abrir una ficha concreta (p.ej. desde el command palette), ábrela.
+  if (_alPendingFicha) {
+    var pid = _alPendingFicha;
+    _alPendingFicha = null;
+    alumnosAbrirFicha(pid);
+  }
 }
+
+// Punto de entrada externo: abre la ficha de un alumno desde cualquier pantalla
+// (activa el tab Alumnos; initAlumnos carga la lista y luego abre la ficha).
+window.alumnosVerFicha = function(alumnoId) {
+  _alPendingFicha = alumnoId;
+  if (typeof showTab === "function") showTab("alumnos");
+};
 
 function _alOnSearch(v) {
   _alSearch = v || "";
@@ -86,15 +104,37 @@ function _alRenderGrupos() {
   cont.innerHTML = html;
 }
 
-function _alRenderList() {
-  var cont = document.getElementById("al-list");
-  if (!cont) return;
+// Alumnos que pasan el filtro de grupo + búsqueda actuales.
+function _alFiltradas() {
   var q = _alSearch.trim().toLowerCase();
-  var rows = _alData.filter(function(a) {
+  return _alData.filter(function(a) {
     if (_alGrupo && a.grupo_horario !== _alGrupo) return false;
     if (q && (a.nombre || "").toLowerCase().indexOf(q) === -1) return false;
     return true;
   });
+}
+
+// Exporta la lista filtrada a Excel (.xlsx) con SheetJS.
+function _alExportar() {
+  if (typeof XLSX === "undefined") { if (typeof showToast === "function") showToast("Exportación no disponible"); return; }
+  var rows = _alFiltradas();
+  if (!rows.length) { if (typeof showToast === "function") showToast("No hay alumnos que exportar"); return; }
+  var aoa = [["Nombre", "Curso", "Grupo"]].concat(rows.map(function(a) {
+    return [a.nombre || "", a.curso || "", a.grupo_horario || ""];
+  }));
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{ wch: 32 }, { wch: 12 }, { wch: 12 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Alumnos");
+  var hoy = new Date().toISOString().split("T")[0];
+  XLSX.writeFile(wb, "alumnos_" + (_alGrupo || "centro") + "_" + hoy + ".xlsx");
+}
+
+function _alRenderList() {
+  var cont = document.getElementById("al-list");
+  if (!cont) return;
+  var q = _alSearch.trim().toLowerCase();
+  var rows = _alFiltradas();
 
   var sub = document.getElementById("al-sub");
   if (sub) sub.textContent = rows.length + " alumno" + (rows.length === 1 ? "" : "s") +
@@ -131,7 +171,15 @@ function _alRenderList() {
 async function alumnosAbrirFicha(alumnoId) {
   var panel = document.getElementById("panel-alumnos");
   if (!panel) return;
-  var a = _alData.find(function(x) { return x.id === alumnoId; }) || {};
+  var a = _alData.find(function(x) { return x.id === alumnoId; }) || null;
+  // Fallback: si la lista no estaba cargada (apertura directa), busca el alumno por id.
+  if (!a) {
+    try {
+      var rr = await sb.from("alumnos").select("id,nombre,curso,grupo_horario")
+        .eq("centro_id", ctrId).eq("id", alumnoId).maybeSingle();
+      a = rr.data || {};
+    } catch (e) { a = {}; }
+  }
 
   panel.innerHTML =
     '<div style="padding:28px;display:flex;flex-direction:column;gap:16px;background:var(--bg);min-height:100%;">' +
