@@ -108,7 +108,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 
 | Tabla | Campos clave | Notas |
 |-------|-------------|-------|
-| `centros` | id, nombre, modulos_activos[], color_primario, logo_url, ccaa | `ccaa` determina normativa convivencia: 'valenciana'\|'madrid'\|'andalucia'\|'cataluna'\|NULL (estatal) |
+| `centros` | id, nombre, **slug** (NOT NULL), codigo_familia, codigo_profesional, codigo_acceso, modulos_activos[], color_primario, logo_url, institucion_id, created_at | Centros educativos. Se crean desde el panel de Usuarios (superadmin → "+ Nuevo centro", `nuevoCentroWizard`). **Nota:** la columna `ccaa` NO existe en producción (la EF `tipificar-incidencia` la lee → cae al fallback estatal). |
 | `profiles` | id, user_id, full_name, email, rol, centro_id, activo (bool DEFAULT true), created_at | Extiende auth.users. `id = user_id` (ambos = auth UUID). `activo=false` bloquea el login |
 <!-- info_centro actualizado en línea horarios_grupo arriba -->
 | `horarios` | centro_id, dia, hora, profesor, actividad | Tabla legacy — chatbot búsqueda por apellido |
@@ -916,7 +916,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] **Notificaciones push** — Web Push API; notificar familias cuando alumno falta al comedor (pendiente: sustituir TODO `VAPID_PUBLIC_KEY` en `config.js` con el valor real del secret de Supabase)
 - [x] **Módulo IB en la app** (`js/ib.js`): 6 sub-paneles. Base: CAS (actividades por alumno, aprobar/rechazar, editar Learning Outcomes + sugerencia IA), Extended Essay, Plazos. Ampliación 2026-06-12: **TOK** (ensayo+exhibición, estado/nota A–E), **EE mejorado** (nota final + borradores/feedback del supervisor `ee_borradores`), **Predicciones/Resultados** (rejilla por asignatura HL/SL, 1–7), **Coordinador** (vista global: CAS/EE/TOK/Σpredicción/Σfinal/puntos core matriz TOK×EE/total /45). Cableado `#tab-ib`/`#nav-ib`/`#panel-ib` + `showTab('ib')→loadIbPanel()`. Cubierto por `demo-check` (módulo 15)
 - [x] **Recuperación de contraseña** (2026-06-12): enlace "¿Olvidaste tu contraseña?" en login + form `#form-reset-request` → `doRequestReset()` llama `sb.auth.resetPasswordForEmail(email, {redirectTo: app.html})` con mensaje neutro anti-enumeración; `_hideAuthForms()` helper. El enlace del email vuelve a `app.html` (`type=recovery`) → `config.js` → `showRecovery()` → `doRecovery()`. Allowlist de Auth ampliada con `https://didactia.eu/**` y `https://www.didactia.eu/**` (Management API) para permitir el redirect a `/app.html`
-- [ ] **Onboarding de nuevo centro** — wizard guiado: info_centro, importar horarios, alumnos, primer admin
+- [x] **Onboarding de nuevo centro** (`js/users.js`, 2026-06-12): botón "+ Nuevo centro" en el panel de Usuarios (solo superadmin) → wizard modal (`nuevoCentroWizard`) con nombre, slug autogenerado/único, color, logo, módulos activos y **códigos de acceso autogenerados** (familia/profesional/general) → `INSERT centros` → modal de éxito que muestra los códigos y enlaza a "Invitar primer admin". Siguiente paso del onboarding (alumnos) ya cubierto por `scripts/importar_alumnos.mjs`
 
 ### Backlog
 - [x] **P0 seguridad (cerrado):** `disponibilidad_profesor` no tiene columna `centro_id`. El aislamiento ya está garantizado por dos capas: (1) cliente filtra por `profesor_id IN (profIds)` donde `profIds` viene de `profesores` filtrado por `centro_id`; (2) RLS con policy `centro_isolation` aísla vía FK `profesor_id → profesores.centro_id`. No hay fuga cross-tenant. Sin cambios necesarios.
