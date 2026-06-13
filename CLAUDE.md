@@ -1,4 +1,4 @@
-# Claude Code Instructions
+﻿# Claude Code Instructions
 
 ## Task Master AI Instructions
 
@@ -83,6 +83,7 @@ js/
   orientacion.js        initOrientacion (módulo Orientación): lista de expedientes, expediente individual (4 pestañas), IA (borrador informe + síntesis cuestionarios vía EF chat), panel de riesgo (detección IA), exportación RGPD (PDF) + estadísticas (Chart.js/PDF/Excel), push (send-push), portal familias
   calidad.js            initCalidad (módulo Calidad): dashboard 5 métricas, No Conformidades (lista/filtros/modal+voz+IA/CAPA), Feedback Familias (lista/sentimiento IA/respuesta IA); helper _calGemini reutilizable
   alumnos.js            initAlumnos (módulo Alumnos): directorio del centro (lista+búsqueda+filtro por grupo) + ficha individual (alumnosAbrirFicha: familias vinculadas, horario semanal, comedor 14d, incidencias, calificaciones). No familia
+  asistencia.js         abrirPasarLista (modal fullscreen pasar lista de clase): toggle Presente/Retraso/Ausente + observacion; UPSERT asistencia_clase; push familias (ausente=inmediato, retraso=al confirmar). window._asistCambiarEstado, window._asistConfirmar, window._asistCerrar
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -118,6 +119,7 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `alumnos` | centro_id, nombre, curso, grupo_horario, **alergias** (text), **dieta_especial** (text) | Vinculados vía familia_alumno. `alergias`/`dieta_especial`: perfil alimentario permanente — editables por familia (portal) y admin (modal usuarios); mostrados como badge en comedor; pre-rellenados en autorizaciones de salidas |
 | `familia_alumno` | profile_id, alumno_id | N:M familias↔alumnos |
 | `asistencia_comedor` | centro_id, alumno_id, fecha, se_queda, plaza_fija, registrado_por, **nota_dia** (text) | Una fila por alumno/día. `nota_dia`: nota puntual editable por el docente desde el módulo comedor (ej: "menú alternativo confirmado"), mostrada como badge azul 📝 |
+| `asistencia_clase` | centro_id, alumno_id, profesor_id, grupo_horario, fecha, tramo, **estado** (presente/ausente/retraso), observacion, notificado_familia, created_at; UNIQUE(centro_id,alumno_id,fecha,tramo) | Control de asistencia de aula. RLS `asistencia_clase_centro`. Push inmediato a familias al marcar ausente; al confirmar lista para retrasos |
 | `sustituciones` | centro_id, fecha, hora_inicio, hora_fin, tramo, grupo_horario, profesor_ausente, profesor_sustituto, observaciones, cubierta, creado_por | `cubierta` tiene toggle en la tabla. Se auto-genera desde RRHH al aprobar ausencias |
 | `profesores` | centro_id, profile_id, nombre, especialidad, departamento, horas_semanales, tipo_jornada, activo | Ficha HR del profesor; `profile_id` opcional (puede no tener cuenta) |
 | `ausencias_profesor` | centro_id, profile_id, fecha, fecha_fin, tipo, motivo, estado, aprobada_por, motivo_rechazo, trimestre (NOT NULL), curso_escolar (NOT NULL), tramo (nullable), created_at | Estado: pendiente/aprobada/rechazada; tipo: baja_medica/permiso/asunto_propio/formacion/sindical/otros. Las instrucciones para el sustituto van en `sustituciones.observaciones`, NO aquí. `trabajo_alumnos` y `justificante_url` NO existen en el esquema real. |
@@ -927,6 +929,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Módulo Calidad base: dashboard 5 KPIs, No Conformidades (lista+filtros+modal voz+IA+detalle+CAPA), Feedback Familias (lista+sentimiento+análisis IA asíncrono+respuesta IA); tablas `no_conformidades`/`acciones_capa`/`feedback_familias` (DDL pendiente ejecutar)
 - [x] Módulo Alumnos (`js/alumnos.js`): directorio del centro (buscar/filtrar por grupo/export Excel) + ficha individual (familias, horario, comedor, incidencias, calificaciones) + acciones (registrar incidencia prerrellenada, export PDF) + integración ⌘K. Staff only.
 - [x] Calificaciones para familias (solo lectura): vista pivote asignatura×evaluación de sus hijos (`_calRenderFamilia`)
+- [x] Control de asistencia de aula (`js/asistencia.js`): modal 📋 Pasar lista desde clase AHORA en Mi Horario de Hoy; toggle Presente/Retraso/Ausente; UPSERT en `asistencia_clase`; push familias (ausente=inmediato, retraso=al confirmar); métrica CMI Ausencias de aula hoy en Dimensión 1
 - [x] Auditoría RLS + cierre de fuga RGPD (familias podían leer datos de todos los alumnos): calificaciones + fase 1 (7 tablas staff-only) + fase 2 (orientación/incidencias vía RPCs SECURITY DEFINER + feedback propio). Las 3 migraciones aplicadas y verificadas en producción
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
@@ -1093,6 +1096,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/asistencia_clase.sql` — tabla `asistencia_clase` + RLS `asistencia_clase_centro` + índice `idx_asistencia_clase_fecha` ✅ ejecutado 2026-06-13 vía Management API
 > - `supabase/migrations/alergias_dietas.sql` — `alumnos.alergias` + `alumnos.dieta_especial` + `asistencia_comedor.nota_dia` ✅ ejecutado 2026-06-12 vía Management API
 > - `supabase/migrations/rls_familia_lockdown_fase2.sql` — **fix privacidad RGPD (fase 2)**: `expedientes_orientacion`, `tramites_orientacion`, `incidencias` → staff-only; las familias obtienen sus datos vía RPCs `SECURITY DEFINER` `familia_tramites_visibles()` (trámites `visible_familia` de sus hijos) y `familia_incidencias_hijos()` (incidencias de sus hijos, solo campos visibles — no `informe_borrador`/`normativa_ref`); `feedback_familias`: `cal_fb_read`/`cal_fb_update` restringidas a staff (familia conserva lo suyo vía `feedback_centro`). JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` → RPC). ✅ aplicado y verificado 2026-06-12 vía Management API (políticas + RPCs SECURITY DEFINER con EXECUTE para `authenticated`, ejecutan sin error).
 > - `supabase/migrations/rls_familia_lockdown_fase1.sql` — **fix privacidad RGPD (fase 1)**: 7 tablas que ninguna vista de familia consume pasan a staff-only (`rol <> 'familia'`): `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `alertas_orientacion`, `alertas_predictivas`, `no_conformidades`, `acciones_capa`. Antes, cualquier cuenta `familia` (que tiene `centro_id`) podía leer por API datos psicopedagógicos y de riesgo de TODOS los alumnos. ✅ aplicado y verificado 2026-06-12 vía Management API (9 políticas, todas excluyen `familia`). Fase 2 (tablas con lectura legítima de familia) pendiente — ver migraciones pendientes.
@@ -1120,6 +1124,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 ## Registro de cambios recientes
+- `2026-06-13` — feat(asistencia): **módulo control de asistencia de aula** (`js/asistencia.js` nuevo + mejoras.js + analytics.js + app.html). Tabla `asistencia_clase` ejecutada vía Management API. Botón 📋 en clase activa AHORA en Mi horario de hoy. Modal fullscreen: alumnos del grupo con toggle Presente/Retraso/Ausente + observación; UPSERT inmediato; push a familias al marcar ausente (inmediato) o retraso (al confirmar). CMI: 4ª métrica Ausencias de aula hoy en Dimensión 1 Operativa.
+- `2026-06-12 23:22` · `3fac06d` — docs(CLAUDE.md): sesión 2026-06-12 — sistema alergias/dietas documentado
 - `2026-06-12 22:47` · `8aa7436` — feat(comedor): sistema unificado alergias/dieta — perfil permanente + nota diaria + pre-relleno salidas
 - `2026-06-12 21:13` · `115a95b` — fix: resolver conflicto CLAUDE.md + deploy notify-sustitucion documentado
 - `2026-06-12` — fix(seguridad RGPD): **auditoría RLS — fuga sistémica a familias**. El patrón `centro_id = mi_centro` en políticas de SELECT/ALL dejaba a las cuentas `familia` (que tienen `centro_id`) leer por API datos sensibles de TODOS los alumnos. **Fase 1 aplicada** (`rls_familia_lockdown_fase1.sql`): 7 tablas sin lectura de familia → staff-only (orientación clínica: informes/medidas/cuestionarios/alertas; alertas_predictivas; calidad: NC/CAPA). **Fase 2 aplicada** (`rls_familia_lockdown_fase2.sql`): expedientes/tramites_orientacion + incidencias → staff-only con RPCs `SECURITY DEFINER` (`familia_tramites_visibles`/`familia_incidencias_hijos`) para que las familias vean solo lo suyo (la RLS no filtra columnas → el RPC evita exponer `notas_internas`/`informe_borrador`); `feedback_familias` → propio. JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` ahora llaman al RPC).

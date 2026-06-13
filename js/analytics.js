@@ -74,11 +74,12 @@
   async function _fetchOperativa() {
     const hoy = _hoy(), semIni = _semanaIni(), trimIni = _trimIni(), hace14 = _hace(14);
 
-    const [r1, r2, r3, r4] = await Promise.all([
+    const [r1, r2, r3, r4, r5] = await Promise.all([
       sb.from('sustituciones').select('cubierta').eq('centro_id', ctrId).gte('fecha', semIni).lte('fecha', hoy),
       sb.from('ausencias_profesor').select('id').eq('centro_id', ctrId).eq('estado', 'aprobada').lte('fecha', hoy).gte('fecha_fin', hoy),
       sb.from('sustituciones').select('profesor_sustituto').eq('centro_id', ctrId).gte('fecha', trimIni).not('profesor_sustituto', 'is', null),
       sb.from('sustituciones').select('fecha, cubierta').eq('centro_id', ctrId).gte('fecha', hace14).lte('fecha', hoy).order('fecha'),
+      sb.from('asistencia_clase').select('alumno_id').eq('centro_id', ctrId).eq('fecha', hoy).eq('estado', 'ausente'),
     ]);
 
     const sust = r1.data || [];
@@ -86,6 +87,7 @@
     const pendientes = sust.length - cubiertas;
     const pct = sust.length > 0 ? Math.round(cubiertas / sust.length * 100) : 100;
     const ausentes = (r2.data || []).length;
+    const ausenciasAula = [...new Set((r5.data || []).map(x => x.alumno_id))].length;
 
     const guardMap = {};
     (r3.data || []).forEach(g => {
@@ -107,7 +109,7 @@
     });
 
     return {
-      pct, cubiertas, pendientes, total: sust.length, ausentes, top5,
+      pct, cubiertas, pendientes, total: sust.length, ausentes, ausenciasAula, top5,
       chartLabels: fechas.map(f => f.slice(5)),
       chartCubiertas: fechas.map(f => porDia[f]?.c || 0),
       chartPendientes: fechas.map(f => porDia[f]?.p || 0),
@@ -273,6 +275,10 @@
         <div class="cmi-metric">
           <div class="cmi-metric-num cmi-num--${d.ausentes > 3 ? 'danger' : d.ausentes > 0 ? 'warn' : 'ok'}">${d.ausentes}</div>
           <div class="cmi-metric-lbl">Ausentes hoy</div>
+        </div>
+        <div class="cmi-metric">
+          <div class="cmi-metric-num cmi-num--${d.ausenciasAula > 5 ? 'danger' : d.ausenciasAula > 0 ? 'warn' : 'ok'}">${d.ausenciasAula || 0}</div>
+          <div class="cmi-metric-lbl">Ausencias de aula hoy</div>
         </div>
       </div>
       <div class="cmi-subsec">
@@ -574,7 +580,7 @@
 
     /* Fetch todo en paralelo */
     const [opData, comData, convData, alertData, mcData] = await Promise.all([
-      _fetchOperativa().catch(() => ({ pct: 0, cubiertas: 0, pendientes: 0, total: 0, ausentes: 0, top5: [], chartLabels: [], chartCubiertas: [], chartPendientes: [], semaforo: 'ok' })),
+      _fetchOperativa().catch(() => ({ pct: 0, cubiertas: 0, pendientes: 0, total: 0, ausentes: 0, ausenciasAula: 0, top5: [], chartLabels: [], chartCubiertas: [], chartPendientes: [], semaforo: 'ok' })),
       _fetchComedor().catch(() => ({ mediaAsistencia: 0, media: 0, totalAlumnos: 0, tendencia: 'estable', absentistas: [], chartLabels: [], chartData: [], semaforo: 'ok' })),
       _fetchConvivencia().catch(() => ({ abiertas: 0, cerradas: 0, total: 0, leves: 0, graves: 0, muyGraves: 0, top3: [], tipoLabels: [], tipoCounts: [], semaforo: 'ok' })),
       _fetchAlertas().catch(() => []),

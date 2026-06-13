@@ -302,18 +302,27 @@ async function renderMiHorarioHoy(force) {
   var nowMin = now.getHours() * 60 + now.getMinutes();
   var hm = function (t) { if (!t) return null; var p = String(t).split(":"); return (+p[0]) * 60 + (+p[1]); };
 
+  var fechaHoy = now.toISOString().split("T")[0];
+  var canPasarLista = (typeof role !== "undefined" && (role === "profesional" || role === "admin" || role === "director" || role === "jefatura" || role === "superadmin"));
+
   var html = todays.map(function (row) {
     var ini = hm(row.hora_inicio), fin = hm(row.hora_fin);
     var ahora = (ini != null && fin != null && nowMin >= ini && nowMin < fin);
     var horaTxt = (row.hora_inicio || "").slice(0, 5) + (row.hora_fin ? "–" + String(row.hora_fin).slice(0, 5) : "");
     var tramoLbl = (row.tramo != null) ? row.tramo + "ª hora" : "—";
     var aulaTxt = row.aula ? " · " + _mhEsc(row.aula) : "";
+    var btnLista = (ahora && canPasarLista && row.grupo_horario && row.tramo != null)
+      ? '<button class="hh-btn-lista" onclick="window.abrirPasarLista(' +
+          JSON.stringify(row.grupo_horario) + ',' + row.tramo + ',' + JSON.stringify(fechaHoy) +
+        ')">📋 Pasar lista</button>'
+      : "";
     return '<div class="home-horario-row' + (ahora ? " is-now" : "") + '">' +
       '<div class="hh-tramo">' + _mhEsc(tramoLbl) + (ahora ? '<span class="hh-now">AHORA</span>' : "") + "</div>" +
       '<div class="hh-main">' +
         '<div class="hh-asig">' + _mhEsc(row.actividad_nombre || "—") + " · " + _mhEsc(row.grupo_horario || "") + "</div>" +
         '<div class="hh-meta">' + _mhEsc(horaTxt) + aulaTxt + "</div>" +
       "</div>" +
+      (btnLista ? '<div class="hh-actions">' + btnLista + "</div>" : "") +
     "</div>";
   }).join("");
 
