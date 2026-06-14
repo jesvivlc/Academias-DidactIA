@@ -4,6 +4,7 @@
   "description": "DidactIA — plataforma educativa SaaS multi-tenant",
   "scripts": {
     "test:e2e": "playwright test tests/aislamiento-centros.spec.js",
+    "test:rls-familia": "playwright test tests/rls-familia.spec.js",
     "test:demo": "playwright test tests/demo-check.spec.js",
     "setup:test-users": "node scripts/setup-test-users.js"
   },
