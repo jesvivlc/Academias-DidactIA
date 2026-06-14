@@ -344,6 +344,9 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-15 00:56` · `b124a72` — feat(familia): portal familiar rediseñado — hero alumno + nav rápido + reorden bloques
+- `2026-06-15 00:41` · `690973c` — fix(chat): renombrar añadir_clase → agregar_clase en EF chat
+- `2026-06-15 00:39` · `c707e87` — docs(CLAUDE.md): rls_familia_lockdown_fase3 aplicado en producción
 - `2026-06-15 00:13` · `76e3c4c` — fix(seguridad RGPD): auditoría RLS fase 3 — sustituciones, comunicados, salidas, participantes
 - `2026-06-14 23:14` · `69bd4cc` — test(rls): verificación e2e RLS rol familia — 6 aserciones de privacidad RGPD
 
