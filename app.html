@@ -129,6 +129,7 @@
   <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
   <div class="tab" id="tab-incidencias"        onclick="showTab('incidencias')" style="display:none">⚠️ Incidencias</div>
   <div class="tab" id="tab-espacios"           onclick="showTab('espacios')"    style="display:none">🏫 Espacios</div>
+  <div class="tab" id="tab-asistente" style="display:none"></div>
   <div class="tab" id="tab-users"              onclick="showTab('users')"       style="display:none">👥 Usuarios</div>
   <div class="tab" id="tab-rrhh"               onclick="showTab('rrhh')"        style="display:none">👔 RRHH</div>
   <div class="tab" id="tab-ib"                 onclick="showTab('ib')"          style="display:none">🎓 IB</div>
@@ -209,7 +210,7 @@
         <button class="nav-item active" id="nav-chat" data-tab="chat" onclick="showTab('chat')" style="--nav-color:var(--info)">
           <i class="ti ti-home"></i><span class="nav-item-label">Inicio</span>
         </button>
-        <button class="nav-item" id="nav-asistente" onclick="openAsistente()" style="--nav-color:var(--info)">
+        <button class="nav-item" id="nav-asistente" data-tab="asistente" onclick="showTab('asistente')" style="--nav-color:var(--info)">
           <i class="ti ti-sparkles"></i><span class="nav-item-label">Asistente IA</span>
           <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
         </button>
@@ -531,63 +532,98 @@
   <div class="panel" id="panel-sust" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
 
     <!-- ── VISTA ADMIN / SUPERADMIN ── -->
-    <div id="sust-vista-admin" style="display:none;flex-direction:column;gap:22px;">
-      <div class="pg-hdr">
-        <div><div class="pg-title">Sustituciones</div><div class="pg-sub">Gestión de guardias y sustituciones</div></div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-p" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
-          <button class="btn btn-s" onclick="exportarSustituciones()">📥 Exportar</button>
-        </div>
-      </div>
-      <div class="card">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
-          <div>
-            <label class="lbl">Profesor ausente</label>
-            <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
-          </div>
-          <div>
-            <label class="lbl">Profesor sustituto (libre ahora)</label>
-            <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
-          </div>
-          <div>
-            <label class="lbl">Grupo</label>
-            <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
-          </div>
-          <div>
-            <label class="lbl">Tramo horario</label>
-            <select class="fi" id="sust-tramo" onchange="cargarProfesoresLibresEnSelect(parseInt(this.value))">
-              <option value="1">1 — 08:50 a 09:45</option>
-              <option value="2">2 — 09:45 a 10:40</option>
-              <option value="3">3 — 10:40 a 11:35</option>
-              <option value="4">4 — 12:00 a 12:55</option>
-              <option value="5">5 — 12:55 a 13:50</option>
-              <option value="6">6 — 13:50 a 14:45</option>
-              <option value="7">7 — 15:10 a 16:05</option>
-              <option value="8">8 — 16:05 a 17:00</option>
-            </select>
-          </div>
-          <div>
-            <label class="lbl">Fecha</label>
-            <input class="fi" type="date" id="sust-fecha" />
-          </div>
-        </div>
+    <div id="sust-vista-admin" style="display:none;" class="sust-admin-view">
+
+      <!-- Page header -->
+      <div class="sust-page-hdr">
         <div>
-          <label class="lbl">Instrucciones / observaciones</label>
-          <input class="fi" id="sust-obs" placeholder="Instrucciones del profesor ausente o notas de jefatura" />
+          <div class="pg-eyebrow">OPERACIÓN · SUSTITUCIONES</div>
+          <h1 class="sust-page-title">Guardias de hoy</h1>
+          <div class="pg-sub" id="sust-sub-info">Gestión de guardias y sustituciones</div>
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
-          <button class="btn" id="agent-buscar-btn" onclick="buscarProfesorLibreAgente()" style="border:1px solid var(--line);background:var(--paper-2);">🤖 Buscar profesor libre</button>
-          <div id="sust-msg" style="display:none;font-size:13px;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+          <button class="btn btn-s" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
+          <button class="btn btn-s" onclick="exportarSustituciones()"><i class="ti ti-download"></i> Exportar parte</button>
+          <button class="btn-ia" onclick="buscarProfesorLibreAgente()"><i class="ti ti-sparkles"></i> Asignar con IA</button>
         </div>
-        <div id="agent-result" style="display:none;"></div>
-        <div id="sust-filter-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;margin-top:14px;">
-          <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')"    style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Hoy</button>
-          <button id="sust-btn-semana" onclick="loadSustituciones('semana')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Esta semana</button>
-          <button id="sust-btn-todo"   onclick="loadSustituciones('todo')"   style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todo el historial</button>
-        </div>
-        <div id="sust-container"></div>
       </div>
+
+      <!-- Filter row -->
+      <div class="sust-filter-row">
+        <div id="sust-filter-bar">
+          <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')">Hoy</button>
+          <button id="sust-btn-semana" onclick="loadSustituciones('semana')">Esta semana</button>
+          <button id="sust-btn-todo"   onclick="loadSustituciones('todo')">Solo pendientes</button>
+        </div>
+        <span class="sust-ts">Última actualización · <span id="sust-ts-now">ahora mismo</span></span>
+      </div>
+
+      <!-- Main table -->
+      <div id="sust-container" class="sust-table-wrap"></div>
+      <div id="agent-result" style="display:none;margin-top:12px;"></div>
+
+      <!-- IA Banner -->
+      <div class="sust-ia-banner">
+        <div class="sust-ia-logo">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="38" height="38">
+            <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
+            <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+            <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
+          </svg>
+        </div>
+        <div class="sust-ia-copy">
+          <strong>DidactIA puede asignar las guardias pendientes automáticamente.</strong>
+          <span>Cruza horarios, especialidades, guardias previas de la semana y huecos libres. Tú apruebas antes de aplicar.</span>
+        </div>
+        <button class="btn-ia" id="agent-buscar-btn" onclick="buscarProfesorLibreAgente()"><i class="ti ti-sparkles"></i> Generar propuesta</button>
+      </div>
+
+      <!-- Registration form (collapsible) -->
+      <details class="sust-form-details">
+        <summary><i class="ti ti-plus"></i> Registrar nueva sustitución</summary>
+        <div class="card" style="margin-top:12px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
+            <div>
+              <label class="lbl">Profesor ausente</label>
+              <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
+            </div>
+            <div>
+              <label class="lbl">Profesor sustituto (libre ahora)</label>
+              <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
+            </div>
+            <div>
+              <label class="lbl">Grupo</label>
+              <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
+            </div>
+            <div>
+              <label class="lbl">Tramo horario</label>
+              <select class="fi" id="sust-tramo" onchange="cargarProfesoresLibresEnSelect(parseInt(this.value))">
+                <option value="1">1 — 08:50 a 09:45</option>
+                <option value="2">2 — 09:45 a 10:40</option>
+                <option value="3">3 — 10:40 a 11:35</option>
+                <option value="4">4 — 12:00 a 12:55</option>
+                <option value="5">5 — 12:55 a 13:50</option>
+                <option value="6">6 — 13:50 a 14:45</option>
+                <option value="7">7 — 15:10 a 16:05</option>
+                <option value="8">8 — 16:05 a 17:00</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">Fecha</label>
+              <input class="fi" type="date" id="sust-fecha" />
+            </div>
+          </div>
+          <div>
+            <label class="lbl">Instrucciones / observaciones</label>
+            <input class="fi" id="sust-obs" placeholder="Instrucciones del profesor ausente o notas de jefatura" />
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
+            <div id="sust-msg" style="display:none;font-size:13px;"></div>
+          </div>
+        </div>
+      </details>
+
       <!-- BOLSA DE GUARDIAS -->
       <div class="card">
         <div class="card-hdr">
@@ -702,68 +738,87 @@
   <div class="panel" id="panel-incidencias" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
 
     <!-- ── VISTA ADMIN / SUPERADMIN ── -->
-    <div id="inc-vista-admin" style="display:none;flex-direction:column;gap:22px;">
-      <div class="pg-hdr">
-        <div><div class="pg-title">Incidencias</div><div class="pg-sub">Gestión completa de incidencias del centro</div></div>
-        <button class="btn btn-p" onclick="loadIncidencias()">↺ Actualizar</button>
-      </div>
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico o">⚠️</div><div><div class="card-title">Registrar nueva incidencia</div></div></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
+    <div id="inc-vista-admin" style="display:none;" class="inc-split-view">
+
+      <!-- Left: list panel -->
+      <div class="inc-list-panel">
+        <div class="inc-list-topbar">
           <div>
-            <label class="lbl">Tipo</label>
-            <select class="fi" id="inc-tipo">
-              <option value="convivencia">👥 Convivencia</option>
-              <option value="material">📦 Material</option>
-              <option value="instalaciones">🏗️ Instalaciones</option>
-              <option value="otro">📝 Otro</option>
-            </select>
+            <div class="pg-eyebrow">OPERACIÓN · INCIDENCIAS</div>
+            <h2 class="inc-list-title">Incidencias</h2>
           </div>
-          <div>
-            <label class="lbl">Gravedad</label>
-            <select class="fi" id="inc-gravedad">
-              <option value="leve">🟢 Leve</option>
-              <option value="grave">🟠 Grave</option>
-              <option value="muy_grave">🔴 Muy grave</option>
-            </select>
-          </div>
-          <div>
-            <label class="lbl">Fecha</label>
-            <input class="fi" type="date" id="inc-fecha" />
-          </div>
-          <div>
-            <label class="lbl">Alumno (opcional)</label>
-            <div style="position:relative;">
-              <input class="fi" id="inc-alumno" placeholder="Buscar alumno…" autocomplete="off" oninput="buscarAlumnoInc(this.value)" onfocus="buscarAlumnoInc(this.value)" />
-              <div id="inc-alumno-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;z-index:200;"></div>
-            </div>
-          </div>
-          <div>
-            <label class="lbl">Grupo (opcional)</label>
-            <input class="fi" id="inc-grupo" placeholder="Ej: 2ESOA" />
-          </div>
+          <button class="btn btn-p" onclick="document.getElementById('inc-form-details').open=true;document.getElementById('inc-form-details').scrollIntoView({behavior:'smooth'})">+ Abrir incidencia</button>
         </div>
-        <div>
-          <label class="lbl">Descripción *</label>
-          <textarea class="fa" id="inc-desc" placeholder="Describe la incidencia…" style="min-height:80px;"></textarea>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn btn-p" onclick="registrarIncidencia()">⚠️ Registrar</button>
-          <button id="inc-btn-tipificar" onclick="tipificarIncidenciaIA()" style="background:white;border:1px solid var(--ink);color:var(--ink);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:500;">✨ Tipificar con IA</button>
-          <div id="inc-msg" style="display:none;font-size:13px;"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-          <button id="inc-btn-abiertas" onclick="loadIncidencias('abiertas')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Abiertas</button>
-          <button id="inc-btn-cerradas" onclick="loadIncidencias('cerradas')" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Cerradas</button>
-          <button id="inc-btn-todo"     onclick="loadIncidencias('todo')"     style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">Todas</button>
-          <select id="inc-filtro-grupo" onchange="loadIncidencias()" style="height:32px;font-size:12px;padding:0 8px;border:1px solid #e0e0e0;border-radius:8px;background:white;min-width:130px;cursor:pointer;">
+        <div class="inc-filters">
+          <button id="inc-btn-abiertas" onclick="loadIncidencias('abiertas')">Abiertas</button>
+          <button id="inc-btn-cerradas" onclick="loadIncidencias('cerradas')">Cerradas</button>
+          <button id="inc-btn-todo"     onclick="loadIncidencias('todo')">Todas</button>
+          <select id="inc-filtro-grupo" onchange="loadIncidencias()" class="inc-grupo-sel">
             <option value="">Todos los grupos</option>
           </select>
-          <button onclick="exportarIncidenciasCSV()" style="margin-left:auto;background:white;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;">⬇ CSV</button>
+          <button onclick="exportarIncidenciasCSV()" class="inc-csv-btn">⬇ CSV</button>
         </div>
-        <div id="inc-lista"></div>
+        <div id="inc-lista" class="inc-lista-wrap"></div>
+      </div>
+
+      <!-- Right: form + detail panel -->
+      <div class="inc-detail-panel">
+        <!-- Registration form (collapsible) -->
+        <details id="inc-form-details" class="inc-form-details">
+          <summary><i class="ti ti-plus"></i> Nueva incidencia</summary>
+          <div class="card" style="margin-top:12px;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px;">
+              <div>
+                <label class="lbl">Tipo</label>
+                <select class="fi" id="inc-tipo">
+                  <option value="convivencia">👥 Convivencia</option>
+                  <option value="material">📦 Material</option>
+                  <option value="instalaciones">🏗️ Instalaciones</option>
+                  <option value="otro">📝 Otro</option>
+                </select>
+              </div>
+              <div>
+                <label class="lbl">Gravedad</label>
+                <select class="fi" id="inc-gravedad">
+                  <option value="leve">🟢 Leve</option>
+                  <option value="grave">🟠 Grave</option>
+                  <option value="muy_grave">🔴 Muy grave</option>
+                </select>
+              </div>
+              <div>
+                <label class="lbl">Fecha</label>
+                <input class="fi" type="date" id="inc-fecha" />
+              </div>
+              <div>
+                <label class="lbl">Alumno (opcional)</label>
+                <div style="position:relative;">
+                  <input class="fi" id="inc-alumno" placeholder="Buscar alumno…" autocomplete="off" oninput="buscarAlumnoInc(this.value)" onfocus="buscarAlumnoInc(this.value)" />
+                  <div id="inc-alumno-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;z-index:200;"></div>
+                </div>
+              </div>
+              <div>
+                <label class="lbl">Grupo (opcional)</label>
+                <input class="fi" id="inc-grupo" placeholder="Ej: 2ESOA" />
+              </div>
+            </div>
+            <div>
+              <label class="lbl">Descripción *</label>
+              <textarea class="fa" id="inc-desc" placeholder="Describe la incidencia…" style="min-height:80px;"></textarea>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button class="btn btn-p" onclick="registrarIncidencia()">⚠️ Registrar</button>
+              <button id="inc-btn-tipificar" onclick="tipificarIncidenciaIA()" class="btn-ia-outline">✨ Tipificar con IA</button>
+              <div id="inc-msg" style="display:none;font-size:13px;"></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Detail placeholder -->
+        <div class="inc-detail-empty" id="inc-panel-der">
+          <i class="ti ti-alert-circle inc-empty-ico"></i>
+          <p class="inc-empty-txt">Selecciona una incidencia para ver el detalle</p>
+          <button class="btn btn-p" onclick="loadIncidencias()">↺ Actualizar lista</button>
+        </div>
       </div>
     </div><!-- /inc-vista-admin -->
 
@@ -1077,39 +1132,55 @@
     </div>
   </div>
 
-</div><!-- /app-main -->
-  </div><!-- /app-body -->
+  <!-- ASISTENTE IA PANEL — pantalla completa split -->
+  <div class="panel" id="panel-asistente">
+    <!-- Left: conversation history sidebar -->
+    <div class="chat-history-col">
+      <button class="chat-new-conv" onclick="if(typeof resetChat==='function')resetChat();setTimeout(function(){var ci=document.getElementById('chat-inp');if(ci)ci.focus();},80)">
+        <i class="ti ti-plus"></i> Conversación nueva
+      </button>
+      <div class="chat-hist-section">RECIENTES</div>
+      <div class="chat-hist-list" id="chat-hist-list">
+        <!-- Populated by app usage -->
+      </div>
+    </div>
 
-  <!-- ASISTENTE IA — overlay flotante (Cambio 1) -->
-  <div id="asistente-overlay" class="asist-overlay" aria-hidden="true">
-    <div class="asist-backdrop" onclick="closeAsistente()"></div>
-    <aside class="asist-panel" role="dialog" aria-label="Asistente IA">
-      <div class="rail-hdr">
+    <!-- Right: full chat area -->
+    <div class="chat-full-col">
+      <div class="chat-full-hdr">
         <div class="rail-hdr-logo">
-          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="38" height="38">
             <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
             <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
             <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
           </svg>
         </div>
-        <div style="flex:1;min-width:0">
-          <div class="rail-hdr-title">Asistente</div>
-          <div class="rail-hdr-sub">DidactIA · <span id="wlc-ctr">tu centro</span></div>
+        <div style="flex:1;min-width:0;">
+          <div class="chat-full-name">DidactIA</div>
+          <div class="chat-full-sub">Tu asistente para <span id="wlc-ctr">tu centro</span></div>
         </div>
-        <button class="asist-close" onclick="closeAsistente()" aria-label="Cerrar asistente"><i class="ti ti-x"></i></button>
+        <span class="chat-online-badge"><span class="chat-online-dot"></span>En línea</span>
       </div>
       <div class="chat-main">
         <div class="load-bar" id="load-bar"></div>
         <div class="chat-msgs" id="chat-msgs">
           <div class="welcome" id="welcome">
             <div class="wlc-ico">D</div>
-            <div class="wlc-title">¿En qué puedo ayudarte?</div>
-            <div class="wlc-sub">Pregúntame sobre tu centro: horarios, reuniones, menú y más.</div>
-            <div class="quick-qs">
-              <div class="quick-q" onclick="askQ('¿Cuál es el horario del comedor escolar?')">¿Cuál es el horario del comedor?</div>
-              <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
-              <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">Actividades extraescolares</div>
-              <div class="quick-q" onclick="askQ('¿Cuál es el horario de clases de esta semana?')">Horario de clases</div>
+            <div class="wlc-title">Hola, soy DidactIA. Soy tu asistente para <span id="wlc-centro-name">tu centro</span>. Puedo responder preguntas sobre horarios, alumnos, profesores, menús, reuniones, incidencias y mucho más. ¿Por dónde empezamos?</div>
+            <div class="chat-suggestions-label">EMPEZAR CON…</div>
+            <div class="chat-suggestions">
+              <div class="chat-suggestion" onclick="askQ('Dime el horario completo de esta semana.')">
+                <strong>Horario de esta semana</strong>
+                <span>Dime el horario completo de esta semana.</span>
+              </div>
+              <div class="chat-suggestion" onclick="askQ('¿Cuál es el menú del comedor de hoy?')">
+                <strong>Menú del comedor de hoy</strong>
+                <span>¿Cuál es el menú del comedor de hoy?</span>
+              </div>
+              <div class="chat-suggestion" onclick="askQ('¿Cuándo es la próxima reunión de claustro?')">
+                <strong>Próxima reunión</strong>
+                <span>¿Cuándo es la próxima reunión de claustro?</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1119,7 +1190,7 @@
         </div>
         <div class="input-area">
           <div class="inp-wrap">
-            <textarea class="chat-inp" id="chat-inp" placeholder="Escribe tu pregunta..." rows="1"
+            <textarea class="chat-inp" id="chat-inp" placeholder="Pregunta a DidactIA..." rows="1"
               onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
           </div>
           <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
@@ -1128,7 +1199,15 @@
           </button>
         </div>
       </div>
-    </aside>
+    </div>
+  </div>
+
+</div><!-- /app-main -->
+  </div><!-- /app-body -->
+
+  <!-- ASISTENTE IA — overlay (shell vacío, funcionalidad migrada al panel) -->
+  <div id="asistente-overlay" class="asist-overlay" aria-hidden="true">
+    <div class="asist-backdrop" onclick="closeAsistente()"></div>
   </div>
 
   <!-- Globo de invitación + burbuja flotante -->
@@ -1296,7 +1375,8 @@
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
-    analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad'
+    analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad',
+    asistente:'Asistente IA'
   };
   var MAS_CFG = {
     alumnos:   { icon:'ti-users-group',     label:'Alumnos' },
@@ -1330,7 +1410,8 @@
     'tab-materiales':      { nav:'nav-materiales',     bn:null },
     'tab-orientacion':     { nav:'nav-orientacion',    bn:null },
     'tab-salidas':         { nav:'nav-salidas',        bn:null },
-    'tab-calidad':         { nav:'nav-calidad',        bn:null }
+    'tab-calidad':         { nav:'nav-calidad',        bn:null },
+    'tab-asistente':       { nav:'nav-asistente',     bn:null }
   };
   var BADGE_MAP = {
     'tab-sust':        { sb:'sb-badge-sust', bn:'bn-badge-sust' },
@@ -1368,28 +1449,12 @@
     }, 2600);
   }
   window.openAsistente = function () {
-    var ov = document.getElementById('asistente-overlay');
-    if (!ov) return;
-    ov.classList.add('open');
-    ov.setAttribute('aria-hidden', 'false');
-    var fab = document.getElementById('asistente-fab');
-    if (fab) fab.classList.add('hidden');
-    window.dismissAsistHint(true);
-    setTimeout(function () { var ci = document.getElementById('chat-inp'); if (ci) ci.focus(); }, 130);
+    if (typeof showTab === 'function') { showTab('asistente'); return; }
+    /* fallback pre-login (por si showTab no está listo) */
+    setTimeout(function () { if (typeof showTab === 'function') showTab('asistente'); }, 200);
   };
-  window.closeAsistente = function () {
-    var ov = document.getElementById('asistente-overlay');
-    if (!ov) return;
-    ov.classList.remove('open');
-    ov.setAttribute('aria-hidden', 'true');
-    var fab = document.getElementById('asistente-fab');
-    if (fab) fab.classList.remove('hidden');
-  };
-  window.toggleAsistente = function () {
-    var ov = document.getElementById('asistente-overlay');
-    if (ov && ov.classList.contains('open')) window.closeAsistente();
-    else window.openAsistente();
-  };
+  window.closeAsistente = function () { /* overlay ya no se usa; no-op */ };
+  window.toggleAsistente = function () { window.openAsistente(); };
   window.dismissAsistHint = function (silent) {
     var h = document.getElementById('asistente-hint');
     if (h) h.classList.remove('show');

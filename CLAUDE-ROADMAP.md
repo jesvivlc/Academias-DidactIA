@@ -271,10 +271,10 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] Logo brand SVG + wordmark sidebar
 - [x] Inicio admin (Classroom-style: banner ink, metrics pills, modules grid con colores)
 - [x] Inicio profesor (`#inicio-staff`): "Mi horario de hoy" como hero (borde izq `--ink`) + franja "Acciones rápidas" del docente (Notificar ausencia/Registrar incidencia/Materiales/Calificaciones, navegación pura) + métricas bajo "Estado del centro hoy". Solo `app.html`+`styles.css` (`.home-quick`/`.home-quick-btn`/`.home-quick-label`), sin tocar JS ni IDs
-- [ ] Alumnos — split tabla/perfil drawer (`02-alumnos.png`)
-- [ ] Asistente IA — pantalla full-screen chat split (`06-chat.png`)
-- [ ] Sustituciones — tabla densa + popover + banner IA (`04-sustituciones.png`)
-- [ ] Incidencias — split lista/detalle con timeline (`05-incidencias.png`)
+- [ ] Alumnos — split tabla/perfil drawer (`02-alumnos.png`) ← CSS-only imposible (JS genera todo el innerHTML)
+- [x] Asistente IA — pantalla full-screen split (`06-chat.png`): panel `#panel-asistente` con `.chat-history-col` (260px, historial) + `.chat-full-col` (flex:1, chat); FAB y overlay conservados como no-op; `openAsistente()` redirige a `showTab('asistente')`
+- [x] Sustituciones — cabecera Newsreader + banner IA + formulario colapsable (`04-sustituciones.png`): `.sust-page-hdr`, `.sust-page-title` (30px Newsreader), `.sust-ia-banner`, `<details class="sust-form-details">`, `.btn-ia` terracota
+- [x] Incidencias — split lista/detalle (`05-incidencias.png`): `.inc-split-view` (flex row), `.inc-list-panel` (350px, tabla→tarjetas CSS), `.inc-detail-panel` (flex:1, bg paper-2), formulario en `<details class="inc-form-details">`
 
 > **Regla de implementación UI:** NO tocar archivos JS. Solo `app.html` e `css/styles.css`. Mantener TODOS los IDs existentes. Usar `var(--ink)` en lugar de colores navy fijos para respetar tematización.
 
@@ -367,5 +367,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ---
 
+
+- `2026-06-14` — feat(redesign): **redesign visual 3 paneles** (`app.html` + `css/styles.css`). Solo HTML+CSS, ningún archivo JS tocado, todos los IDs preservados. (1) **Asistente IA** — `#panel-asistente` nuevo panel split: `.chat-history-col` (260px historial, `#chat-hist-list`) + `.chat-full-col` (flex:1, `.chat-full-hdr` con badge "En línea", `.chat-suggestions` 2-col grid); `openAsistente()` redirige a `showTab('asistente')`; overlay vaciado (shell conservado). (2) **Sustituciones** — `#sust-vista-admin` restructurado: `.sust-page-hdr` con `.sust-page-title` (Newsreader 30px), eyebrow, subtitle; `.sust-filter-row`; `.sust-ia-banner` (logo + copy + `.btn-ia` terracota); formulario en `<details class="sust-form-details">` (colapsable nativo). (3) **Incidencias** — `#inc-vista-admin` split: `.inc-list-panel` (350px, tabla→tarjetas CSS via `#inc-lista .tbl td:nth-child()`) + `.inc-detail-panel` (bg paper-2, formulario en `<details class="inc-form-details">`); `#panel-incidencias { padding:0 !important; }` + `#inc-vista-profesor { padding:28px; }` para restaurar vista profesor. (4) Utilidades nuevas: `.pg-eyebrow`, `.btn-ia`, `.btn-ia-outline`, `.chat-online-badge`/`.chat-online-dot` (animación pulse), `.chat-suggestion` cards, `.sust-form-details`/`.inc-form-details` summary arrows. Responsive: history col oculta en <768px, split stack en <960px.
 
 > Registro de cambios recientes (commits desde 2026-05-22): @CLAUDE-CHANGELOG.md
