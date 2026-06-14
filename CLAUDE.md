@@ -307,9 +307,10 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `supabase/migrations/rls_familia_lockdown_fase3.sql` — **fix privacidad RGPD (fase 3)**: restricciones para `sustituciones` (familia: SELECT solo grupos de sus hijos; staff: ALL), `comunicados` (familia: SELECT sin `solo_profesores` y solo enviados; staff: ALL), `salidas_didacticas` (familia: SELECT solo `estado='publicada'`; staff: ALL), `participantes_salida` (familia: SELECT+UPDATE solo sus hijos; staff: ALL), `notificaciones_salida` (staff-only). Política anterior era `FOR ALL` con solo `centro_id = mi_centro` → familia podía INSERT/UPDATE/DELETE por API REST directa. ⚠️ **ejecutar en Supabase SQL Editor**
+> - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/rls_familia_lockdown_fase3.sql` — **fix privacidad RGPD (fase 3)**: restricciones para `sustituciones` (familia: SELECT solo grupos de sus hijos), `comunicados` (familia: SELECT sin `solo_profesores` y solo enviados), `salidas_didacticas` (familia: SELECT solo `estado='publicada'`), `participantes_salida` (familia: SELECT+UPDATE solo sus hijos), `notificaciones_salida` (staff-only). 10 políticas creadas. ✅ aplicado 2026-06-15 vía Management API
 > - `supabase/migrations/asistencia_clase.sql` — tabla `asistencia_clase` + RLS `asistencia_clase_centro` + índice `idx_asistencia_clase_fecha` ✅ ejecutado 2026-06-13 vía Management API
 > - `supabase/migrations/alergias_dietas.sql` — `alumnos.alergias` + `alumnos.dieta_especial` + `asistencia_comedor.nota_dia` ✅ ejecutado 2026-06-12 vía Management API
 > - `supabase/migrations/rls_familia_lockdown_fase2.sql` — **fix privacidad RGPD (fase 2)**: `expedientes_orientacion`, `tramites_orientacion`, `incidencias` → staff-only; las familias obtienen sus datos vía RPCs `SECURITY DEFINER` `familia_tramites_visibles()` (trámites `visible_familia` de sus hijos) y `familia_incidencias_hijos()` (incidencias de sus hijos, solo campos visibles — no `informe_borrador`/`normativa_ref`); `feedback_familias`: `cal_fb_read`/`cal_fb_update` restringidas a staff (familia conserva lo suyo vía `feedback_centro`). JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` → RPC). ✅ aplicado y verificado 2026-06-12 vía Management API (políticas + RPCs SECURITY DEFINER con EXECUTE para `authenticated`, ejecutan sin error).
@@ -343,6 +344,7 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-15 00:13` · `76e3c4c` — fix(seguridad RGPD): auditoría RLS fase 3 — sustituciones, comunicados, salidas, participantes
 - `2026-06-14 23:14` · `69bd4cc` — test(rls): verificación e2e RLS rol familia — 6 aserciones de privacidad RGPD
 
 - `2026-06-14 22:56` · `89c0553` — feat(redesign): redesign visual 3 paneles — Asistente IA, Sustituciones, Incidencias
