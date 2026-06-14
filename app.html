@@ -464,6 +464,29 @@
           <h1 class="home-greeting"><span id="inicio-greeting-txt-fam">Buenos días,</span> <em id="inicio-first-name-fam">—</em></h1>
           <div class="home-subline" id="inicio-subline-fam">—</div>
         </div>
+        <!-- Hero alumno — rellena renderHomeFamilia() -->
+        <div id="fam-child-card" class="fam-child-card" style="display:none">
+          <div class="fam-child-avatar" id="fam-child-avatar">—</div>
+          <div class="fam-child-info">
+            <div class="fam-child-name" id="fam-child-name">—</div>
+            <div class="fam-child-meta" id="fam-child-meta">—</div>
+          </div>
+        </div>
+        <!-- Accesos rápidos -->
+        <nav class="fam-quick-nav" aria-label="Accesos rápidos">
+          <button class="fam-qnav-btn" onclick="showTab('comunicados')">
+            <i class="ti ti-speakerphone fam-qnav-icon"></i><span>Comunicados</span>
+          </button>
+          <button class="fam-qnav-btn" onclick="showTab('calificaciones')">
+            <i class="ti ti-certificate fam-qnav-icon"></i><span>Notas</span>
+          </button>
+          <button class="fam-qnav-btn" onclick="showTab('salidas')">
+            <i class="ti ti-bus fam-qnav-icon"></i><span>Salidas</span>
+          </button>
+          <button class="fam-qnav-btn" onclick="showTab('asistente')">
+            <i class="ti ti-message-circle fam-qnav-icon"></i><span>Asistente</span>
+          </button>
+        </nav>
         <div id="familia-home-content"></div>
         <div id="panel-perfil-alim"></div>
         <div id="mis-hijos-container" style="display:none">

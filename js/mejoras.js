@@ -608,7 +608,19 @@ async function renderHomeFamilia(force) {
   if (_homeFamiliaHijoIdx >= alumnos.length) _homeFamiliaHijoIdx = 0;
   var alumno = alumnos[_homeFamiliaHijoIdx];
 
-  // Selector de hijo (solo si hay más de uno)
+  // Hero card del alumno
+  var fcc = document.getElementById("fam-child-card");
+  var fcn = document.getElementById("fam-child-name");
+  var fcm = document.getElementById("fam-child-meta");
+  var fca = document.getElementById("fam-child-avatar");
+  if (fcc && fcn) {
+    if (fca) fca.textContent = (alumno.nombre || "—").charAt(0).toUpperCase();
+    fcn.textContent = alumno.nombre || "—";
+    if (fcm) fcm.textContent = [alumno.grupo_horario, alumno.curso].filter(Boolean).join(" · ");
+    fcc.style.display = "";
+  }
+
+  // Selector de hijo (chips encima del hero si hay más de uno)
   var selectorHtml = "";
   if (alumnos.length > 1) {
     var chips = alumnos.map(function(a, i) {
@@ -622,17 +634,18 @@ async function renderHomeFamilia(force) {
     selectorHtml = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">' + chips + '</div>';
   }
 
+  // Orden: horario (lo más relevante del día) → avisos → comedor → salidas → comunicados → incidencias
   cont.innerHTML =
     selectorHtml +
-    '<div id="fh-avisos"></div>' +
     '<div id="fh-horario" class="home-card" style="margin-bottom:8px;">' +
       '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-calendar"></i> Horario de hoy</span></div>' +
       '<div style="font-size:13px;color:var(--muted);">Cargando…</div>' +
     '</div>' +
+    '<div id="fh-avisos"></div>' +
     '<div id="fh-comedor"  class="home-card" style="margin-bottom:8px;display:none;"></div>' +
-    '<div id="fh-incidencias" class="home-card" style="margin-bottom:8px;display:none;"></div>' +
     '<div id="fh-salidas"  class="home-card" style="margin-bottom:8px;display:none;"></div>' +
-    '<div id="fh-comunicados" class="home-card" style="margin-bottom:8px;display:none;"></div>';
+    '<div id="fh-comunicados" class="home-card" style="margin-bottom:8px;display:none;"></div>' +
+    '<div id="fh-incidencias" class="home-card" style="margin-bottom:8px;display:none;"></div>';
 
   window._fhSelectHijo = function(idx) {
     _homeFamiliaHijoIdx = idx;
@@ -781,7 +794,7 @@ async function renderHomeFamilia(force) {
       else                    { txt = "No se queda a comer";  col = "var(--muted)"; }
       var manHtml = (man && man.se_queda === false)
         ? '<div style="margin-top:10px;font-size:12px;color:var(--success);">✅ Avisado: no come mañana</div>'
-        : '<button class="btn btn-s" style="margin-top:10px;font-size:12px;padding:6px 12px;" onclick="window._fhAvisoManana(\'' + alumno.id + '\')">📩 Avisar que no come mañana</button>';
+        : '<button class="fam-comedor-action" onclick="window._fhAvisoManana(\'' + alumno.id + '\')">📩 Avisar que no come mañana</button>';
       box.style.display = "";
       box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-tools-kitchen-2"></i> Comedor</span></div>' +
         '<div style="font-size:14px;font-weight:500;color:' + col + ';">Hoy: ' + txt + '</div>' +
@@ -875,7 +888,7 @@ async function renderHomeFamilia(force) {
         '<span class="home-card-title"><i class="ti ti-speakerphone"></i> Comunicados no leídos</span>' +
         '<span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600;">' + unread.length + '</span>' +
         '</div>' + rowsHtml +
-        '<div style="margin-top:8px;"><button onclick="showTab(\'comunicados\')" style="font-size:12px;color:var(--ink);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">Ver todos los comunicados →</button></div>';
+        '<div style="margin-top:8px;"><button class="fam-ver-mas" onclick="showTab(\'comunicados\')">Ver todos los comunicados →</button></div>';
     } catch(e) {}
   })();
 }
