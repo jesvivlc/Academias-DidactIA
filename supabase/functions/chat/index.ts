@@ -191,7 +191,7 @@ const TOOL_DECLARATIONS = [
     },
   },
   {
-    name: "añadir_clase",
+    name: "agregar_clase",
     description:
       "Añade una nueva clase al horario generado por el Planner (tabla horario_generado). Verifica la disponibilidad del profesor y del grupo en ese tramo y que no se rompan las restricciones (materia no repetida el mismo día, sin huecos). LLAMAR cuando el admin quiera colocar una clase concreta en un hueco del horario.",
     parameters: {
@@ -753,7 +753,7 @@ async function executeTool(
       return `✅ Clase de ${materia.nombre} de ${grupo} eliminada (${dia}, tramo ${slot.tramo_horario}).`;
     }
 
-    case "añadir_clase": {
+    case "agregar_clase": {
       const grupo   = normalizeGrupo(args.grupo);
       const materia = await resolveMateria(sb, centro_id, args.materia_id);
       const prof    = await resolveProfesor(sb, centro_id, args.profesor_id);
