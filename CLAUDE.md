@@ -1,4 +1,4 @@
-# Claude Code Instructions
+﻿# Claude Code Instructions
 
 ## Task Master AI Instructions
 
@@ -337,4 +337,4 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 ---
 
-Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md
+Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLAUDE-CHANGELOG.md
