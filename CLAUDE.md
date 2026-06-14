@@ -307,7 +307,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - _(ninguna)_
+> - `supabase/migrations/rls_familia_lockdown_fase3.sql` — **fix privacidad RGPD (fase 3)**: restricciones para `sustituciones` (familia: SELECT solo grupos de sus hijos; staff: ALL), `comunicados` (familia: SELECT sin `solo_profesores` y solo enviados; staff: ALL), `salidas_didacticas` (familia: SELECT solo `estado='publicada'`; staff: ALL), `participantes_salida` (familia: SELECT+UPDATE solo sus hijos; staff: ALL), `notificaciones_salida` (staff-only). Política anterior era `FOR ALL` con solo `centro_id = mi_centro` → familia podía INSERT/UPDATE/DELETE por API REST directa. ⚠️ **ejecutar en Supabase SQL Editor**
 >
 > **Migraciones ejecutadas** (ya en producción):
 > - `supabase/migrations/asistencia_clase.sql` — tabla `asistencia_clase` + RLS `asistencia_clase_centro` + índice `idx_asistencia_clase_fecha` ✅ ejecutado 2026-06-13 vía Management API
@@ -338,3 +338,11 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 ---
 
 Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLAUDE-CHANGELOG.md
+
+
+---
+
+## Registro de cambios recientes
+- `2026-06-14 23:14` · `69bd4cc` — test(rls): verificación e2e RLS rol familia — 6 aserciones de privacidad RGPD
+
+- `2026-06-14 22:56` · `89c0553` — feat(redesign): redesign visual 3 paneles — Asistente IA, Sustituciones, Incidencias

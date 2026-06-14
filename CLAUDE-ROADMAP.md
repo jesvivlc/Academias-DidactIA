@@ -215,7 +215,14 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 **Pendiente / próximos pasos:**
 - ⚠️ **Rotar el token de Management API `sbp_…`** (tarea del usuario; Account → Access Tokens). Se usó en esta sesión para aplicar las migraciones RLS.
 - [x] **Verificación funcional RLS con un usuario familia real**: test Playwright `tests/rls-familia.spec.js` (`npm run test:rls-familia`). Verifica: (a) incidencias/alertas_predictivas/no_conformidades/informes_psicopedagogicos/expedientes_orientacion → 0 filas (bloqueado por RLS); (b) calificaciones de IES Buñol → 0 filas (aislamiento cross-center); (c) RPCs `familia_incidencias_hijos()` y `familia_tramites_visibles()` responden 200 con array válido; (d) `/calificaciones` responde OK (solo sus hijos). **Prerequisito:** crear cuenta `TEST_FAMILIA_AGORA_EMAIL` en panel Usuarios → Invitar → rol Familia → vincular alumno → añadir credenciales al `.env`.
-- **Revisar otras tablas con el mismo patrón** `centro_id = mi_centro` por si alguna sensible quedó fuera de la auditoría (se cubrieron orientación, calidad, calificaciones, incidencias, feedback; faltaría repasar p.ej. `ausencias_profesor`, `sustituciones`, `salidas`/`participantes_salida`, `comunicados` — menos críticas pero conviene mirar).
+- [x] **Auditoría RLS completa (punto 3)** — `supabase/migrations/rls_familia_lockdown_fase3.sql` creado (⚠️ pendiente ejecutar en Supabase SQL Editor):
+  - `ausencias_profesor` → ✅ SAFE (rrhh_migration.sql ya excluye familia)
+  - `sustituciones` → FIXED: `FOR ALL centro_id` → `sust_staff` (ALL) + `sust_familia_read` (SELECT grupos de sus hijos)
+  - `comunicados` → FIXED: `FOR ALL centro_id` → `com_staff` (ALL) + `com_familia_read` (SELECT enviados y `!= solo_profesores`)
+  - `salidas_didacticas` → FIXED: `FOR ALL centro_id` → `salidas_staff` (ALL) + `salidas_familia_read` (SELECT solo `estado='publicada'`)
+  - `participantes_salida` → FIXED: `FOR ALL centro_id` → `partic_staff` + `partic_familia_read/update` (solo sus hijos)
+  - `notificaciones_salida` → FIXED: → staff-only
+  - Test e2e ampliado (pasos 7–10): INSERT bloqueado en sustituciones/salidas; comunicados sin `solo_profesores`; salidas sin borradores.
 - **Redesign visual** (Alumnos/Asistente/Sustituciones/Incidencias): **bloqueado** — faltan las capturas de `design_handoff_didactia/screenshots/` (el directorio no está en el repo). Si se quiere retomar, hay que aportar las capturas de referencia.
 - **App Familias**: el portal está consolidado; quedaría (opcional) una PWA/onboarding dedicado.
 
