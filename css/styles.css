@@ -3272,3 +3272,164 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
   .fam-child-card { padding: 12px 14px; }
   .fam-child-avatar { width: 40px; height: 40px; font-size: 19px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   REDISEÑO MÓVIL COMPLETO — 2026-06-15
+   Solo media queries ≤768px. No afecta desktop.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── P1: Globo de invitación (#asistente-hint) — ocultar en móvil ──
+   El FAB solo ya invita claramente al uso del asistente. El globo
+   solapaba métricas, tarjetas y grids en viewport estrecho. */
+@media (max-width: 768px) {
+  .asist-hint { display: none !important; }
+}
+
+/* ── P2: FAB oculto cuando el drawer "Más" está abierto ──
+   Usa :has() (Chrome 105+, Firefox 121+, Safari 15.4+) para detectar
+   el estado del drawer sin tocar JS. El display:block lo fija el JS inline. */
+@media (max-width: 768px) {
+  body:has(#mas-drawer[style*="display: block"]) #asistente-fab,
+  body:has(#mas-drawer[style*="display:block"])  #asistente-fab {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: scale(0.5) !important;
+  }
+}
+
+/* ── P3: Tablas → scroll horizontal suave ──
+   JS genera tablas dinámicamente en estos contenedores; sin tocar JS
+   la única solución portable es overflow-x:auto + min-width fija en
+   el .tbl para que el navegador no comprima columnas. */
+@media (max-width: 768px) {
+  /* Contenedores de tabla generados por JS */
+  #users-list,
+  #sust-container,
+  .sust-table-wrap,
+  #inc-lista,
+  .inc-lista-wrap,
+  #cal-container,
+  #comedor-historico,
+  #guardias-cont,
+  #espacios-cont,
+  #nc-lista,
+  #fb-lista,
+  #com-lista,
+  #alumnos-list,
+  #rrhh-list,
+  #salidas-lista {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Indicador visual de scroll: fade en el borde derecho */
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  }
+  /* Tablas dentro: evitar colapso de columnas */
+  #users-list .tbl,
+  #sust-container .tbl,
+  .sust-table-wrap .tbl,
+  #inc-lista .tbl,
+  #cal-container .tbl,
+  #rrhh-list .tbl {
+    min-width: 580px;
+  }
+
+  /* Celdas: padding reducido; solo thead con nowrap para evitar que textos largos rompan el layout */
+  .tbl th         { padding: 6px 7px !important; white-space: nowrap; }
+  .tbl td         { padding: 6px 7px !important; }
+  .tbl            { font-size: 11px !important; }
+}
+
+/* ── P4: Espacio vertical — home más compacta en móvil ── */
+@media (max-width: 768px) {
+  /* Métricas accionables: gap y padding reducidos */
+  .home-metrics { gap: 10px; margin-bottom: 14px; }
+  .home-metric  { padding: 11px 13px; }
+  .home-metric-val { font-size: 26px; }
+  .home-metric-lbl { font-size: 11.5px; margin-top: 4px; }
+  .home-metric-chev { font-size: 16px; }
+
+  /* Tarjeta "Mi horario de hoy" y cards en general */
+  .home-card { padding: 14px 16px; margin-bottom: 14px; }
+
+  /* Buscador protagonista: más compacto */
+  .home-search { margin-bottom: 14px; }
+}
+
+/* ── P5: Ocultar badge ⌘K en móvil ──
+   El buscador ya es tappable y abre el command palette. */
+@media (max-width: 768px) {
+  .home-search-kbd { display: none !important; }
+}
+
+/* ── P6: Pulido general móvil ── */
+@media (max-width: 768px) {
+  /* Touch targets — bottom nav ya tiene height:60px (OK), reforzar .bn-item */
+  .bn-item {
+    min-height: 44px;
+    padding: 6px 2px;  /* más espacio táctil horizontal */
+  }
+  .bn-item i { font-size: 20px; }
+  .bn-item span { font-size: 9.5px; }
+
+  /* Drawer "Más": items con target suficiente */
+  .mas-item { min-height: 52px; min-width: 52px; }
+
+  /* Botones genéricos: target mínimo 40px */
+  .btn, .btn-p, .btn-s { min-height: 40px; }
+
+  /* Pills filtro usuarios: scroll horizontal (override el flex-wrap:wrap inline) */
+  #users-filtros-rol {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    gap: 6px;
+    /* Fade en borde derecho como indicador de scroll */
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  }
+  #users-filtros-rol::-webkit-scrollbar { display: none; }
+  #users-filtros-rol button { flex-shrink: 0; }
+
+  /* Pills filtro sustituciones: scroll horizontal */
+  #sust-filter-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  }
+  #sust-filter-bar::-webkit-scrollbar { display: none; }
+  #sust-filter-bar button { flex-shrink: 0; }
+
+  /* Pills filtro incidencias */
+  .inc-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  }
+  .inc-filters::-webkit-scrollbar { display: none; }
+  .inc-filters button, .inc-filters select { flex-shrink: 0; }
+
+  /* Safe-area + bottom-nav clearance — refuerza la regla existente */
+  #app-main > .panel {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Panel chat usa .chat-main que ya tiene clearance; reforzar por si acaso */
+  #panel-chat { padding-bottom: 0 !important; }
+}
+
+/* ── prefers-reduced-motion: quitar transiciones del FAB y drawer ── */
+@media (prefers-reduced-motion: reduce) {
+  .asist-fab, #mas-sheet, #mas-backdrop {
+    transition: none !important;
+    animation: none !important;
+  }
+}
