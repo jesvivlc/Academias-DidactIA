@@ -223,7 +223,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
   - `participantes_salida` → FIXED: `FOR ALL centro_id` → `partic_staff` + `partic_familia_read/update` (solo sus hijos)
   - `notificaciones_salida` → FIXED: → staff-only
   - Test e2e ampliado (pasos 7–10): INSERT bloqueado en sustituciones/salidas; comunicados sin `solo_profesores`; salidas sin borradores.
-- **Redesign visual** (Alumnos/Asistente/Sustituciones/Incidencias): completado. `design_handoff_didactia/` existe en local (untracked). Paneles pendientes: Planner y Análisis/CMI.
+- **Redesign visual**: completado — Alumnos, Asistente IA, Sustituciones, Incidencias, Planner y Análisis/CMI. `design_handoff_didactia/` existe en local (untracked). Todos los paneles tienen header Newsreader 30px + eyebrow + subtítulo.
 - [x] **Planner Sprint 1** (`d791cf8`): persistencia drag&drop (tablero → `horario_generado`), límite CSP 500k nodos, progreso por grupo en `plannerGenerarSinProf`, confirmación antes de regenerar, HC-VENTANA usa `TNUMS.length` (no hardcoded 8), `IMPORT_CENTRO` usa `ctrId` (no UUID de Agora hardcodeado).
 - [x] **Planner Sprint 2** (`cd739f4`): tab "👤 Profe" — vista cross-grupo por profesor (grid días×tramos con materia+grupo coloreados) + panel lateral "Carga semanal" con barras de progreso por docente. `_renderProfesorView`, `plannerCambiarProf`, `_s._profViewCurrent`.
 - [x] **Planner Sprint 4** (`2038d33`): cobertura del horario — `_calcCobertura()` compara schedule vs necesidades; `plannerCobertura()` modal tabla por grupo; badges ✓/⚠/❌ en selector de grupo; botón "📊 Cobertura" en cabecera tablero; banner verde/ámbar en tab Publicar.
