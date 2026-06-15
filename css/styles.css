@@ -1775,8 +1775,10 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 /* ══════════════════════════════════════
    PLANNER — generador de horarios
 ══════════════════════════════════════ */
-.planner-wrap { padding: 28px; overflow-y: auto; height: 100%; }
-.planner-tabs { display: flex; gap: 4px; padding: 0 0 20px; border-bottom: 1px solid var(--line); margin-bottom: 24px; flex-wrap: wrap; }
+.planner-wrap { padding: 24px 28px 28px; overflow-y: auto; flex: 1; min-height: 0; }
+.planner-tabs { display: flex; gap: 4px; padding: 0 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 24px; flex-wrap: wrap; }
+/* Tabs dentro del header fijo del planner/analisis — sin borde ni margen propios */
+.planner-tabs.tabs-in-hdr { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
 .planner-tab  { padding: 7px 16px; border-radius: 20px; border: 1px solid var(--line); background: none; cursor: pointer; font-size: 13px; color: var(--muted); font-family: var(--font-ui); transition: all .15s; }
 .planner-tab:hover  { border-color: var(--line-2); color: var(--txt); }
 .planner-tab.active { background: var(--ink); border-color: var(--ink); color: #fff; }
@@ -1843,6 +1845,9 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 .cmi-hdr { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; padding:28px 28px 0; margin-bottom:20px; }
 .cmi-title { font-family:var(--font-display); font-size:26px; font-weight:400; margin:0; color:var(--txt); }
 .cmi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; padding:0 28px 28px; }
+/* Con el nuevo shell header del panel-analisis, el .cmi-hdr solo necesita los botones de acción */
+#analytics-container .cmi-hdr > div:first-child { display: none; }
+#analytics-container .cmi-hdr { padding: 12px 28px 0; margin-bottom: 8px; justify-content: flex-end; }
 @media(max-width:900px) { .cmi-grid { grid-template-columns:1fr; } }
 
 /* Cards */
