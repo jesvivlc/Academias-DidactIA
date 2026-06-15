@@ -1,13 +1,13 @@
 // ── MÓDULO ALUMNOS ───────────────────────────────────────────────────
-// Directorio de alumnos del centro: lista + filtros + ficha individual
-// (horario, comedor, incidencias, calificaciones, familias vinculadas).
+// Directorio de alumnos del centro: split lista + drawer de perfil.
 // Visible para profesional/admin/dirección/superadmin (no familia).
 
-var _alData = [];          // todos los alumnos del centro
+var _alData = [];
 var _alSearch = "";
-var _alGrupo = "";         // filtro de grupo activo ("" = todos)
+var _alGrupo = "";
 var _alLoaded = false;
-var _alPendingFicha = null; // id de ficha a abrir tras cargar la lista (desde ⌘K u otros)
+var _alPendingFicha = null;
+var _alSelectedId = null;   // alumno activo en el drawer
 
 function _alEsc(s) {
   return String(s == null ? "" : s)
@@ -15,35 +15,70 @@ function _alEsc(s) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-// Valor seguro como argumento JS dentro de un atributo onclick="…" (comillas dobles).
 function _alArg(v) {
   return "'" + String(v == null ? "" : v)
     .replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;") + "'";
 }
 
-async function initAlumnos() {
+// Iniciales para avatar (máx 2 letras)
+function _alInitials(nombre) {
+  return (nombre || "?").split(" ").slice(0, 2).map(function(s) { return s[0] || ""; }).join("").toUpperCase();
+}
+
+// Color de avatar determinístico por nombre
+var _AL_TONES = ["#C76B3D","#4D6FA8","#3F9367","#D69540","#7A6BAB","#C24D2F","#2E7B8C"];
+function _alAvatarColor(nombre) {
+  var h = 0;
+  for (var i = 0; i < (nombre || "").length; i++) h = ((h << 5) - h) + (nombre.charCodeAt(i));
+  return _AL_TONES[Math.abs(h) % _AL_TONES.length];
+}
+
+async function initAlumnos(forceReload) {
   var panel = document.getElementById("panel-alumnos");
   if (!panel) return;
 
+  // Shell split: lista izquierda + drawer derecha
   panel.innerHTML =
-    '<div style="padding:28px;display:flex;flex-direction:column;gap:18px;background:var(--bg);min-height:100%;">' +
-      '<div class="pg-hdr"><div><div class="pg-title">Alumnos</div>' +
-        '<div class="pg-sub" id="al-sub">Directorio del centro</div></div>' +
-        '<div style="display:flex;gap:8px;">' +
-          '<button class="btn btn-s" onclick="_alExportar()">⬇ Excel</button>' +
-          '<button class="btn btn-p" onclick="initAlumnos(true)">↺ Actualizar</button>' +
-        '</div></div>' +
-      '<input class="fi" id="al-search" placeholder="🔍 Buscar alumno por nombre…" ' +
-        'style="max-width:420px;" oninput="_alOnSearch(this.value)" />' +
-      '<div id="al-grupos" style="display:flex;gap:8px;flex-wrap:wrap;"></div>' +
-      '<div id="al-list"><div style="text-align:center;color:var(--txt3);padding:40px;"><span class="spin">⟳</span> Cargando…</div></div>' +
+    '<div class="al-split">' +
+      // ── Columna lista ──
+      '<div class="al-list-col">' +
+        '<div class="al-list-hdr">' +
+          '<div>' +
+            '<div class="pg-eyebrow">Directorio</div>' +
+            '<div class="al-count" id="al-count">… alumnos</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<button class="btn btn-s" onclick="_alExportar()">⬇ Excel</button>' +
+            '<button class="btn btn-p" onclick="initAlumnos(true)">↺</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="al-search-row">' +
+          '<div class="al-search-wrap">' +
+            '<span class="al-search-ico">🔍</span>' +
+            '<input class="al-search-input" id="al-search" placeholder="Buscar por nombre…" ' +
+              'oninput="_alOnSearch(this.value)" />' +
+          '</div>' +
+          '<div class="al-pills" id="al-grupos"></div>' +
+        '</div>' +
+        '<div class="al-table-wrap" id="al-table-wrap">' +
+          '<div style="text-align:center;color:var(--muted);padding:40px 0;"><span class="spin">⟳</span> Cargando…</div>' +
+        '</div>' +
+      '</div>' +
+      // ── Drawer perfil ──
+      '<div class="al-drawer" id="al-drawer">' +
+        '<div class="al-drawer-empty" id="al-drawer-empty">' +
+          '<div style="font-size:32px;margin-bottom:12px;">🎓</div>' +
+          '<div style="font-size:14px;font-weight:500;color:var(--ink);margin-bottom:4px;">Selecciona un alumno</div>' +
+          '<div style="font-size:12px;color:var(--muted);">Haz clic en cualquier fila para ver su perfil</div>' +
+        '</div>' +
+        '<div id="al-drawer-content" style="display:none;height:100%;"></div>' +
+      '</div>' +
     '</div>';
 
-  var search = document.getElementById("al-search");
-  if (search) search.value = _alSearch;
+  var searchEl = document.getElementById("al-search");
+  if (searchEl) searchEl.value = _alSearch;
 
-  // Recarga forzada o primera vez
-  if (arguments[0] === true) _alLoaded = false;
+  if (forceReload === true) _alLoaded = false;
   if (!_alLoaded) {
     var r = await sb.from("alumnos")
       .select("id,nombre,curso,grupo_horario")
@@ -54,26 +89,24 @@ async function initAlumnos() {
     _alData = r.data || [];
     _alLoaded = true;
   }
+
   _alRenderGrupos();
   _alRenderList();
 
-  // Si se pidió abrir una ficha concreta (p.ej. desde el command palette), ábrela.
   if (_alPendingFicha) {
     var pid = _alPendingFicha;
     _alPendingFicha = null;
     alumnosAbrirFicha(pid);
+  } else if (_alSelectedId) {
+    alumnosAbrirFicha(_alSelectedId);
   }
 }
 
-// Punto de entrada externo: abre la ficha de un alumno desde cualquier pantalla
-// (activa el tab Alumnos; initAlumnos carga la lista y luego abre la ficha).
 window.alumnosVerFicha = function(alumnoId) {
   _alPendingFicha = alumnoId;
   if (typeof showTab === "function") showTab("alumnos");
 };
 
-// Abre el tab Incidencias (vista admin) con el alumno y grupo ya prerrellenados.
-// initIncidenciasPanel renderiza de forma asíncrona → reintenta hasta encontrar el form.
 window.alumnosRegistrarIncidencia = function(nombre, grupo) {
   if (typeof showTab === "function") showTab("incidencias");
   var intentos = 0;
@@ -115,19 +148,14 @@ function _alRenderGrupos() {
   });
   grupos.sort();
   var chip = function(label, val, active) {
-    return '<button onclick="_alFiltrarGrupo(' + _alArg(val) + ')" style="' +
-      'border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;font-family:var(--font-ui);' +
-      (active
-        ? 'background:var(--ink);color:#fff;border:1px solid var(--ink);'
-        : 'background:var(--paper-2,var(--srf));color:var(--txt);border:1px solid var(--line,var(--bdr));') +
-      '">' + _alEsc(label) + '</button>';
+    return '<button onclick="_alFiltrarGrupo(' + _alArg(val) + ')" class="pill' + (active ? ' pill-active' : '') + '">' +
+      _alEsc(label) + '</button>';
   };
   var html = chip("Todos", "", _alGrupo === "");
   grupos.forEach(function(g) { html += chip(g, g, _alGrupo === g); });
   cont.innerHTML = html;
 }
 
-// Alumnos que pasan el filtro de grupo + búsqueda actuales.
 function _alFiltradas() {
   var q = _alSearch.trim().toLowerCase();
   return _alData.filter(function(a) {
@@ -137,7 +165,6 @@ function _alFiltradas() {
   });
 }
 
-// Exporta la lista filtrada a Excel (.xlsx) con SheetJS.
 function _alExportar() {
   if (typeof XLSX === "undefined") { if (typeof showToast === "function") showToast("Exportación no disponible"); return; }
   var rows = _alFiltradas();
@@ -154,48 +181,87 @@ function _alExportar() {
 }
 
 function _alRenderList() {
-  var cont = document.getElementById("al-list");
-  if (!cont) return;
-  var q = _alSearch.trim().toLowerCase();
+  var wrap = document.getElementById("al-table-wrap");
+  if (!wrap) return;
   var rows = _alFiltradas();
 
-  var sub = document.getElementById("al-sub");
-  if (sub) sub.textContent = rows.length + " alumno" + (rows.length === 1 ? "" : "s") +
-    (_alGrupo ? " · " + _alGrupo : "") + (q ? ' · "' + _alSearch.trim() + '"' : "");
+  var countEl = document.getElementById("al-count");
+  if (countEl) {
+    var txt = rows.length + " alumno" + (rows.length === 1 ? "" : "s");
+    if (_alGrupo) txt += " · " + _alGrupo;
+    if (_alSearch.trim()) txt += ' · "' + _alSearch.trim() + '"';
+    countEl.textContent = txt;
+  }
 
   if (!rows.length) {
-    cont.innerHTML = '<div style="text-align:center;color:var(--txt3);padding:40px;">Sin resultados.</div>';
+    wrap.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:13px;">Sin resultados.</div>';
     return;
   }
 
   var trs = rows.map(function(a) {
-    return '<tr style="cursor:pointer;border-bottom:1px solid var(--line,var(--bdr));" ' +
-      'onclick="alumnosAbrirFicha(' + _alArg(a.id) + ')">' +
-      '<td style="padding:11px 12px;font-weight:500;color:var(--txt);">' + _alEsc(a.nombre) + '</td>' +
-      '<td style="padding:11px 12px;color:var(--txt2);">' + _alEsc(a.curso || "—") + '</td>' +
-      '<td style="padding:11px 12px;"><span style="background:var(--surface-sunk,var(--srf2));border-radius:6px;padding:2px 8px;font-size:12px;color:var(--txt2);">' + _alEsc(a.grupo_horario || "—") + '</span></td>' +
-      '<td style="padding:11px 12px;text-align:right;color:var(--ink);font-size:13px;">Ver ficha →</td>' +
-      '</tr>';
+    var initials = _alInitials(a.nombre);
+    var avatarColor = _alAvatarColor(a.nombre);
+    var isSelected = a.id === _alSelectedId;
+    return '<tr class="al-row' + (isSelected ? ' al-row-selected' : '') + '" ' +
+      'onclick="_alSelectRow(' + _alArg(a.id) + ')" data-id="' + _alEsc(a.id) + '">' +
+      '<td class="al-td-name">' +
+        '<div class="al-cell-avatar">' +
+          '<div class="al-avatar" style="background:' + avatarColor + ';">' + _alEsc(initials) + '</div>' +
+          '<div class="al-cell-stack">' +
+            '<span class="al-cell-name">' + _alEsc(a.nombre || "—") + '</span>' +
+            '<span class="al-cell-sub">' + _alEsc(a.grupo_horario || "—") + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</td>' +
+      '<td class="al-td-curso">' + _alEsc(a.curso || "—") + '</td>' +
+    '</tr>';
   }).join("");
 
-  cont.innerHTML =
-    '<div style="overflow-x:auto;background:var(--srf);border:1px solid var(--line,var(--bdr));border-radius:var(--r);">' +
-      '<table style="width:100%;border-collapse:collapse;font-size:14px;">' +
-        '<thead><tr style="text-align:left;border-bottom:2px solid var(--line,var(--bdr));background:var(--paper-2,var(--srf2));">' +
-          '<th style="padding:10px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);">Nombre</th>' +
-          '<th style="padding:10px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);">Curso</th>' +
-          '<th style="padding:10px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);">Grupo</th>' +
-          '<th></th>' +
-        '</tr></thead><tbody>' + trs + '</tbody>' +
-      '</table></div>';
+  wrap.innerHTML =
+    '<table class="al-tbl">' +
+      '<thead>' +
+        '<tr>' +
+          '<th>Alumno</th>' +
+          '<th>Curso</th>' +
+        '</tr>' +
+      '</thead>' +
+      '<tbody>' + trs + '</tbody>' +
+    '</table>';
 }
 
-// ── FICHA INDIVIDUAL ─────────────────────────────────────────────────
+function _alSelectRow(alumnoId) {
+  _alSelectedId = alumnoId;
+  // Actualizar estado visual de la fila seleccionada
+  document.querySelectorAll(".al-row").forEach(function(tr) {
+    tr.classList.toggle("al-row-selected", tr.dataset.id === alumnoId);
+  });
+  alumnosAbrirFicha(alumnoId);
+}
+
+// ── FICHA EN DRAWER ──────────────────────────────────────────────────
 async function alumnosAbrirFicha(alumnoId) {
-  var panel = document.getElementById("panel-alumnos");
-  if (!panel) return;
+  _alSelectedId = alumnoId;
+
+  // Si el panel no está en modo split (apertura directa desde ⌘K), inicializar el panel
+  var split = document.querySelector(".al-split");
+  if (!split) {
+    _alPendingFicha = alumnoId;
+    if (typeof showTab === "function") showTab("alumnos");
+    return;
+  }
+
+  // Mostrar spinner en el drawer
+  var empty = document.getElementById("al-drawer-empty");
+  var content = document.getElementById("al-drawer-content");
+  if (empty) empty.style.display = "none";
+  if (content) { content.style.display = ""; content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);"><span class="spin">⟳</span> Cargando…</div>'; }
+
+  // Actualizar fila seleccionada en la tabla
+  document.querySelectorAll(".al-row").forEach(function(tr) {
+    tr.classList.toggle("al-row-selected", tr.dataset.id === alumnoId);
+  });
+
   var a = _alData.find(function(x) { return x.id === alumnoId; }) || null;
-  // Fallback: si la lista no estaba cargada (apertura directa), busca el alumno por id.
   if (!a) {
     try {
       var rr = await sb.from("alumnos").select("id,nombre,curso,grupo_horario")
@@ -204,186 +270,237 @@ async function alumnosAbrirFicha(alumnoId) {
     } catch (e) { a = {}; }
   }
 
-  // Acción "Registrar incidencia": solo roles con acceso a la vista admin de incidencias
-  // (misma visibilidad que el tab Incidencias en auth.js; la vista profesional limita el
-  // selector a sus propios alumnos → prerrelleno no fiable desde el directorio completo).
+  if (!content) return;
+
+  var grupo = a.grupo_horario || "";
+  var initials = _alInitials(a.nombre);
+  var avatarColor = _alAvatarColor(a.nombre);
+
   var rolesIncAdmin = ["admin", "admin_institucional", "superadmin"];
   var puedeInc = (typeof role !== "undefined") && rolesIncAdmin.indexOf(role) !== -1;
   var accionInc = puedeInc
-    ? '<button class="btn btn-p" onclick="alumnosRegistrarIncidencia(' + _alArg(a.nombre || "") + ',' + _alArg(a.grupo_horario || "") + ')">⚠️ Registrar incidencia</button>'
+    ? '<button class="btn btn-s" onclick="alumnosRegistrarIncidencia(' + _alArg(a.nombre || "") + ',' + _alArg(grupo) + ')">⚠️ Incidencia</button>'
     : "";
 
-  panel.innerHTML =
-    '<div style="padding:28px;display:flex;flex-direction:column;gap:16px;background:var(--bg);min-height:100%;">' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;">' +
-        '<button class="btn btn-s" onclick="initAlumnos()">← Volver a Alumnos</button>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-          '<button class="btn btn-s" id="al-pdf-btn" onclick="alumnosExportarFichaPDF(' + _alArg(alumnoId) + ')">⬇ PDF</button>' +
-          accionInc +
+  content.innerHTML =
+    '<div class="al-drawer-inner">' +
+      // Head: avatar + nombre + curso
+      '<div class="al-drw-head">' +
+        '<div class="al-drw-avatar-lg" style="background:' + avatarColor + ';">' + _alEsc(initials) + '</div>' +
+        '<div class="al-drw-meta">' +
+          '<div class="pg-eyebrow">' + _alEsc(grupo || "—") + ' · ' + _alEsc(a.curso || "—") + '</div>' +
+          '<div class="al-drw-name">' + _alEsc(a.nombre || "Alumno") + '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="card"><div class="card-hdr">' +
-        '<div class="card-ico b" style="font-size:20px;background:var(--ink-ll);color:var(--ink);">🎓</div>' +
-        '<div><div class="card-title">' + _alEsc(a.nombre || "Alumno") + '</div>' +
-        '<div class="card-desc">' + _alEsc(a.curso || "") + (a.grupo_horario ? ' · Grupo ' + _alEsc(a.grupo_horario) : "") + '</div></div>' +
-      '</div><div id="al-ficha-familias" style="margin-top:10px;font-size:13px;color:var(--txt3);">Cargando familias…</div></div>' +
-      '<div id="al-ficha-horario" class="card">Cargando horario…</div>' +
-      '<div id="al-ficha-comedor" class="card" style="display:none;"></div>' +
-      '<div id="al-ficha-incidencias" class="card" style="display:none;"></div>' +
-      '<div id="al-ficha-calif" class="card" style="display:none;"></div>' +
+
+      // Pestañas
+      '<div class="al-drw-tabs" id="al-drw-tabs">' +
+        '<button class="al-drw-tab al-drw-tab-active" onclick="_alDrwTab(\'perfil\',this)">Perfil</button>' +
+        '<button class="al-drw-tab" onclick="_alDrwTab(\'horario\',this)">Horario</button>' +
+        '<button class="al-drw-tab" onclick="_alDrwTab(\'actividad\',this)">Actividad</button>' +
+      '</div>' +
+
+      // Cuerpo por tab
+      '<div class="al-drw-body" id="al-drw-body">' +
+        '<div id="al-drw-perfil">' +
+          '<div id="al-ficha-familias" class="al-drw-section"><span style="color:var(--muted);">Cargando familias…</span></div>' +
+          '<div id="al-ficha-comedor" style="display:none;"></div>' +
+          '<div id="al-ficha-incidencias" style="display:none;"></div>' +
+          '<div id="al-ficha-calif" style="display:none;"></div>' +
+        '</div>' +
+        '<div id="al-drw-horario" style="display:none;">' +
+          '<div id="al-ficha-horario"><span style="color:var(--muted);">Cargando horario…</span></div>' +
+        '</div>' +
+        '<div id="al-drw-actividad" style="display:none;">' +
+          '<div style="color:var(--muted);font-size:13px;padding:20px 0;">Próximamente: línea de actividad reciente del alumno.</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Footer de acciones
+      '<div class="al-drw-foot">' +
+        '<button class="btn btn-s" id="al-pdf-btn" onclick="alumnosExportarFichaPDF(' + _alArg(alumnoId) + ')">⬇ PDF</button>' +
+        accionInc +
+      '</div>' +
     '</div>';
 
-  var grupo = a.grupo_horario;
+  // Cargar secciones async (fire-and-forget)
+  _alLoadFamilias(alumnoId);
+  _alLoadHorario(grupo);
+  _alLoadComedor(alumnoId);
+  _alLoadIncidencias(a);
+  _alLoadCalif(alumnoId);
+}
 
-  // ── Familias vinculadas ──
-  (async function() {
-    var box = document.getElementById("al-ficha-familias");
-    if (!box) return;
-    try {
-      // Dos pasos (no embed) para no depender de la FK familia_alumno→profiles.
-      var rv = await sb.from("familia_alumno").select("profile_id").eq("alumno_id", alumnoId);
-      var pids = (rv.data || []).map(function(x) { return x.profile_id; }).filter(Boolean);
-      var fams = [];
-      if (pids.length) {
-        var rp = await sb.from("profiles").select("full_name,email,rol").in("id", pids);
-        fams = rp.data || [];
-      }
-      if (!fams.length) { box.innerHTML = '<span style="color:var(--txt3);">Sin familias vinculadas.</span>'; return; }
-      box.innerHTML = '<div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;">Familias vinculadas</div>' +
-        fams.map(function(f) {
-          return '<div style="font-size:13px;color:var(--txt2);">👨‍👩‍👧 ' + _alEsc(f.full_name || "—") +
-            (f.email ? ' · <a href="mailto:' + _alEsc(f.email) + '" style="color:var(--ink);">' + _alEsc(f.email) + '</a>' : '') + '</div>';
-        }).join("");
-    } catch(e) { box.innerHTML = '<span style="color:var(--txt3);">Familias no disponibles.</span>'; }
-  })();
+function _alDrwTab(tabId, btn) {
+  ["perfil","horario","actividad"].forEach(function(t) {
+    var el = document.getElementById("al-drw-" + t);
+    if (el) el.style.display = t === tabId ? "" : "none";
+  });
+  document.querySelectorAll(".al-drw-tab").forEach(function(b) {
+    b.classList.toggle("al-drw-tab-active", b === btn);
+  });
+}
 
-  // ── Horario semanal ──
-  (async function() {
-    var box = document.getElementById("al-ficha-horario");
-    if (!box) return;
-    if (!grupo) { box.innerHTML = '<div class="card-hdr"><div class="card-title">Horario</div></div><div style="color:var(--txt3);font-size:13px;">Grupo no asignado.</div>'; return; }
-    try {
-      var r = await sb.from("horarios_grupo")
-        .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
-        .eq("centro_id", ctrId).eq("grupo_horario", grupo)
-        .eq("curso_escolar", cursoActivo)
-        .order("tramo", { ascending: true });
-      var filas = r.data || [];
-      if (!filas.length) { box.innerHTML = '<div class="card-hdr"><div class="card-title">Horario · ' + _alEsc(grupo) + '</div></div><div style="color:var(--txt3);font-size:13px;">Sin horario para el curso ' + _alEsc(cursoActivo) + '.</div>'; return; }
-      var DIAS = ["lunes","martes","miercoles","jueves","viernes"];
-      var ETIQ = { lunes:"Lunes", martes:"Martes", miercoles:"Miércoles", jueves:"Jueves", viernes:"Viernes" };
-      var porDia = {};
-      filas.forEach(function(f) { var d = (f.dia || "").toLowerCase(); (porDia[d] = porDia[d] || []).push(f); });
-      var cols = DIAS.map(function(d) {
-        var items = (porDia[d] || []).sort(function(x, y) { return (x.tramo || 0) - (y.tramo || 0); });
-        var inner = items.length ? items.map(function(f) {
-          var hi = String(f.hora_inicio || "").slice(0,5), hf = String(f.hora_fin || "").slice(0,5);
-          return '<div style="padding:6px 8px;border-radius:6px;background:var(--paper-2,var(--srf2));margin-bottom:5px;">' +
-            '<div style="font-size:12px;font-weight:600;color:var(--txt);">' + _alEsc(f.actividad_nombre || "—") + '</div>' +
-            '<div style="font-size:10px;color:var(--txt3);">' + _alEsc(hi + (hf ? "–" + hf : "")) +
-            (f.profesor_nombre ? ' · ' + _alEsc(f.profesor_nombre) : '') + (f.aula ? ' · ' + _alEsc(f.aula) : '') + '</div></div>';
-        }).join("") : '<div style="font-size:11px;color:var(--txt3);">—</div>';
-        return '<div style="flex:1;min-width:140px;">' +
-          '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);margin-bottom:6px;">' + ETIQ[d] + '</div>' + inner + '</div>';
+// ── Loaders async ─────────────────────────────────────────────────────
+
+async function _alLoadFamilias(alumnoId) {
+  var box = document.getElementById("al-ficha-familias");
+  if (!box) return;
+  try {
+    var rv = await sb.from("familia_alumno").select("profile_id").eq("alumno_id", alumnoId);
+    var pids = (rv.data || []).map(function(x) { return x.profile_id; }).filter(Boolean);
+    var fams = [];
+    if (pids.length) {
+      var rp = await sb.from("profiles").select("full_name,email,rol").in("id", pids);
+      fams = rp.data || [];
+    }
+    if (!fams.length) {
+      box.innerHTML = '<div class="al-drw-label">Familia</div><div style="font-size:13px;color:var(--muted);">Sin familias vinculadas.</div>';
+      return;
+    }
+    box.innerHTML = '<div class="al-drw-label">Familia</div>' +
+      fams.map(function(f) {
+        return '<div class="al-drw-fam-row">👨‍👩‍👧 ' + _alEsc(f.full_name || "—") +
+          (f.email ? ' · <a href="mailto:' + _alEsc(f.email) + '" style="color:var(--ink);">' + _alEsc(f.email) + '</a>' : '') +
+          '</div>';
       }).join("");
-      box.innerHTML = '<div class="card-hdr"><div class="card-title">Horario · ' + _alEsc(grupo) + '</div></div>' +
-        '<div style="display:flex;gap:12px;overflow-x:auto;margin-top:6px;">' + cols + '</div>';
-    } catch(e) { box.innerHTML = '<div class="card-hdr"><div class="card-title">Horario</div></div><div style="color:var(--txt3);font-size:13px;">No disponible.</div>'; }
-  })();
+  } catch(e) { if (box) box.innerHTML = '<span style="color:var(--muted);font-size:13px;">Familias no disponibles.</span>'; }
+}
 
-  // ── Comedor (últimos 14 días lectivos) ──
-  (async function() {
-    if (typeof modulosActivos !== "undefined" && !modulosActivos.includes("comedor")) return;
-    var box = document.getElementById("al-ficha-comedor");
-    if (!box) return;
-    try {
-      var desde = new Date(Date.now() - 21 * 86400000).toISOString().split("T")[0];
-      var hoy = new Date().toISOString().split("T")[0];
-      var r = await sb.from("asistencia_comedor")
-        .select("fecha,se_queda").eq("centro_id", ctrId)
-        .eq("alumno_id", alumnoId).gte("fecha", desde).lte("fecha", hoy)
-        .order("fecha", { ascending: false }).limit(30);
-      var recs = r.data || [];
-      if (!recs.length) return;
-      var seQueda = recs.filter(function(x) { return x.se_queda; }).length;
-      var dots = recs.slice(0, 14).reverse().map(function(x) {
-        var lbl = new Date(x.fecha + "T12:00:00").toLocaleDateString("es-ES", { weekday:"short", day:"numeric" });
-        return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--txt3);">' +
-          '<span style="font-size:16px;">' + (x.se_queda ? "🟢" : "🔴") + '</span><span>' + _alEsc(lbl) + '</span></div>';
-      }).join("");
-      box.style.display = "";
-      box.innerHTML = '<div class="card-hdr"><div class="card-title">Comedor</div></div>' +
-        '<div style="font-size:13px;color:var(--txt2);margin-bottom:8px;">Se queda <b>' + seQueda + '</b> de ' + recs.length + ' días registrados</div>' +
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;">' + dots + '</div>';
-    } catch(e) {}
-  })();
+async function _alLoadHorario(grupo) {
+  var box = document.getElementById("al-ficha-horario");
+  if (!box) return;
+  if (!grupo) {
+    box.innerHTML = '<div class="al-drw-label">Horario</div><div style="color:var(--muted);font-size:13px;">Grupo no asignado.</div>';
+    return;
+  }
+  try {
+    var r = await sb.from("horarios_grupo")
+      .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre")
+      .eq("centro_id", ctrId).eq("grupo_horario", grupo)
+      .eq("curso_escolar", cursoActivo)
+      .order("tramo", { ascending: true });
+    var filas = r.data || [];
+    if (!filas.length) {
+      box.innerHTML = '<div class="al-drw-label">Horario · ' + _alEsc(grupo) + '</div><div style="color:var(--muted);font-size:13px;">Sin horario para ' + _alEsc(cursoActivo) + '.</div>';
+      return;
+    }
+    var DIAS = ["lunes","martes","miercoles","jueves","viernes"];
+    var ETIQ = { lunes:"Lun", martes:"Mar", miercoles:"Mié", jueves:"Jue", viernes:"Vie" };
+    var porDia = {};
+    filas.forEach(function(f) { var d = (f.dia || "").toLowerCase(); (porDia[d] = porDia[d] || []).push(f); });
+    var maxTramos = 0;
+    DIAS.forEach(function(d) { if ((porDia[d] || []).length > maxTramos) maxTramos = (porDia[d] || []).length; });
 
-  // ── Incidencias ──
-  (async function() {
-    var box = document.getElementById("al-ficha-incidencias");
-    if (!box) return;
-    try {
-      var nombre = a.nombre || "";
-      if (!nombre) return;
-      var r = await sb.from("incidencias")
-        .select("fecha,tipo,gravedad,descripcion,estado")
-        .eq("centro_id", ctrId)
-        .ilike("alumno_nombre", "%" + nombre + "%")
-        .order("created_at", { ascending: false }).limit(10);
-      var incs = r.data || [];
-      if (!incs.length) return;
-      var gravCol = { leve:"var(--success,#3F9367)", grave:"var(--warning,#D69540)", muy_grave:"var(--danger,#C24D2F)" };
-      var rows = incs.map(function(inc) {
-        var col = gravCol[inc.gravedad] || "var(--muted)";
-        return '<div style="padding:8px 0;border-bottom:1px solid var(--line,var(--bdr));">' +
-          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-            '<span style="font-size:12px;color:var(--txt3);">' + _alEsc(inc.fecha || "") + '</span>' +
-            '<span style="background:' + col + ';color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:600;">' + _alEsc(inc.gravedad || "") + '</span>' +
-            '<span style="font-size:11px;color:var(--txt3);">' + _alEsc(inc.tipo || "") + '</span>' +
-            '<span style="font-size:11px;color:' + (inc.estado === "cerrada" ? "var(--success,#3F9367)" : "var(--warning,#D69540)") + ';">' + _alEsc(inc.estado || "") + '</span>' +
-          '</div>' +
-          '<div style="font-size:13px;color:var(--txt);margin-top:3px;">' + _alEsc(inc.descripcion || "") + '</div></div>';
+    var cols = DIAS.map(function(d) {
+      var items = (porDia[d] || []).sort(function(x, y) { return (x.tramo || 0) - (y.tramo || 0); });
+      var cells = items.map(function(f) {
+        return '<div class="al-hor-cell">' +
+          '<div class="al-hor-materia">' + _alEsc(f.actividad_nombre || "—") + '</div>' +
+          '<div class="al-hor-hora">' + String(f.hora_inicio || "").slice(0,5) + '</div>' +
+        '</div>';
       }).join("");
-      box.style.display = "";
-      box.innerHTML = '<div class="card-hdr"><div class="card-title">Incidencias</div><span style="margin-left:auto;font-size:12px;color:var(--txt3);">' + incs.length + '</span></div>' + rows;
-    } catch(e) {}
-  })();
+      return '<div class="al-hor-col"><div class="al-hor-dia">' + ETIQ[d] + '</div>' + cells + '</div>';
+    }).join("");
 
-  // ── Calificaciones ──
-  (async function() {
-    var box = document.getElementById("al-ficha-calif");
-    if (!box) return;
-    try {
-      var r = await sb.from("calificaciones")
-        .select("asignatura,evaluacion,nota,observaciones")
-        .eq("centro_id", ctrId).eq("alumno_id", alumnoId)
-        .order("asignatura", { ascending: true });
-      var cal = r.data || [];
-      if (!cal.length) return;
-      var rows = cal.map(function(c) {
-        var n = (c.nota != null) ? Number(c.nota) : null;
-        var col = (n == null) ? "var(--txt3)" : (n < 5 ? "var(--danger,#C24D2F)" : "var(--success,#3F9367)");
-        return '<tr style="border-bottom:1px solid var(--line,var(--bdr));">' +
-          '<td style="padding:7px 10px;font-size:13px;color:var(--txt);">' + _alEsc(c.asignatura || "—") + '</td>' +
-          '<td style="padding:7px 10px;font-size:12px;color:var(--txt2);">' + _alEsc(c.evaluacion || "—") + '</td>' +
-          '<td style="padding:7px 10px;font-weight:600;color:' + col + ';">' + (n != null ? _alEsc(n) : "—") + '</td>' +
-          '<td style="padding:7px 10px;font-size:12px;color:var(--txt3);">' + _alEsc(c.observaciones || "") + '</td></tr>';
+    box.innerHTML = '<div class="al-drw-label">Horario · ' + _alEsc(grupo) + '</div><div class="al-hor-grid">' + cols + '</div>';
+  } catch(e) { if (box) box.innerHTML = '<div style="color:var(--muted);font-size:13px;">Horario no disponible.</div>'; }
+}
+
+async function _alLoadComedor(alumnoId) {
+  if (typeof modulosActivos !== "undefined" && !modulosActivos.includes("comedor")) return;
+  var box = document.getElementById("al-ficha-comedor");
+  if (!box) return;
+  try {
+    var desde = new Date(Date.now() - 21 * 86400000).toISOString().split("T")[0];
+    var hoy = new Date().toISOString().split("T")[0];
+    var r = await sb.from("asistencia_comedor")
+      .select("fecha,se_queda").eq("centro_id", ctrId)
+      .eq("alumno_id", alumnoId).gte("fecha", desde).lte("fecha", hoy)
+      .order("fecha", { ascending: false }).limit(30);
+    var recs = r.data || [];
+    if (!recs.length) return;
+    var seQueda = recs.filter(function(x) { return x.se_queda; }).length;
+    var dots = recs.slice(0, 14).reverse().map(function(x) {
+      return '<span title="' + _alEsc(x.fecha) + '" style="font-size:14px;">' + (x.se_queda ? "🟢" : "🔴") + '</span>';
+    }).join("");
+    box.style.display = "";
+    box.innerHTML =
+      '<div class="al-drw-label">Comedor <span style="font-weight:400;color:var(--muted);font-size:11px;margin-left:4px;">' + seQueda + '/' + recs.length + ' días</span></div>' +
+      '<div class="al-comedor-dots">' + dots + '</div>';
+  } catch(e) {}
+}
+
+async function _alLoadIncidencias(a) {
+  var box = document.getElementById("al-ficha-incidencias");
+  if (!box) return;
+  try {
+    var nombre = a.nombre || "";
+    if (!nombre) return;
+    var r = await sb.from("incidencias")
+      .select("fecha,tipo,gravedad,descripcion,estado")
+      .eq("centro_id", ctrId)
+      .ilike("alumno_nombre", "%" + nombre + "%")
+      .order("created_at", { ascending: false }).limit(5);
+    var incs = r.data || [];
+    if (!incs.length) return;
+    var gravCol = { leve:"var(--success)", grave:"var(--warning)", muy_grave:"var(--danger)" };
+    var rows = incs.map(function(inc) {
+      var col = gravCol[inc.gravedad] || "var(--muted)";
+      return '<div class="al-inc-row">' +
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:3px;">' +
+          '<span style="font-size:11px;color:var(--muted);">' + _alEsc(inc.fecha || "") + '</span>' +
+          '<span style="background:' + col + ';color:#fff;border-radius:8px;padding:1px 6px;font-size:10px;font-weight:600;">' + _alEsc(inc.gravedad || "") + '</span>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--ink);">' + _alEsc((inc.descripcion || "").slice(0, 80)) + '</div>' +
+      '</div>';
+    }).join("");
+    box.style.display = "";
+    box.innerHTML = '<div class="al-drw-label">Incidencias <span style="font-weight:400;color:var(--muted);font-size:11px;margin-left:4px;">' + incs.length + '</span></div>' + rows;
+  } catch(e) {}
+}
+
+async function _alLoadCalif(alumnoId) {
+  var box = document.getElementById("al-ficha-calif");
+  if (!box) return;
+  try {
+    var r = await sb.from("calificaciones")
+      .select("asignatura,evaluacion,nota")
+      .eq("centro_id", ctrId).eq("alumno_id", alumnoId)
+      .order("asignatura", { ascending: true });
+    var cal = r.data || [];
+    if (!cal.length) return;
+
+    // Tabla pivote asignatura × evaluación (solo hasta 3 columnas)
+    var asigMap = {};
+    var evals = [];
+    cal.forEach(function(c) {
+      if (!asigMap[c.asignatura]) asigMap[c.asignatura] = {};
+      asigMap[c.asignatura][c.evaluacion] = c.nota;
+      if (evals.indexOf(c.evaluacion) === -1) evals.push(c.evaluacion);
+    });
+
+    var thead = '<tr><th style="text-align:left;">Asignatura</th>' +
+      evals.map(function(e) { return '<th style="text-align:right;">' + _alEsc(e.replace(" Evaluación","ª")) + '</th>'; }).join("") + '</tr>';
+
+    var tbody = Object.keys(asigMap).sort().map(function(asig) {
+      var cells = evals.map(function(e) {
+        var n = asigMap[asig][e];
+        var nNum = (n != null) ? Number(n) : null;
+        var col = nNum == null ? "var(--muted)" : nNum < 5 ? "var(--danger)" : nNum >= 8 ? "var(--success)" : "var(--ink)";
+        return '<td style="text-align:right;font-weight:600;color:' + col + ';">' + (nNum != null ? _alEsc(nNum) : "—") + '</td>';
       }).join("");
-      box.style.display = "";
-      box.innerHTML = '<div class="card-hdr"><div class="card-title">Calificaciones</div></div>' +
-        '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;margin-top:6px;">' +
-        '<thead><tr style="text-align:left;border-bottom:2px solid var(--line,var(--bdr));">' +
-          '<th style="padding:6px 10px;font-size:11px;text-transform:uppercase;color:var(--txt3);">Asignatura</th>' +
-          '<th style="padding:6px 10px;font-size:11px;text-transform:uppercase;color:var(--txt3);">Evaluación</th>' +
-          '<th style="padding:6px 10px;font-size:11px;text-transform:uppercase;color:var(--txt3);">Nota</th>' +
-          '<th style="padding:6px 10px;font-size:11px;text-transform:uppercase;color:var(--txt3);">Obs.</th>' +
-        '</tr></thead><tbody>' + rows + '</tbody></table></div>';
-    } catch(e) {}
-  })();
+      return '<tr><td style="font-size:12px;">' + _alEsc(asig) + '</td>' + cells + '</tr>';
+    }).join("");
+
+    box.style.display = "";
+    box.innerHTML =
+      '<div class="al-drw-label">Calificaciones</div>' +
+      '<div style="overflow-x:auto;"><table class="al-tbl-cal"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>';
+  } catch(e) {}
 }
 
 // ── EXPORTAR FICHA A PDF ─────────────────────────────────────────────
-// Reutiliza los helpers globales de informes.js (jsPDF + autotable, logo/color).
 async function alumnosExportarFichaPDF(alumnoId) {
   var btn = document.getElementById("al-pdf-btn");
   var rest = function () { if (btn) { btn.disabled = false; btn.textContent = "⬇ PDF"; } };
@@ -402,7 +519,6 @@ async function alumnosExportarFichaPDF(alumnoId) {
     var logoImg = await _infImgToDataURL(centro.logo);
     var rgb     = _infHexToRgb(centro.color);
 
-    // ── Datos (cada query tolerante a fallos) ──
     var familias = [], horario = [], comedor = { dias: 0, queda: 0 }, incidencias = [], calif = [];
     try {
       var rfv = await sb.from("familia_alumno").select("profile_id").eq("alumno_id", alumnoId);
@@ -454,7 +570,6 @@ async function alumnosExportarFichaPDF(alumnoId) {
       });
     } catch (e) {}
 
-    // ── PDF ──
     var jsPDF = window.jspdf.jsPDF;
     var doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     var W = doc.internal.pageSize.getWidth();
@@ -487,7 +602,6 @@ async function alumnosExportarFichaPDF(alumnoId) {
       doc.setTextColor(40, 40, 40);
     };
 
-    // Bloque de identificación
     pageDraw();
     var y = 38;
     doc.setFontSize(16); doc.setFont(undefined, "bold"); doc.setTextColor(40, 40, 40);
