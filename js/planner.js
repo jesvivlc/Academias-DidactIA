@@ -1239,6 +1239,10 @@
           ' title="Exporta el horario a Excel (hoja por grupo, por profesor y resumen)">' +
             '📊 Excel' +
           '</button>' +
+          '<button class="btn-ghost" onclick="plannerVerificar()"' + (!_s.necesidades.length ? ' disabled' : '') +
+          ' title="Verifica que las necesidades lectivas son matemáticamente viables antes de generar">' +
+            '🔍 Verificar' +
+          '</button>' +
           '<button class="btn-ghost" id="planner-gen-sinprof-btn" onclick="plannerGenerarSinProf()"' + (!_s.grupos.length ? ' disabled' : '') +
           ' title="Coloca las materias en el horario sin asignar profesores; los asignas después">' +
             '🧩 Generar sin profesores' +
@@ -1273,6 +1277,197 @@
       _mostrarPuntuacion(_s.currentGrupo, _s.globalScore[_s.currentGrupo]);
     }
   }
+
+  /* ════════════════════════════════
+     SPRINT 3 — VALIDACIÓN DE VIABILIDAD
+  ════════════════════════════════ */
+
+  function _validarViabilidad() {
+    var tnums    = _tramoNums();
+    var nDias    = DIAS.length;
+    var nTramos  = tnums.length;
+    var maxSlots = nTramos * nDias;
+
+    /* por grupo */
+    var porGrupo = {};
+    _s.necesidades.forEach(function (n) {
+      if (!porGrupo[n.grupo_horario]) porGrupo[n.grupo_horario] = [];
+      porGrupo[n.grupo_horario].push(n);
+    });
+
+    var grupoRes = Object.keys(porGrupo).sort().map(function (g) {
+      var necs   = porGrupo[g];
+      var totalH = necs.reduce(function (s, n) { return s + (n.horas_semanales || 0); }, 0);
+      var issues = [];
+
+      if (totalH > maxSlots) {
+        issues.push('Carga imposible: ' + totalH + 'h — solo ' + maxSlots + ' slots (' + nTramos + ' tramos × ' + nDias + ' días)');
+      }
+      necs.forEach(function (n) {
+        if ((n.horas_semanales || 0) > nDias) {
+          issues.push('"' + n.materia_nombre + '": ' + n.horas_semanales + 'h > ' + nDias + ' días (viola HC-MATERIA-DIA)');
+        }
+      });
+      var sinProf = necs.filter(function (n) { return !n.profesor_id; });
+      if (sinProf.length) {
+        issues.push(sinProf.length + ' materia' + (sinProf.length > 1 ? 's' : '') + ' sin profesor asignado: ' +
+          sinProf.map(function (n) { return n.materia_nombre; }).join(', '));
+      }
+
+      var uso    = maxSlots > 0 ? Math.round(totalH / maxSlots * 100) : 0;
+      var estado = issues.some(function (i) { return i.indexOf('imposible') !== -1 || i.indexOf('HC-') !== -1; })
+        ? 'error' : (uso >= 88 ? 'warn' : 'ok');
+
+      return { grupo: g, totalH: totalH, maxSlots: maxSlots, uso: uso, estado: estado, issues: issues };
+    });
+
+    /* por profesor */
+    var porProf = {};
+    _s.necesidades.forEach(function (n) {
+      if (!n.profesor_id) return;
+      if (!porProf[n.profesor_id]) porProf[n.profesor_id] = { nombre: n.profesor_nombre, horas: 0, grupos: [] };
+      porProf[n.profesor_id].horas += (n.horas_semanales || 0);
+      if (porProf[n.profesor_id].grupos.indexOf(n.grupo_horario) === -1)
+        porProf[n.profesor_id].grupos.push(n.grupo_horario);
+    });
+
+    var profRes = Object.keys(porProf).map(function (pid) {
+      var p       = porProf[pid];
+      var bloq    = _s.disponibilidad[pid] ? _s.disponibilidad[pid].size : 0;
+      var efectivo = maxSlots - bloq;
+      var issues  = [];
+      if (p.horas > efectivo) {
+        issues.push(p.horas + 'h asignadas pero solo ' + efectivo + ' slots disponibles' + (bloq ? ' (−' + bloq + ' bloqueados)' : ''));
+      }
+      var uso    = efectivo > 0 ? Math.round(p.horas / efectivo * 100) : 100;
+      var estado = p.horas > efectivo ? 'error' : (uso >= 90 ? 'warn' : 'ok');
+      return { nombre: p.nombre, horas: p.horas, grupos: p.grupos, efectivo: efectivo, uso: uso, estado: estado, issues: issues };
+    }).sort(function (a, b) { return b.horas - a.horas; });
+
+    var hayError = grupoRes.some(function (r) { return r.estado === 'error'; }) ||
+                   profRes.some(function (r) { return r.estado === 'error'; });
+    var hayWarn  = grupoRes.some(function (r) { return r.estado === 'warn'; }) ||
+                   profRes.some(function (r) { return r.estado === 'warn'; });
+
+    return { grupos: grupoRes, profesores: profRes, ok: !hayError, hayWarn: hayWarn, hayError: hayError, maxSlots: maxSlots };
+  }
+
+  /* Diagnóstico rápido cuando un grupo falla en el CSP */
+  function _diagnosticarFallo(grupo) {
+    var necs    = _s.necesidades.filter(function (n) { return n.grupo_horario === grupo; });
+    var tnums   = _tramoNums();
+    var maxSlots = tnums.length * DIAS.length;
+    var totalH  = necs.reduce(function (s, n) { return s + (n.horas_semanales || 0); }, 0);
+    var msgs    = [];
+
+    if (totalH > maxSlots) {
+      msgs.push('carga total ' + totalH + 'h > ' + maxSlots + ' slots disponibles');
+    }
+    necs.filter(function (n) { return (n.horas_semanales || 0) > DIAS.length; }).forEach(function (n) {
+      msgs.push('"' + n.materia_nombre + '" ' + n.horas_semanales + 'h > ' + DIAS.length + ' días (HC-MATERIA-DIA)');
+    });
+    if (!msgs.length) msgs.push('restricciones de disponibilidad o cross-grupo incompatibles — usa 🔍 Verificar para más detalles');
+    return msgs;
+  }
+
+  window.plannerVerificar = async function () {
+    await _loadData();
+    if (!_s.necesidades.length) {
+      alert('Define las necesidades lectivas primero (pestaña Necesidades).'); return;
+    }
+
+    var rep  = _validarViabilidad();
+    var _col  = function (e) { return e === 'error' ? 'var(--danger)' : e === 'warn' ? 'var(--warning)' : 'var(--success)'; };
+    var _icon = function (e) { return e === 'error' ? '❌' : e === 'warn' ? '⚠️' : '✅'; };
+    var _bar  = function (uso, est) {
+      return '<div style="display:inline-flex;align-items:center;gap:6px">' +
+        '<div style="width:90px;height:7px;background:var(--line);border-radius:4px;overflow:hidden">' +
+          '<div style="width:' + Math.min(uso, 100) + '%;height:100%;background:' + _col(est) + ';border-radius:4px"></div>' +
+        '</div><span style="font-size:11px;color:var(--muted)">' + uso + '%</span></div>';
+    };
+
+    var grupoRows = rep.grupos.map(function (r) {
+      var issHtml = r.issues.length
+        ? '<ul style="margin:3px 0 0;padding-left:14px;font-size:11px;color:' + _col(r.estado) + '">' +
+          r.issues.map(function (i) { return '<li>' + _esc(i) + '</li>'; }).join('') + '</ul>'
+        : '';
+      return '<tr style="border-bottom:1px solid var(--line)">' +
+        '<td style="padding:7px 10px;font-weight:600">' + _esc(r.grupo) + '</td>' +
+        '<td style="padding:7px 10px;text-align:right">' + r.totalH + 'h</td>' +
+        '<td style="padding:7px 10px;text-align:right;color:var(--muted)">' + r.maxSlots + '</td>' +
+        '<td style="padding:7px 10px">' + _bar(r.uso, r.estado) + '</td>' +
+        '<td style="padding:7px 10px">' + _icon(r.estado) + issHtml + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var profRows = rep.profesores.filter(function (p) { return p.grupos.length > 1 || p.estado !== 'ok'; }).map(function (p) {
+      var issHtml = p.issues.length
+        ? '<div style="font-size:11px;color:' + _col(p.estado) + ';margin-top:2px">' + _esc(p.issues[0]) + '</div>' : '';
+      return '<tr style="border-bottom:1px solid var(--line)">' +
+        '<td style="padding:7px 10px;font-weight:600">' + _esc(p.nombre) + '</td>' +
+        '<td style="padding:7px 10px;text-align:right">' + p.horas + 'h</td>' +
+        '<td style="padding:7px 10px;font-size:11px;color:var(--muted)">' + _esc(p.grupos.join(', ')) + '</td>' +
+        '<td style="padding:7px 10px">' + _bar(p.uso, p.estado) + '</td>' +
+        '<td style="padding:7px 10px">' + _icon(p.estado) + issHtml + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var sumBg  = rep.hayError ? 'var(--danger-soft)'  : rep.hayWarn ? 'var(--warning-soft)'  : 'var(--success-soft)';
+    var sumBrd = rep.hayError ? 'var(--danger)'        : rep.hayWarn ? 'var(--warning)'        : 'var(--success)';
+    var sumTxt = rep.hayError
+      ? '❌ Hay problemas que impiden generar el horario. Revisa los grupos marcados en rojo antes de continuar.'
+      : rep.hayWarn
+      ? '⚠️ Matemáticamente posible pero algunos grupos están muy ajustados. La generación puede fallar con algunas combinaciones de restricciones.'
+      : '✅ El horario es completamente viable. Puedes generar con total confianza.';
+
+    var overlay = document.createElement('div');
+    overlay.className = 'verif-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9300;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto';
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+
+    var thStyle = 'padding:7px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--line)';
+
+    overlay.innerHTML =
+      '<div style="background:var(--paper);border-radius:14px;padding:28px;max-width:900px;width:100%;box-shadow:var(--sh-lg);display:flex;flex-direction:column;gap:20px">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">' +
+          '<div><div class="card-eyebrow">Planner</div>' +
+          '<h2 style="font-family:var(--font-display);font-size:22px;font-weight:500;margin:4px 0 4px">Verificación de viabilidad</h2>' +
+          '<div style="font-size:13px;color:var(--muted)">' + rep.grupos.length + ' grupos · ' +
+            _s.necesidades.length + ' necesidades · ' + rep.maxSlots + ' slots/semana por grupo</div></div>' +
+          '<button onclick="document.querySelector(\'.verif-overlay\').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted);padding:0;line-height:1;flex-shrink:0">✕</button>' +
+        '</div>' +
+
+        '<div style="background:' + sumBg + ';border-left:4px solid ' + sumBrd + ';border-radius:8px;padding:13px 16px;font-size:14px;font-weight:500;line-height:1.5">' + sumTxt + '</div>' +
+
+        '<div>' +
+          '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Por grupo</div>' +
+          '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">' +
+            '<thead><tr><th style="' + thStyle + '">Grupo</th><th style="' + thStyle + ';text-align:right">H. requeridas</th>' +
+            '<th style="' + thStyle + ';text-align:right">Slots disp.</th><th style="' + thStyle + '">Ocupación</th><th style="' + thStyle + '">Estado</th></tr></thead>' +
+            '<tbody>' + grupoRows + '</tbody>' +
+          '</table></div>' +
+        '</div>' +
+
+        (profRows
+          ? '<div>' +
+              '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Profesores con carga multi-grupo o alertas</div>' +
+              '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">' +
+                '<thead><tr><th style="' + thStyle + '">Profesor</th><th style="' + thStyle + ';text-align:right">H. total</th>' +
+                '<th style="' + thStyle + '">Grupos</th><th style="' + thStyle + '">Ocupación</th><th style="' + thStyle + '">Estado</th></tr></thead>' +
+                '<tbody>' + profRows + '</tbody>' +
+              '</table></div>' +
+            '</div>'
+          : '') +
+
+        '<div style="display:flex;justify-content:flex-end;gap:10px;padding-top:8px;border-top:1px solid var(--line)">' +
+          (rep.ok
+            ? '<button class="btn-ink" onclick="document.querySelector(\'.verif-overlay\').remove();plannerGenerar()">✨ Generar con IA</button>' : '') +
+          '<button class="btn-ghost" onclick="document.querySelector(\'.verif-overlay\').remove()">Cerrar</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+  };
 
   /* ════════════════════════════════
      VISTA POR PROFESOR — cross-grupo
@@ -1994,7 +2189,11 @@
 
       _showPTab('tablero');
       if (fallidos.length) {
-        _plannerToast('No se pudo generar (carga incompatible): ' + fallidos.join(', '), 'warn');
+        var diagMsg = fallidos.map(function (g) {
+          return g + ': ' + _diagnosticarFallo(g).join('; ');
+        }).join('\n');
+        _plannerToast('No se pudo generar: ' + fallidos.join(', ') + ' — usa 🔍 Verificar para detalles', 'warn');
+        console.warn('[Planner] grupos fallidos:\n' + diagMsg);
       } else {
         _plannerToast('Horario generado sin profesores. Asigna los docentes en cada clase «Sin asignar».', 'ok');
       }
