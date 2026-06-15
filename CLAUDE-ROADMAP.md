@@ -223,7 +223,10 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
   - `participantes_salida` → FIXED: `FOR ALL centro_id` → `partic_staff` + `partic_familia_read/update` (solo sus hijos)
   - `notificaciones_salida` → FIXED: → staff-only
   - Test e2e ampliado (pasos 7–10): INSERT bloqueado en sustituciones/salidas; comunicados sin `solo_profesores`; salidas sin borradores.
-- **Redesign visual** (Alumnos/Asistente/Sustituciones/Incidencias): **bloqueado** — faltan las capturas de `design_handoff_didactia/screenshots/` (el directorio no está en el repo). Si se quiere retomar, hay que aportar las capturas de referencia.
+- **Redesign visual** (Alumnos/Asistente/Sustituciones/Incidencias): completado. `design_handoff_didactia/` existe en local (untracked). Paneles pendientes: Planner y Análisis/CMI.
+- [x] **Incidencias — panel de detalle** (`e83a655`): clic en fila abre panel derecho con metadatos, informe borrador, normativa, medidas y acciones. `_incLastData`, `_incSelectedId`, `_incAbrirDetalle`, `_incDetalleAccion`, `_incCerrarDetalle`.
+- [x] **Calificaciones — split layout admin** (`28b9753`): `.cal-list-panel` + `.cal-detail-panel`; `_calAbrirAlumno` con stat de media + tabla pivote asignatura×evaluación; notas coloreadas.
+- [x] **Fix flex panels** (`f78f661`, `c29d6b0`): `flex-direction:column` en `#panel-comedor`, `#panel-materiales`, `#panel-orientacion`, `#panel-calidad` — corrección del patrón de media pantalla vacía.
 - **App Familias**: el portal está consolidado; quedaría (opcional) una PWA/onboarding dedicado.
 
 ### Completado ✅

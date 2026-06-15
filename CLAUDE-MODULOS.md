@@ -144,6 +144,7 @@
 - Botones Cerrar / Notificar familia / Eliminar disponibles
 - Edge Function `tipificar-incidencia`: 5 normativas CCAA (valenciana/madrid/andalucia/cataluna + estatal fallback), Gemini 2.5 Flash, `temperature: 0.2`, JSON forzado
 - Edge Function `notify-jefatura`: email HTML a todos los admins del centro con tabla completa + medidas + informe + banner PREVI
+- **Panel de detalle lateral** (`#inc-panel-der`, 2026-06-15): clic en fila de `#inc-lista` → `_incAbrirDetalle(id)` — resalta fila (`inc-row-sel`, tint `var(--ink) 8%`), construye panel derecho con badges de gravedad/estado, grid de metadatos, descripción, informe borrador, normativa, medidas y botones de acción. `_incDetalleAccion(accion, id)` gestiona cerrar/familia/eliminar desde el panel (actualiza BD + refresca lista + recarga detalle). `_incCerrarDetalle()` restaura el placeholder. `_incLastData` cachea los datos de la última carga para acceso sin re-fetch. `_incSelectedId` persiste el ID seleccionado para resaltado tras filtrar.
 
 **Vista profesional** (`#inc-vista-profesor`):
 - Formulario simplificado: selector alumno (solo alumnos de los grupos del profesor, cargados via `horarios_grupo ilike`), grupo (auto-fill al elegir alumno), fecha, descripción libre
@@ -268,6 +269,26 @@
 - **Notificaciones push** (helper `_oriPush` → EF `send-push`, silencioso/no bloqueante): cuestionario completado→orientador; nueva alerta→orientador/jefatura/director/admin; informe validado→director/admin; trámite `visible_familia`→familias (`familia_alumno.profile_id`).
 - **Portal de familias** (`oriRenderTramitesFamilia`): sección autocontenida inyectada en la home de la familia (MutationObserver, sin tocar otros archivos); muestra trámites de hijos vinculados con `visible_familia=true` — **sin datos clínicos**. Lee vía RPC `familia_tramites_visibles()` (SECURITY DEFINER); `expedientes_orientacion`/`tramites_orientacion` son staff-only por RLS (la familia no las consulta directamente).
 - **Responsive** (CSS inyectado una vez, sin tocar `styles.css`): tabla→tarjetas en <768px, pestañas→`<select>`, modales 95%+×, FAB "Nuevo expediente", ellipsis. Toasts verde/rojo reutilizan `_calToast`/`showToast`.
+
+### Calificaciones — gradebook (calificaciones.js)
+- Tab **"📝 Calificaciones"** visible para `profesional`, `admin`, `director`, `jefatura`, `superadmin`, `familia` (solo lectura de sus hijos)
+- **Vista admin** (`_calRenderAdmin`, 2026-06-15 split): `#cal-container` en `flex-direction:row` con **split layout**:
+  - **Panel izquierdo** `.cal-list-panel` (58%): cabecera con título + botones CSV/PDF/actualizar; `.cal-filtros-wrap` con selects compactos (grupo/asignatura/evaluación/profesor + limpiar); `.cal-list-scroll` con `#cal-admin-tabla` (filas clickeables con `data-alumno`/`data-grupo`)
+  - **Panel derecho** `.cal-detail-panel` (flex:1): placeholder vacío → `_calAbrirAlumno(nombre, grupo)` al clicar fila: resalta fila seleccionada (`cal-row-sel`), muestra stat de media general con color semáforo (rojo <5 / verde ≥5), tabla pivote **asignatura × evaluación** con nombre del docente; `_calClicarFila(tr)` es el handler del onclick
+  - `_calRenderTablaAdmin()`: filas con `data-alumno`, `onclick="_calClicarFila(this)"`, notas coloreadas (rojo/verde); re-resalta `_calSelectedAlumno` tras re-render por filtros
+  - `calAdminCargar()`: fetch global de calificaciones del centro, rellena dropdowns de filtros a partir de los datos
+  - `_calSelectedAlumno`: global que persiste el alumno activo entre re-renders de la tabla
+- **Vista profesor** (`_calRenderProfesor`): div scrollable con `flex:1;overflow-y:auto`; selects grupo/asignatura/evaluación → `calCargarAlumnos()` → tabla editable de notas (0-10); `calGuardar()` hace UPSERT con `onConflict: centro_id,alumno_id,asignatura,evaluacion`; `_calProfAutoCargar()` auto-carga cuando los 3 campos están completos
+- **Vista familia** (`_calRenderFamilia`): div con `flex:1;overflow-y:auto`; tabla pivote asignatura×evaluación de sus hijos (selector chip si >1 hijo); solo lectura; notas coloreadas rojo/verde
+- **Exportación**: `calExportarCSV()` → xlsx con SheetJS; `calExportarPDF()` → PDF landscape jsPDF (cargas on-demand)
+- **Superadmin**: selector de centro `cal-f-centro` → `calChangeCentro(id)` recarga datos del centro seleccionado
+- **CSS** (`.cal-list-panel`, `.cal-filtros-wrap`, `.cal-list-scroll`, `.cal-detail-panel`, `.cal-alumno-empty`, `.cal-alumno-content`; hover/sel rows en `#cal-admin-tabla`; responsive ≤900px oculta panel derecho)
+- **Importante**: `#panel-calificaciones` tiene `flex-direction:column` + `overflow:hidden`; `#cal-container` tiene `flex:1;min-height:0;overflow:hidden;display:flex;` — `initCalificaciones` resetea `flexDirection='column'` antes de cada vista y `_calRenderAdmin` lo sobrescribe a `'row'`
+
+### Materiales — hub de materiales (materiales.js)
+- Tab **"📚 Materiales"** en sidebar; `#panel-materiales` con `flex-direction:column` en el raíz + div interno `flex:1;overflow-y:auto`
+- Subida multi-grupo (select multiple), descarga signed URL (1h), toggle "Mis materiales/Todos", form "solo mis clases"
+- Bucket privado `materiales` en Supabase Storage (`{centro_id}/…`)
 
 ---
 
