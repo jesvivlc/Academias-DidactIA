@@ -224,6 +224,8 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
   - `notificaciones_salida` → FIXED: → staff-only
   - Test e2e ampliado (pasos 7–10): INSERT bloqueado en sustituciones/salidas; comunicados sin `solo_profesores`; salidas sin borradores.
 - **Redesign visual** (Alumnos/Asistente/Sustituciones/Incidencias): completado. `design_handoff_didactia/` existe en local (untracked). Paneles pendientes: Planner y Análisis/CMI.
+- [x] **Planner Sprint 1** (`d791cf8`): persistencia drag&drop (tablero → `horario_generado`), límite CSP 500k nodos, progreso por grupo en `plannerGenerarSinProf`, confirmación antes de regenerar, HC-VENTANA usa `TNUMS.length` (no hardcoded 8), `IMPORT_CENTRO` usa `ctrId` (no UUID de Agora hardcodeado).
+- [x] **Planner Sprint 2** (`cd739f4`): tab "👤 Profe" — vista cross-grupo por profesor (grid días×tramos con materia+grupo coloreados) + panel lateral "Carga semanal" con barras de progreso por docente. `_renderProfesorView`, `plannerCambiarProf`, `_s._profViewCurrent`.
 - [x] **Incidencias — panel de detalle** (`e83a655`): clic en fila abre panel derecho con metadatos, informe borrador, normativa, medidas y acciones. `_incLastData`, `_incSelectedId`, `_incAbrirDetalle`, `_incDetalleAccion`, `_incCerrarDetalle`.
 - [x] **Calificaciones — split layout admin** (`28b9753`): `.cal-list-panel` + `.cal-detail-panel`; `_calAbrirAlumno` con stat de media + tabla pivote asignatura×evaluación; notas coloreadas.
 - [x] **Fix flex panels** (`f78f661`, `c29d6b0`): `flex-direction:column` en `#panel-comedor`, `#panel-materiales`, `#panel-orientacion`, `#panel-calidad` — corrección del patrón de media pantalla vacía.

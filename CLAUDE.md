@@ -344,6 +344,9 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-16 00:05` · `cd739f4` — feat(planner): sprint 2 — vista por profesor cross-grupo + resumen de carga
+- `2026-06-16 00:00` · `d791cf8` — fix(planner): sprint 1 — persistencia tablero + CSP timeout + confirmación regenerar
+- `2026-06-15 23:17` · `48e1608` — docs(CLAUDE.md): sesion 2026-06-15 — incidencias detalle, calificaciones split, flex panel fixes
 - `2026-06-15 23:08` · `c29d6b0` — fix: flex-direction:column en paneles materiales, orientacion y calidad
 - `2026-06-15 23:05` · `28b9753` — feat(calificaciones): split layout admin — lista + expediente de notas por alumno
 - `2026-06-15 22:50` · `f78f661` — fix(comedor): añadir flex-direction:column al panel para que ocupe el ancho completo
