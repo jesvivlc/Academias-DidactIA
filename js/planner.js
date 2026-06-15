@@ -188,6 +188,7 @@
     if (tab === 'tramos')      _renderTramos();
     if (tab === 'dictar')      _renderDictar();
     if (tab === 'importar')    _renderImportar();
+    if (tab === 'profe')       _renderProfesorView();
   }
 
   /* ════════════════════════════════
@@ -1272,6 +1273,156 @@
       _mostrarPuntuacion(_s.currentGrupo, _s.globalScore[_s.currentGrupo]);
     }
   }
+
+  /* ════════════════════════════════
+     VISTA POR PROFESOR — cross-grupo
+  ════════════════════════════════ */
+  function _renderProfesorView() {
+    var el = document.getElementById('pt-profe');
+    if (!el) return;
+
+    /* construir índice por profesor incluyendo color de materia */
+    var idx = {};       /* { profNombre: { 'dia_tramo': { grupo, materia, color, aula } } } */
+    var horas = {};     /* { profNombre: count } */
+    Object.keys(_s.schedule).forEach(function (g) {
+      DIAS.forEach(function (d) {
+        Object.keys(_s.schedule[g][d] || {}).forEach(function (k) {
+          var slot = _s.schedule[g][d][k];
+          if (!slot) return;
+          var prof = (slot.profesor_nombre || '').trim();
+          if (!prof) return;
+          if (!idx[prof]) { idx[prof] = {}; horas[prof] = 0; }
+          idx[prof][d + '_' + k] = {
+            grupo:   g,
+            materia: slot.materia_nombre  || '',
+            color:   slot.materia_color   || '#888',
+            aula:    slot.aula_nombre     || ''
+          };
+          horas[prof]++;
+        });
+      });
+    });
+
+    var profesores = Object.keys(idx).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+
+    if (!profesores.length) {
+      el.innerHTML =
+        '<div class="planner-section-hdr"><div>' +
+          '<div class="card-eyebrow">Planner</div>' +
+          '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Vista por profesor</h3>' +
+        '</div></div>' +
+        '<div class="planner-empty">No hay profesores asignados todavía.<br>Genera el horario con profesores o asígnalos en el Tablero.</div>';
+      return;
+    }
+
+    var curProf = _s._profViewCurrent;
+    if (!curProf || profesores.indexOf(curProf) === -1) curProf = profesores[0];
+    _s._profViewCurrent = curProf;
+
+    var profOpts = profesores.map(function (p) {
+      return '<option value="' + _esc(p) + '"' + (p === curProf ? ' selected' : '') + '>' + _esc(p) + ' (' + (horas[p] || 0) + 'h)</option>';
+    }).join('');
+
+    var profData  = idx[curProf] || {};
+    var totalH    = horas[curProf] || 0;
+    var tnums     = _tramoNums();
+    var allTramos = _allTramos();
+
+    /* conteo de slots sin asignar en todo el centro (badge de aviso) */
+    var sinAsignar = 0;
+    Object.keys(_s.schedule).forEach(function (g) {
+      DIAS.forEach(function (d) {
+        Object.keys(_s.schedule[g][d] || {}).forEach(function (k) {
+          if (_slotSinProfesor(_s.schedule[g][d][k])) sinAsignar++;
+        });
+      });
+    });
+
+    /* grid */
+    var hdrs = '<div class="planner-hdr-cell planner-hdr-hora">Hora</div>' +
+      DIAS.map(function (d) {
+        return '<div class="planner-hdr-cell">' + d.charAt(0).toUpperCase() + d.slice(1) + '</div>';
+      }).join('');
+
+    var rows = allTramos.map(function (t) {
+      if (t.es_descanso) {
+        var lbl = (t.nombre || 'Descanso') + ' · ' + t.hora_inicio.slice(0,5) + '–' + t.hora_fin.slice(0,5);
+        return '<div class="planner-row-label planner-break-row">' + _esc(lbl) + '</div>' +
+               '<div class="planner-break-cell" style="grid-column:span 5">' + _esc(t.nombre || 'Descanso') + '</div>';
+      }
+      var key = String(t.numero);
+      var rowLabel = '<div class="planner-row-label">' +
+        _esc(t.hora_inicio.slice(0,5)) + '<br>' +
+        '<span style="font-size:10px;color:var(--muted-2)">' + _esc(t.hora_fin.slice(0,5)) + '</span>' +
+      '</div>';
+      var cells = DIAS.map(function (dia) {
+        var cell = profData[dia + '_' + key];
+        if (!cell) return '<div class="planner-cell"></div>';
+        return '<div class="planner-cell">' +
+          '<div class="class-card" style="border-left:4px solid ' + _esc(cell.color) + ';cursor:default;user-select:none">' +
+            '<div class="cc-name">' + _esc(cell.materia) + '</div>' +
+            '<div class="cc-info">' + _esc(cell.grupo) + (cell.aula ? ' · ' + _esc(cell.aula) : '') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      return rowLabel + cells;
+    }).join('');
+
+    /* totales por día */
+    var dayTotals = '<div class="planner-row-label" style="font-size:11px;font-weight:600;color:var(--muted)">Total</div>' +
+      DIAS.map(function (d) {
+        var n = tnums.filter(function (t) { return profData[d + '_' + String(t)]; }).length;
+        return '<div style="text-align:center;font-size:12px;color:var(--muted);padding:4px 0;background:var(--paper-2)">' + (n || '—') + '</div>';
+      }).join('');
+
+    /* resumen de carga de todos los profesores */
+    var loadRows = profesores.map(function (p) {
+      var h = horas[p] || 0;
+      var pct = Math.min(100, Math.round(h / 25 * 100)); // 25h referencia jornada completa
+      var col = h <= 15 ? 'var(--success)' : h <= 22 ? 'var(--ink)' : 'var(--warning)';
+      return '<tr onclick="plannerCambiarProf(\'' + _esc(p).replace(/'/g,"&#39;") + '\')" style="cursor:pointer' + (p === curProf ? ';background:color-mix(in srgb,var(--ink) 8%,var(--paper))' : '') + '">' +
+        '<td style="padding:7px 10px;font-size:13px">' + _esc(p) + '</td>' +
+        '<td style="padding:7px 10px;text-align:right;font-size:13px;font-weight:600;color:' + col + '">' + h + 'h</td>' +
+        '<td style="padding:7px 10px;width:120px">' +
+          '<div style="background:var(--line);border-radius:4px;height:6px;overflow:hidden">' +
+            '<div style="width:' + pct + '%;height:100%;background:' + col + ';border-radius:4px"></div>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="planner-section-hdr">' +
+        '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
+          '<div><div class="card-eyebrow">Planner</div>' +
+          '<h3 style="font-family:var(--font-display);font-size:20px;font-weight:500;margin:4px 0 0">Vista por profesor</h3></div>' +
+          '<select class="planner-select" id="planner-prof-sel" onchange="plannerCambiarProf(this.value)">' + profOpts + '</select>' +
+        '</div>' +
+        '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
+          '<span style="font-size:13px;color:var(--muted)"><strong style="color:var(--txt);font-size:22px;font-family:var(--font-display)">' + totalH + '</strong>&nbsp;h/semana</span>' +
+          (sinAsignar ? '<span style="font-size:12px;background:var(--warning-soft);color:var(--warning);font-weight:600;padding:3px 10px;border-radius:999px">⚠ ' + sinAsignar + ' slots sin asignar</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 280px;gap:20px;padding:0 20px 20px;align-items:start">' +
+        /* horario grid */
+        '<div class="planner-grid-outer">' +
+          '<div class="planner-grid" style="grid-template-columns:100px repeat(5,1fr)">' + hdrs + rows + '</div>' +
+          '<div style="display:grid;grid-template-columns:100px repeat(5,1fr);gap:1px;margin-top:2px">' + dayTotals + '</div>' +
+        '</div>' +
+        /* tabla resumen de carga */
+        '<div style="background:var(--paper);border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;flex-shrink:0">' +
+          '<div style="padding:10px 12px;background:var(--paper-2);border-bottom:1px solid var(--line);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Carga semanal</div>' +
+          '<table style="width:100%;border-collapse:collapse">' +
+            '<tbody>' + loadRows + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>';
+  }
+
+  window.plannerCambiarProf = function (prof) {
+    _s._profViewCurrent = prof;
+    _renderProfesorView();
+  };
 
   function _buildGrid() {
     var g = _s.currentGrupo;
