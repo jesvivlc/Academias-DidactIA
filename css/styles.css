@@ -3657,7 +3657,6 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 #panel-alumnos {
   padding: 0 !important;
   overflow: hidden !important;
-  display: flex !important;
   flex-direction: column !important;
 }
 
