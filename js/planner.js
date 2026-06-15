@@ -568,7 +568,7 @@
     for (var v = 0; v < TNUMS.length; v++) {
       if (sched[dia][String(TNUMS[v])]) ocupadosHoy++;
     }
-    if (ocupadosHoy >= 8) return false;
+    if (ocupadosHoy >= TNUMS.length) return false;
 
     /* HC-INICIO-FIN (universal): sin huecos libres en mitad de la jornada — las
        clases del grupo deben ser consecutivas dentro de los tramos lectivos.
@@ -772,6 +772,10 @@
   /* ── Resolver CSP V2: best-first heuristic + backtracking ── */
   function _resolverCSP_V2(sessions, idx, sched, teacherBusy, auditLog) {
     if (idx >= sessions.length) return sched;
+
+    /* límite de nodos para evitar bloqueo en centros grandes (>18 grupos) */
+    _s._cspNodes = (_s._cspNodes || 0) + 1;
+    if (_s._cspNodes > 500000) return null;
 
     var sess       = sessions[idx];
     var TNUMS      = _tramoNums();
@@ -1779,6 +1783,10 @@
     if (!_s.necesidades.length) {
       alert('Define necesidades lectivas primero (pestaña Necesidades).'); return;
     }
+    var tieneHorario = Object.keys(_s.schedule).some(function (g) {
+      return DIAS.some(function (d) { return Object.keys(_s.schedule[g][d] || {}).length > 0; });
+    });
+    if (tieneHorario && !confirm('Ya existe un horario generado. ¿Quieres generar uno nuevo y sobrescribirlo?')) return;
     await _loadData();
     var config = _buildPlannerConfig();
     if (!config.blocks.length) {
@@ -1797,6 +1805,11 @@
     if (!_s.necesidades.length) {
       alert('Define necesidades lectivas primero (pestaña Necesidades).'); return;
     }
+    var tieneHorario = Object.keys(_s.schedule).some(function (g) {
+      return DIAS.some(function (d) { return Object.keys(_s.schedule[g][d] || {}).length > 0; });
+    });
+    if (tieneHorario && !confirm('Ya existe un horario generado. ¿Quieres generar uno nuevo sin profesores y sobrescribirlo?')) return;
+
     var btn = document.getElementById('planner-gen-sinprof-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
     try {
@@ -1806,7 +1819,11 @@
       _s.sinProf = true;
       _s.schedule = {};
       var fallidos = [];
-      _s.grupos.forEach(function (g) {
+      for (var gi = 0; gi < _s.grupos.length; gi++) {
+        var g = _s.grupos[gi];
+        if (btn) btn.textContent = 'Generando ' + (gi + 1) + '/' + _s.grupos.length + ' — ' + g + '…';
+        await new Promise(function (r) { setTimeout(r, 0); }); // yield al navegador
+        _s._cspNodes = 0;
         var res = _generarHorario(g);          // motor CSP backtracking, HC-3 omitido
         if (res) {
           _s.schedule[g] = res;
@@ -1816,7 +1833,7 @@
           _s.schedule[g] = {};
           DIAS.forEach(function (d) { _s.schedule[g][d] = {}; });
         }
-      });
+      }
       _s.sinProf = false;
 
       /* persistir en horario_generado para que el chat pueda asignar después */
@@ -2198,6 +2215,7 @@
       return;
     }
 
+    var srcGrupo = (d.from === 'tablero' && d.grupo !== grupo) ? d.grupo : null;
     var res = _ejecutarDrop(grupo, cell.dataset.dia, cell.dataset.tramo, false);
     _s.dragData = null;
 
@@ -2208,6 +2226,8 @@
       return;
     }
     _renderTablero();
+    _guardarHorarioGenerado(grupo, _s.schedule[grupo]);
+    if (srcGrupo) _guardarHorarioGenerado(srcGrupo, _s.schedule[srcGrupo]);
   };
 
   /* Soltar sobre la zona "Aparcados" → retirar la clase del horario (sin eliminarla) */
@@ -2221,9 +2241,11 @@
     var slot = _s.schedule[d.grupo] && _s.schedule[d.grupo][d.dia] && _s.schedule[d.grupo][d.dia][d.tramo];
     if (!slot) return;
 
+    var parkedGrupo = d.grupo;
     delete _s.schedule[d.grupo][d.dia][d.tramo];
     _s.aparcados.push({ grupo: d.grupo, slot: slot });
     _saveAparcados();
+    _guardarHorarioGenerado(parkedGrupo, _s.schedule[parkedGrupo]);
     _renderTablero();
     _plannerToast('Clase aparcada. Arrástrala a un hueco para recolocarla.', 'ok');
   };
@@ -3118,7 +3140,7 @@ self.onmessage = function(e) {
      IMPORTAR datos de entrada del Planner desde .xlsx (una hoja → una tabla)
   ════════════════════════════════ */
 
-  var IMPORT_CENTRO = 'ad0168e8-6c24-4597-8917-ee54cac8234b'; // Agora Lledó
+  var IMPORT_CENTRO = ctrId; // centro activo del usuario
 
   function _impNorm(s) {
     return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
