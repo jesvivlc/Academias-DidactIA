@@ -580,6 +580,9 @@ function updateUI() {
   // Update header center name only if not superadmin selector
   const hdrEl = document.getElementById("ctr-name-hdr");
   if (hdrEl) hdrEl.textContent = n;
+  // Update topbar center name (direct DOM write — updateBentoDashboard lives inside an IIFE)
+  const topbarCtr = document.getElementById("topbar-ctr-name");
+  if (topbarCtr) topbarCtr.textContent = n || "—";
   // Sync dashboard welcome banner (defined in app.html inline script)
   if (typeof updateBentoDashboard === 'function') updateBentoDashboard();
 }

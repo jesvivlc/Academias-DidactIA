@@ -172,9 +172,10 @@ async function obtenerAusenciasSinCubrir(
     cubierta: boolean | null;
     profesor_sustituto: string | null;
   }) => {
-    const noCubierta = s.cubierta === false || s.cubierta == null;
     const sinSustituto = s.profesor_sustituto == null || String(s.profesor_sustituto).trim() === "";
-    return noCubierta && sinSustituto;
+    const esPendiente = s.cubierta === false || s.cubierta == null;
+    const esCubiertaSinSustituto = s.cubierta === true && sinSustituto;
+    return esPendiente || esCubiertaSinSustituto;
   }).map((s: {
     id: string; grupo_horario: string | null; tramo: string | number | null;
     profesor_ausente: string | null; observaciones: string | null;
