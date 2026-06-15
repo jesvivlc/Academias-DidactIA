@@ -6,11 +6,12 @@
 
 const CAL_EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
 
-let _calAlumnos   = [];   // alumnos del grupo cargado (vista profesor)
-let _calData      = [];   // calificaciones cargadas (vista admin)
-let _calGrupos    = [];   // grupos del centro
-let _calCentros   = [];   // centros (solo superadmin)
-let _calCentroSel = null;  // centro activo en la vista admin
+let _calAlumnos       = [];   // alumnos del grupo cargado (vista profesor)
+let _calData          = [];   // calificaciones cargadas (vista admin)
+let _calGrupos        = [];   // grupos del centro
+let _calCentros       = [];   // centros (solo superadmin)
+let _calCentroSel     = null;  // centro activo en la vista admin
+let _calSelectedAlumno = null; // alumno seleccionado en vista split
 
 function _calEsc(s) {
   return String(s == null ? '' : s)
@@ -49,6 +50,8 @@ async function _calCargarGrupos(centroId) {
 async function initCalificaciones() {
   var cont = document.getElementById('cal-container');
   if (!cont) return;
+  cont.style.flexDirection = 'column'; // reset antes de cada vista
+  _calSelectedAlumno = null;
   cont.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>';
   if (_calEsAdmin()) await _calRenderAdmin();
   else if (_calEsProfesor()) await _calRenderProfesor();
@@ -84,7 +87,7 @@ async function _calRenderFamilia() {
   }
 
   cont.innerHTML =
-    '<div style="padding:28px;display:flex;flex-direction:column;gap:8px;background:var(--bg);min-height:100%;">' +
+    '<div style="flex:1;padding:28px;display:flex;flex-direction:column;gap:8px;background:var(--bg);overflow-y:auto;">' +
       '<div class="pg-hdr"><div><div class="pg-title">Calificaciones</div>' +
         '<div class="pg-sub">' + _calEsc(hijo.nombre) + (hijo.grupo_horario ? ' · ' + _calEsc(hijo.grupo_horario) : '') + '</div></div>' +
         '<button class="btn btn-p" onclick="initCalificaciones()">↺ Actualizar</button></div>' +
@@ -160,6 +163,7 @@ async function _calRenderProfesor() {
     CAL_EVALS.map(function (e) { return '<option value="' + _calEsc(e) + '">' + _calEsc(e) + '</option>'; }).join('');
 
   cont.innerHTML =
+    '<div style="flex:1;overflow-y:auto;padding:28px;display:flex;flex-direction:column;gap:22px;box-sizing:border-box;background:var(--bg);">' +
     '<div class="pg-hdr">' +
       '<div><div class="pg-title">Calificaciones</div>' +
       '<div class="pg-sub">Introduce y guarda las notas de tu grupo</div></div>' +
@@ -177,7 +181,8 @@ async function _calRenderProfesor() {
       '</div>' +
     '</div>' +
 
-    '<div id="cal-prof-tabla"></div>';
+    '<div id="cal-prof-tabla"></div>' +
+    '</div>';
 }
 
 // Carga automática cuando los tres campos están completos
@@ -295,6 +300,8 @@ async function calGuardar() {
 async function _calRenderAdmin() {
   var cont = document.getElementById('cal-container');
   _calCentroSel = _calCentroSel || ctrId;
+  _calSelectedAlumno = null;
+  cont.style.flexDirection = 'row';
 
   var centroSelHtml = '';
   if (role === 'superadmin') {
@@ -304,33 +311,39 @@ async function _calRenderAdmin() {
       return '<option value="' + _calEsc(c.id) + '"' + (c.id === _calCentroSel ? ' selected' : '') + '>' + _calEsc(c.nombre) + '</option>';
     }).join('');
     centroSelHtml =
-      '<div style="min-width:150px;"><label class="lbl">Centro</label>' +
-        '<select class="fi" id="cal-f-centro" onchange="calChangeCentro(this.value)">' + opts + '</select></div>';
+      '<div style="min-width:120px;flex:1;"><label class="lbl" style="font-size:10.5px;">Centro</label>' +
+        '<select class="fi" id="cal-f-centro" onchange="calChangeCentro(this.value)" style="height:32px;font-size:12px;">' + opts + '</select></div>';
   }
 
   cont.innerHTML =
-    '<div class="pg-hdr">' +
-      '<div><div class="pg-title">Calificaciones</div>' +
-      '<div class="pg-sub">Consulta y exportación de calificaciones</div></div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button class="btn btn-s" onclick="calExportarCSV()">📥 Exportar CSV</button>' +
-        '<button class="btn btn-s" onclick="calExportarPDF()">📄 Exportar PDF</button>' +
-        '<button class="btn btn-p" onclick="calAdminCargar()">↺ Actualizar</button>' +
+    '<div class="cal-list-panel">' +
+      '<div class="cal-list-hdr">' +
+        '<div>' +
+          '<div style="font-family:var(--font-display);font-size:22px;font-weight:400;letter-spacing:-.02em;">Calificaciones</div>' +
+          '<div style="font-size:13px;color:var(--muted);margin-top:2px;">Consulta y exportación</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          '<button class="btn btn-s" onclick="calExportarCSV()" style="font-size:12px;padding:5px 10px;">📥 CSV</button>' +
+          '<button class="btn btn-s" onclick="calExportarPDF()" style="font-size:12px;padding:5px 10px;">📄 PDF</button>' +
+          '<button class="btn btn-p" onclick="calAdminCargar()" style="font-size:12px;padding:5px 10px;" title="Actualizar">↺</button>' +
+        '</div>' +
       '</div>' +
-    '</div>' +
-
-    '<div class="card">' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
+      '<div class="cal-filtros-wrap">' +
         centroSelHtml +
-        '<div style="min-width:130px;"><label class="lbl">Grupo</label><select class="fi" id="cal-f-grupo" onchange="_calRenderTablaAdmin()"><option value="">Todos</option></select></div>' +
-        '<div style="min-width:140px;"><label class="lbl">Asignatura</label><select class="fi" id="cal-f-asig" onchange="_calRenderTablaAdmin()"><option value="">Todas</option></select></div>' +
-        '<div style="min-width:140px;"><label class="lbl">Evaluación</label><select class="fi" id="cal-f-eval" onchange="_calRenderTablaAdmin()"><option value="">Todas</option></select></div>' +
-        '<div style="min-width:150px;"><label class="lbl">Profesor</label><select class="fi" id="cal-f-prof" onchange="_calRenderTablaAdmin()"><option value="">Todos</option></select></div>' +
-        '<button class="btn btn-s" onclick="_calLimpiarFiltros()">✕ Limpiar</button>' +
+        '<div style="min-width:90px;flex:1;"><label class="lbl" style="font-size:10.5px;">Grupo</label><select class="fi" id="cal-f-grupo" onchange="_calRenderTablaAdmin()" style="height:32px;font-size:12px;"><option value="">Todos</option></select></div>' +
+        '<div style="min-width:100px;flex:1;"><label class="lbl" style="font-size:10.5px;">Asignatura</label><select class="fi" id="cal-f-asig" onchange="_calRenderTablaAdmin()" style="height:32px;font-size:12px;"><option value="">Todas</option></select></div>' +
+        '<div style="min-width:100px;flex:1;"><label class="lbl" style="font-size:10.5px;">Evaluación</label><select class="fi" id="cal-f-eval" onchange="_calRenderTablaAdmin()" style="height:32px;font-size:12px;"><option value="">Todas</option></select></div>' +
+        '<div style="min-width:100px;flex:1;"><label class="lbl" style="font-size:10.5px;">Profesor</label><select class="fi" id="cal-f-prof" onchange="_calRenderTablaAdmin()" style="height:32px;font-size:12px;"><option value="">Todos</option></select></div>' +
+        '<button class="btn btn-s" onclick="_calLimpiarFiltros()" style="flex-shrink:0;height:32px;align-self:flex-end;font-size:12px;padding:0 10px;" title="Limpiar filtros">✕</button>' +
       '</div>' +
+      '<div class="cal-list-scroll"><div id="cal-admin-tabla"></div></div>' +
     '</div>' +
-
-    '<div id="cal-admin-tabla"></div>';
+    '<div class="cal-detail-panel">' +
+      '<div id="cal-alumno-panel" class="cal-alumno-empty">' +
+        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted-2);"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>' +
+        '<p style="font-size:14px;color:var(--muted);max-width:180px;line-height:1.5;margin:0;">Selecciona un alumno para ver su expediente de notas</p>' +
+      '</div>' +
+    '</div>';
 
   await calAdminCargar();
 }
@@ -405,31 +418,124 @@ function _calRenderTablaAdmin() {
   var rows = _calFiltradas();
 
   if (!rows.length) {
-    box.innerHTML = '<div class="card" style="text-align:center;color:var(--txt3);font-size:13px;">No hay calificaciones que mostrar.</div>';
+    box.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:24px;">No hay calificaciones que mostrar.</div>';
     return;
   }
 
   var body = rows.map(function (c) {
     var notaTxt = (c.nota === null || c.nota === undefined) ? '—' : String(c.nota);
-    return '<tr>' +
+    var notaCol = (c.nota !== null && c.nota !== undefined)
+      ? (Number(c.nota) < 5 ? 'color:var(--danger);' : 'color:var(--success);')
+      : '';
+    var sel = _calSelectedAlumno && c.alumno_nombre === _calSelectedAlumno;
+    return '<tr data-alumno="' + _calEsc(c.alumno_nombre || '') + '" data-grupo="' + _calEsc(c.grupo || '') + '" onclick="_calClicarFila(this)"' + (sel ? ' class="cal-row-sel"' : '') + '>' +
       '<td style="font-weight:500;">' + _calEsc(c.alumno_nombre || '—') + '</td>' +
       '<td>' + _calEsc(c.grupo || '—') + '</td>' +
       '<td>' + _calEsc(c.asignatura || '—') + '</td>' +
       '<td>' + _calEsc(c.evaluacion || '—') + '</td>' +
-      '<td style="text-align:center;font-weight:600;">' + _calEsc(notaTxt) + '</td>' +
+      '<td style="text-align:center;font-weight:600;' + notaCol + '">' + _calEsc(notaTxt) + '</td>' +
       '<td>' + _calEsc(c.profesor_nombre || '—') + '</td>' +
       '<td style="font-size:11px;color:var(--txt3);">' + _calEsc(_calFechaCorta(c.updated_at || c.created_at)) + '</td>' +
     '</tr>';
   }).join('');
 
   box.innerHTML =
-    '<div class="card">' +
-      '<div style="font-size:12px;color:var(--txt3);margin-bottom:10px;">' + rows.length + ' calificaciones cargadas</div>' +
-      '<div style="overflow-x:auto;"><table class="tbl">' +
-        '<thead><tr><th>Alumno</th><th>Grupo</th><th>Asignatura</th><th>Evaluación</th>' +
-        '<th style="text-align:center;">Nota</th><th>Profesor</th><th>Última modificación</th></tr></thead>' +
-        '<tbody>' + body + '</tbody></table></div>' +
-    '</div>';
+    '<div style="font-size:12px;color:var(--txt3);padding:10px 4px 6px;">' + rows.length + ' calificaciones</div>' +
+    '<div style="overflow-x:auto;"><table class="tbl">' +
+      '<thead><tr><th>Alumno</th><th>Grupo</th><th>Asignatura</th><th>Evaluación</th>' +
+      '<th style="text-align:center;">Nota</th><th>Profesor</th><th style="font-size:11px;">Modificado</th></tr></thead>' +
+      '<tbody>' + body + '</tbody></table></div>';
+}
+
+function _calClicarFila(tr) {
+  _calAbrirAlumno(tr.dataset.alumno, tr.dataset.grupo);
+}
+
+function _calAbrirAlumno(nombre, grupo) {
+  _calSelectedAlumno = nombre;
+  document.querySelectorAll('#cal-admin-tabla .tbl tbody tr[data-alumno]').forEach(function(r) {
+    r.classList.toggle('cal-row-sel', r.dataset.alumno === nombre);
+  });
+
+  var panel = document.getElementById('cal-alumno-panel');
+  if (!panel) return;
+
+  var notas = _calData.filter(function(c) { return c.alumno_nombre === nombre; });
+  if (!notas.length) {
+    panel.className = 'cal-alumno-empty';
+    panel.innerHTML =
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted-2);"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>' +
+      '<p style="font-size:14px;color:var(--muted);margin:0;">Sin calificaciones para este alumno.</p>';
+    return;
+  }
+
+  panel.className = 'cal-alumno-content';
+
+  var EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
+  var EVALS_LBL = ['1ª Ev.', '2ª Ev.', '3ª Ev.', 'Final'];
+  var grupoAlumno = grupo || notas[0].grupo || '';
+
+  var porAsig = {};
+  notas.forEach(function(c) {
+    var k = c.asignatura || '—';
+    if (!porAsig[k]) porAsig[k] = { prof: c.profesor_nombre || '' };
+    porAsig[k][c.evaluacion] = c.nota;
+  });
+  var asigs = Object.keys(porAsig).sort(function(a, b) { return a.localeCompare(b, 'es'); });
+
+  var allNotas = notas.filter(function(c) { return c.nota !== null && c.nota !== undefined; }).map(function(c) { return Number(c.nota); });
+  var avg = allNotas.length ? (allNotas.reduce(function(a, b) { return a + b; }, 0) / allNotas.length) : null;
+  var avgStr = avg !== null ? avg.toFixed(1) : null;
+  var avgCol = avgStr ? (Number(avgStr) < 5 ? 'var(--danger)' : 'var(--success)') : 'var(--muted)';
+
+  var celNota = function(n) {
+    if (n === null || n === undefined || n === '') return '<span style="color:var(--muted-2);">—</span>';
+    var num = Number(n);
+    var col = num < 5 ? 'var(--danger)' : 'var(--success)';
+    return '<span style="font-weight:700;font-size:15px;color:' + col + ';">' + _calEsc(String(num)) + '</span>';
+  };
+
+  var html = '';
+
+  // Cabecera alumno
+  html += '<div style="padding:20px 20px 14px;border-bottom:1px solid var(--line);">';
+  html += '<div style="font-family:var(--font-display);font-size:21px;letter-spacing:-.02em;color:var(--txt);margin-bottom:4px;">' + _calEsc(nombre) + '</div>';
+  if (grupoAlumno) html += '<div style="font-size:13px;color:var(--muted);">' + _calEsc(grupoAlumno) + '</div>';
+  html += '</div>';
+
+  // Stat media
+  if (avgStr) {
+    html += '<div style="display:flex;align-items:center;gap:16px;margin:14px 20px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 16px;">';
+    html += '<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Media general</div>';
+    html += '<div style="font-size:32px;font-family:var(--font-display);font-weight:400;color:' + avgCol + ';line-height:1;">' + _calEsc(avgStr) + '</div></div>';
+    html += '<div style="margin-left:auto;text-align:right;">';
+    html += '<div style="font-size:12px;color:var(--muted);">' + asigs.length + ' asignaturas</div>';
+    html += '<div style="font-size:12px;color:var(--muted);">' + allNotas.length + ' notas</div>';
+    html += '</div></div>';
+  }
+
+  // Tabla pivote asignatura × evaluación
+  html += '<div style="padding:0 20px 20px;overflow-x:auto;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--paper);border-radius:10px;border:1px solid var(--line);overflow:hidden;min-width:280px;">';
+  html += '<thead><tr style="background:var(--paper-2);">';
+  html += '<th style="padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);">Asignatura</th>';
+  EVALS_LBL.forEach(function(e) {
+    html += '<th style="padding:9px 8px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);min-width:46px;">' + _calEsc(e) + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  asigs.forEach(function(a, idx) {
+    html += '<tr' + (idx < asigs.length - 1 ? ' style="border-bottom:1px solid var(--line);"' : '') + '>';
+    html += '<td style="padding:10px 12px;font-weight:500;color:var(--txt);">' + _calEsc(a);
+    if (porAsig[a].prof) html += '<div style="font-size:10.5px;color:var(--muted);font-weight:400;">' + _calEsc(porAsig[a].prof) + '</div>';
+    html += '</td>';
+    EVALS.forEach(function(e) {
+      html += '<td style="padding:10px 8px;text-align:center;">' + celNota(porAsig[a][e]) + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  panel.innerHTML = html;
 }
 
 // ── EXPORT CSV (SheetJS) ──
