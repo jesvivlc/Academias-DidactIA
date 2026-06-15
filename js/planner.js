@@ -1217,8 +1217,16 @@
   function _renderTablero() {
     var el = document.getElementById('pt-tablero');
     if (!el) return;
+
+    /* cobertura para badges en el selector de grupo */
+    var cob = (_s.necesidades.length && Object.keys(_s.schedule).length) ? _calcCobertura() : null;
     var grupoOpts = _s.grupos.map(function (g) {
-      return '<option value="' + _esc(g) + '"' + (g === _s.currentGrupo ? ' selected' : '') + '>' + _esc(g) + '</option>';
+      var badge = '';
+      if (cob && cob.porGrupo[g]) {
+        var pg = cob.porGrupo[g];
+        badge = pg.estado === 'ok' ? ' ✓' : pg.estado === 'warn' ? ' ⚠ ' + pg.totalGen + '/' + pg.totalReq + 'h' : ' ❌';
+      }
+      return '<option value="' + _esc(g) + '"' + (g === _s.currentGrupo ? ' selected' : '') + '>' + _esc(g) + badge + '</option>';
     }).join('');
 
     el.innerHTML =
@@ -1238,6 +1246,10 @@
           '<button class="btn-ghost" id="planner-exp-xls-btn" onclick="plannerExportarExcel()"' + (!_s.grupos.length ? ' disabled' : '') +
           ' title="Exporta el horario a Excel (hoja por grupo, por profesor y resumen)">' +
             '📊 Excel' +
+          '</button>' +
+          '<button class="btn-ghost" onclick="plannerCobertura()"' + (!_s.necesidades.length ? ' disabled' : '') +
+          ' title="Muestra cuántas horas de cada necesidad están colocadas en el tablero">' +
+            '📊 Cobertura' +
           '</button>' +
           '<button class="btn-ghost" onclick="plannerVerificar()"' + (!_s.necesidades.length ? ' disabled' : '') +
           ' title="Verifica que las necesidades lectivas son matemáticamente viables antes de generar">' +
@@ -1277,6 +1289,126 @@
       _mostrarPuntuacion(_s.currentGrupo, _s.globalScore[_s.currentGrupo]);
     }
   }
+
+  /* ════════════════════════════════
+     SPRINT 4 — COBERTURA DEL HORARIO
+  ════════════════════════════════ */
+
+  function _calcCobertura() {
+    /* contar sesiones colocadas por (grupo, materia_id) en _s.schedule */
+    var colocadas = {};
+    Object.keys(_s.schedule).forEach(function (g) {
+      DIAS.forEach(function (d) {
+        Object.keys(_s.schedule[g][d] || {}).forEach(function (k) {
+          var slot = _s.schedule[g][d][k];
+          if (!slot || !slot.materia_id) return;
+          var key = g + '|' + slot.materia_id;
+          colocadas[key] = (colocadas[key] || 0) + 1;
+        });
+      });
+    });
+
+    var items = _s.necesidades.map(function (n) {
+      var key = n.grupo_horario + '|' + n.materia_id;
+      var gen = colocadas[key] || 0;
+      var req = n.horas_semanales || 0;
+      var estado = gen >= req ? 'ok' : gen > 0 ? 'warn' : 'error';
+      return { grupo: n.grupo_horario, materia: n.materia_nombre, color: n.materia_color || '#888', req: req, gen: gen, estado: estado };
+    });
+
+    var porGrupo = {};
+    items.forEach(function (item) {
+      var g = item.grupo;
+      if (!porGrupo[g]) porGrupo[g] = { ok: 0, warn: 0, error: 0, totalReq: 0, totalGen: 0 };
+      porGrupo[g][item.estado]++;
+      porGrupo[g].totalReq += item.req;
+      porGrupo[g].totalGen += item.gen;
+    });
+    Object.keys(porGrupo).forEach(function (g) {
+      var p = porGrupo[g];
+      p.estado = p.error > 0 ? 'error' : p.warn > 0 ? 'warn' : 'ok';
+      p.pct    = p.totalReq > 0 ? Math.round(p.totalGen / p.totalReq * 100) : 100;
+    });
+
+    var okItems = items.filter(function (i) { return i.estado === 'ok'; }).length;
+    return { items: items, porGrupo: porGrupo, totalItems: items.length, okItems: okItems };
+  }
+
+  window.plannerCobertura = function () {
+    if (!_s.necesidades.length) { alert('No hay necesidades lectivas definidas.'); return; }
+    var cob   = _calcCobertura();
+    var _col  = function (e) { return e === 'error' ? 'var(--danger)' : e === 'warn' ? 'var(--warning)' : 'var(--success)'; };
+    var _icon = function (e) { return e === 'error' ? '❌' : e === 'warn' ? '⚠️' : '✅'; };
+
+    /* agrupar items por grupo */
+    var grupos = _s.grupos.slice().sort();
+    var body   = grupos.map(function (g) {
+      var pg = cob.porGrupo[g];
+      if (!pg) return '';
+      var badge = pg.estado === 'ok'
+        ? '<span style="background:var(--success-soft);color:var(--success);font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px">✓ Completo ' + pg.totalGen + 'h</span>'
+        : pg.estado === 'warn'
+        ? '<span style="background:var(--warning-soft);color:var(--warning);font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px">⚠ ' + pg.totalGen + '/' + pg.totalReq + 'h</span>'
+        : '<span style="background:var(--danger-soft);color:var(--danger);font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px">❌ Sin generar</span>';
+
+      var rows = cob.items.filter(function (i) { return i.grupo === g; }).map(function (i) {
+        var diffTxt = i.gen >= i.req ? '' :
+          '<span style="color:' + _col(i.estado) + ';font-size:11px;font-weight:600"> −' + (i.req - i.gen) + 'h</span>';
+        return '<tr style="border-bottom:1px solid var(--line)">' +
+          '<td style="padding:5px 8px">' +
+            '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + _esc(i.color) + ';margin-right:6px;vertical-align:middle"></span>' +
+            _esc(i.materia) + '</td>' +
+          '<td style="padding:5px 8px;text-align:center;color:var(--muted)">' + i.req + '</td>' +
+          '<td style="padding:5px 8px;text-align:center;font-weight:600">' + i.gen + diffTxt + '</td>' +
+          '<td style="padding:5px 8px;text-align:center">' + _icon(i.estado) + '</td>' +
+        '</tr>';
+      }).join('');
+
+      return '<div style="margin-bottom:20px">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+          '<strong style="font-size:14px">' + _esc(g) + '</strong>' + badge +
+        '</div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+          '<thead><tr style="border-bottom:2px solid var(--line)">' +
+            '<th style="padding:5px 8px;text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase">Materia</th>' +
+            '<th style="padding:5px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase">Req.</th>' +
+            '<th style="padding:5px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase">Gen.</th>' +
+            '<th style="padding:5px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase">Estado</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+      '</div>';
+    }).join('');
+
+    var pct     = cob.totalItems > 0 ? Math.round(cob.okItems / cob.totalItems * 100) : 100;
+    var sumBg   = cob.okItems === cob.totalItems ? 'var(--success-soft)' : 'var(--warning-soft)';
+    var sumBrd  = cob.okItems === cob.totalItems ? 'var(--success)' : 'var(--warning)';
+    var sumTxt  = cob.okItems === cob.totalItems
+      ? '✅ Todas las necesidades cubiertas al 100%. El horario está completo.'
+      : '⚠️ ' + cob.okItems + ' de ' + cob.totalItems + ' necesidades al 100% — ' + (cob.totalItems - cob.okItems) + ' con horas incompletas o sin generar.';
+
+    var overlay = document.createElement('div');
+    overlay.className = 'cob-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9300;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto';
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+
+    overlay.innerHTML =
+      '<div style="background:var(--paper);border-radius:14px;padding:28px;max-width:780px;width:100%;box-shadow:var(--sh-lg);display:flex;flex-direction:column;gap:16px">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">' +
+          '<div><div class="card-eyebrow">Planner</div>' +
+          '<h2 style="font-family:var(--font-display);font-size:22px;font-weight:500;margin:4px 0 4px">Cobertura del horario</h2>' +
+          '<div style="font-size:13px;color:var(--muted)">' + cob.okItems + '/' + cob.totalItems + ' necesidades al 100% · ' + pct + '% completo</div></div>' +
+          '<button onclick="document.querySelector(\'.cob-overlay\').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted);padding:0;line-height:1;flex-shrink:0">✕</button>' +
+        '</div>' +
+        '<div style="background:' + sumBg + ';border-left:4px solid ' + sumBrd + ';border-radius:8px;padding:12px 16px;font-size:14px;font-weight:500;line-height:1.5">' + sumTxt + '</div>' +
+        '<div style="max-height:60vh;overflow-y:auto;padding-right:4px">' + body + '</div>' +
+        '<div style="display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--line)">' +
+          '<button class="btn-ghost" onclick="document.querySelector(\'.cob-overlay\').remove()">Cerrar</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+  };
 
   /* ════════════════════════════════
      SPRINT 3 — VALIDACIÓN DE VIABILIDAD
@@ -2651,6 +2783,20 @@
         '<div id="planner-pub-aviso-curso" style="display:none;background:#fde8e8;color:#b71c1c;border-radius:6px;padding:8px 12px;font-size:13px;margin-bottom:12px;">' +
           '⚠️ Estás publicando sobre el curso activo. Los cambios afectarán al chat y las sustituciones inmediatamente.' +
         '</div>' +
+        (function () {
+          if (!_s.necesidades.length || !total) return '';
+          var cob = _calcCobertura();
+          if (cob.okItems === cob.totalItems) {
+            return '<div style="background:var(--success-soft);border-left:4px solid var(--success);border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:12px">' +
+              '<span>✅ <strong>' + cob.okItems + '/' + cob.totalItems + ' necesidades cubiertas al 100%.</strong> El horario está completo.</span>' +
+            '</div>';
+          }
+          var faltantes = cob.totalItems - cob.okItems;
+          return '<div style="background:var(--warning-soft);border-left:4px solid var(--warning);border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">' +
+            '<span>⚠️ <strong>' + cob.okItems + '/' + cob.totalItems + ' necesidades cubiertas</strong> — ' + faltantes + ' sin completar. Puedes publicar igualmente.</span>' +
+            '<button onclick="plannerCobertura()" style="flex-shrink:0;font-size:12px;font-weight:600;padding:4px 12px;border-radius:6px;border:1px solid var(--warning);background:var(--paper);cursor:pointer;color:var(--warning)">Ver detalles →</button>' +
+          '</div>';
+        }()) +
         '<div class="planner-warning">' +
           '<strong>⚠ Atención:</strong> Publicar reemplazará los registros actuales en ' +
           '<code>horarios_grupo</code> para el curso y grupos generados. ' +
