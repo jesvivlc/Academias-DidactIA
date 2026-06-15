@@ -1233,6 +1233,64 @@
     <div class="asist-backdrop" onclick="closeAsistente()"></div>
   </div>
 
+  <!-- ONBOARDING FAMILIA — wizard primer acceso -->
+  <div id="onb-overlay" style="display:none;">
+    <div id="onb-panel">
+
+      <!-- Paso 1: Bienvenida -->
+      <div id="onb-step-1" class="onb-step">
+        <button class="onb-skip" onclick="window._onbFinish()">Saltar</button>
+        <div class="onb-logo-wrap">
+          <img id="onb-brand-logo" src="" alt="" class="onb-brand-logo" onerror="this.style.display='none'">
+        </div>
+        <div class="onb-icon">👋</div>
+        <h1 class="onb-title">Bienvenido/a a DidactIA</h1>
+        <p class="onb-desc">Tu ventana al día a día de tu hijo/a en el centro. Horario, comedor, comunicados y más — todo en un lugar.</p>
+        <button class="onb-btn-primary" onclick="window._onbNext()">Empezar →</button>
+      </div>
+
+      <!-- Paso 2: Tu hijo/a -->
+      <div id="onb-step-2" class="onb-step" style="display:none;">
+        <button class="onb-skip" onclick="window._onbNext()">Siguiente</button>
+        <div class="onb-icon">🎓</div>
+        <h2 class="onb-title">Tu hijo/a en el centro</h2>
+        <div id="onb-hijo-content" class="onb-hijo-card">…</div>
+        <p class="onb-desc" style="margin-top:16px;">Desde aquí verás su horario, asistencia al comedor, comunicados y mucho más.</p>
+        <button class="onb-btn-primary" onclick="window._onbNext()">Continuar →</button>
+      </div>
+
+      <!-- Paso 3: Notificaciones -->
+      <div id="onb-step-3" class="onb-step" style="display:none;">
+        <button class="onb-skip" onclick="window._onbNext()">Ahora no</button>
+        <div class="onb-icon">🔔</div>
+        <h2 class="onb-title">No te pierdas nada</h2>
+        <p class="onb-desc">Activa las notificaciones para recibir alertas cuando haya cambios de horario, comunicados del centro o ausencias de tu hijo/a.</p>
+        <div class="onb-notif-items">
+          <div class="onb-notif-item">📅 Cambios de horario</div>
+          <div class="onb-notif-item">📢 Comunicados del centro</div>
+          <div class="onb-notif-item">🍽️ Avisos de comedor</div>
+        </div>
+        <button class="onb-btn-primary" id="onb-push-btn" onclick="window._onbActivarPush()">Activar notificaciones</button>
+      </div>
+
+      <!-- Paso 4: ¡Listo! -->
+      <div id="onb-step-4" class="onb-step" style="display:none;">
+        <div class="onb-check">✓</div>
+        <h2 class="onb-title">¡Ya estás listo/a!</h2>
+        <p class="onb-desc">Tu portal familiar está configurado. Accede a todo desde la pantalla de inicio.</p>
+        <button class="onb-btn-primary" onclick="window._onbFinish()">Ir al portal →</button>
+      </div>
+
+      <!-- Progress dots -->
+      <div class="onb-dots">
+        <span class="onb-dot onb-dot-active"></span>
+        <span class="onb-dot"></span>
+        <span class="onb-dot"></span>
+        <span class="onb-dot"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- Globo de invitación + burbuja flotante -->
   <div id="asistente-hint" class="asist-hint">
     <span>Pregúntame sobre horarios, comedor, reuniones…</span>

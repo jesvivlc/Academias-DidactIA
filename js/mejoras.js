@@ -566,6 +566,103 @@ function showToast(msg) {
   setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 5000);
 }
 
+// ── ONBOARDING FAMILIA ───────────────────────────────────────────────
+// Wizard de primer acceso para cuentas familia. Solo se muestra una vez
+// (localStorage key didactia_onb_{userId}). 4 pasos: Bienvenida →
+// Tu hijo/a → Notificaciones → ¡Listo!
+
+function _onbEsc(s) {
+  return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function initOnboardingFamilia() {
+  if (role !== "familia") return;
+  if (!currentUser || !currentUser.id) return;
+  var storageKey = "didactia_onb_" + currentUser.id;
+  try { if (localStorage.getItem(storageKey)) return; } catch (e) {}
+
+  var overlay = document.getElementById("onb-overlay");
+  if (!overlay) return;
+
+  // Rellenar paso 2 con datos reales del hijo
+  var alumnos = currentUserAlumnos || [];
+  var hijoHtml = "";
+  if (alumnos.length) {
+    var a = alumnos[0];
+    var inicial = (a.nombre || "?").charAt(0).toUpperCase();
+    var colorMap = ["#C76B3D","#4D6FA8","#3F9367","#D69540","#7A6BAB"];
+    var h = 0; for (var i = 0; i < (a.nombre||"").length; i++) h = ((h<<5)-h) + a.nombre.charCodeAt(i);
+    var col = colorMap[Math.abs(h) % colorMap.length];
+    hijoHtml =
+      '<div class="onb-avatar" style="background:' + col + ';">' + inicial + '</div>' +
+      '<div class="onb-hijo-nombre">' + _onbEsc(a.nombre || "") + '</div>' +
+      '<div class="onb-hijo-meta">' + _onbEsc(a.curso || "") + (a.grupo_horario ? " · " + _onbEsc(a.grupo_horario) : "") + '</div>';
+    if (alumnos.length > 1) {
+      hijoHtml += '<div style="font-size:12px;color:var(--muted);margin-top:8px;">Y ' + (alumnos.length - 1) + ' alumno' + (alumnos.length > 2 ? 's' : '') + ' más vinculado' + (alumnos.length > 2 ? 's' : '') + '</div>';
+    }
+  } else {
+    hijoHtml = '<div style="font-size:36px;margin-bottom:8px;">🎓</div><div style="font-size:14px;color:var(--muted);">Tu cuenta ya está activa.<br>El centro te vinculará a tu hijo/a en breve.</div>';
+  }
+  var hijoBox = document.getElementById("onb-hijo-content");
+  if (hijoBox) hijoBox.innerHTML = hijoHtml;
+
+  // Ocultar paso notificaciones si el navegador no soporta Push
+  var supPush = ("serviceWorker" in navigator) && ("PushManager" in window);
+  if (!supPush) {
+    var stepNot = document.getElementById("onb-step-3");
+    if (stepNot) stepNot.dataset.skip = "1";
+  }
+
+  overlay.style.display = "flex";
+  _onbIrPaso(1);
+}
+
+function _onbIrPaso(n) {
+  [1, 2, 3, 4].forEach(function(i) {
+    var el = document.getElementById("onb-step-" + i);
+    if (el) el.style.display = i === n ? "" : "none";
+  });
+  // dots de progreso
+  document.querySelectorAll(".onb-dot").forEach(function(d, idx) {
+    d.classList.toggle("onb-dot-active", idx + 1 === n);
+  });
+}
+
+window._onbNext = function() {
+  // buscar el paso visible
+  var cur = 1;
+  [1, 2, 3, 4].forEach(function(i) {
+    var el = document.getElementById("onb-step-" + i);
+    if (el && el.style.display !== "none") cur = i;
+  });
+  var next = cur + 1;
+  // saltar paso notificaciones si no hay soporte
+  if (next === 3) {
+    var stepNot = document.getElementById("onb-step-3");
+    if (stepNot && stepNot.dataset.skip === "1") next = 4;
+  }
+  if (next > 4) { window._onbFinish(); return; }
+  _onbIrPaso(next);
+};
+
+window._onbFinish = function() {
+  try { localStorage.setItem("didactia_onb_" + (currentUser && currentUser.id || ""), "1"); } catch (e) {}
+  var overlay = document.getElementById("onb-overlay");
+  if (overlay) overlay.style.display = "none";
+};
+
+window._onbActivarPush = function() {
+  var btn = document.getElementById("onb-push-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Activando…"; }
+  if (typeof _pushActivar === "function") {
+    _pushActivar().catch(function(){}).finally(function() {
+      window._onbNext();
+    });
+  } else {
+    window._onbNext();
+  }
+};
+
 // ── INIT: llamar a mejoras tras login ──
 function initWelcomeExtras() {
   loadDashboard();
@@ -573,6 +670,8 @@ function initWelcomeExtras() {
   if (role === "familia" && modulosActivos.includes("comedor")) {
     loadComedorHijos();
   }
+  // Onboarding de primer acceso — solo familia, solo una vez
+  if (role === "familia") setTimeout(initOnboardingFamilia, 800);
   if (role === "admin" || role === "profesional" || role === "superadmin") {
     var busqEl = document.getElementById("busqueda-alumno-container");
     var accionesSec = document.getElementById("sb-sec-acciones");

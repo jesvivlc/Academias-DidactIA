@@ -3435,6 +3435,222 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ONBOARDING FAMILIA — Wizard primer acceso
+   ══════════════════════════════════════════════════════════════ */
+
+#onb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: onbFadeIn .25s ease;
+}
+
+@keyframes onbFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+#onb-panel {
+  position: relative;
+  width: min(420px, 94vw);
+  background: var(--paper);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.22);
+  padding: 36px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: onbSlideUp .3s cubic-bezier(.34,1.56,.64,1);
+}
+
+@keyframes onbSlideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.onb-step { width: 100%; display: flex; flex-direction: column; align-items: center; }
+
+.onb-skip {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color .15s;
+}
+.onb-skip:hover { color: var(--ink); }
+
+.onb-logo-wrap {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.onb-brand-logo { max-height: 36px; max-width: 120px; object-fit: contain; }
+
+.onb-icon {
+  font-size: 44px;
+  margin-bottom: 14px;
+  line-height: 1;
+}
+
+.onb-check {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--success-soft);
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  animation: onbCheckPop .4s cubic-bezier(.34,1.56,.64,1);
+}
+
+@keyframes onbCheckPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.onb-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  line-height: 1.2;
+}
+
+.onb-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 20px;
+  max-width: 320px;
+}
+
+.onb-btn-primary {
+  width: 100%;
+  max-width: 280px;
+  height: 46px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  margin-top: 4px;
+  transition: opacity .15s, transform .1s;
+}
+.onb-btn-primary:hover { opacity: .9; }
+.onb-btn-primary:active { transform: scale(.98); }
+.onb-btn-primary:disabled { opacity: .6; cursor: default; }
+
+/* Paso 2: hijo card */
+.onb-hijo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.onb-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.onb-hijo-nombre {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.onb-hijo-meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* Paso 3: notif items */
+.onb-notif-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.onb-notif-item {
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: left;
+}
+
+/* Progress dots */
+.onb-dots {
+  display: flex;
+  gap: 7px;
+  margin-top: 24px;
+}
+
+.onb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-2);
+  transition: background .2s, transform .2s;
+}
+
+.onb-dot-active {
+  background: var(--ink);
+  transform: scale(1.25);
+}
+
+@media (max-width: 480px) {
+  #onb-panel { padding: 28px 20px 22px; border-radius: 16px 16px 0 0; position: fixed; bottom: 0; width: 100%; max-width: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  #onb-overlay { align-items: flex-end; }
+}
+
+/* ══════════════════════════════════════════════════════════════
    MÓDULO ALUMNOS — Split layout (lista + drawer de perfil)
    ══════════════════════════════════════════════════════════════ */
 

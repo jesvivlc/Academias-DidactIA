@@ -681,6 +681,12 @@ function applyTheme(colorPrimario, logoUrl) {
       appLogoEl.style.padding = "";
     }
   }
+  // También actualizar logo del wizard de onboarding (si existe)
+  var onbLogoEl = document.getElementById("onb-brand-logo");
+  if (onbLogoEl) {
+    if (logoUrl) { onbLogoEl.src = logoUrl; onbLogoEl.style.display = ""; }
+    else { onbLogoEl.style.display = "none"; }
+  }
 
   var wlcIco = document.querySelector("#welcome .wlc-ico");
   if (wlcIco) {
