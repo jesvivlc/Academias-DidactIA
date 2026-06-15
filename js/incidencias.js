@@ -5,6 +5,7 @@ var _incAlumnosCache      = null;
 var _incAlumnosCacheCtrid = null;
 var _incTipData           = null;
 var _incAlumnosProfesor   = [];
+var _incSelectedId        = null;
 
 function initIncidenciasPanel() {
   if (role === 'profesional') {
@@ -318,13 +319,13 @@ async function loadIncidencias(filtro) {
         : '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:500;">✓ Cerrada</span>';
       var acciones = '';
       if (i.estado === 'abierta') {
-        acciones += '<button onclick="cerrarIncidencia(\'' + i.id + '\')" style="background:none;border:1px solid #1e6b3a;cursor:pointer;color:#1e6b3a;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;">✓ Cerrar</button>';
+        acciones += '<button onclick="event.stopPropagation();cerrarIncidencia(\'' + i.id + '\')" style="background:none;border:1px solid #1e6b3a;cursor:pointer;color:#1e6b3a;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;">✓ Cerrar</button>';
       }
       if ((gravedad === 'grave' || gravedad === 'muy_grave') && i.alumno_nombre) {
-        acciones += '<button onclick="notificarFamiliaIncidencia(\'' + i.id + '\',' + JSON.stringify(i.alumno_nombre) + ')" style="background:none;border:1px solid #e65100;cursor:pointer;color:#e65100;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;" title="Notificar a la familia">📧 Familia</button>';
+        acciones += '<button onclick="event.stopPropagation();notificarFamiliaIncidencia(\'' + i.id + '\',' + JSON.stringify(i.alumno_nombre) + ')" style="background:none;border:1px solid #e65100;cursor:pointer;color:#e65100;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;" title="Notificar a la familia">📧 Familia</button>';
       }
-      acciones += '<button onclick="eliminarIncidencia(\'' + i.id + '\')" style="background:none;border:none;cursor:pointer;color:#a50e0e;font-size:12px;padding:4px 8px;border-radius:8px;" title="Eliminar">✕</button>';
-      return '<tr>'
+      acciones += '<button onclick="event.stopPropagation();eliminarIncidencia(\'' + i.id + '\')" style="background:none;border:none;cursor:pointer;color:#a50e0e;font-size:12px;padding:4px 8px;border-radius:8px;" title="Eliminar">✕</button>';
+      return '<tr data-id="' + i.id + '" onclick="_incAbrirDetalle(\'' + i.id + '\')">'
         + '<td>' + (i.fecha || '—') + '</td>'
         + '<td>' + (tipoLabels[i.tipo] || i.tipo || '—') + '</td>'
         + '<td>' + gravedadBadge(gravedad) + '</td>'
@@ -353,6 +354,117 @@ function exportarIncidenciasCSV() {
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Incidencias');
   XLSX.writeFile(wb, 'incidencias-' + new Date().toISOString().split('T')[0] + '.xlsx');
+}
+
+// ── Detalle de incidencia ───────────────────────────────────────
+
+function _incAbrirDetalle(id) {
+  _incSelectedId = id;
+  document.querySelectorAll('#inc-lista tr[data-id]').forEach(function(r) {
+    r.classList.toggle('inc-row-sel', r.dataset.id === id);
+  });
+  var i = (_incLastData || []).find(function(x) { return x.id === id; });
+  if (!i) return;
+  var panel = document.getElementById('inc-panel-der');
+  if (!panel) return;
+  panel.className = 'inc-detail-content';
+
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  var gravedadColor = i.gravedad === 'muy_grave' ? '#b71c1c' : i.gravedad === 'grave' ? '#e65100' : '#2e7d32';
+  var gravedadBg    = i.gravedad === 'muy_grave' ? '#fce8e6' : i.gravedad === 'grave' ? '#fff3e0' : '#e8f5e9';
+  var gravedadLabel = i.gravedad === 'muy_grave' ? '🔴 Muy grave' : i.gravedad === 'grave' ? '🟠 Grave' : '🟢 Leve';
+  var tipoLabels    = { convivencia:'👥 Convivencia', material:'📦 Material', instalaciones:'🏗️ Instalaciones', otro:'📝 Otro' };
+  var estadoBadge   = i.estado === 'abierta'
+    ? '<span style="background:#fce8e6;color:#a50e0e;border-radius:12px;padding:3px 10px;font-size:12px;font-weight:500;">⚠ Abierta</span>'
+    : '<span style="background:#e6f4ea;color:#1e6b3a;border-radius:12px;padding:3px 10px;font-size:12px;font-weight:500;">✓ Cerrada</span>';
+
+  var html = '<div style="padding:24px 20px;">';
+  html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">';
+  html += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+  html += '<span style="background:' + gravedadBg + ';color:' + gravedadColor + ';border-radius:12px;padding:4px 12px;font-size:12px;font-weight:700;">' + gravedadLabel + '</span>';
+  html += estadoBadge;
+  html += '</div>';
+  html += '<button onclick="_incCerrarDetalle()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted);padding:0 2px;line-height:1;" title="Cerrar">✕</button>';
+  html += '</div>';
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">';
+  html += '<div style="background:var(--paper-2);border-radius:8px;padding:10px 12px;"><div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px;">Fecha</div><div style="font-size:13px;font-weight:500;">' + esc(i.fecha || '—') + '</div></div>';
+  html += '<div style="background:var(--paper-2);border-radius:8px;padding:10px 12px;"><div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px;">Tipo</div><div style="font-size:13px;font-weight:500;">' + esc(tipoLabels[i.tipo] || i.tipo || '—') + '</div></div>';
+  if (i.alumno_nombre || i.grupo_horario) {
+    html += '<div style="background:var(--paper-2);border-radius:8px;padding:10px 12px;grid-column:1/-1;"><div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px;">Alumno / Grupo</div><div style="font-size:13px;font-weight:500;">' + esc([i.alumno_nombre, i.grupo_horario].filter(Boolean).join(' · ')) + '</div></div>';
+  }
+  html += '</div>';
+
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;">Descripción</div>';
+  html += '<div style="font-size:13px;line-height:1.6;color:var(--txt);white-space:pre-wrap;">' + esc(i.descripcion || '—') + '</div>';
+  html += '</div>';
+
+  if (i.informe_borrador) {
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;">Informe borrador</div>';
+    html += '<div style="font-size:12px;line-height:1.55;color:var(--txt2);background:var(--paper-2);border-radius:8px;padding:12px;white-space:pre-wrap;">' + esc(i.informe_borrador) + '</div>';
+    html += '</div>';
+  }
+  if (i.normativa_ref) {
+    html += '<div style="margin-bottom:14px;font-size:12px;color:var(--info);background:var(--info-soft);border-radius:8px;padding:10px 12px;">📋 <strong>Normativa:</strong> ' + esc(i.normativa_ref) + '</div>';
+  }
+  if (i.medidas_propuestas && i.medidas_propuestas.length) {
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;">Medidas propuestas</div>';
+    html += '<ul style="margin:0;padding-left:18px;font-size:13px;color:var(--txt2);line-height:1.6;">';
+    i.medidas_propuestas.forEach(function(m) { html += '<li>' + esc(m) + '</li>'; });
+    html += '</ul></div>';
+  }
+  if (i.protocolo_previ) {
+    html += '<div style="margin-bottom:14px;background:#fce8e6;border-radius:8px;padding:10px 12px;font-size:12px;font-weight:700;color:#b71c1c;">🚨 Protocolo PREVI requerido</div>';
+  }
+
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;padding-top:16px;border-top:1px solid var(--line);">';
+  if (i.estado === 'abierta') {
+    html += '<button onclick="_incDetalleAccion(\'cerrar\',\'' + i.id + '\')" class="btn" style="background:var(--success-soft);border-color:var(--success);color:var(--success);font-size:12px;padding:7px 14px;">✓ Cerrar</button>';
+    if ((i.gravedad === 'grave' || i.gravedad === 'muy_grave') && i.alumno_nombre) {
+      html += '<button onclick="_incDetalleAccion(\'familia\',\'' + i.id + '\')" class="btn" style="background:#fff3e0;border-color:#e65100;color:#e65100;font-size:12px;padding:7px 14px;">📧 Notificar familia</button>';
+    }
+  }
+  html += '<button onclick="_incDetalleAccion(\'eliminar\',\'' + i.id + '\')" class="btn" style="background:var(--danger-soft);border-color:var(--danger);color:var(--danger);font-size:12px;padding:7px 14px;margin-left:auto;">✕ Eliminar</button>';
+  html += '</div>';
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+function _incCerrarDetalle() {
+  _incSelectedId = null;
+  document.querySelectorAll('#inc-lista tr[data-id]').forEach(function(r) { r.classList.remove('inc-row-sel'); });
+  var panel = document.getElementById('inc-panel-der');
+  if (!panel) return;
+  panel.className = 'inc-detail-empty';
+  panel.innerHTML = '<i class="ti ti-alert-circle inc-empty-ico"></i>'
+    + '<p class="inc-empty-txt">Selecciona una incidencia para ver el detalle</p>'
+    + '<button class="btn btn-p" onclick="loadIncidencias()">↺ Actualizar lista</button>';
+}
+
+function _incDetalleAccion(accion, id) {
+  var i = (_incLastData || []).find(function(x) { return x.id === id; });
+  if (!i) return;
+  if (accion === 'cerrar') {
+    sb.from('incidencias').update({ estado: 'cerrada' }).eq('id', id).eq('centro_id', ctrId).then(function(r) {
+      if (r.error) { alert('Error: ' + r.error.message); return; }
+      i.estado = 'cerrada';
+      loadIncidencias().then(function() {
+        if (_incSelectedId === id) _incAbrirDetalle(id);
+      });
+    });
+  } else if (accion === 'familia') {
+    notificarFamiliaIncidencia(id, i.alumno_nombre);
+  } else if (accion === 'eliminar') {
+    if (!confirm('¿Eliminar esta incidencia?')) return;
+    sb.from('incidencias').delete().eq('id', id).eq('centro_id', ctrId).then(function(r) {
+      if (r.error) { alert('Error: ' + r.error.message); return; }
+      _incCerrarDetalle();
+      loadIncidencias();
+    });
+  }
 }
 
 // ── Registrar ───────────────────────────────────────────────────

@@ -2880,6 +2880,18 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
 .inc-empty-ico { font-size: 40px; color: var(--muted-2); }
 .inc-empty-txt { font-size: 14px; color: var(--muted); max-width: 220px; line-height: 1.5; }
 
+/* Selected row in incident list */
+#inc-lista .tbl tbody tr.inc-row-sel {
+  background: color-mix(in srgb, var(--ink) 8%, var(--paper)) !important;
+  border-color: color-mix(in srgb, var(--ink) 35%, var(--line)) !important;
+}
+
+/* Detail content state (replaces inc-detail-empty class on #inc-panel-der) */
+.inc-detail-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
 /* ═══════════════════════════════════════════════════════
    ASISTENTE IA — Full-panel split layout
 ═══════════════════════════════════════════════════════ */
