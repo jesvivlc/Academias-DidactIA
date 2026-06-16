@@ -93,7 +93,8 @@ supabase/migrations/
   planner_grupos.sql    DDL tabla planner_grupos (hoja "Grupos") + RLS
   materiales.sql        DDL materiales + RLS + bucket privado 'materiales' + RLS de Storage
   orientacion_base.sql  DDL Orientación: 6 tablas (expedientes_orientacion, informes_psicopedagogicos, medidas_atencion, cuestionarios_docentes, tramites_orientacion, alertas_orientacion) + índices + RLS por centro
-manifest.json                   PWA manifest (sin service worker aún)
+manifest.json                   PWA manifest (start_url /app.html, scope /, iconos SVG incl. maskable, id, categories)
+sw.js                           Service Worker (network-first, precache de todos los js/, push handler con icono inline, notificationclick → enfoca/abre /app.html). CACHE didactia-v8
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
 tests/
   aislamiento-centros.spec.js   Playwright e2e: RLS multi-tenant (Agora vs Buñol)

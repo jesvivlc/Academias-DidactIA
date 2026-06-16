@@ -1,6 +1,6 @@
 // Service Worker DidactIA — network-first para assets propios.
 // Bump CACHE en cada cambio estructural para purgar cachés antiguas.
-const CACHE = 'didactia-v7';
+const CACHE = 'didactia-v8';
 const PRECACHE = [
   '/app.html',
   '/index.html',
@@ -28,8 +28,13 @@ const PRECACHE = [
   '/js/orientacion.js',
   '/js/salidas.js',
   '/js/calidad.js',
+  '/js/alumnos.js',
+  '/js/asistencia.js',
   '/manifest.json'
 ];
+
+// Icono inline para notificaciones (no hay PNG en el repo).
+var NOTIF_ICON = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%232a3d2b'/><text x='96' y='130' font-size='100' text-anchor='middle' fill='white' font-family='serif'>D</text></svg>";
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -72,14 +77,23 @@ self.addEventListener('push', function(e) {
   e.waitUntil(
     self.registration.showNotification(d.title || 'DidactIA', {
       body:  d.body  || '',
-      icon:  '/icon-192.png',
-      badge: '/icon-192.png',
-      tag:   d.tag   || 'didactia'
+      icon:  NOTIF_ICON,
+      badge: NOTIF_ICON,
+      tag:   d.tag   || 'didactia',
+      data:  { url: d.url || '/app.html' }
     })
   );
 });
 
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
-  e.waitUntil(clients.openWindow('/'));
+  var url = (e.notification.data && e.notification.data.url) || '/app.html';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].url.indexOf(url) !== -1 && 'focus' in list[i]) return list[i].focus();
+      }
+      return clients.openWindow(url);
+    })
+  );
 });

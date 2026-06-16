@@ -467,6 +467,8 @@ async function loadUserProfile(user) {
     document.getElementById("ctr-name-hdr").textContent = ctrName;
     // Notificaciones push: solo familias (fire-and-forget, no bloquea el login)
     if (role === "familia" && typeof initPushFamilias === "function") initPushFamilias();
+    // Invitación a instalar la PWA: solo familias (banner descartable)
+    if (role === "familia" && typeof initInstallBanner === "function") initInstallBanner();
   }
 
   // Load linked alumnos if familia

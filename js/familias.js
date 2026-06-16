@@ -362,3 +362,74 @@ async function _pushActivar() {
     if (btn) { btn.disabled = false; btn.textContent = "Activar"; }
   }
 }
+
+// ── INSTALAR PWA (FAMILIA) ───────────────────────────────────────────
+// Banner suave que invita a la familia a instalar DidactIA en su móvil.
+// Android/Chrome: usa el prompt nativo (beforeinstallprompt, capturado en app.html).
+// iOS/Safari: muestra la instrucción "Compartir → Añadir a pantalla de inicio".
+function initInstallBanner() {
+  try {
+    if (typeof role !== "undefined" && role !== "familia") return;
+    // ¿ya está instalada / abierta como app?
+    var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+      || window.navigator.standalone === true;
+    if (standalone) return;
+    try {
+      if (localStorage.getItem("pwa_installed") === "1") return;
+      if (localStorage.getItem("pwa_banner_dismissed") === "1") return;
+    } catch (e) {}
+
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    var canPrompt = !!window._deferredInstallPrompt;
+    // Sin prompt nativo y no es iOS → el navegador no ofrece instalación visible
+    if (!canPrompt && !isIOS) return;
+
+    _pwaMostrarBanner(isIOS && !canPrompt);
+  } catch (e) { /* silencioso */ }
+}
+
+function _pwaMostrarBanner(iosHint) {
+  var host = document.getElementById("inicio-familia");
+  if (!host || document.getElementById("pwa-banner-familia")) return;
+
+  var banner = document.createElement("div");
+  banner.id = "pwa-banner-familia";
+  banner.style.cssText =
+    "display:flex;align-items:center;gap:12px;background:var(--paper-2);border:1px solid var(--line);" +
+    "border-radius:var(--r-sm,8px);padding:12px 14px;margin-top:14px;font-size:13px;color:var(--txt);";
+  banner.innerHTML = iosHint
+    ? '<span style="flex:1;">📲 Instala DidactIA: toca <b>Compartir</b> y luego <b>Añadir a pantalla de inicio</b></span>' +
+        '<button id="pwa-cerrar-btn" aria-label="Cerrar" style="background:none;border:none;cursor:pointer;color:var(--muted,#888);font-size:16px;line-height:1;">✕</button>'
+    : '<span style="flex:1;">📲 Instala DidactIA en tu móvil para acceso rápido</span>' +
+        '<button id="pwa-instalar-btn" class="btn btn-p" style="font-size:12px;padding:6px 12px;">Instalar</button>' +
+        '<button id="pwa-cerrar-btn" aria-label="Cerrar" style="background:none;border:none;cursor:pointer;color:var(--muted,#888);font-size:16px;line-height:1;">✕</button>';
+
+  var head = host.querySelector(".home-head");
+  if (head && head.parentNode === host) head.insertAdjacentElement("afterend", banner);
+  else host.insertBefore(banner, host.firstChild);
+
+  var inst = document.getElementById("pwa-instalar-btn");
+  if (inst) inst.onclick = function () { _pwaInstall(); };
+  var cer = document.getElementById("pwa-cerrar-btn");
+  if (cer) cer.onclick = function () {
+    try { localStorage.setItem("pwa_banner_dismissed", "1"); } catch (e) {}
+    banner.remove();
+  };
+}
+
+async function _pwaInstall() {
+  var dp = window._deferredInstallPrompt;
+  if (!dp) return;
+  var btn = document.getElementById("pwa-instalar-btn");
+  if (btn) btn.disabled = true;
+  try {
+    dp.prompt();
+    var choice = await dp.userChoice;
+    if (choice && choice.outcome === "accepted") {
+      try { localStorage.setItem("pwa_installed", "1"); } catch (e) {}
+    }
+  } catch (e) { /* cancelado */ }
+  window._deferredInstallPrompt = null;
+  var banner = document.getElementById("pwa-banner-familia");
+  if (banner) banner.remove();
+}
