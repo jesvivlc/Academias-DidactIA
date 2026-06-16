@@ -207,7 +207,8 @@ async function _calcularLibres(
   centro_id: string,
   horaInicio?: string,   // opcional: hora_inicio del tramo (más fiable que el número de tramo)
 ): Promise<{ dia: string; finde: boolean; universoSize: number; libres: string[] }> {
-  const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  // Sin tildes para coincidir con lo que almacena horarios_grupo.dia
+  const DIAS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
   const diaIdx = new Date(fecha + "T12:00:00Z").getUTCDay();
   const dia = DIAS[diaIdx];
   if (diaIdx === 0 || diaIdx === 6) {
@@ -242,10 +243,10 @@ async function _calcularLibres(
 
   console.log(`[agent] _calcularLibres · fecha=${fecha} tramo=${tramo} dia=${dia} horaInicio=${horaInicio ?? "—"} centro=${centro_id} · universo=${universo.size} (profesores=${profesRes.data?.length ?? 0}, hg=${hgTodosRes.data?.length ?? 0})`);
 
-  // Curso activo del centro.
-  const { data: cursoRow } = await sb.from("info_centro").select("curso_activo")
-    .eq("centro_id", centro_id).maybeSingle();
-  const cursoActivo = (cursoRow as { curso_activo?: string } | null)?.curso_activo ?? "2025-26";
+  // Curso activo del centro (limit(1) evita el error de maybeSingle con múltiples filas).
+  const { data: cursoRows } = await sb.from("info_centro").select("curso_activo")
+    .eq("centro_id", centro_id).limit(1);
+  const cursoActivo = (cursoRows as { curso_activo?: string }[] | null)?.[0]?.curso_activo ?? "2025-26";
 
   // Estrategia para identificar "ocupados":
   // 1ª opción — por hora_inicio (fiable: independiente de numeración de tramos)
