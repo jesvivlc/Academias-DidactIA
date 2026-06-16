@@ -505,6 +505,10 @@ async function loadUserProfile(user) {
   const tabPasarLista = document.getElementById("tab-pasarlista");
   if (tabPasarLista) tabPasarLista.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura"].includes(role)) ? "block" : "none";
 
+  // Tutorías: tutores (profesional) y familias reservan citas; admin/dirección ven resumen
+  const tabTutorias = document.getElementById("tab-tutorias");
+  if (tabTutorias) tabTutorias.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","familia"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -637,6 +641,7 @@ function showTab(t) {
   if (t === "calificaciones") initCalificaciones();
   if (t === "materiales") initMateriales();
   if (t === "salidas") initSalidasPanel();
+  if (t === "tutorias") initTutorias();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

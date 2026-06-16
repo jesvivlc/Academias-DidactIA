@@ -237,6 +237,9 @@
         <button class="nav-item" id="nav-pasarlista" data-tab="pasarlista" onclick="showTab('pasarlista')" style="display:none;--nav-color:#0F6E56">
           <i class="ti ti-checkbox"></i><span class="nav-item-label">Pasar lista</span>
         </button>
+        <button class="nav-item" id="nav-tutorias" data-tab="tutorias" onclick="showTab('tutorias')" style="display:none;--nav-color:#7A5C9E">
+          <i class="ti ti-calendar-user"></i><span class="nav-item-label">Tutorías</span>
+        </button>
         <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none;--nav-color:#185FA5">
           <i class="ti ti-replace"></i><span class="nav-item-label">Sustituciones</span>
           <span class="nav-badge" id="sb-badge-sust" style="display:none">0</span>
@@ -935,6 +938,9 @@
   <!-- PASAR LISTA PANEL -->
   <div class="panel" id="panel-pasarlista" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
 
+  <!-- TUTORÍAS PANEL -->
+  <div class="panel" id="panel-tutorias" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
   <!-- COMEDOR PANEL -->
   <div class="panel" id="panel-comedor" style="flex-direction:column;">
     <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
@@ -1476,6 +1482,7 @@
 <script src="js/calidad.js"></script>
 <script src="js/alumnos.js"></script>
 <script src="js/asistencia.js"></script>
+<script src="js/tutoria.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -1491,7 +1498,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', alumnos:'Alumnos', pasarlista:'Pasar lista', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', alumnos:'Alumnos', pasarlista:'Pasar lista', tutorias:'Tutorías', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -1501,6 +1508,7 @@
   var MAS_CFG = {
     alumnos:   { icon:'ti-users-group',     label:'Alumnos' },
     pasarlista:{ icon:'ti-checkbox',        label:'Pasar lista' },
+    tutorias:  { icon:'ti-calendar-user',  label:'Tutorías' },
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
     espacios:  { icon:'ti-door',            label:'Espacios' },
@@ -1517,6 +1525,7 @@
     'tab-chat':        { nav:'nav-chat',        bn:'bn-chat' },
     'tab-alumnos':     { nav:'nav-alumnos',      bn:null },
     'tab-pasarlista':  { nav:'nav-pasarlista',   bn:null },
+    'tab-tutorias':    { nav:'nav-tutorias',     bn:null },
     'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
     'tab-admin':       { nav:'nav-admin',        bn:null },
     'tab-sust':        { nav:'nav-sust',         bn:'bn-sust' },
