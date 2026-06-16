@@ -153,14 +153,20 @@ function _calFamSelectHijo(idx) {
   _calRenderFamilia();
 }
 
-// Boletín de notas en PDF del hijo seleccionado (reutiliza helpers de informes.js).
-async function _calBoletinPDF() {
-  var btn = document.getElementById('cal-bol-btn');
+// Boletín de notas en PDF. `hijo` opcional: si no se pasa, usa el hijo
+// seleccionado (vista familia). Consulta por alumno_id si existe, si no por
+// alumno_nombre+grupo (vista dirección). Reutiliza helpers de informes.js.
+async function _calBoletinPDF(hijo, btnId) {
+  btnId = btnId || 'cal-bol-btn';
+  var btn = document.getElementById(btnId);
   var rest = function () { if (btn) { btn.disabled = false; btn.textContent = '⬇ Boletín PDF'; } };
   if (typeof _infEnsureLibs !== 'function') { _calToast('Exportación no disponible', 'error'); return; }
-  var hijos = (typeof currentUserAlumnos !== 'undefined' && currentUserAlumnos) ? currentUserAlumnos : [];
-  var hijo = hijos[_calFamHijoIdx];
+  if (!hijo) {
+    var hijos = (typeof currentUserAlumnos !== 'undefined' && currentUserAlumnos) ? currentUserAlumnos : [];
+    hijo = hijos[_calFamHijoIdx];
+  }
   if (!hijo) { _calToast('Sin alumno seleccionado', 'warn'); return; }
+  var grupoLbl = hijo.grupo_horario || hijo.grupo || '';
   if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
   try {
     await _infEnsureLibs();
@@ -168,9 +174,12 @@ async function _calBoletinPDF() {
     var logoImg = await _infImgToDataURL(centro.logo);
     var rgb     = _infHexToRgb(centro.color);
 
-    var r = await sb.from('calificaciones')
+    var q = sb.from('calificaciones')
       .select('asignatura,evaluacion,nota,observaciones,profesor_nombre')
-      .eq('centro_id', ctrId).eq('alumno_id', hijo.id);
+      .eq('centro_id', ctrId);
+    if (hijo.id) q = q.eq('alumno_id', hijo.id);
+    else q = q.eq('alumno_nombre', hijo.nombre).eq('grupo', grupoLbl);
+    var r = await q;
     var data = r.data || [];
 
     var EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
@@ -224,7 +233,7 @@ async function _calBoletinPDF() {
     doc.setFontSize(16); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40);
     doc.text(hijo.nombre || 'Alumno', 12, y);
     doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.setTextColor(90, 90, 90);
-    doc.text((hijo.curso || '') + (hijo.grupo_horario ? '   ·   Grupo ' + hijo.grupo_horario : ''), 12, y + 6);
+    doc.text((hijo.curso || '') + (grupoLbl ? '   ·   Grupo ' + grupoLbl : ''), 12, y + 6);
     y += 14;
 
     if (!body.length) {
@@ -618,6 +627,8 @@ function _calAbrirAlumno(nombre, grupo) {
   var EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
   var EVALS_LBL = ['1ª Ev.', '2ª Ev.', '3ª Ev.', 'Final'];
   var grupoAlumno = grupo || notas[0].grupo || '';
+  // Alumno activo para el boletín PDF (la vista admin no maneja alumno_id)
+  window._calAdminAlumno = { nombre: nombre, grupo: grupoAlumno };
 
   var porAsig = {};
   notas.forEach(function(c) {
@@ -642,9 +653,11 @@ function _calAbrirAlumno(nombre, grupo) {
   var html = '';
 
   // Cabecera alumno
-  html += '<div style="padding:20px 20px 14px;border-bottom:1px solid var(--line);">';
-  html += '<div style="font-family:var(--font-display);font-size:21px;letter-spacing:-.02em;color:var(--txt);margin-bottom:4px;">' + _calEsc(nombre) + '</div>';
+  html += '<div style="padding:20px 20px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">';
+  html += '<div><div style="font-family:var(--font-display);font-size:21px;letter-spacing:-.02em;color:var(--txt);margin-bottom:4px;">' + _calEsc(nombre) + '</div>';
   if (grupoAlumno) html += '<div style="font-size:13px;color:var(--muted);">' + _calEsc(grupoAlumno) + '</div>';
+  html += '</div>';
+  html += '<button class="btn btn-s" id="cal-bol-btn-admin" style="white-space:nowrap;" onclick="_calBoletinPDF(window._calAdminAlumno, \'cal-bol-btn-admin\')">⬇ Boletín PDF</button>';
   html += '</div>';
 
   // Stat media
