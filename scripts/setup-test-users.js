@@ -53,6 +53,15 @@ const TEST_USERS = [
     centro_id: BUNOL,
     envKey:    'TEST_PROF_BUNOL',
   },
+  {
+    email:      'test-familia-agora@didactia.eu',
+    password:   'RlsT3st#AgorFam26',
+    full_name:  'Familia Test Agora',
+    rol:        'familia',
+    centro_id:  AGORA,
+    envKey:     'TEST_FAMILIA_AGORA',
+    linkAlumno: true,   // se vincula a un alumno de Agora (preferentemente con notas)
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -108,6 +117,52 @@ async function upsertProfile(id, { email, full_name, rol, centro_id }) {
   }
 }
 
+// Devuelve el id de un alumno del centro, preferentemente uno que tenga
+// calificaciones (para que el test "la familia ve sus notas" sea significativo).
+async function findAlumnoForCentro(centro_id) {
+  // 1) alumno con calificaciones
+  const rCal = await fetch(
+    `${SB_URL}/rest/v1/calificaciones?centro_id=eq.${centro_id}&select=alumno_id&limit=1`,
+    { headers: AUTH_HEADERS }
+  );
+  if (rCal.ok) {
+    const c = await rCal.json();
+    if (Array.isArray(c) && c[0] && c[0].alumno_id) return c[0].alumno_id;
+  }
+  // 2) cualquier alumno del centro
+  const rAl = await fetch(
+    `${SB_URL}/rest/v1/alumnos?centro_id=eq.${centro_id}&select=id&limit=1`,
+    { headers: AUTH_HEADERS }
+  );
+  if (rAl.ok) {
+    const a = await rAl.json();
+    if (Array.isArray(a) && a[0] && a[0].id) return a[0].id;
+  }
+  return null;
+}
+
+// Vincula familia↔alumno de forma idempotente (no duplica si ya existe).
+async function ensureFamiliaLink(profile_id, alumno_id) {
+  const exists = await fetch(
+    `${SB_URL}/rest/v1/familia_alumno?profile_id=eq.${profile_id}&alumno_id=eq.${alumno_id}&select=alumno_id`,
+    { headers: AUTH_HEADERS }
+  );
+  if (exists.ok) {
+    const rows = await exists.json();
+    if (Array.isArray(rows) && rows.length) return false; // ya vinculado
+  }
+  const res = await fetch(`${SB_URL}/rest/v1/familia_alumno`, {
+    method:  'POST',
+    headers: { ...AUTH_HEADERS, 'Prefer': 'return=minimal' },
+    body:    JSON.stringify({ profile_id, alumno_id }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`familia_alumno insert failed [${res.status}]: ${txt}`);
+  }
+  return true;
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function provision(user) {
@@ -122,6 +177,18 @@ async function provision(user) {
 
   const tag = created ? '✅ creado' : '🔄 ya existía → profile sincronizado';
   console.log(`  ${tag}: ${user.email}  (${user.rol} · ${user.centro_id.slice(0, 8)}...)`);
+
+  // Vincular un alumno si procede (cuentas familia)
+  if (user.linkAlumno) {
+    const alumnoId = await findAlumnoForCentro(user.centro_id);
+    if (!alumnoId) {
+      console.warn(`     ⚠️ No se encontró ningún alumno en el centro para vincular a ${user.email}`);
+    } else {
+      const nuevo = await ensureFamiliaLink(id, alumnoId);
+      console.log(`     ${nuevo ? '🔗 vinculado' : '🔗 ya vinculado'} a alumno ${alumnoId.slice(0, 8)}...`);
+    }
+  }
+
   return { ...user, id };
 }
 

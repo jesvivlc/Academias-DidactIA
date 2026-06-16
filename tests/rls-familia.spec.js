@@ -9,7 +9,9 @@
  *   🚫 NO puede leer datos de otro centro (aislamiento multi-tenant)
  *
  * Credenciales en .env: TEST_FAMILIA_AGORA_EMAIL / TEST_FAMILIA_AGORA_PASSWORD
- * (crear la cuenta manualmente en Agora Lledó, vincularla a al menos 1 alumno)
+ * La cuenta familia (Agora) + el vínculo a un alumno los provisiona
+ * `scripts/setup-test-users.js` (npm run setup:test-users). Copia las vars que
+ * imprime al final en tu .env y ejecuta `npm run test:rls-familia`.
  */
 
 const { test, expect } = require('@playwright/test');
