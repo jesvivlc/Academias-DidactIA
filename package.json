@@ -6,7 +6,9 @@
     "test:e2e": "playwright test tests/aislamiento-centros.spec.js",
     "test:rls-familia": "playwright test tests/rls-familia.spec.js",
     "test:demo": "playwright test tests/demo-check.spec.js",
-    "setup:test-users": "node scripts/setup-test-users.js"
+    "setup:test-users": "node scripts/setup-test-users.js",
+    "verify:columns": "node scripts/verify-columns.js",
+    "verify:planner": "node scripts/verify-hard-constraints.js && node scripts/verify-sin-profesor.js && node scripts/verify-tablero-dnd.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.0",

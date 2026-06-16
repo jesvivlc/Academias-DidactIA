@@ -18,6 +18,31 @@ on:
   workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña Actions
 
 jobs:
+  static-checks:
+    name: static (sintaxis + columnas SQL + motor Planner)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sintaxis de todo js/
+        run: |
+          err=0
+          for f in js/*.js scripts/*.js; do node --check "$f" || err=1; done
+          [ $err -eq 0 ] && echo "✓ todos los .js parsean"
+
+      - name: Columnas SQL vs esquema (snapshot)
+        run: npm run verify:columns
+
+      - name: Invariantes del motor del Planner
+        run: npm run verify:planner
+
   demo-check:
     name: demo-check (14 módulos)
     runs-on: ubuntu-latest
