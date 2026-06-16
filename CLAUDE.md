@@ -346,6 +346,21 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-16` · `99f3006` — feat(familia): push a familias al enviar un comunicado
+- `2026-06-16` · `442c2fa` — feat(calificaciones): boletín PDF por alumno también en la vista dirección
+- `2026-06-16` · `fe8c566` — feat(familia): boletín de calificaciones en PDF descargable
+- `2026-06-16` · `fe7eba4` — feat(familia): push de nuevas notas e incidencias a las familias
+- `2026-06-16` · `637acee` — feat(pwa): app instalable para familias + SW v8
+- `2026-06-16` · `b53abf6` — fix(storage): bucket 'documentos' faltante — justificantes se perdían en silencio
+- `2026-06-16` · `eab94f3` — chore(qa): verify-columns + job static-checks en CI
+- `2026-06-16` · `40c90ce` — test(rls): automatizar la cuenta familia de prueba en setup-test-users
+- `2026-06-16` · `4d81205` — fix(qa): handlers rotos — JSON.stringify legacy + apóstrofo en nombre
+- `2026-06-16` · `bc8d96c` — fix(css): regla .pill/.pill-active para los chips de filtro de Alumnos
+- `2026-06-16` · `9358a8e` — feat(asistencia): informe/estadísticas de asistencia de aula por alumno
+- `2026-06-16` · `03d2644` — feat(asistencia): vista "Pasar lista" por fecha
+- `2026-06-16` · `6015db1` — feat(asistencia): permitir pasar lista de clases ya concluidas (mismo día)
+- `2026-06-16` · `ebb1463` — fix: botón "Pasar lista" y handlers rotos por JSON.stringify en onclick="…"
+- `2026-06-16` · `c25c95d` — docs(roadmap): fase 3 RLS confirmada aplicada en producción
 - `2026-06-16` · `54c739d` — docs(CLAUDE.md): sesión 2026-06-16 — redesign Planner + Análisis documentado
 - `2026-06-16` · `85bce6d` — feat(redesign): cabeceras Newsreader en paneles Planner y Análisis — header fijo eyebrow + h1 30px + subtítulo; tabs `.tabs-in-hdr`; banner tramos-warn con tokens design system; Analytics CSS oculta título duplicado JS; `planner-wrap` → `flex:1;min-height:0`
 - `2026-06-16` · `8c0ce33` — docs(CLAUDE.md): sprint 4 planner cobertura documentado

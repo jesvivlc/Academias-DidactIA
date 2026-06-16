@@ -159,7 +159,7 @@
 - **Vista admin**: formulario colapsable con título, cuerpo, destinatarios, selector de plantilla
 - 3 plantillas predefinidas: Convocatoria reunión · Modificación horario · Recordatorio plazo
 - `destinatarios`: todos / solo_profesores / solo_familias / grupo:XXXX (dropdown con grupos reales del centro)
-- `enviarComunicado()`: guarda en tabla `comunicados`, llama EF `send-comunicado`, muestra `✅ Enviado a N destinatarios`
+- `enviarComunicado()`: guarda en tabla `comunicados`, llama EF `send-comunicado`, muestra `✅ Enviado a N destinatarios`; después llama `_comPushFamilias(id, destinatarios, titulo)` (fire-and-forget): `'grupo:XXXX'` → familias de alumnos de ese grupo; `'todos'`/`'solo_familias'` → todas las familias del centro; `'solo_profesores'` → sin push. Suite push familias completo: comedor · asistencia · salidas · orientación · notas · incidencias · **comunicados**
 - **Vista todos**: lista de comunicados con fecha, destinatarios, badge "No leído" y modal de detalle
 - **Badge de no leídos**: `_comUpdateTabBadge()` — localStorage key `com_leidos_{userId}_{ctrId}`, actualiza tab a `📢 Comunicados (N)`
 - **Realtime**: `_comInitRealtime()` — suscripción Supabase a INSERT en `comunicados` filtrado por `centro_id`; toast para usuarios que no son el creador
@@ -284,11 +284,28 @@
   - `calAdminCargar()`: fetch global de calificaciones del centro, rellena dropdowns de filtros a partir de los datos
   - `_calSelectedAlumno`: global que persiste el alumno activo entre re-renders de la tabla
 - **Vista profesor** (`_calRenderProfesor`): div scrollable con `flex:1;overflow-y:auto`; selects grupo/asignatura/evaluación → `calCargarAlumnos()` → tabla editable de notas (0-10); `calGuardar()` hace UPSERT con `onConflict: centro_id,alumno_id,asignatura,evaluacion`; `_calProfAutoCargar()` auto-carga cuando los 3 campos están completos
-- **Vista familia** (`_calRenderFamilia`): div con `flex:1;overflow-y:auto`; tabla pivote asignatura×evaluación de sus hijos (selector chip si >1 hijo); solo lectura; notas coloreadas rojo/verde
+- **Vista familia** (`_calRenderFamilia`): div con `flex:1;overflow-y:auto`; tabla pivote asignatura×evaluación de sus hijos (selector chip si >1 hijo); solo lectura; notas coloreadas rojo/verde; botón "⬇ Boletín PDF" → `_calBoletinPDF()` (PDF del hijo activo: cabecera logo+color del centro + tabla pivote asignatura×evaluación+profesor; reutiliza helpers de `informes.js`; jsPDF+autotable on-demand)
+- **Vista admin — boletín PDF**: botón "⬇ Boletín PDF" en la cabecera del `.cal-detail-panel` → `_calBoletinPDF(null, btnId)` con `window._calAdminAlumno {nombre,grupo}` guardado por `_calAbrirAlumno`; consulta por `alumno_nombre+grupo`; mismo PDF que la vista familia
+- **Vista profesor — push al guardar**: `calGuardar()` llama `_calNotificarFamilias` tras UPSERT — diffa `data-nota-orig` vs valor actual, avisa solo si cambió (fire-and-forget vía EF `send-push`). El push dice "📝 Nueva calificación" sin incluir el valor (la familia lo consulta en la app)
 - **Exportación**: `calExportarCSV()` → xlsx con SheetJS; `calExportarPDF()` → PDF landscape jsPDF (cargas on-demand)
 - **Superadmin**: selector de centro `cal-f-centro` → `calChangeCentro(id)` recarga datos del centro seleccionado
 - **CSS** (`.cal-list-panel`, `.cal-filtros-wrap`, `.cal-list-scroll`, `.cal-detail-panel`, `.cal-alumno-empty`, `.cal-alumno-content`; hover/sel rows en `#cal-admin-tabla`; responsive ≤900px oculta panel derecho)
 - **Importante**: `#panel-calificaciones` tiene `flex-direction:column` + `overflow:hidden`; `#cal-container` tiene `flex:1;min-height:0;overflow:hidden;display:flex;` — `initCalificaciones` resetea `flexDirection='column'` antes de cada vista y `_calRenderAdmin` lo sobrescribe a `'row'`
+
+### Control de Asistencia de Aula (asistencia.js)
+- Dos puntos de entrada: (1) botón **📋 Pasar lista** en "Mi horario de hoy" (mejoras.js → `abrirPasarLista(grupo, tramo, fecha)`); (2) tab **"Pasar lista"** (`#panel-pasarlista`, grupo Docencia, `initAsistenciaVista`). Visible: profesional/admin/admin_institucional/superadmin/director/jefatura.
+- **Modal pasar lista** (`abrirPasarLista`, `window._asistCambiarEstado`, `window._asistConfirmar`, `window._asistCerrar`):
+  - Botón en "Mi horario de hoy": aparece en la **clase activa AHORA** y también en cualquier **clase ya comenzada del mismo día** (etiqueta "Pasar lista (atrasada)") — no aparece en clases futuras
+  - Modal fullscreen: lista alumnos del grupo con toggle Presente/Retraso/Ausente + campo de observación; UPSERT inmediato en `asistencia_clase`; push a familias: ausente → push inmediato; retraso → push al confirmar
+  - `window._asistCambiarEstado(alumnoId, estado)`: toggle estado + UPSERT + push si ausente
+  - `window._asistConfirmar()`: push de retrasos acumulados + cierre del modal
+  - `window._asistCerrar()`: cierra sin confirmar (no deshace cambios ya guardados)
+- **Tab Pasar lista (`initAsistenciaVista`)** — toggle **Pasar lista / Informe** (pills inline):
+  - **Modo Pasar lista** (`_asistRenderLista`): selector de fecha (hoy/días anteriores) + selector de grupo (dirección) / grupos del profesor (match por tokens). Lista de clases del día con resumen ✓/⚡/✗ de `asistencia_clase` y botón "Pasar lista" que abre el modal con la fecha elegida. `_asistOnClose` refresca el resumen al cerrar.
+  - **Modo Informe** (`_asistInformeCargar`): rango de fechas (últimos 30 días por defecto) + selector de grupo (dirección) / grupos del profesor. Tabla por alumno: presente/retraso/ausente/total/% asistencia, ordenada por ausencias desc; % coloreado verde (≥90) / ámbar (≥75) / rojo (<75). KPIs: registros, ausencias y retrasos totales, alumnos con ≥3 ausencias. Export Excel `_asistInformeExportar` (SheetJS).
+- **CMI**: 4ª métrica "Ausencias de aula hoy" en Dimensión 1 Operativa (analytics.js)
+- **Tabla**: `asistencia_clase` — UNIQUE(centro_id,alumno_id,fecha,tramo); RLS `asistencia_clase_centro`; DDL: `supabase/migrations/asistencia_clase.sql` (✅ aplicado)
+- **Helpers**: `_aEnsureStyles()` inyecta CSS una vez (idempotente); `_aEsc()` escapa XSS; `_argAttr()` en mejoras.js escapa argumentos para atributos onclick con comillas simples
 
 ### Materiales — hub de materiales (materiales.js)
 - Tab **"📚 Materiales"** en sidebar; `#panel-materiales` con `flex-direction:column` en el raíz + div interno `flex:1;overflow-y:auto`
