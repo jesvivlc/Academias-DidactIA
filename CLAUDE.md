@@ -349,6 +349,13 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-17` · `a3b3c84` — fix(tramos): **auditoría y eliminación de tiempos hardcodeados de Agora** — 9 ubicaciones en 5 archivos; todos los módulos leen ahora `tramos_centro` del centro activo. Detalles en CLAUDE-CHANGELOG.md
+- `2026-06-17 00:14` · `55d52cf` — fix(agent-sustituciones): día sin tilde en DIAS[] + limit(1) en info_centro
+- `2026-06-16 23:52` · `5738525` — fix(sustituciones): corregir flujo ausencia profesor → admin approval
+- `2026-06-16 17:47` · `df932b2` — fix(agent-sustituciones): excluir actividades 'guardia' del cómputo de ocupados
+- `2026-06-16 17:37` · `1f56427` — fix(agent-sustituciones): usar hora_inicio para identificar ocupados + logging diagnóstico + .limit(5000) universo
+- `2026-06-16 17:14` · `d5510e9` — fix(agent-sustituciones): universo de profes desde horarios_grupo + filtro curso_activo
+- `2026-06-16 17:07` · `068fa09` — feat(agenda): Agenda del Centro — calendario mensual unificado
 - `2026-06-16 16:54` · `362ce3b` — docs(CLAUDE.md): sesión 2026-06-16 — módulo Tutorías documentado
 - `2026-06-16 16:51` · `37865ab` — feat(tutorias): módulo de reserva de citas tutor-familia
 - `2026-06-16 16:33` · `6dd9a09` — docs: sesión 2026-06-16 portátil — asistencia informe, boletín PDF, PWA, push suite familias
