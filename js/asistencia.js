@@ -340,53 +340,223 @@
     return ["admin", "admin_institucional", "superadmin", "director", "jefatura"].indexOf(role) !== -1;
   }
 
-  window.initAsistenciaVista = async function () {
+  var _asistModoActual = "lista";       // 'lista' | 'informe'
+  var _asistInformeRows = [];           // cache de filas para exportar
+
+  function _asistPill(label, modo, active) {
+    return '<button onclick="window._asistSetModo(\'' + modo + '\')" style="' +
+      'border-radius:20px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:var(--font-ui);' +
+      (active
+        ? 'background:var(--ink);color:#fff;border:1px solid var(--ink);'
+        : 'background:var(--paper-2,var(--srf));color:var(--txt);border:1px solid var(--line,var(--bdr));') +
+      '">' + label + '</button>';
+  }
+
+  // Rellena un <select> de grupos del centro (con horario)
+  async function _asistPoblarGrupos(selId) {
+    try {
+      var rg = await sb.from("horarios_grupo").select("grupo_horario").eq("centro_id", ctrId).limit(5000);
+      var grupos = [...new Set((rg.data || []).map(function (x) { return x.grupo_horario; }).filter(Boolean))]
+        .sort(function (a, b) { return a.localeCompare(b, "es"); });
+      var sel = document.getElementById(selId);
+      if (sel) sel.innerHTML = '<option value="">Elige grupo…</option>' +
+        grupos.map(function (g) { return '<option value="' + _aEsc(g) + '">' + _aEsc(g) + '</option>'; }).join("");
+    } catch (e) { /* ignore */ }
+  }
+
+  // Grupos que imparte el profesor actual (match por tokens del nombre)
+  async function _asistGruposDelProfesor() {
+    var userTokens = _aTokens(typeof currentUserName !== "undefined" ? currentUserName : "");
+    if (userTokens.length < 2) return [];
+    var r = await sb.from("horarios_grupo").select("grupo_horario,profesor_nombre").eq("centro_id", ctrId).limit(5000);
+    var set = {};
+    (r.data || []).forEach(function (x) {
+      var pt = _aTokens(x.profesor_nombre);
+      if (userTokens.every(function (t) { return pt.indexOf(t) !== -1; }) && x.grupo_horario) set[x.grupo_horario] = 1;
+    });
+    return Object.keys(set);
+  }
+
+  window.initAsistenciaVista = function () {
     var panel = document.getElementById("panel-pasarlista");
     if (!panel) return;
     _aEnsureStyles();
+    panel.innerHTML =
+      '<div style="flex:1;padding:28px;display:flex;flex-direction:column;gap:16px;background:var(--bg);overflow-y:auto;">' +
+        '<div class="pg-hdr"><div>' +
+          '<div class="pg-eyebrow">Asistencia de aula</div>' +
+          '<div class="pg-title">Pasar lista</div>' +
+          '<div class="pg-sub">Registra la asistencia o consulta el informe por alumno</div>' +
+        '</div></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          _asistPill("📋 Pasar lista", "lista", _asistModoActual === "lista") +
+          _asistPill("📊 Informe", "informe", _asistModoActual === "informe") +
+        '</div>' +
+        '<div id="pl-view"></div>' +
+      '</div>';
+    if (_asistModoActual === "informe") _asistRenderInforme();
+    else _asistRenderLista();
+  };
+
+  window._asistSetModo = function (m) { _asistModoActual = m; window.initAsistenciaVista(); };
+
+  /* ── Modo "Pasar lista" ── */
+  async function _asistRenderLista() {
+    var view = document.getElementById("pl-view");
+    if (!view) return;
     var hoy = new Date().toISOString().split("T")[0];
     var esAdmin = _aEsAdmin();
-
-    panel.innerHTML =
-      '<div style="flex:1;padding:28px;display:flex;flex-direction:column;gap:18px;background:var(--bg);overflow-y:auto;">' +
-        '<div class="pg-hdr"><div>' +
-          '<div class="pg-eyebrow">Asistencia</div>' +
-          '<div class="pg-title">Pasar lista</div>' +
-          '<div class="pg-sub">Elige un día y registra o corrige la asistencia de tus clases</div>' +
-        '</div></div>' +
+    view.innerHTML =
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
           '<div><label class="lbl">Fecha</label><br>' +
-            '<input class="fi" type="date" id="pl-fecha" value="' + hoy + '" max="' + hoy + '" ' +
-              'style="max-width:190px;" onchange="window._asistVistaCargar()"></div>' +
+            '<input class="fi" type="date" id="pl-fecha" value="' + hoy + '" max="' + hoy + '" style="max-width:190px;" onchange="window._asistVistaCargar()"></div>' +
           (esAdmin
-            ? '<div><label class="lbl">Grupo</label><br>' +
-                '<select class="fi" id="pl-grupo" style="max-width:200px;" onchange="window._asistVistaCargar()">' +
-                '<option value="">Elige grupo…</option></select></div>'
+            ? '<div><label class="lbl">Grupo</label><br><select class="fi" id="pl-grupo" style="max-width:200px;" onchange="window._asistVistaCargar()"><option value="">Elige grupo…</option></select></div>'
             : '') +
           '<button class="btn btn-s" onclick="window._asistVistaCargar()">↺ Actualizar</button>' +
         '</div>' +
         '<div id="pl-body"><div style="text-align:center;color:var(--muted);padding:40px 0;"><span class="spin">⟳</span> Cargando…</div></div>' +
       '</div>';
-
-    // Al cerrar el modal, refrescar el resumen de esta vista
-    window._asistOnClose = function () {
-      if (document.getElementById("pl-body")) window._asistVistaCargar();
-    };
-
-    // Poblar selector de grupos (solo admin)
-    if (esAdmin) {
-      try {
-        var rg = await sb.from("horarios_grupo").select("grupo_horario")
-          .eq("centro_id", ctrId).limit(5000);
-        var grupos = [...new Set((rg.data || []).map(function (x) { return x.grupo_horario; }).filter(Boolean))]
-          .sort(function (a, b) { return a.localeCompare(b, "es"); });
-        var sel = document.getElementById("pl-grupo");
-        if (sel) sel.innerHTML = '<option value="">Elige grupo…</option>' +
-          grupos.map(function (g) { return '<option value="' + _aEsc(g) + '">' + _aEsc(g) + '</option>'; }).join("");
-      } catch (e) { /* ignore */ }
-    }
-
+    window._asistOnClose = function () { if (document.getElementById("pl-body")) window._asistVistaCargar(); };
+    if (esAdmin) await _asistPoblarGrupos("pl-grupo");
     window._asistVistaCargar();
+  }
+
+  /* ── Modo "Informe" — asistencia por alumno en un rango de fechas ── */
+  async function _asistRenderInforme() {
+    var view = document.getElementById("pl-view");
+    if (!view) return;
+    var hoy = new Date().toISOString().split("T")[0];
+    var hace30 = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+    var esAdmin = _aEsAdmin();
+    view.innerHTML =
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
+          '<div><label class="lbl">Desde</label><br><input class="fi" type="date" id="inf-desde" value="' + hace30 + '" max="' + hoy + '" style="max-width:170px;" onchange="window._asistInformeCargar()"></div>' +
+          '<div><label class="lbl">Hasta</label><br><input class="fi" type="date" id="inf-hasta" value="' + hoy + '" max="' + hoy + '" style="max-width:170px;" onchange="window._asistInformeCargar()"></div>' +
+          (esAdmin
+            ? '<div><label class="lbl">Grupo</label><br><select class="fi" id="inf-grupo" style="max-width:200px;" onchange="window._asistInformeCargar()"><option value="">Elige grupo…</option></select></div>'
+            : '') +
+          '<button class="btn btn-s" onclick="window._asistInformeCargar()">↺ Actualizar</button>' +
+          '<button class="btn btn-s" onclick="window._asistInformeExportar()">⬇ Excel</button>' +
+        '</div>' +
+        '<div id="inf-kpis" style="display:flex;gap:12px;flex-wrap:wrap;"></div>' +
+        '<div id="inf-body"><div style="text-align:center;color:var(--muted);padding:40px 0;"><span class="spin">⟳</span> Cargando…</div></div>' +
+      '</div>';
+    window._asistOnClose = null;
+    if (esAdmin) await _asistPoblarGrupos("inf-grupo");
+    window._asistInformeCargar();
+  }
+
+  window._asistInformeCargar = async function () {
+    var body = document.getElementById("inf-body");
+    var kpis = document.getElementById("inf-kpis");
+    if (!body) return;
+    var esAdmin = _aEsAdmin();
+    var hoy = new Date().toISOString().split("T")[0];
+    var desde = (document.getElementById("inf-desde") || {}).value || hoy;
+    var hasta = (document.getElementById("inf-hasta") || {}).value || hoy;
+    body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 0;"><span class="spin">⟳</span> Calculando…</div>';
+    if (kpis) kpis.innerHTML = "";
+    _asistInformeRows = [];
+
+    try {
+      var scope;
+      if (esAdmin) {
+        var g = (document.getElementById("inf-grupo") || {}).value || "";
+        if (!g) { body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 0;">Elige un grupo para ver el informe.</div>'; return; }
+        scope = [g];
+      } else {
+        scope = await _asistGruposDelProfesor();
+        if (!scope.length) { body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 0;">No hay grupos vinculados a tu perfil.</div>'; return; }
+      }
+
+      var res = await Promise.all([
+        sb.from("asistencia_clase").select("alumno_id,grupo_horario,estado,fecha")
+          .eq("centro_id", ctrId).gte("fecha", desde).lte("fecha", hasta).in("grupo_horario", scope).limit(20000),
+        sb.from("alumnos").select("id,nombre,grupo_horario").eq("centro_id", ctrId).in("grupo_horario", scope).limit(5000)
+      ]);
+      var recs = res[0].data || [];
+      var nameMap = {};
+      (res[1].data || []).forEach(function (a) { nameMap[a.id] = a; });
+
+      var agg = {};
+      recs.forEach(function (r) {
+        if (!agg[r.alumno_id]) agg[r.alumno_id] = { presente: 0, retraso: 0, ausente: 0, total: 0 };
+        if (agg[r.alumno_id][r.estado] != null) agg[r.alumno_id][r.estado]++;
+        agg[r.alumno_id].total++;
+      });
+
+      var rows = Object.keys(agg).map(function (id) {
+        var a = agg[id], al = nameMap[id] || {};
+        var pct = a.total ? Math.round((a.presente + a.retraso) / a.total * 100) : 0;
+        return { nombre: al.nombre || "—", grupo: al.grupo_horario || "—",
+          presente: a.presente, retraso: a.retraso, ausente: a.ausente, total: a.total, pct: pct };
+      }).sort(function (x, y) { return y.ausente - x.ausente || x.nombre.localeCompare(y.nombre, "es"); });
+      _asistInformeRows = rows;
+
+      // KPIs
+      var totalAus = rows.reduce(function (s, r) { return s + r.ausente; }, 0);
+      var totalRet = rows.reduce(function (s, r) { return s + r.retraso; }, 0);
+      var riesgo = rows.filter(function (r) { return r.ausente >= 3; }).length;
+      var kpi = function (val, lbl, col) {
+        return '<div style="flex:1;min-width:130px;background:var(--srf);border:1px solid var(--line,var(--bdr));border-radius:var(--r);padding:14px 16px;">' +
+          '<div style="font-size:24px;font-weight:700;color:' + (col || "var(--txt)") + ';font-family:var(--font-display,inherit);">' + val + '</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + lbl + '</div></div>';
+      };
+      if (kpis) kpis.innerHTML =
+        kpi(recs.length, "Registros en el periodo") +
+        kpi(totalAus, "Ausencias totales", "var(--danger)") +
+        kpi(totalRet, "Retrasos totales", "var(--warning)") +
+        kpi(riesgo, "Alumnos con ≥3 ausencias", riesgo ? "var(--danger)" : "var(--success)");
+
+      if (!rows.length) {
+        body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 0;">Sin registros de asistencia en este periodo.</div>';
+        return;
+      }
+
+      var trs = rows.map(function (r) {
+        var pctCol = r.pct >= 90 ? "var(--success)" : (r.pct >= 75 ? "var(--warning)" : "var(--danger)");
+        return '<tr style="border-bottom:1px solid var(--line,var(--bdr));">' +
+          '<td style="padding:9px 12px;font-weight:500;color:var(--txt);">' + _aEsc(r.nombre) + '</td>' +
+          '<td style="padding:9px 12px;color:var(--txt2);">' + _aEsc(r.grupo) + '</td>' +
+          '<td style="padding:9px 12px;text-align:center;color:var(--success);">' + r.presente + '</td>' +
+          '<td style="padding:9px 12px;text-align:center;color:var(--warning);">' + r.retraso + '</td>' +
+          '<td style="padding:9px 12px;text-align:center;font-weight:600;color:' + (r.ausente ? "var(--danger)" : "var(--txt3)") + ';">' + r.ausente + '</td>' +
+          '<td style="padding:9px 12px;text-align:center;color:var(--txt3);">' + r.total + '</td>' +
+          '<td style="padding:9px 12px;text-align:center;font-weight:600;color:' + pctCol + ';">' + r.pct + '%</td>' +
+          '</tr>';
+      }).join("");
+
+      body.innerHTML =
+        '<div style="overflow-x:auto;background:var(--srf);border:1px solid var(--line,var(--bdr));border-radius:var(--r);">' +
+          '<table style="width:100%;border-collapse:collapse;font-size:14px;min-width:560px;">' +
+            '<thead><tr style="text-align:left;border-bottom:2px solid var(--line,var(--bdr));background:var(--paper-2,var(--srf2));">' +
+              ['Alumno', 'Grupo', 'Presente', 'Retraso', 'Ausente', 'Total', '% asist.'].map(function (h, i) {
+                return '<th style="padding:9px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);' + (i >= 2 ? 'text-align:center;' : '') + '">' + h + '</th>';
+              }).join("") +
+            '</tr></thead><tbody>' + trs + '</tbody>' +
+          '</table></div>';
+    } catch (e) {
+      console.error("[asistencia] informe error:", e);
+      body.innerHTML = '<div style="text-align:center;color:var(--danger);padding:40px 0;">Error al calcular el informe.</div>';
+    }
+  };
+
+  window._asistInformeExportar = function () {
+    if (typeof XLSX === "undefined") { if (typeof showToast === "function") showToast("Exportación no disponible"); return; }
+    if (!_asistInformeRows.length) { if (typeof showToast === "function") showToast("No hay datos que exportar"); return; }
+    var aoa = [["Alumno", "Grupo", "Presente", "Retraso", "Ausente", "Total", "% asistencia"]].concat(
+      _asistInformeRows.map(function (r) { return [r.nombre, r.grupo, r.presente, r.retraso, r.ausente, r.total, r.pct]; })
+    );
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 28 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 12 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
+    var desde = (document.getElementById("inf-desde") || {}).value || "";
+    var hasta = (document.getElementById("inf-hasta") || {}).value || "";
+    XLSX.writeFile(wb, "asistencia_" + desde + "_" + hasta + ".xlsx");
   };
 
   window._asistVistaCargar = async function () {
