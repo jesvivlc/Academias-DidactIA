@@ -671,6 +671,7 @@ async function notificarAusenciaProfesor() {
     if (dow !== 0 && dow !== 6) {
       const fecha = d.toISOString().split("T")[0];
       if (!multiDay && tipoDia === "tramos" && tramosSeleccionados.length) {
+        // Tramos específicos: crea una fila por tramo de inmediato
         for (const n of tramosSeleccionados) {
           const t = tramoMap[n] || fallbackMap[n] || {};
           rows.push({
@@ -681,15 +682,10 @@ async function notificarAusenciaProfesor() {
             observaciones: (obsBase || "(Ausencia — tramos concretos)") + obsMeta,
           });
         }
-      } else {
-        rows.push({
-          centro_id: ctrId, fecha, tramo: null,
-          hora_inicio: "08:00", hora_fin: "17:00",
-          grupo_horario: grupos || null, profesor_ausente: currentUserName,
-          profesor_sustituto: null, cubierta: false, creado_por: currentUser.id,
-          observaciones: (obsBase || "(Ausencia todo el día)") + obsMeta,
-        });
       }
+      // "Todo el día" o multi-día: NO crea placeholder con tramo=null.
+      // El admin aprobará en RRHH y _crearSustituciones generará las filas
+      // reales consultando el horario del profesor en horarios_grupo.
     }
     d.setDate(d.getDate() + 1);
   }

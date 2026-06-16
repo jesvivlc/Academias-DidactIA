@@ -486,11 +486,17 @@ async function _crearSustituciones(ausencia, profesorNombre) {
     return;
   }
 
+  // Usar curso activo del centro (global de config.js; fallback seguro)
+  var cursoEscolar = (typeof cursoActivo !== "undefined" && cursoActivo) ? cursoActivo : "2025-26";
+
+  // Buscar clases del profesor en horarios_grupo (wildcards para tolerar
+  // diferencias de formato entre profiles.full_name y horarios_grupo.profesor_nombre)
   var tramosResult = await sb.from("horarios_grupo")
     .select("tramo, hora_inicio, hora_fin, grupo_horario, dia")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", cursoEscolar)
     .in("dia", diasNeeded)
-    .ilike("profesor_nombre", profesorNombre);
+    .ilike("profesor_nombre", "%" + profesorNombre + "%");
 
   var tramosPorDia = {};
   (tramosResult.data || []).forEach(function(t) {
@@ -500,9 +506,22 @@ async function _crearSustituciones(ausencia, profesorNombre) {
 
   var obs = AUSENCIA_TIPOS[ausencia.tipo] || ausencia.tipo || "Ausencia";
 
+  // Cargar sustituciones ya existentes para este profesor en el rango (dedup)
+  var fechasRango = dateRange.map(function(e) { return e.fecha; });
+  var existRes = await sb.from("sustituciones")
+    .select("fecha, tramo, grupo_horario")
+    .eq("centro_id", ctrId)
+    .eq("profesor_ausente", profesorNombre)
+    .in("fecha", fechasRango);
+  var existKeys = new Set((existRes.data || []).map(function(s) {
+    return s.fecha + "|" + s.tramo + "|" + s.grupo_horario;
+  }));
+
   var inserts = [];
   dateRange.forEach(function(entry) {
     (tramosPorDia[entry.dia] || []).forEach(function(t) {
+      var key = entry.fecha + "|" + t.tramo + "|" + t.grupo_horario;
+      if (existKeys.has(key)) return; // ya existe, no duplicar
       inserts.push({
         centro_id:          ctrId,
         fecha:              entry.fecha,
@@ -523,8 +542,10 @@ async function _crearSustituciones(ausencia, profesorNombre) {
     var ins = await sb.from("sustituciones").insert(inserts);
     if (ins.error) { alert("Error al crear sustituciones: " + ins.error.message); return; }
     alert("✅ Ausencia aprobada. " + inserts.length + " tramo(s) generados en Sustituciones.");
+  } else if (existKeys.size > 0) {
+    alert("✅ Ausencia aprobada. Las sustituciones ya estaban creadas (" + existKeys.size + " tramo(s)).");
   } else {
-    alert("✅ Ausencia aprobada. No se encontraron tramos de " + profesorNombre + " en horarios para esas fechas.");
+    alert("✅ Ausencia aprobada.\n⚠️ No se encontró el horario de " + profesorNombre + " para el curso " + cursoEscolar + ".\nRevisa que el nombre coincide con horarios_grupo o crea las sustituciones manualmente.");
   }
 }
 
