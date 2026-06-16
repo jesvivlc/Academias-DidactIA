@@ -91,7 +91,7 @@
 
 | Bucket | Acceso | Uso |
 |--------|--------|-----|
-| `justificantes` | Privado (solo autenticados) | Justificantes de ausencias de profesores |
+| `documentos` | Privado + RLS de Storage staff-only por centro (carpeta `justificantes/{centro_id}/…`, `centro_id` = segmento `[2]`) | Justificantes de ausencias (`js/admin.js`: upload en `notificarAusenciaProfesor` + `_subirJustificante`/`_descargarJustificante` con signed URL 1h). **Creado 2026-06-16** (`bucket_documentos_justificantes.sql`): antes el código subía a este bucket pero NO existía → los justificantes se perdían en silencio. NO existe bucket `justificantes` (el path empieza por `justificantes/` pero el bucket es `documentos`) |
 | `materiales` | Privado + RLS de Storage por centro (carpeta `{centro_id}/…`) | Archivos del módulo Materiales; descarga vía signed URL (1h) |
 | `documents` | Público | Bucket genérico existente |
 

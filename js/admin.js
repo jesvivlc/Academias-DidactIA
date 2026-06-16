@@ -704,7 +704,9 @@ async function notificarAusenciaProfesor() {
   if (justFile && ausenciaId) {
     const ext  = justFile.name.split(".").pop().toLowerCase();
     const path = `justificantes/${ctrId}/rrhh_${ausenciaId}.${ext}`;
-    await sb.storage.from("documentos").upload(path, justFile, { upsert: true, contentType: justFile.type }).catch(() => {});
+    const { error: justErr } = await sb.storage.from("documentos")
+      .upload(path, justFile, { upsert: true, contentType: justFile.type });
+    if (justErr) console.warn("[justificante] no se pudo subir:", justErr.message || justErr);
   }
 
   // ── 4. Notificación consolidada a admins del centro ───────────────────
