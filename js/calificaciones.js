@@ -90,7 +90,10 @@ async function _calRenderFamilia() {
     '<div style="flex:1;padding:28px;display:flex;flex-direction:column;gap:8px;background:var(--bg);overflow-y:auto;">' +
       '<div class="pg-hdr"><div><div class="pg-title">Calificaciones</div>' +
         '<div class="pg-sub">' + _calEsc(hijo.nombre) + (hijo.grupo_horario ? ' · ' + _calEsc(hijo.grupo_horario) : '') + '</div></div>' +
-        '<button class="btn btn-p" onclick="initCalificaciones()">↺ Actualizar</button></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="btn btn-s" id="cal-bol-btn" onclick="_calBoletinPDF()">⬇ Boletín PDF</button>' +
+          '<button class="btn btn-p" onclick="initCalificaciones()">↺ Actualizar</button>' +
+        '</div></div>' +
       selectorHtml +
       '<div id="cal-fam-tabla"><div style="text-align:center;color:var(--txt3);padding:30px;"><span class="spin">⟳</span> Cargando…</div></div>' +
     '</div>';
@@ -148,6 +151,106 @@ async function _calRenderFamilia() {
 function _calFamSelectHijo(idx) {
   _calFamHijoIdx = idx;
   _calRenderFamilia();
+}
+
+// Boletín de notas en PDF del hijo seleccionado (reutiliza helpers de informes.js).
+async function _calBoletinPDF() {
+  var btn = document.getElementById('cal-bol-btn');
+  var rest = function () { if (btn) { btn.disabled = false; btn.textContent = '⬇ Boletín PDF'; } };
+  if (typeof _infEnsureLibs !== 'function') { _calToast('Exportación no disponible', 'error'); return; }
+  var hijos = (typeof currentUserAlumnos !== 'undefined' && currentUserAlumnos) ? currentUserAlumnos : [];
+  var hijo = hijos[_calFamHijoIdx];
+  if (!hijo) { _calToast('Sin alumno seleccionado', 'warn'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+  try {
+    await _infEnsureLibs();
+    var centro  = await _infCentroInfo();
+    var logoImg = await _infImgToDataURL(centro.logo);
+    var rgb     = _infHexToRgb(centro.color);
+
+    var r = await sb.from('calificaciones')
+      .select('asignatura,evaluacion,nota,observaciones,profesor_nombre')
+      .eq('centro_id', ctrId).eq('alumno_id', hijo.id);
+    var data = r.data || [];
+
+    var EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
+    var EVALS_LBL = ['1ª Ev.', '2ª Ev.', '3ª Ev.', 'Final'];
+    var porAsig = {};
+    data.forEach(function (c) {
+      var k = c.asignatura || '—';
+      if (!porAsig[k]) porAsig[k] = { prof: c.profesor_nombre || '' };
+      porAsig[k][c.evaluacion] = c.nota;
+    });
+    var asigs = Object.keys(porAsig).sort(function (a, b) { return a.localeCompare(b, 'es'); });
+    var body = asigs.map(function (a) {
+      var row = porAsig[a];
+      var cell = function (e) { var n = row[e]; return (n == null || n === '') ? '—' : String(n); };
+      return [a, cell(EVALS[0]), cell(EVALS[1]), cell(EVALS[2]), cell(EVALS[3]), row.prof || ''];
+    });
+
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    var W = doc.internal.pageSize.getWidth();
+    var H = doc.internal.pageSize.getHeight();
+    var fechaEmision = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    var pageDraw = function () {
+      doc.setFillColor(rgb.r, rgb.g, rgb.b);
+      doc.rect(0, 0, W, 26, 'F');
+      var x = 12;
+      if (logoImg && logoImg.dataURL) {
+        try {
+          var h = 16, w = h * (logoImg.w / logoImg.h);
+          if (w > 38) { w = 38; h = w * (logoImg.h / logoImg.w); }
+          doc.addImage(logoImg.dataURL, 'PNG', 12, 5, w, h); x = 12 + w + 6;
+        } catch (e) {}
+      }
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13); doc.setFont(undefined, 'bold');
+      doc.text(centro.nombre || 'Centro', x, 11);
+      doc.setFontSize(10); doc.setFont(undefined, 'normal');
+      doc.text('BOLETÍN DE CALIFICACIONES', x, 18);
+      doc.setFontSize(8.5);
+      doc.text(fechaEmision, W - 12, 11, { align: 'right' });
+      var pg = 1; try { pg = doc.internal.getCurrentPageInfo().pageNumber; } catch (e) {}
+      doc.setTextColor(130, 130, 130); doc.setFontSize(8);
+      doc.text(centro.nombre || 'Centro', 12, H - 8);
+      doc.text('Página ' + pg, W - 12, H - 8, { align: 'right' });
+      doc.setTextColor(40, 40, 40);
+    };
+
+    pageDraw();
+    var y = 38;
+    doc.setFontSize(16); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40);
+    doc.text(hijo.nombre || 'Alumno', 12, y);
+    doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.setTextColor(90, 90, 90);
+    doc.text((hijo.curso || '') + (hijo.grupo_horario ? '   ·   Grupo ' + hijo.grupo_horario : ''), 12, y + 6);
+    y += 14;
+
+    if (!body.length) {
+      doc.setFontSize(11); doc.setTextColor(120, 120, 120);
+      doc.text('Aún no hay calificaciones publicadas.', 12, y);
+    } else {
+      doc.autoTable({
+        head: [['Asignatura'].concat(EVALS_LBL).concat(['Profesor/a'])],
+        body: body, startY: y,
+        margin: { top: 32, bottom: 16 },
+        styles: { fontSize: 9, cellPadding: 2.2 },
+        headStyles: { fillColor: [rgb.r, rgb.g, rgb.b], textColor: 255, fontSize: 9 },
+        columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } },
+        alternateRowStyles: { fillColor: [244, 242, 238] },
+        didDrawPage: pageDraw
+      });
+    }
+
+    var safe = (hijo.nombre || 'alumno').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').toLowerCase();
+    doc.save('boletin_' + safe + '_' + new Date().toISOString().split('T')[0] + '.pdf');
+    _calToast('✅ Boletín descargado', 'ok');
+  } catch (e) {
+    _calToast('No se pudo generar el boletín', 'error');
+  } finally {
+    rest();
+  }
 }
 
 /* ════════════════════════════════════════════════════
