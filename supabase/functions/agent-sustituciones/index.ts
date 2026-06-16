@@ -255,14 +255,17 @@ async function _calcularLibres(
   if (horaInicio) {
     // Normaliza a "HH:MM" (recorta segundos si los hay)
     const hi = horaInicio.slice(0, 5);
+    // Solo cuenta como "ocupado" quien tiene una clase REAL — los que tienen
+    // "guardia" a esa hora están libres para cubrir la sustitución.
     const { data: rows, error: oErr } = await sb
       .from("horarios_grupo").select("profesor_nombre")
       .eq("centro_id", centro_id).eq("curso_escolar", cursoActivo)
       .eq("dia", dia).like("hora_inicio", hi + "%")
+      .not("actividad_nombre", "ilike", "%guardia%")
       .not("profesor_nombre", "is", null).limit(200);
     if (oErr) console.error(`[agent] ocupados por hora_inicio error: ${oErr.message}`);
     else ocupadosRows = rows;
-    console.log(`[agent] ocupados por hora_inicio "${hi}%": ${ocupadosRows?.length ?? 0}`);
+    console.log(`[agent] ocupados por hora_inicio "${hi}%" (excl. guardia): ${ocupadosRows?.length ?? 0}`);
   }
 
   // Si no usamos hora_inicio o no devolvió nada, intentar por número de tramo.
@@ -271,12 +274,13 @@ async function _calcularLibres(
       .from("horarios_grupo").select("profesor_nombre")
       .eq("centro_id", centro_id).eq("curso_escolar", cursoActivo)
       .eq("dia", dia).eq("tramo", String(tramo))
+      .not("actividad_nombre", "ilike", "%guardia%")
       .not("profesor_nombre", "is", null).limit(200);
     if (oErr) throw new Error(`Error al leer horarios: ${oErr.message}`);
     // Sólo usamos este resultado si encontramos filas; si no, asumimos
     // que el tramo no coincide con la numeración de horarios_grupo.
     if (rows?.length) ocupadosRows = rows;
-    console.log(`[agent] ocupados por tramo="${tramo}": ${rows?.length ?? 0}`);
+    console.log(`[agent] ocupados por tramo="${tramo}" (excl. guardia): ${rows?.length ?? 0}`);
   }
 
   const ocupadosNorm = new Set<string>();
