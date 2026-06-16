@@ -316,10 +316,14 @@ async function renderMiHorarioHoy(force) {
     var _argAttr = function (v) {
       return String(v == null ? "" : v).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
     };
-    var btnLista = (ahora && canPasarLista && row.grupo_horario && row.tramo != null)
+    // Pasar lista disponible para cualquier clase de hoy que ya haya empezado
+    // (la actual o una ya concluida — por si se olvidó pasarla en su momento).
+    // No se muestra en clases futuras del día.
+    var yaEmpezada = (ini == null) || (nowMin >= ini);
+    var btnLista = (yaEmpezada && canPasarLista && row.grupo_horario && row.tramo != null)
       ? '<button class="hh-btn-lista" onclick="window.abrirPasarLista(\'' +
           _argAttr(row.grupo_horario) + '\',' + row.tramo + ',\'' + _argAttr(fechaHoy) +
-        '\')">📋 Pasar lista</button>'
+        '\')">📋 ' + (ahora ? 'Pasar lista' : 'Pasar lista (atrasada)') + '</button>'
       : "";
     return '<div class="home-horario-row' + (ahora ? " is-now" : "") + '">' +
       '<div class="hh-tramo">' + _mhEsc(tramoLbl) + (ahora ? '<span class="hh-now">AHORA</span>' : "") + "</div>" +
