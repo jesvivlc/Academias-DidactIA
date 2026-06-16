@@ -94,10 +94,9 @@ async function loadFamiliaComedor() {
     });
     histHtml += '</div>';
 
-    var safeName = alumno.nombre.replace(/'/g, "&#39;");
     var tmrwHtml = (tmrwRec && !tmrwRec.se_queda)
       ? '<div style="margin-top:8px;font-size:13px;padding:8px 12px;background:#e8f5e9;border-radius:var(--r-sm);color:#2e7d32;">✅ Aviso enviado: no come mañana</div>'
-      : '<button class="btn btn-s" style="margin-top:8px;" onclick="_familiaAvisoManana(\'' + alumno.id + '\', \'' + safeName + '\')">📩 Avisar que no come mañana</button>';
+      : '<button class="btn btn-s" style="margin-top:8px;" onclick="_familiaAvisoManana(\'' + alumno.id + '\')">📩 Avisar que no come mañana</button>';
 
     html += '<div class="card">' +
       '<div class="card-hdr">' +

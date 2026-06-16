@@ -61,7 +61,7 @@ async function loadDashboard() {
       + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + '<div class="quick-q" onclick="askQ(\'¿Cómo funciona el protocolo de ausencias y justificantes?\')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Justificar falta</div>'
-      + (currentUserAlumnos && currentUserAlumnos[0] ? '<div class="quick-q" onclick="askQ(' + JSON.stringify("¿Qué clase tiene " + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + " ahora?") + ')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Ver horario de ' + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + '</div>' : "")
+      + (currentUserAlumnos && currentUserAlumnos[0] ? '<div class="quick-q" onclick="askQ(' + _mhEsc(JSON.stringify("¿Qué clase tiene " + (currentUserAlumnos[0].nombre||"").split(",")[0].trim() + " ahora?")) + ')" style="border-radius:20px;padding:7px 14px;font-size:12px;">Ver horario de ' + _mhEsc((currentUserAlumnos[0].nombre||"").split(",")[0].trim()) + '</div>' : "")
       + '</div>'
       + '</div>';
 
