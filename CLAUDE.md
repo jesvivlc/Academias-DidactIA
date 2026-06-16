@@ -84,6 +84,7 @@ js/
   calidad.js            initCalidad (módulo Calidad): dashboard 5 métricas, No Conformidades (lista/filtros/modal+voz+IA/CAPA), Feedback Familias (lista/sentimiento IA/respuesta IA); helper _calGemini reutilizable
   alumnos.js            initAlumnos (módulo Alumnos): directorio del centro (lista+búsqueda+filtro por grupo) + ficha individual (alumnosAbrirFicha: familias vinculadas, horario semanal, comedor 14d, incidencias, calificaciones). No familia
   asistencia.js         abrirPasarLista (modal fullscreen pasar lista de clase): toggle Presente/Retraso/Ausente + observacion; UPSERT asistencia_clase; push familias (ausente=inmediato, retraso=al confirmar). window._asistCambiarEstado, window._asistConfirmar, window._asistCerrar. + initAsistenciaVista (tab "Pasar lista" #panel-pasarlista) con **toggle Pasar lista / Informe**: (a) **Pasar lista** — selector de fecha (hoy/días anteriores) + (admin) grupo → clases del día con resumen ✓/⚡/✗ y botón; (b) **Informe** (`_asistInformeCargar`) — rango de fechas + grupo → tabla por alumno (presente/retraso/ausente/total/% asistencia, ordenada por ausencias desc) + KPIs (registros, ausencias, retrasos, alumnos con ≥3 ausencias) + export Excel (`_asistInformeExportar`). Profesor: sus grupos (match por tokens); dirección: selector de grupo. `_aEnsureStyles` comparte estilos (idempotente)
+  tutoria.js            initTutorias (módulo Tutorías): vista profesional (Mis citas: confirmar/cancelar/realizada/notas_tutor + Mi disponibilidad: CRUD ventanas semanales por grupo) / vista familia (selector hijo → disponibilidad del tutor → date picker → sub-slots → solicitar + Mis citas: historial+cancelar) / vista admin/dirección (tabla read-only). Push tutor←→familia vía EF send-push. CSS self-contained _tutEnsureStyles. Tablas: tutoria_disponibilidad + tutoria_citas (UNIQUE disp_id+fecha+hora_inicio)
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -93,6 +94,7 @@ supabase/migrations/
   planner_grupos.sql    DDL tabla planner_grupos (hoja "Grupos") + RLS
   materiales.sql        DDL materiales + RLS + bucket privado 'materiales' + RLS de Storage
   orientacion_base.sql  DDL Orientación: 6 tablas (expedientes_orientacion, informes_psicopedagogicos, medidas_atencion, cuestionarios_docentes, tramites_orientacion, alertas_orientacion) + índices + RLS por centro
+  tutorias.sql          DDL Tutorías: tutoria_disponibilidad + tutoria_citas + RLS (5 políticas: staff ALL + familia read/CUD propio) + índices
 manifest.json                   PWA manifest (start_url /app.html, scope /, iconos SVG incl. maskable, id, categories)
 sw.js                           Service Worker (network-first, precache de todos los js/, push handler con icono inline, notificationclick → enfoca/abre /app.html). CACHE didactia-v8
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
@@ -308,7 +310,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - _(ninguna)_
+> - `supabase/migrations/tutorias.sql` — 2 tablas (`tutoria_disponibilidad` + `tutoria_citas`) + RLS (5 políticas) + índices
 >
 > **Migraciones ejecutadas** (ya en producción):
 > - `supabase/migrations/bucket_documentos_justificantes.sql` — **fix bug pérdida de datos**: crea el bucket privado `documentos` + 4 políticas de Storage staff-only por centro (path `justificantes/{centro_id}/…`, `centro_id` = segmento `[2]`). `js/admin.js` subía justificantes a este bucket pero no existía → se perdían en silencio (`.catch(()=>{})`, ahora con `console.warn`). ✅ aplicado y verificado 2026-06-16 vía Management API (bucket privado + documentos_read/insert/update/delete)
@@ -346,6 +348,8 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-16 16:51` · `37865ab` — feat(tutorias): módulo de reserva de citas tutor-familia
+- `2026-06-16 16:33` · `6dd9a09` — docs: sesión 2026-06-16 portátil — asistencia informe, boletín PDF, PWA, push suite familias
 - `2026-06-16` · `99f3006` — feat(familia): push a familias al enviar un comunicado
 - `2026-06-16` · `442c2fa` — feat(calificaciones): boletín PDF por alumno también en la vista dirección
 - `2026-06-16` · `fe8c566` — feat(familia): boletín de calificaciones en PDF descargable

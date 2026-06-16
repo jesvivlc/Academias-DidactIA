@@ -53,6 +53,8 @@
 | `documentos_calidad` | centro_id, titulo, tipo, contenido, created_at | Documentos del SGC (sistema de gestión de calidad) |
 | `plantillas_calidad` | centro_id, nombre, tipo, contenido_plantilla, campos_requeridos (jsonb) | Plantillas de documentos (entrevista familia, acta reunión, informe incidencia, plan mejora). Seed: `supabase/seeds/plantillas_calidad_default.sql` |
 | `push_subscriptions` | id, user_id (NOT NULL), centro_id (nullable), subscription (jsonb), created_at | Suscripciones Web Push. RLS `push_own` + `push_superadmin`. La EF `send-push` lee de aquí (service_role); las familias se suscriben desde `js/familias.js` (`initPushFamilias`) |
+| `tutoria_disponibilidad` | centro_id, tutor_id (→profiles), grupo_horario, dia_semana (1–5), hora_inicio (time), hora_fin (time), duracion_min (DEFAULT 20), activo (bool), created_at | Ventanas de disponibilidad del tutor. RLS: staff ALL; familia SELECT solo activas. Módulo `js/tutoria.js` |
+| `tutoria_citas` | centro_id, disp_id (→tutoria_disponibilidad), tutor_id, alumno_id, alumno_nombre (denom.), grupo_horario (denom.), familia_id, fecha, hora_inicio, hora_fin, motivo, notas_tutor, estado (solicitada/confirmada/realizada/cancelada), cancelada_por (tutor/familia); UNIQUE(disp_id, fecha, hora_inicio) | Citas de tutoría. El UNIQUE impide doble reserva con race condition. RLS: staff ALL; familia SELECT/INSERT/UPDATE propias (`familia_id=auth.uid()`). Módulo `js/tutoria.js` |
 
 ---
 

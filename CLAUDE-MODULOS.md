@@ -307,6 +307,18 @@
 - **Tabla**: `asistencia_clase` — UNIQUE(centro_id,alumno_id,fecha,tramo); RLS `asistencia_clase_centro`; DDL: `supabase/migrations/asistencia_clase.sql` (✅ aplicado)
 - **Helpers**: `_aEnsureStyles()` inyecta CSS una vez (idempotente); `_aEsc()` escapa XSS; `_argAttr()` en mejoras.js escapa argumentos para atributos onclick con comillas simples
 
+### Tutorías — reserva de citas tutor-familia (tutoria.js)
+- Tab **"📅 Tutorías"** (`#nav-tutorias`, `#panel-tutorias`) en grupo Docencia; visible para `profesional`, `familia`, `admin`, `admin_institucional`, `director`, `jefatura`, `superadmin`
+- **Tablas**: `tutoria_disponibilidad` (ventanas semanales del tutor: grupo_horario, dia_semana 1–5, hora_inicio/fin, duracion_min, activo) + `tutoria_citas` (citas concretas con UNIQUE(disp_id, fecha, hora_inicio) para evitar doble reserva; alumno_nombre y grupo_horario denormalizados). Migración: `supabase/migrations/tutorias.sql` (**pendiente ejecutar en SQL Editor**)
+- **RLS**: `tut_disp_staff` ALL por centro (no familia); `tut_disp_familia_read` SELECT activas (familia puede leer disponibilidad); `tut_citas_staff` ALL por centro (no familia); `tut_citas_familia_*` SELECT/INSERT/UPDATE solo `familia_id = auth.uid()`
+- **Vista profesional** (`_tutRenderProfesor`): 2 tabs — (a) **Mis citas**: lista de citas próximas y atrasadas (Confirmar / Cancelar / Realizada), campo de notas internas por cita (`notas_tutor`, guardado onblur); (b) **Mi disponibilidad** (`_tutLoadDispProfesor`): CRUD de ventanas horarias — formulario con grupo (auto-detecta de `horarios_grupo ilike nombre`), día de semana, hora inicio/fin, duración
+- **Vista familia** (`_tutRenderFamilia`): selector de hijo (chips si >1) → disponibilidad del tutor del grupo del hijo → date picker filtrado por `dia_semana` → generación de sub-slots en cliente (ventana / duracion_min) → marcar tomados (query `tutoria_citas` para ese disp_id+fecha) → solicitar; tab **Mis citas** con historial y botón Cancelar
+- **Vista admin/dirección** (`_tutRenderAdmin`): tabla read-only con todas las citas del centro (alumno, grupo, fecha, hora, estado, motivo)
+- **Flujo**: tutor define disponibilidad → familia solicita → push a tutor "Nueva solicitud" → tutor confirma → push a familia "Cita confirmada" / cancela → push a familia; familia cancela → push a tutor
+- **Helpers**: `_tutEsc(s)`, `_tutArg(s)`, `_tutFechaLegible(d)`, `_tutEstadoBadge(estado)`, `_tutPush(userIds, title, body)` → EF `send-push` fire-and-forget, `_tutToast(msg, isErr)`, `_tutEnsureStyles()` inyecta CSS una vez (idempotente)
+- `window._tutSlots` — array de slots calculados para la fecha seleccionada (indexados por `_tutFamSelSlot`); `_tutFamDisp` — disponibilidad cacheada del tutor activo; `_tutFamHijos`/`_tutFamHijoIdx` — hijos y selección activa
+- **Constraint 23505**: al solicitar, si la ranura ya fue tomada concurrentemente → toast explicativo sin crash
+
 ### Materiales — hub de materiales (materiales.js)
 - Tab **"📚 Materiales"** en sidebar; `#panel-materiales` con `flex-direction:column` en el raíz + div interno `flex:1;overflow-y:auto`
 - Subida multi-grupo (select multiple), descarga signed URL (1h), toggle "Mis materiales/Todos", form "solo mis clases"
