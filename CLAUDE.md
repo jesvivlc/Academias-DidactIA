@@ -344,8 +344,13 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
-- `2026-06-16 00:05` · `cd739f4` — feat(planner): sprint 2 — vista por profesor cross-grupo + resumen de carga
-- `2026-06-16 00:00` · `d791cf8` — fix(planner): sprint 1 — persistencia tablero + CSP timeout + confirmación regenerar
+- `2026-06-16` · `54c739d` — docs(CLAUDE.md): sesión 2026-06-16 — redesign Planner + Análisis documentado
+- `2026-06-16` · `85bce6d` — feat(redesign): cabeceras Newsreader en paneles Planner y Análisis — header fijo eyebrow + h1 30px + subtítulo; tabs `.tabs-in-hdr`; banner tramos-warn con tokens design system; Analytics CSS oculta título duplicado JS; `planner-wrap` → `flex:1;min-height:0`
+- `2026-06-16` · `8c0ce33` — docs(CLAUDE.md): sprint 4 planner cobertura documentado
+- `2026-06-16` · `2038d33` — feat(planner): sprint 4 — cobertura del horario — `_calcCobertura()`, `plannerCobertura()` modal, badges ✓/⚠/❌ en selector de grupo, banner verde/ámbar en Publicar
+- `2026-06-16` · `6b156e0` — feat(planner): sprint 3 — validación de viabilidad pre-generación — `_validarViabilidad()`, `plannerVerificar()` modal, `_diagnosticarFallo(grupo)`, botón "🔍 Verificar"
+- `2026-06-16` · `cd739f4` — feat(planner): sprint 2 — vista por profesor cross-grupo + resumen de carga — `_renderProfesorView`, tab "👤 Profe", panel "Carga semanal"
+- `2026-06-16` · `d791cf8` — fix(planner): sprint 1 — persistencia tablero + CSP timeout + confirmación regenerar — `_guardarHorarioGenerado` tras drop, límite 500k nodos, `TNUMS.length`, `IMPORT_CENTRO=ctrId`
 - `2026-06-15 23:17` · `48e1608` — docs(CLAUDE.md): sesion 2026-06-15 — incidencias detalle, calificaciones split, flex panel fixes
 - `2026-06-15 23:08` · `c29d6b0` — fix: flex-direction:column en paneles materiales, orientacion y calidad
 - `2026-06-15 23:05` · `28b9753` — feat(calificaciones): split layout admin — lista + expediente de notas por alumno
@@ -353,15 +358,10 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 - `2026-06-15 22:32` · `e83a655` — feat(incidencias): clic en fila abre panel de detalle
 - `2026-06-15 22:23` · `16c388b` — fix(alumnos): quitar display:flex !important en #panel-alumnos — sobreescribía display:none y partía la pantalla
 - `2026-06-15 22:18` · `6e240a1` — feat(familia): onboarding wizard primer acceso
-- `2026-06-15 20:05` · `2aa8fdc` — docs: sesión 2026-06-15 — redesign alumnos + fixes agente/topbar documentados
 - `2026-06-15 19:35` · `b69ae0e` — feat(alumnos): redesign split layout — lista + drawer de perfil
 - `2026-06-15 06:50` · `4c869b7` — fix: agente detecta sustituciones sin sustituto + topbar nombre centro
 - `2026-06-15 01:06` · `c21e4d9` — feat(mobile): rediseño móvil — hint reposicionado, tablas a tarjetas, espaciado optimizado, touch targets
-- `2026-06-15 00:56` · `e57fe1f` — docs(CLAUDE.md): sesión 2026-06-15 — portal familia + fix chat ñ + RLS fase 3
 - `2026-06-15 00:56` · `b124a72` — feat(familia): portal familiar rediseñado — hero alumno + nav rápido + reorden bloques
 - `2026-06-15 00:41` · `690973c` — fix(chat): renombrar añadir_clase → agregar_clase en EF chat
-- `2026-06-15 00:39` · `c707e87` — docs(CLAUDE.md): rls_familia_lockdown_fase3 aplicado en producción
 - `2026-06-15 00:13` · `76e3c4c` — fix(seguridad RGPD): auditoría RLS fase 3 — sustituciones, comunicados, salidas, participantes
-- `2026-06-14 23:14` · `69bd4cc` — test(rls): verificación e2e RLS rol familia — 6 aserciones de privacidad RGPD
-
 - `2026-06-14 22:56` · `89c0553` — feat(redesign): redesign visual 3 paneles — Asistente IA, Sustituciones, Incidencias
