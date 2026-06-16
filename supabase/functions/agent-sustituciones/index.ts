@@ -54,6 +54,7 @@ const TOOL_DECLARATIONS = [
       properties: {
         fecha: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
         tramo: { type: "STRING", description: "Número de tramo horario (ej: '1', '2', '3')" },
+        hora_inicio: { type: "STRING", description: "Hora de inicio del tramo en formato HH:MM (ej: '08:50'). Tómala del campo hora_inicio devuelto por obtener_ausencias_sin_cubrir." },
         centro_id: { type: "STRING", description: "ID del centro (UUID)" },
       },
       required: ["fecha", "tramo", "centro_id"],
@@ -70,6 +71,7 @@ const TOOL_DECLARATIONS = [
       properties: {
         fecha: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
         tramo: { type: "STRING", description: "Número de tramo horario (ej: '1', '2', '3')" },
+        hora_inicio: { type: "STRING", description: "Hora de inicio del tramo en formato HH:MM. Tómala del campo hora_inicio de obtener_ausencias_sin_cubrir." },
         centro_id: { type: "STRING", description: "ID del centro (UUID)" },
         profesores_libres: {
           type: "ARRAY",
@@ -163,7 +165,7 @@ async function obtenerAusenciasSinCubrir(
 
   const { data, error } = await sb
     .from("sustituciones")
-    .select("id, grupo_horario, tramo, profesor_ausente, observaciones, cubierta, profesor_sustituto")
+    .select("id, grupo_horario, tramo, hora_inicio, hora_fin, profesor_ausente, observaciones, cubierta, profesor_sustituto")
     .eq("centro_id", centro_id)
     .eq("fecha", fecha);
   if (error) throw new Error(`Error al leer sustituciones: ${error.message}`);
@@ -178,11 +180,14 @@ async function obtenerAusenciasSinCubrir(
     return esPendiente || esCubiertaSinSustituto;
   }).map((s: {
     id: string; grupo_horario: string | null; tramo: string | number | null;
+    hora_inicio: string | null; hora_fin: string | null;
     profesor_ausente: string | null; observaciones: string | null;
   }) => ({
     id: s.id,
     grupo_horario: s.grupo_horario ?? "",
     tramo: s.tramo ?? "",
+    hora_inicio: s.hora_inicio ?? "",
+    hora_fin: s.hora_fin ?? "",
     profesor_ausente: s.profesor_ausente ?? "",
     observaciones: s.observaciones ?? "",
   }));
@@ -194,12 +199,13 @@ async function obtenerAusenciasSinCubrir(
 /* Núcleo reutilizable: profesores libres del centro en fecha+tramo.
    Universo = profesores del centro (deduplicados por nombre normalizado, sin
    placeholders ni nombres basura). Ocupados = profesores con clase en
-   horarios_grupo ese día+tramo. Libres = universo − ocupados. Filtra por centro_id. */
+   horarios_grupo ese día en la misma hora de inicio. Libres = universo − ocupados. */
 async function _calcularLibres(
   sb: SB,
   fecha: string,
   tramo: string,
   centro_id: string,
+  horaInicio?: string,   // opcional: hora_inicio del tramo (más fiable que el número de tramo)
 ): Promise<{ dia: string; finde: boolean; universoSize: number; libres: string[] }> {
   const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   const diaIdx = new Date(fecha + "T12:00:00Z").getUTCDay();
@@ -213,12 +219,12 @@ async function _calcularLibres(
   const [profesRes, hgTodosRes] = await Promise.all([
     sb.from("profesores").select("nombre").eq("centro_id", centro_id),
     sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", centro_id)
-      .not("profesor_nombre", "is", null),
+      .not("profesor_nombre", "is", null).limit(5000),
   ]);
   if (profesRes.error) throw new Error(`Error al leer profesores: ${profesRes.error.message}`);
+  if (hgTodosRes.error) console.error(`[agent] hgTodosRes error: ${hgTodosRes.error.message}`);
 
   const universo = new Map<string, string>();
-  // Primero los de la tabla profesores
   for (const p of (profesRes.data ?? []) as { nombre: string }[]) {
     const nombre = (p.nombre ?? "").trim();
     if (nombreInvalido(nombre)) continue;
@@ -226,7 +232,6 @@ async function _calcularLibres(
     if (!key) continue;
     if (!universo.has(key)) universo.set(key, nombre);
   }
-  // Luego los que aparecen en horarios_grupo (si no estaban ya)
   for (const h of (hgTodosRes.data ?? []) as { profesor_nombre: string }[]) {
     const nombre = (h.profesor_nombre ?? "").trim();
     if (nombreInvalido(nombre)) continue;
@@ -235,20 +240,44 @@ async function _calcularLibres(
     if (!universo.has(key)) universo.set(key, nombre);
   }
 
-  // Ocupados: profesores con clase ese día y tramo en el curso activo.
+  console.log(`[agent] _calcularLibres · fecha=${fecha} tramo=${tramo} dia=${dia} horaInicio=${horaInicio ?? "—"} centro=${centro_id} · universo=${universo.size} (profesores=${profesRes.data?.length ?? 0}, hg=${hgTodosRes.data?.length ?? 0})`);
+
+  // Curso activo del centro.
   const { data: cursoRow } = await sb.from("info_centro").select("curso_activo")
     .eq("centro_id", centro_id).maybeSingle();
   const cursoActivo = (cursoRow as { curso_activo?: string } | null)?.curso_activo ?? "2025-26";
 
-  const { data: ocupadosRows, error: oErr } = await sb
-    .from("horarios_grupo")
-    .select("profesor_nombre")
-    .eq("centro_id", centro_id)
-    .eq("curso_escolar", cursoActivo)
-    .eq("dia", dia)
-    .eq("tramo", String(tramo))
-    .not("profesor_nombre", "is", null);
-  if (oErr) throw new Error(`Error al leer horarios: ${oErr.message}`);
+  // Estrategia para identificar "ocupados":
+  // 1ª opción — por hora_inicio (fiable: independiente de numeración de tramos)
+  // 2ª opción — por tramo número (fallback)
+  let ocupadosRows: { profesor_nombre: string }[] | null = null;
+
+  if (horaInicio) {
+    // Normaliza a "HH:MM" (recorta segundos si los hay)
+    const hi = horaInicio.slice(0, 5);
+    const { data: rows, error: oErr } = await sb
+      .from("horarios_grupo").select("profesor_nombre")
+      .eq("centro_id", centro_id).eq("curso_escolar", cursoActivo)
+      .eq("dia", dia).like("hora_inicio", hi + "%")
+      .not("profesor_nombre", "is", null).limit(200);
+    if (oErr) console.error(`[agent] ocupados por hora_inicio error: ${oErr.message}`);
+    else ocupadosRows = rows;
+    console.log(`[agent] ocupados por hora_inicio "${hi}%": ${ocupadosRows?.length ?? 0}`);
+  }
+
+  // Si no usamos hora_inicio o no devolvió nada, intentar por número de tramo.
+  if (!ocupadosRows?.length) {
+    const { data: rows, error: oErr } = await sb
+      .from("horarios_grupo").select("profesor_nombre")
+      .eq("centro_id", centro_id).eq("curso_escolar", cursoActivo)
+      .eq("dia", dia).eq("tramo", String(tramo))
+      .not("profesor_nombre", "is", null).limit(200);
+    if (oErr) throw new Error(`Error al leer horarios: ${oErr.message}`);
+    // Sólo usamos este resultado si encontramos filas; si no, asumimos
+    // que el tramo no coincide con la numeración de horarios_grupo.
+    if (rows?.length) ocupadosRows = rows;
+    console.log(`[agent] ocupados por tramo="${tramo}": ${rows?.length ?? 0}`);
+  }
 
   const ocupadosNorm = new Set<string>();
   for (const r of (ocupadosRows ?? []) as { profesor_nombre: string }[]) {
@@ -263,6 +292,7 @@ async function _calcularLibres(
     .map(([, display]) => display)
     .sort((a, b) => a.localeCompare(b, "es"));
 
+  console.log(`[agent] _calcularLibres · ocupados=${ocupadosNorm.size} libres=${libres.length}`);
   return { dia, finde: false, universoSize: universo.size, libres };
 }
 
@@ -272,11 +302,12 @@ async function buscarProfesoresLibres(
   fecha: string,
   tramo: string,
   centro_id: string,
+  horaInicio?: string,
 ): Promise<string> {
-  console.log("[agent-sustituciones] buscar_profesores_libres · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo);
+  console.log("[agent-sustituciones] buscar_profesores_libres · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo, "· horaInicio:", horaInicio ?? "—");
   validarFecha(fecha, centro_id);
   validarTramo(tramo);
-  const { dia, finde, universoSize, libres } = await _calcularLibres(sb, fecha, tramo, centro_id);
+  const { dia, finde, universoSize, libres } = await _calcularLibres(sb, fecha, tramo, centro_id, horaInicio);
   if (finde) return `El ${fecha} es ${dia}: no hay actividad lectiva, no aplica buscar guardias.`;
   if (!universoSize) return "No hay profesores registrados en este centro.";
   if (!libres.length) return `No hay profesores libres el ${fecha} (${dia}) en el tramo ${tramo}.`;
@@ -307,8 +338,9 @@ async function sugerirSustituto(
   tramo: string,
   centro_id: string,
   profesoresLibres: unknown,
+  horaInicio?: string,
 ): Promise<string> {
-  console.log("[agent-sustituciones] sugerir_sustituto · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo);
+  console.log("[agent-sustituciones] sugerir_sustituto · centro_id:", centro_id, "· fecha:", fecha, "· tramo:", tramo, "· horaInicio:", horaInicio ?? "—", "· profesoresLibres:", JSON.stringify(profesoresLibres));
   validarFecha(fecha, centro_id);
   validarTramo(tramo);
 
@@ -318,7 +350,7 @@ async function sugerirSustituto(
     : [];
   libres = libres.filter((s) => !nombreInvalido(s));
   if (!libres.length) {
-    const r = await _calcularLibres(sb, fecha, tramo, centro_id);
+    const r = await _calcularLibres(sb, fecha, tramo, centro_id, horaInicio);
     if (r.finde) return `El ${fecha} es ${r.dia}: no hay actividad lectiva, no aplica sugerir sustituto.`;
     libres = r.libres;
   }
@@ -381,14 +413,15 @@ async function executeTool(
 ): Promise<string> {
   const f = (args.fecha as string) ?? fecha;
   const t = args.tramo != null ? String(args.tramo) : "";
+  const hi = args.hora_inicio ? String(args.hora_inicio).slice(0, 5) : undefined;
   if (name === "obtener_ausencias_sin_cubrir") {
     return await obtenerAusenciasSinCubrir(sb, f, centro_id);
   }
   if (name === "buscar_profesores_libres") {
-    return await buscarProfesoresLibres(sb, f, t, centro_id);
+    return await buscarProfesoresLibres(sb, f, t, centro_id, hi);
   }
   if (name === "sugerir_sustituto") {
-    return await sugerirSustituto(sb, f, t, centro_id, args.profesores_libres);
+    return await sugerirSustituto(sb, f, t, centro_id, args.profesores_libres, hi);
   }
   throw new Error(`Herramienta desconocida: ${name}`);
 }
