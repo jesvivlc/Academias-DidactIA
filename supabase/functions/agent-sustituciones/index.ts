@@ -208,27 +208,43 @@ async function _calcularLibres(
     return { dia, finde: true, universoSize: 0, libres: [] };
   }
 
-  // Universo: Map<normalizado, display> — el primer nombre encontrado gana como display.
-  const { data: profes, error: pErr } = await sb
-    .from("profesores")
-    .select("nombre")
-    .eq("centro_id", centro_id);
-  if (pErr) throw new Error(`Error al leer profesores: ${pErr.message}`);
+  // Universo: Map<normalizado, display> — tabla profesores + horarios_grupo (muchos
+  // centros solo tienen datos en horarios_grupo, no en la tabla profesores).
+  const [profesRes, hgTodosRes] = await Promise.all([
+    sb.from("profesores").select("nombre").eq("centro_id", centro_id),
+    sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", centro_id)
+      .not("profesor_nombre", "is", null),
+  ]);
+  if (profesRes.error) throw new Error(`Error al leer profesores: ${profesRes.error.message}`);
 
   const universo = new Map<string, string>();
-  for (const p of (profes ?? []) as { nombre: string }[]) {
+  // Primero los de la tabla profesores
+  for (const p of (profesRes.data ?? []) as { nombre: string }[]) {
     const nombre = (p.nombre ?? "").trim();
     if (nombreInvalido(nombre)) continue;
     const key = normalizarNombre(nombre);
     if (!key) continue;
     if (!universo.has(key)) universo.set(key, nombre);
   }
+  // Luego los que aparecen en horarios_grupo (si no estaban ya)
+  for (const h of (hgTodosRes.data ?? []) as { profesor_nombre: string }[]) {
+    const nombre = (h.profesor_nombre ?? "").trim();
+    if (nombreInvalido(nombre)) continue;
+    const key = normalizarNombre(nombre);
+    if (!key) continue;
+    if (!universo.has(key)) universo.set(key, nombre);
+  }
 
-  // Ocupados: profesores con clase ese día y tramo (tramo se guarda como texto).
+  // Ocupados: profesores con clase ese día y tramo en el curso activo.
+  const { data: cursoRow } = await sb.from("info_centro").select("curso_activo")
+    .eq("centro_id", centro_id).maybeSingle();
+  const cursoActivo = (cursoRow as { curso_activo?: string } | null)?.curso_activo ?? "2025-26";
+
   const { data: ocupadosRows, error: oErr } = await sb
     .from("horarios_grupo")
     .select("profesor_nombre")
     .eq("centro_id", centro_id)
+    .eq("curso_escolar", cursoActivo)
     .eq("dia", dia)
     .eq("tramo", String(tramo))
     .not("profesor_nombre", "is", null);
