@@ -322,7 +322,7 @@ async function loadIncidencias(filtro) {
         acciones += '<button onclick="event.stopPropagation();cerrarIncidencia(\'' + i.id + '\')" style="background:none;border:1px solid #1e6b3a;cursor:pointer;color:#1e6b3a;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;">✓ Cerrar</button>';
       }
       if ((gravedad === 'grave' || gravedad === 'muy_grave') && i.alumno_nombre) {
-        acciones += '<button onclick="event.stopPropagation();notificarFamiliaIncidencia(\'' + i.id + '\',' + JSON.stringify(i.alumno_nombre) + ')" style="background:none;border:1px solid #e65100;cursor:pointer;color:#e65100;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;" title="Notificar a la familia">📧 Familia</button>';
+        acciones += '<button onclick="event.stopPropagation();notificarFamiliaIncidencia(\'' + i.id + '\',' + esc(JSON.stringify(i.alumno_nombre)) + ')" style="background:none;border:1px solid #e65100;cursor:pointer;color:#e65100;font-size:11px;padding:3px 8px;border-radius:8px;margin-right:4px;" title="Notificar a la familia">📧 Familia</button>';
       }
       acciones += '<button onclick="event.stopPropagation();eliminarIncidencia(\'' + i.id + '\')" style="background:none;border:none;cursor:pointer;color:#a50e0e;font-size:12px;padding:4px 8px;border-radius:8px;" title="Eliminar">✕</button>';
       return '<tr data-id="' + i.id + '" onclick="_incAbrirDetalle(\'' + i.id + '\')">'

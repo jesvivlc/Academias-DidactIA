@@ -137,18 +137,18 @@
       alergiasBadge += ' <span style="background:#fff3e0;color:#e65100;border-radius:12px;padding:1px 7px;font-size:10px;">🥗 ' + _aEsc(al.dieta_especial) + "</span>";
 
     var btnPresente = '<button class="asist-btn' + (estado === "presente" ? " asist-btn--ok" : "") +
-      '" onclick="window._asistCambiarEstado(' + JSON.stringify(al.id) + ',\'presente\')">✓ Presente</button>';
+      '" onclick="window._asistCambiarEstado(' + _aEsc(JSON.stringify(al.id)) + ',\'presente\')">✓ Presente</button>';
     var btnRetraso = '<button class="asist-btn' + (estado === "retraso" ? " asist-btn--warn" : "") +
-      '" onclick="window._asistCambiarEstado(' + JSON.stringify(al.id) + ',\'retraso\')">⚡ Retraso</button>';
+      '" onclick="window._asistCambiarEstado(' + _aEsc(JSON.stringify(al.id)) + ',\'retraso\')">⚡ Retraso</button>';
     var btnAusente = '<button class="asist-btn' + (estado === "ausente" ? " asist-btn--danger" : "") +
-      '" onclick="window._asistCambiarEstado(' + JSON.stringify(al.id) + ',\'ausente\')">✗ Ausente</button>';
+      '" onclick="window._asistCambiarEstado(' + _aEsc(JSON.stringify(al.id)) + ',\'ausente\')">✗ Ausente</button>';
 
     return '<div class="asist-alumno-nombre">' + _aEsc(al.nombre) + alergiasBadge + "</div>" +
       '<div class="asist-btns">' + btnPresente + btnRetraso + btnAusente + "</div>" +
       '<div class="asist-obs-wrap">' +
         '<input class="asist-obs-inp" id="asist-obs-' + _aEsc(al.id) + '" type="text" ' +
           'placeholder="Observación (opcional)" value="' + _aEsc(obs) + '" ' +
-          'onblur="window._asistGuardarObs(' + JSON.stringify(al.id) + ')">' +
+          'onblur="window._asistGuardarObs(' + _aEsc(JSON.stringify(al.id)) + ')">' +
       "</div>";
   }
 

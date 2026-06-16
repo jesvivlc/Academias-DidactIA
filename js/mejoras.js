@@ -311,10 +311,15 @@ async function renderMiHorarioHoy(force) {
     var horaTxt = (row.hora_inicio || "").slice(0, 5) + (row.hora_fin ? "–" + String(row.hora_fin).slice(0, 5) : "");
     var tramoLbl = (row.tramo != null) ? row.tramo + "ª hora" : "—";
     var aulaTxt = row.aula ? " · " + _mhEsc(row.aula) : "";
+    // Argumento seguro como string JS dentro de un atributo onclick="…" (comillas dobles):
+    // comillas simples en el contenido se escapan con \', las dobles a &quot;.
+    var _argAttr = function (v) {
+      return String(v == null ? "" : v).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    };
     var btnLista = (ahora && canPasarLista && row.grupo_horario && row.tramo != null)
-      ? '<button class="hh-btn-lista" onclick="window.abrirPasarLista(' +
-          JSON.stringify(row.grupo_horario) + ',' + row.tramo + ',' + JSON.stringify(fechaHoy) +
-        ')">📋 Pasar lista</button>'
+      ? '<button class="hh-btn-lista" onclick="window.abrirPasarLista(\'' +
+          _argAttr(row.grupo_horario) + '\',' + row.tramo + ',\'' + _argAttr(fechaHoy) +
+        '\')">📋 Pasar lista</button>'
       : "";
     return '<div class="home-horario-row' + (ahora ? " is-now" : "") + '">' +
       '<div class="hh-tramo">' + _mhEsc(tramoLbl) + (ahora ? '<span class="hh-now">AHORA</span>' : "") + "</div>" +
