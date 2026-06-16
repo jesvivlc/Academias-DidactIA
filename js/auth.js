@@ -499,6 +499,10 @@ async function loadUserProfile(user) {
   const tabAlumnos = document.getElementById("tab-alumnos");
   if (tabAlumnos) tabAlumnos.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","orientador"].includes(role)) ? "block" : "none";
 
+  // Pasar lista (asistencia de aula por fecha) — profesores y dirección (no familia)
+  const tabPasarLista = document.getElementById("tab-pasarlista");
+  if (tabPasarLista) tabPasarLista.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 

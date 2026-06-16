@@ -124,6 +124,7 @@
 <nav class="tabs" id="app-tabs" style="display:none">
   <div class="tab active" id="tab-chat"        onclick="showTab('chat')">💬 Chatbot</div>
   <div class="tab" id="tab-alumnos"            onclick="showTab('alumnos')"     style="display:none">🎓 Alumnos</div>
+  <div class="tab" id="tab-pasarlista"         onclick="showTab('pasarlista')"  style="display:none">📋 Pasar lista</div>
   <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
   <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
   <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
@@ -218,6 +219,9 @@
         <div class="sb-group-label">Docencia</div>
         <button class="nav-item" id="nav-alumnos" data-tab="alumnos" onclick="showTab('alumnos')" style="display:none;--nav-color:#2A7DA3">
           <i class="ti ti-users-group"></i><span class="nav-item-label">Alumnos</span>
+        </button>
+        <button class="nav-item" id="nav-pasarlista" data-tab="pasarlista" onclick="showTab('pasarlista')" style="display:none;--nav-color:#0F6E56">
+          <i class="ti ti-checkbox"></i><span class="nav-item-label">Pasar lista</span>
         </button>
         <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none;--nav-color:#185FA5">
           <i class="ti ti-replace"></i><span class="nav-item-label">Sustituciones</span>
@@ -914,6 +918,9 @@
   <!-- ALUMNOS PANEL -->
   <div class="panel" id="panel-alumnos" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
 
+  <!-- PASAR LISTA PANEL -->
+  <div class="panel" id="panel-pasarlista" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
+
   <!-- COMEDOR PANEL -->
   <div class="panel" id="panel-comedor" style="flex-direction:column;">
     <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
@@ -1470,7 +1477,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', alumnos:'Alumnos', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', alumnos:'Alumnos', pasarlista:'Pasar lista', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -1479,6 +1486,7 @@
   };
   var MAS_CFG = {
     alumnos:   { icon:'ti-users-group',     label:'Alumnos' },
+    pasarlista:{ icon:'ti-checkbox',        label:'Pasar lista' },
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
     espacios:  { icon:'ti-door',            label:'Espacios' },
@@ -1494,6 +1502,7 @@
   var TAB_MAP = {
     'tab-chat':        { nav:'nav-chat',        bn:'bn-chat' },
     'tab-alumnos':     { nav:'nav-alumnos',      bn:null },
+    'tab-pasarlista':  { nav:'nav-pasarlista',   bn:null },
     'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
     'tab-admin':       { nav:'nav-admin',        bn:null },
     'tab-sust':        { nav:'nav-sust',         bn:'bn-sust' },
@@ -1587,6 +1596,7 @@
         if (titleEl) titleEl.textContent = TITLES[t] || t;
         closeMasDrawer();
         if (t === 'alumnos' && typeof initAlumnos === 'function') initAlumnos();
+        if (t === 'pasarlista' && typeof initAsistenciaVista === 'function') initAsistenciaVista();
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
         if (t === 'orientacion' && typeof initOrientacion === 'function') initOrientacion();
