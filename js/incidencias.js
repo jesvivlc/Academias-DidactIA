@@ -740,5 +740,31 @@ async function notificarFamiliaIncidencia(incId, alumnoNombre) {
 
   if (data && data.success) {
     alert('✅ Notificación enviada a ' + data.enviados + ' de ' + data.total + ' familias.');
+    _incPushFamilia(alumnoNombre); // push además del email (fire-and-forget)
   }
+}
+
+// Push a las familias del alumno (mensaje genérico — el detalle queda en la app).
+async function _incPushFamilia(alumnoNombre) {
+  try {
+    if (!alumnoNombre) return;
+    var ra = await sb.from('alumnos').select('id').eq('centro_id', ctrId)
+      .ilike('nombre', '%' + alumnoNombre + '%').limit(5);
+    var ids = (ra.data || []).map(function (a) { return a.id; });
+    if (!ids.length) return;
+    var rf = await sb.from('familia_alumno').select('profile_id').in('alumno_id', ids);
+    var fams = [...new Set((rf.data || []).map(function (x) { return x.profile_id; }).filter(Boolean))];
+    if (!fams.length) return;
+    fetch(SB_URL + '/functions/v1/send-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY },
+      body: JSON.stringify({
+        user_ids: fams,
+        title: '⚠️ Comunicación del centro',
+        body: 'El centro ha registrado una incidencia relativa a tu hijo/a. Abre la app para ver los detalles.',
+        tag: 'inc-familia',
+        url: '/app.html'
+      })
+    }).catch(function () {});
+  } catch (e) { /* silencioso */ }
 }

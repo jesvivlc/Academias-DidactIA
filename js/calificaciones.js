@@ -225,7 +225,7 @@ async function calCargarAlumnos() {
     var p = prev[al.id] || {};
     var nota = (p.nota === null || p.nota === undefined) ? '' : p.nota;
     var obs  = p.observaciones || '';
-    return '<tr data-alumno-id="' + _calEsc(al.id) + '" data-alumno-nombre="' + _calEsc(al.nombre) + '">' +
+    return '<tr data-alumno-id="' + _calEsc(al.id) + '" data-alumno-nombre="' + _calEsc(al.nombre) + '" data-nota-orig="' + _calEsc(nota) + '">' +
       '<td style="font-weight:500;">' + _calEsc(al.nombre) + '</td>' +
       '<td style="width:110px;"><input class="fi cal-nota" type="number" min="0" max="10" step="0.01" ' +
         'value="' + _calEsc(nota) + '" placeholder="—" style="text-align:center;padding:6px 8px;"></td>' +
@@ -256,6 +256,7 @@ async function calGuardar() {
 
   var trs = document.querySelectorAll('#cal-prof-tabla tr[data-alumno-id]');
   var rows = [];
+  var cambios = [];   // alumnos cuya nota cambia (para avisar a la familia)
   var ahora = new Date().toISOString();
   for (var i = 0; i < trs.length; i++) {
     var tr = trs[i];
@@ -271,6 +272,11 @@ async function calGuardar() {
         return;
       }
       nota = Math.round(nota * 100) / 100;
+    }
+    // ¿cambió respecto a lo cargado? (orig es el value precargado, '' = sin nota)
+    var origRaw = (tr.dataset.notaOrig || '').trim().replace(',', '.');
+    if (nota !== null && String(nota) !== origRaw) {
+      cambios.push({ alumno_id: tr.dataset.alumnoId, alumno_nombre: tr.dataset.alumnoNombre });
     }
     rows.push({
       centro_id:       ctrId,
@@ -291,7 +297,42 @@ async function calGuardar() {
 
   var r = await sb.from('calificaciones').upsert(rows, { onConflict: 'centro_id,alumno_id,asignatura,evaluacion' });
   if (r.error) { _calToast('Error al guardar: ' + r.error.message, 'error'); return; }
-  _calToast('✅ ' + rows.length + ' calificaciones guardadas.', 'ok');
+  // Refrescar las notas "originales" en el DOM para no re-avisar en un segundo guardado
+  for (var k = 0; k < trs.length; k++) {
+    var ni = trs[k].querySelector('.cal-nota');
+    var nr = (ni.value || '').trim().replace(',', '.');
+    trs[k].dataset.notaOrig = (nr === '' ? '' : String(Math.round(parseFloat(nr) * 100) / 100));
+  }
+  _calToast('✅ ' + rows.length + ' calificaciones guardadas' +
+    (cambios.length ? ' · ' + cambios.length + ' familia(s) avisada(s)' : '') + '.', 'ok');
+  if (cambios.length) _calNotificarFamilias(cambios, asig, evalu); // fire-and-forget
+}
+
+// Push a las familias de los alumnos cuya nota cambió (solo aviso de que hay
+// nueva nota — NO el valor; la nota real queda tras login con su RLS).
+async function _calNotificarFamilias(cambios, asig, evalu) {
+  try {
+    var ids = cambios.map(function (c) { return c.alumno_id; });
+    var r = await sb.from('familia_alumno').select('alumno_id,profile_id').in('alumno_id', ids);
+    var byAlumno = {};
+    (r.data || []).forEach(function (x) { (byAlumno[x.alumno_id] = byAlumno[x.alumno_id] || []).push(x.profile_id); });
+    cambios.forEach(function (c) {
+      var fams = byAlumno[c.alumno_id];
+      if (!fams || !fams.length) return;
+      var primer = (c.alumno_nombre || '').split(',')[0].trim() || 'Tu hijo/a';
+      fetch(SB_URL + '/functions/v1/send-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY },
+        body: JSON.stringify({
+          user_ids: fams,
+          title: '📝 Nueva calificación',
+          body: primer + ' tiene una nueva nota de ' + asig + ' (' + evalu + ').',
+          tag: 'nota-' + c.alumno_id,
+          url: '/app.html'
+        })
+      }).catch(function () {});
+    });
+  } catch (e) { /* silencioso */ }
 }
 
 /* ════════════════════════════════════════════════════
