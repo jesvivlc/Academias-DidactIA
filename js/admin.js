@@ -1,20 +1,42 @@
 let sustFiltroActivo = 'hoy';
 
-function detectarTramoActual() {
-  const ahora = new Date();
-  const hhmm = ahora.getHours() * 100 + ahora.getMinutes();
-  if (hhmm >= 850  && hhmm < 945)  return 1;
-  if (hhmm >= 945  && hhmm < 1040) return 2;
-  if (hhmm >= 1040 && hhmm < 1135) return 3;
-  if (hhmm >= 1200 && hhmm < 1255) return 4;
-  if (hhmm >= 1255 && hhmm < 1350) return 5;
-  if (hhmm >= 1350 && hhmm < 1445) return 6;
-  if (hhmm >= 1510 && hhmm < 1605) return 7;
-  if (hhmm >= 1605 && hhmm < 1700) return 8;
-  return 1;
+// Cache de tramos del centro activo (invalida automáticamente al cambiar ctrId)
+let _tramosCache = null;
+let _tramosCacheCtrId = null;
+async function _getTramosData() {
+  if (_tramosCache && _tramosCacheCtrId === ctrId) return _tramosCache;
+  const { data } = await sb.from("tramos_centro")
+    .select("numero,hora_inicio,hora_fin")
+    .eq("centro_id", ctrId)
+    .eq("es_descanso", false)
+    .order("numero");
+  _tramosCache = {};
+  _tramosCacheCtrId = ctrId;
+  (data || []).forEach(t => {
+    _tramosCache[t.numero] = {
+      hi: String(t.hora_inicio || "").slice(0, 5),
+      hf: String(t.hora_fin    || "").slice(0, 5)
+    };
+  });
+  return _tramosCache;
 }
 
-function initSustPanel() {
+async function detectarTramoActual() {
+  const tm = await _getTramosData();
+  const ahora = new Date();
+  const hhmm = ahora.getHours() * 100 + ahora.getMinutes();
+  const ordenados = Object.entries(tm)
+    .map(([n, t]) => ({ n: parseInt(n), hi: t.hi, hf: t.hf }))
+    .sort((a, b) => a.n - b.n);
+  for (const { n, hi, hf } of ordenados) {
+    const [hh1, mm1] = hi.split(":").map(Number);
+    const [hh2, mm2] = hf.split(":").map(Number);
+    if (hhmm >= hh1 * 100 + mm1 && hhmm < hh2 * 100 + mm2) return n;
+  }
+  return ordenados[0]?.n || 1;
+}
+
+async function initSustPanel() {
   if (role === "profesional") {
     document.getElementById("sust-vista-admin").style.display = "none";
     document.getElementById("sust-vista-profesor").style.display = "flex";
@@ -29,8 +51,18 @@ function initSustPanel() {
   const hoy = new Date().toISOString().split("T")[0];
   const fechaInput = document.getElementById("sust-fecha");
   if (fechaInput) fechaInput.value = hoy;
-  const tramo = detectarTramoActual();
+
+  // Repoblar selector de tramos con los del centro activo
+  const tm = await _getTramosData();
   const tramoSel = document.getElementById("sust-tramo");
+  if (tramoSel && Object.keys(tm).length) {
+    tramoSel.innerHTML = Object.entries(tm)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .map(([n, t]) => `<option value="${n}">${n} — ${t.hi} a ${t.hf}</option>`)
+      .join("");
+  }
+
+  const tramo = await detectarTramoActual();
   if (tramoSel) tramoSel.value = tramo;
   cargarProfesoresLibresEnSelect(tramo);
   loadSustituciones('hoy');
@@ -231,14 +263,8 @@ async function registrarSustitucion() {
     return;
   }
 
-  const tramoData = {
-    1: { hi: "08:50", hf: "09:45" }, 2: { hi: "09:45", hf: "10:40" },
-    3: { hi: "10:40", hf: "11:35" }, 4: { hi: "12:00", hf: "12:55" },
-    5: { hi: "12:55", hf: "13:50" }, 6: { hi: "13:50", hf: "14:45" },
-    7: { hi: "15:10", hf: "16:05" }, 8: { hi: "16:05", hf: "17:00" }
-  };
-
-  const t = tramoData[parseInt(tramo)] || { hi: "00:00", hf: "00:00" };
+  const _td = await _getTramosData();
+  const t = _td[parseInt(tramo)] || { hi: "00:00", hf: "00:00" };
   msg.textContent = "⟳ Guardando…";
   msg.style.color = "var(--txt2)";
   msg.style.display = "block";
@@ -368,12 +394,7 @@ async function buscarProfesorLibreAgente() {
 }
 
 async function cargarProfesoresLibresEnSelect(tramoOverride) {
-  const tramoData = {
-    1: { hi: "08:50", hf: "09:45" }, 2: { hi: "09:45", hf: "10:40" },
-    3: { hi: "10:40", hf: "11:35" }, 4: { hi: "12:00", hf: "12:55" },
-    5: { hi: "12:55", hf: "13:50" }, 6: { hi: "13:50", hf: "14:45" },
-    7: { hi: "15:10", hf: "16:05" }, 8: { hi: "16:05", hf: "17:00" }
-  };
+  const _td = await _getTramosData();
 
   const ahora = new Date();
   const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
@@ -383,8 +404,8 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
   const dia = diasNombre[fechaForm.getDay()];
 
   let horaRef = String(ahora.getHours()).padStart(2,"0") + ":" + String(ahora.getMinutes()).padStart(2,"0");
-  if (tramoOverride && tramoData[tramoOverride]) {
-    horaRef = tramoData[tramoOverride].hi;
+  if (tramoOverride && _td[tramoOverride]) {
+    horaRef = _td[tramoOverride].hi;
   }
 
   const _ca = typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26";
@@ -401,7 +422,7 @@ async function cargarProfesoresLibresEnSelect(tramoOverride) {
   const ocupadosList = todosProfes.filter(p => ocupados.has(p));
 
   const diaActual = dia;
-  const horaRefGuardia = tramoOverride && tramoData[tramoOverride] ? tramoData[tramoOverride].hi : horaRef;
+  const horaRefGuardia = tramoOverride && _td[tramoOverride] ? _td[tramoOverride].hi : horaRef;
 
   const { data: conGuardia } = await sb.from("horarios_grupo")
     .select("profesor_nombre")
@@ -565,11 +586,11 @@ async function _loadTramosNotif() {
       </label>`;
     }).join("");
   } else {
-    // Fallback hardcoded si el centro aún no tiene tramos_centro configurados
+    // Fallback genérico si el centro aún no tiene tramos_centro configurados
     const fallback = [
-      [1,"08:50","09:45"],[2,"09:45","10:40"],[3,"10:40","11:35"],
-      [4,"12:00","12:55"],[5,"12:55","13:50"],[6,"13:50","14:45"],
-      [7,"15:10","16:05"],[8,"16:05","17:00"]
+      [1,"08:00","09:00"],[2,"09:00","10:00"],[3,"10:00","11:00"],
+      [4,"11:30","12:30"],[5,"12:30","13:30"],[6,"13:30","14:30"],
+      [7,"15:00","16:00"],[8,"16:00","17:00"]
     ];
     wrap.innerHTML = fallback.map(([n,hi,hf]) =>
       `<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:4px 0;">
@@ -653,10 +674,10 @@ async function notificarAusenciaProfesor() {
   const tramoMap = {};
   (tramosData || []).forEach(t => { tramoMap[t.numero] = t; });
   const fallbackMap = {
-    1:{hora_inicio:"08:50",hora_fin:"09:45"},2:{hora_inicio:"09:45",hora_fin:"10:40"},
-    3:{hora_inicio:"10:40",hora_fin:"11:35"},4:{hora_inicio:"12:00",hora_fin:"12:55"},
-    5:{hora_inicio:"12:55",hora_fin:"13:50"},6:{hora_inicio:"13:50",hora_fin:"14:45"},
-    7:{hora_inicio:"15:10",hora_fin:"16:05"},8:{hora_inicio:"16:05",hora_fin:"17:00"}
+    1:{hora_inicio:"08:00",hora_fin:"09:00"},2:{hora_inicio:"09:00",hora_fin:"10:00"},
+    3:{hora_inicio:"10:00",hora_fin:"11:00"},4:{hora_inicio:"11:30",hora_fin:"12:30"},
+    5:{hora_inicio:"12:30",hora_fin:"13:30"},6:{hora_inicio:"13:30",hora_fin:"14:30"},
+    7:{hora_inicio:"15:00",hora_fin:"16:00"},8:{hora_inicio:"16:00",hora_fin:"17:00"}
   };
 
   const obsMeta  = ausenciaId ? `\n§RRHH§${ausenciaId}` : "";

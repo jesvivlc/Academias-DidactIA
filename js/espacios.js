@@ -1,4 +1,23 @@
 // ── MÓDULO ESPACIOS / SALAS ──
+
+// Cache de tramos para espacios (invalidar al cambiar de centro)
+var _espTramosCache = null;
+var _espTramosCacheCtrId = null;
+async function _espGetTramos() {
+  if (_espTramosCache && _espTramosCacheCtrId === ctrId) return _espTramosCache;
+  var { data } = await sb.from('tramos_centro')
+    .select('numero,hora_inicio,hora_fin').eq('centro_id', ctrId).eq('es_descanso', false).order('numero');
+  _espTramosCache = {};
+  _espTramosCacheCtrId = ctrId;
+  (data || []).forEach(function(t) {
+    _espTramosCache[t.numero] = {
+      hi: String(t.hora_inicio || '').slice(0, 5),
+      hf: String(t.hora_fin    || '').slice(0, 5)
+    };
+  });
+  return _espTramosCache;
+}
+
 async function loadEspacios() {
   var c = document.getElementById('espacios-container');
   if (!c) return;
@@ -23,12 +42,15 @@ async function loadEspacios() {
     return;
   }
 
-  var tramoLabels = {
-    1:'T1 · 08:50–09:45', 2:'T2 · 09:45–10:40', 3:'T3 · 10:40–11:35',
-    4:'T4 · 12:00–12:55', 5:'T5 · 12:55–13:50', 6:'T6 · 13:50–14:45',
-    7:'T7 · 15:10–16:05', 8:'T8 · 16:05–17:00'
-  };
-  var tramos = [1, 2, 3, 4, 5, 6, 7, 8];
+  var tramosData = await _espGetTramos();
+  var tramos = Object.keys(tramosData).map(Number).sort(function(a,b){return a-b;});
+  // Fallback genérico si el centro no tiene tramos configurados
+  if (!tramos.length) tramos = [1,2,3,4,5,6,7,8];
+  var tramoLabels = {};
+  tramos.forEach(function(n) {
+    var t = tramosData[n];
+    tramoLabels[n] = t ? 'T' + n + ' · ' + t.hi + '–' + t.hf : 'T' + n;
+  });
 
   var reservaMap = {};
   reservas.forEach(function(r) {
@@ -88,12 +110,8 @@ async function reservarEspacio(espacioId, espacioNombre, tramo) {
   if (motivo === null) return;
 
   var hoy = new Date().toISOString().split('T')[0];
-  var tramoHoras = {
-    1:{hi:'08:50',hf:'09:45'}, 2:{hi:'09:45',hf:'10:40'}, 3:{hi:'10:40',hf:'11:35'},
-    4:{hi:'12:00',hf:'12:55'}, 5:{hi:'12:55',hf:'13:50'}, 6:{hi:'13:50',hf:'14:45'},
-    7:{hi:'15:10',hf:'16:05'}, 8:{hi:'16:05',hf:'17:00'}
-  };
-  var t = tramoHoras[tramo];
+  var _td = await _espGetTramos();
+  var t = _td[tramo] || { hi: null, hf: null };
 
   var r = await sb.from('reservas_espacios').insert({
     centro_id: ctrId,

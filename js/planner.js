@@ -3881,7 +3881,7 @@ self.onmessage = function(e) {
 
   async function _impProcesar(wb) {
     var resultados = [];
-    console.log('[Planner import] centro destino (Agora):', IMPORT_CENTRO);
+    console.log('[Planner import] centro destino:', IMPORT_CENTRO);
     console.log('[Planner import] hojas en el archivo:', wb.SheetNames);
 
     for (var si = 0; si < wb.SheetNames.length; si++) {

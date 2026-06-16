@@ -1,5 +1,10 @@
 // ── HORARIOS POR GRUPO ──
 // ── HELPERS HORARIO ──
+
+// Cache de tramos ordinales del centro (se rellena en buildContext)
+let _chatTramosOrd = null;
+let _chatTramosOrdCtrId = null;
+
 function normalizeText(s = "") {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[¿?¡!]/g,"").trim();
 }
@@ -34,15 +39,21 @@ function extractDiaHora(txt) {
   if (!hora) { m = q.match(/\b(\d{1,2})\s*pm\b/); if (m) { let hh=parseInt(m[1],10); if(hh<12)hh+=12; hora=String(hh).padStart(2,"0")+":00"; } }
   if (!hora) { m = q.match(/\ba\s+las\s+(\d{1,2})[:.h]?(\d{2})?h?\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+(m[2]||"00"); } }
   if (!hora) { m = q.match(/\b(\d{1,2})[:.](\d{2})h?\b/); if (m) { hora=String(parseInt(m[1],10)).padStart(2,"0")+":"+m[2]; } }
-  // Detectar tramos ordinales → hora de inicio
+  // Detectar tramos ordinales → hora de inicio del centro
   if (!hora) {
-    const tramoHoras = {
-      "primera":"08:50","segunda":"09:45","tercera":"10:40",
-      "cuarta":"12:00","quinta":"12:55","sexta":"13:50",
-      "septima":"15:10","octava":"16:05"
-    };
-    for (const [ordinal, horaInicio] of Object.entries(tramoHoras)) {
-      if (new RegExp(`\\b${ordinal}\\b`).test(q)) { hora = horaInicio; break; }
+    // Usar caché de tramos del centro si está disponible (rellenado en buildContext)
+    const ordinales = ["primera","segunda","tercera","cuarta","quinta","sexta","septima","octava"];
+    if (_chatTramosOrd && _chatTramosOrdCtrId === ctrId) {
+      for (const [ordinal, horaInicio] of Object.entries(_chatTramosOrd)) {
+        if (new RegExp(`\\b${ordinal}\\b`).test(q)) { hora = horaInicio; break; }
+      }
+    } else {
+      // Fallback genérico si el caché aún no se ha cargado
+      for (let i = 0; i < ordinales.length; i++) {
+        if (new RegExp(`\\b${ordinales[i]}\\b`).test(q)) {
+          hora = `0${8 + i}:00`.slice(-5); break;
+        }
+      }
     }
   }
   return { dia, hora };
@@ -215,6 +226,22 @@ async function responderProfesoresLibres(txt) {
 async function buildContext() {
   if (!sb || !ctrId) return "Sin información disponible.";
   let ctx = `Centro: ${ctrName}\n\n`;
+
+  // Cargar tramos del centro para resolución de ordinales (primera hora, etc.)
+  if (!_chatTramosOrd || _chatTramosOrdCtrId !== ctrId) {
+    try {
+      const { data: trData } = await sb.from("tramos_centro")
+        .select("numero,hora_inicio").eq("centro_id", ctrId).eq("es_descanso", false).order("numero");
+      if (trData?.length) {
+        const ord = ["primera","segunda","tercera","cuarta","quinta","sexta","septima","octava"];
+        _chatTramosOrd = {};
+        trData.forEach((t, i) => {
+          if (ord[i]) _chatTramosOrd[ord[i]] = String(t.hora_inicio || "").slice(0, 5);
+        });
+        _chatTramosOrdCtrId = ctrId;
+      }
+    } catch (_) {}
+  }
 
   // Personal user context
   ctx += `USUARIO ACTUAL:\n`;
