@@ -254,6 +254,40 @@ function comOnDestChange(val) {
 
 // ── Enviar comunicado ─────────────────────────────────────────────
 
+// Push a las familias destinatarias de un comunicado (según `destinatarios`).
+// 'solo_profesores' → no familias. 'grupo:XXXX' → familias de ese grupo.
+// 'todos'/'solo_familias' → todas las familias del centro. Fire-and-forget.
+async function _comPushFamilias(dest, titulo) {
+  try {
+    if (dest === 'solo_profesores') return;
+    var fams = [];
+    if (dest && dest.indexOf('grupo:') === 0) {
+      var grupo = dest.slice(6);
+      var ra = await sb.from('alumnos').select('id').eq('centro_id', ctrId).eq('grupo_horario', grupo);
+      var ids = (ra.data || []).map(function (a) { return a.id; });
+      if (!ids.length) return;
+      var rf = await sb.from('familia_alumno').select('profile_id').in('alumno_id', ids);
+      fams = (rf.data || []).map(function (x) { return x.profile_id; });
+    } else {
+      var rp = await sb.from('profiles').select('id').eq('centro_id', ctrId).eq('rol', 'familia');
+      fams = (rp.data || []).map(function (p) { return p.id; });
+    }
+    fams = [...new Set(fams.filter(Boolean))];
+    if (!fams.length) return;
+    fetch(SB_URL + '/functions/v1/send-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY },
+      body: JSON.stringify({
+        user_ids: fams,
+        title: '📢 Nuevo comunicado',
+        body: titulo || 'El centro ha publicado un comunicado.',
+        tag: 'comunicado',
+        url: '/app.html'
+      })
+    }).catch(function () {});
+  } catch (e) { /* silencioso */ }
+}
+
 async function enviarComunicado() {
   var titulo = ((document.getElementById('com-titulo') || {}).value || '').trim();
   var cuerpo = ((document.getElementById('com-cuerpo') || {}).value || '').trim();
@@ -299,6 +333,9 @@ async function enviarComunicado() {
   var enviados = 0;
   var er = await sb.functions.invoke('send-comunicado', { body: { comunicado_id: r.data.id } });
   if (!er.error && er.data && er.data.enviados != null) enviados = er.data.enviados;
+
+  // Push a las familias destinatarias (además del email), fire-and-forget
+  _comPushFamilias(dest, titulo);
 
   if (msg) {
     msg.textContent = '✅ Comunicado enviado' + (enviados > 0 ? ' · ✉ ' + enviados + ' emails' : '');

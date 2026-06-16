@@ -73,7 +73,7 @@ js/
   rrhh.js               loadRrhhPanel, solicitarAusencia, aprobarAusencia, rechazarAusencia
   guardias.js           loadBolsaGuardias, getGuardiaCountsByName, registrarGuardiaEnBD
   ib.js                 loadIbPanel (plazos IB, CAS, Extended Essay)
-  comunicados.js        initComunicadosPanel, enviarComunicado, _comCheckAndBadge
+  comunicados.js        initComunicadosPanel, enviarComunicado (email vía send-comunicado + push a familias destinatarias vía _comPushFamilias/send-push), _comCheckAndBadge
   familias.js           initFamiliaView, loadFamiliaComedor, loadAvisos, initPushFamilias (suscripción Web Push: banner + pushManager.subscribe + INSERT push_subscriptions)
   planner.js            initPlannerPanel, _generarHorario (CSP+H-MRV-SA), plannerPublicar, drag & drop tablero, Dictar tab, Importar (.xlsx → planner_inputs)
   analytics.js          initAnalyticsPanel, CMI Cuadro de Mando Integral, alertas predictivas psicosociales (pill "Dashboard" del módulo Análisis)
