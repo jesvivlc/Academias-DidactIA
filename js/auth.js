@@ -509,6 +509,12 @@ async function loadUserProfile(user) {
   const tabTutorias = document.getElementById("tab-tutorias");
   if (tabTutorias) tabTutorias.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","familia"].includes(role)) ? "block" : "none";
 
+  // Agenda del Centro: visible para todos los roles autenticados
+  const navAgenda = document.getElementById("nav-agenda");
+  if (navAgenda) navAgenda.style.display = "flex";
+  const tabAgenda = document.getElementById("tab-agenda");
+  if (tabAgenda) tabAgenda.style.display = "block";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -642,6 +648,7 @@ function showTab(t) {
   if (t === "materiales") initMateriales();
   if (t === "salidas") initSalidasPanel();
   if (t === "tutorias") initTutorias();
+  if (t === "agenda") initAgenda();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

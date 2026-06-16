@@ -85,6 +85,7 @@ js/
   alumnos.js            initAlumnos (módulo Alumnos): directorio del centro (lista+búsqueda+filtro por grupo) + ficha individual (alumnosAbrirFicha: familias vinculadas, horario semanal, comedor 14d, incidencias, calificaciones). No familia
   asistencia.js         abrirPasarLista (modal fullscreen pasar lista de clase): toggle Presente/Retraso/Ausente + observacion; UPSERT asistencia_clase; push familias (ausente=inmediato, retraso=al confirmar). window._asistCambiarEstado, window._asistConfirmar, window._asistCerrar. + initAsistenciaVista (tab "Pasar lista" #panel-pasarlista) con **toggle Pasar lista / Informe**: (a) **Pasar lista** — selector de fecha (hoy/días anteriores) + (admin) grupo → clases del día con resumen ✓/⚡/✗ y botón; (b) **Informe** (`_asistInformeCargar`) — rango de fechas + grupo → tabla por alumno (presente/retraso/ausente/total/% asistencia, ordenada por ausencias desc) + KPIs (registros, ausencias, retrasos, alumnos con ≥3 ausencias) + export Excel (`_asistInformeExportar`). Profesor: sus grupos (match por tokens); dirección: selector de grupo. `_aEnsureStyles` comparte estilos (idempotente)
   tutoria.js            initTutorias (módulo Tutorías): vista profesional (Mis citas: confirmar/cancelar/realizada/notas_tutor + Mi disponibilidad: CRUD ventanas semanales por grupo) / vista familia (selector hijo → disponibilidad del tutor → date picker → sub-slots → solicitar + Mis citas: historial+cancelar) / vista admin/dirección (tabla read-only). Push tutor←→familia vía EF send-push. CSS self-contained _tutEnsureStyles. Tablas: tutoria_disponibilidad + tutoria_citas (UNIQUE disp_id+fecha+hora_inicio)
+  agenda.js             initAgenda (Agenda del Centro): calendario mensual unificado — sustituciones + tutorías + salidas + ausencias de profesores. Split-view: grilla mes (izquierda 340px) + panel del día (derecha). Eventos coloreados por tipo (danger=sust sin cubrir, success=sust cubiertas, #7A5C9E=tutorías, info=salidas, warning=ausencias). Navegación por meses. RLS filtra automáticamente lo que ve cada rol. CSS self-contained _agEnsureStyles. Visible para todos los roles autenticados.
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -348,6 +349,7 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-16 16:54` · `362ce3b` — docs(CLAUDE.md): sesión 2026-06-16 — módulo Tutorías documentado
 - `2026-06-16 16:51` · `37865ab` — feat(tutorias): módulo de reserva de citas tutor-familia
 - `2026-06-16 16:33` · `6dd9a09` — docs: sesión 2026-06-16 portátil — asistencia informe, boletín PDF, PWA, push suite familias
 - `2026-06-16` · `99f3006` — feat(familia): push a familias al enviar un comunicado

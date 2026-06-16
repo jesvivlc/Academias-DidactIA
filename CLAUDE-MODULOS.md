@@ -319,6 +319,17 @@
 - `window._tutSlots` — array de slots calculados para la fecha seleccionada (indexados por `_tutFamSelSlot`); `_tutFamDisp` — disponibilidad cacheada del tutor activo; `_tutFamHijos`/`_tutFamHijoIdx` — hijos y selección activa
 - **Constraint 23505**: al solicitar, si la ranura ya fue tomada concurrentemente → toast explicativo sin crash
 
+### Agenda del Centro — calendario unificado (agenda.js)
+- Nav **"📅 Agenda"** (`#nav-agenda`, grupo Centro, color `#5B7FA8`), visible para **todos los roles autenticados** (RLS filtra lo que ve cada uno). `#panel-agenda`.
+- **Split-view**: grilla mensual fija 340px izquierda + panel del día derecho (flex:1). CSS self-contained `_agEnsureStyles()` (idempotente).
+- **Grilla mensual** (`_agBuildGrid`): CSS Grid 7 cols (L/M/X/J/V/S/D); celdas con dots de color (máx. 5 + "+N"); hoy con borde `--ink`; seleccionado con tint `--ink 14%`. Navegación `window._agNavMonth(delta)` → `_agLoadMonth()`.
+- **Panel del día** (`_agShowDay`): tarjetas `.ag-ev-card` ordenadas por tipo (salidas → sust → tut → ausencias) y luego hora. Clic navega al módulo origen (`showTab('sust')` / `'tutorias'` / `'salidas'` / `'rrhh'`).
+- **Colores por tipo**: `danger` (sust. sin cubrir) · `ok` (sust. cubiertas) · `#7A5C9E` = `ag-c-tut` (tutorías) · `info` (salidas) · `warning` (ausencias aprobadas) · `muted` (ausencias pendientes).
+- **`_agFetchEvents(from, to)`**: 4 queries en paralelo. `sustituciones` (RLS familia → solo grupos de sus hijos), `tutoria_citas` (familia → solo las suyas; profesional → solo las suyas como tutor), `salidas_didacticas` (familia → solo `estado='publicada'`), `ausencias_profesor` (omitido para familia). Ausencias multi-día expandidas a días individuales en cliente.
+- **Estado**: `window._agYear`, `window._agMonth`, `window._agEvents[]`, `window._agSelFecha`. No hay tabla propia, es una vista agregada.
+- **XSS**: `_agEsc(s)` en todos los `innerHTML` con datos de usuario.
+- **Responsive** ≤768px: columnas en `flex-direction:column`; clic en día hace `scrollIntoView` al panel derecho.
+
 ### Materiales — hub de materiales (materiales.js)
 - Tab **"📚 Materiales"** en sidebar; `#panel-materiales` con `flex-direction:column` en el raíz + div interno `flex:1;overflow-y:auto`
 - Subida multi-grupo (select multiple), descarga signed URL (1h), toggle "Mis materiales/Todos", form "solo mis clases"
