@@ -3843,6 +3843,28 @@ button[id^="sust-btn-"].active, button[id^="inc-btn-"].active {
   scrollbar-width: none;
 }
 .al-pills::-webkit-scrollbar { display: none; }
+/* Chips de filtro por grupo (Alumnos). Antes faltaba la regla y salían como
+   botones por defecto del navegador. Tokens del design system v2. */
+.al-pills .pill {
+  flex: 0 0 auto;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  line-height: 1.3;
+  cursor: pointer;
+  white-space: nowrap;
+  background: var(--paper-2);
+  color: var(--txt);
+  border: 1px solid var(--line);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.al-pills .pill:hover { background: var(--surface-sunk); }
+.al-pills .pill.pill-active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
 
 .al-table-wrap {
   flex: 1;
