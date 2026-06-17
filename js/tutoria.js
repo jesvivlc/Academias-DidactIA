@@ -73,6 +73,7 @@ function _tutEnsureStyles() {
     .tut-tabs  { display:flex;gap:0;margin-top:0; }
     .tut-tab   { background:none;border:none;padding:10px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s; }
     .tut-tab.tut-act { color:var(--ink);border-bottom-color:var(--ink);font-weight:600; }
+    .tut-espera-box { margin-top:12px;padding:12px 14px;background:var(--surface-sunk);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--txt2);display:flex;flex-direction:column;align-items:flex-start;gap:4px; }
     .tut-body  { flex:1;overflow-y:auto;padding:24px 28px;background:var(--bg); }
     .tut-card  { background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;margin-bottom:12px; }
     .tut-card-hdr { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px; }
@@ -233,8 +234,26 @@ window._tutCancelarProf = async function (citaId, familiaId, alumnoNombre, fecha
   _tutToast('Cita cancelada');
   _tutPush([familiaId], '⚠️ Cita cancelada',
     `El tutor ha cancelado la cita de ${alumnoNombre} el ${_tutFechaLegible(fecha)} a las ${(horaIni || '').slice(0, 5)}.`);
+  const cTut = (window._tutCitasCache || {})[citaId];
+  _tutAvisarEspera((cTut && cTut.tutor_id) || window.currentUser.id, fecha);
   _tutLoadCitasProfesor();
 };
+
+// Un hueco se ha liberado para tutor+fecha → avisar a la(s) familia(s) en lista de espera.
+async function _tutAvisarEspera(tutorId, fecha) {
+  if (!tutorId || !fecha) return;
+  try {
+    const { data } = await window.sb.from('tutoria_espera')
+      .select('id,familia_id,alumno_nombre')
+      .eq('tutor_id', tutorId).eq('fecha', fecha).eq('notificado', false)
+      .order('created_at').limit(1);
+    const e = data && data[0];
+    if (!e) return;
+    await window.sb.from('tutoria_espera').update({ notificado: true }).eq('id', e.id);
+    _tutPush([e.familia_id], '🔔 Hueco de tutoría disponible',
+      `Se ha liberado un hueco el ${_tutFechaLegible(fecha)}. Entra en Tutorías para reservarlo antes de que se ocupe.`);
+  } catch (err) {}
+}
 
 window._tutMarcarRealizada = async function (citaId) {
   await window.sb.from('tutoria_citas')
@@ -584,6 +603,45 @@ window._tutFamOnFecha = async function (fecha) {
     return `<button class="${cls}" ${isTaken ? 'disabled' : ''} ${onclick} data-idx="${i}">${s.hora_inicio}–${s.hora_fin}${isTaken ? ' ✕' : ''}</button>`;
   }).join('');
   window._tutSlots = allSlots; // store for later
+
+  // Si TODAS las franjas del día están ocupadas → ofrecer lista de espera
+  const libres = allSlots.filter(s => !takenSet.has(`${s.disp_id}_${s.hora_inicio}`));
+  const tutorId = (matching[0] && matching[0].tutor_id) || null;
+  if (!libres.length && tutorId) {
+    let yaEnEspera = false;
+    try {
+      const { data: ya } = await window.sb.from('tutoria_espera')
+        .select('id').eq('familia_id', window.currentUser.id).eq('tutor_id', tutorId).eq('fecha', fecha).limit(1);
+      yaEnEspera = !!(ya && ya.length);
+    } catch (e) {}
+    const hijo = _tutFamHijos[_tutFamHijoIdx] || {};
+    grid.insertAdjacentHTML('afterend',
+      `<div id="tut-espera-box" class="tut-espera-box">` +
+      (yaEnEspera
+        ? `<span>✓ Estás en la lista de espera de este día. Te avisaremos si se libera un hueco.</span>`
+        : `<span>Todas las franjas están ocupadas.</span>` +
+          `<button class="tut-btn tut-btn-ink" style="margin-top:8px" onclick="window._tutFamApuntarEspera('${_tutArg(tutorId)}','${_tutArg(fecha)}','${_tutArg(hijo.id || '')}','${_tutArg(hijo.nombre || '')}','${_tutArg(hijo.grupo_horario || '')}')">🔔 Apuntarme a la lista de espera</button>`) +
+      `</div>`);
+  }
+};
+
+window._tutFamApuntarEspera = async function (tutorId, fecha, alumnoId, alumnoNombre, grupo) {
+  const { error } = await window.sb.from('tutoria_espera').insert({
+    centro_id: window.ctrId,
+    tutor_id: tutorId,
+    alumno_id: alumnoId || null,
+    alumno_nombre: alumnoNombre || null,
+    grupo_horario: grupo || null,
+    familia_id: window.currentUser.id,
+    fecha: fecha || null,
+  });
+  if (error) return _tutToast('No se pudo apuntar a la lista de espera', true);
+  _tutToast('🔔 Apuntado a la lista de espera. Te avisaremos si se libera un hueco.');
+  const box = document.getElementById('tut-espera-box');
+  if (box) box.innerHTML = '<span>✓ Estás en la lista de espera de este día. Te avisaremos si se libera un hueco.</span>';
+  // Aviso al tutor (opcional, fire-and-forget)
+  _tutPush([tutorId], '🔔 Familia en lista de espera',
+    `${alumnoNombre || 'Una familia'} espera un hueco de tutoría para el ${_tutFechaLegible(fecha)}.`);
 };
 
 window._tutFamSelSlot = function (btn, idx) {
@@ -620,6 +678,11 @@ window._tutFamSolicitar = async function (alumnoId, alumnoNombre, grupoHorario) 
   _tutToast('✓ Cita solicitada. El tutor la confirmará próximamente.');
   _tutPush([_tutFamSlotSel.tutor_id], '📅 Nueva solicitud de tutoría',
     `${window.currentUserName || 'Una familia'} solicita cita para ${alumnoNombre} el ${_tutFechaLegible(fecha)} a las ${_tutFamSlotSel.hora_inicio}.`);
+  // Si estaba en lista de espera de ese tutor+fecha, ya tiene cita → quitarla
+  try {
+    await window.sb.from('tutoria_espera').delete()
+      .eq('familia_id', window.currentUser.id).eq('tutor_id', _tutFamSlotSel.tutor_id).eq('fecha', fecha);
+  } catch (e) {}
   _tutFamSlotSel = null;
   _tutFamLoadBooking(_tutFamHijos[_tutFamHijoIdx]);
   _tutFamLoadMisCitas();
@@ -666,6 +729,7 @@ window._tutFamCancelar = async function (citaId, tutorId, alumnoNombre, fecha, h
   _tutToast('Cita cancelada');
   _tutPush([tutorId], '⚠️ Cita cancelada por familia',
     `La familia ha cancelado la cita de ${alumnoNombre} el ${_tutFechaLegible(fecha)} a las ${(horaIni || '').slice(0, 5)}.`);
+  _tutAvisarEspera(tutorId, fecha);
   _tutFamLoadMisCitas();
 };
 
