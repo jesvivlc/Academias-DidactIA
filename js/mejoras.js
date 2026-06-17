@@ -753,7 +753,8 @@ async function renderHomeFamilia(force) {
     '<div id="fh-comedor"  class="home-card" style="margin-bottom:8px;display:none;"></div>' +
     '<div id="fh-salidas"  class="home-card" style="margin-bottom:8px;display:none;"></div>' +
     '<div id="fh-comunicados" class="home-card" style="margin-bottom:8px;display:none;"></div>' +
-    '<div id="fh-incidencias" class="home-card" style="margin-bottom:8px;display:none;"></div>';
+    '<div id="fh-incidencias" class="home-card" style="margin-bottom:8px;display:none;"></div>' +
+    '<div id="fh-recogida" class="home-card" style="margin-bottom:8px;"></div>';
 
   window._fhSelectHijo = function(idx) {
     _homeFamiliaHijoIdx = idx;
@@ -999,7 +1000,51 @@ async function renderHomeFamilia(force) {
         '<div style="margin-top:8px;"><button class="fam-ver-mas" onclick="showTab(\'comunicados\')">Ver todos los comunicados →</button></div>';
     } catch(e) {}
   })();
+
+  // ── Personas autorizadas para recoger ──
+  _fhCargarRecogida(alumno);
 }
+
+// Personas autorizadas a recoger al alumno (gestión por la familia).
+async function _fhCargarRecogida(alumno) {
+  var box = document.getElementById("fh-recogida");
+  if (!box || !alumno) return;
+  try {
+    var r = await sb.from("personas_autorizadas").select("id,nombre,relacion,telefono")
+      .eq("centro_id", ctrId).eq("alumno_id", alumno.id).order("created_at");
+    var rows = (r.data || []).map(function(p) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;">' +
+        '<span style="flex:1;">🧑 ' + _mhEsc(p.nombre) + (p.relacion ? ' <span style="color:var(--muted);">· ' + _mhEsc(p.relacion) + '</span>' : '') +
+        (p.telefono ? ' <span style="color:var(--muted);">· ' + _mhEsc(p.telefono) + '</span>' : '') + '</span>' +
+        '<button onclick="window._fhQuitarRecogida(\'' + p.id + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;" title="Quitar">✕</button>' +
+        '</div>';
+    }).join("");
+    box.innerHTML = '<div class="home-card-hdr"><span class="home-card-title"><i class="ti ti-user-shield"></i> Recogida — personas autorizadas</span></div>' +
+      (rows || '<div style="font-size:12px;color:var(--muted);padding:4px 0;">Aún no has añadido a nadie. Solo estas personas podrán recoger a ' + _mhEsc((alumno.nombre || "").split(",")[0].trim()) + '.</div>') +
+      '<div style="margin-top:8px;"><button class="fam-ver-mas" onclick="window._fhAnadirRecogida(\'' + alumno.id + '\')">+ Añadir persona autorizada</button></div>';
+  } catch(e) { box.innerHTML = ''; }
+}
+
+window._fhAnadirRecogida = async function(alumnoId) {
+  var nombre = prompt("Nombre completo de la persona autorizada:");
+  if (!nombre || !nombre.trim()) return;
+  var relacion = prompt("Relación con el alumno (ej: abuela, tío, vecino):") || null;
+  var telefono = prompt("Teléfono de contacto (opcional):") || null;
+  var ins = await sb.from("personas_autorizadas").insert({
+    centro_id: ctrId, alumno_id: alumnoId, nombre: nombre.trim(),
+    relacion: relacion, telefono: telefono, creado_por: currentUser ? currentUser.id : null
+  });
+  if (ins.error) { if (typeof showToast === "function") showToast("No se pudo guardar"); return; }
+  var alumno = (currentUserAlumnos || []).find(function(a) { return a.id === alumnoId; });
+  _fhCargarRecogida(alumno);
+};
+
+window._fhQuitarRecogida = async function(id) {
+  if (!confirm("¿Quitar a esta persona de la lista de autorizados?")) return;
+  await sb.from("personas_autorizadas").delete().eq("id", id);
+  var alumno = (currentUserAlumnos || [])[_homeFamiliaHijoIdx];
+  _fhCargarRecogida(alumno);
+};
 
 // ── PUSH NOTIFICATIONS ──────────────────────────────────────────────────────
 // VAPID_PUBLIC_KEY ya definido en config.js — no redeclarar aquí.

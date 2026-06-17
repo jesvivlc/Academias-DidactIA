@@ -304,6 +304,7 @@ async function alumnosAbrirFicha(alumnoId) {
       '<div class="al-drw-body" id="al-drw-body">' +
         '<div id="al-drw-perfil">' +
           '<div id="al-ficha-familias" class="al-drw-section"><span style="color:var(--muted);">Cargando familias…</span></div>' +
+          '<div id="al-ficha-recogida" style="display:none;"></div>' +
           '<div id="al-ficha-comedor" style="display:none;"></div>' +
           '<div id="al-ficha-incidencias" style="display:none;"></div>' +
           '<div id="al-ficha-calif" style="display:none;"></div>' +
@@ -325,6 +326,7 @@ async function alumnosAbrirFicha(alumnoId) {
 
   // Cargar secciones async (fire-and-forget)
   _alLoadFamilias(alumnoId);
+  _alLoadRecogida(alumnoId);
   _alLoadHorario(grupo);
   _alLoadComedor(alumnoId);
   _alLoadIncidencias(a);
@@ -342,6 +344,24 @@ function _alDrwTab(tabId, btn) {
 }
 
 // ── Loaders async ─────────────────────────────────────────────────────
+
+async function _alLoadRecogida(alumnoId) {
+  var box = document.getElementById("al-ficha-recogida");
+  if (!box) return;
+  try {
+    var r = await sb.from("personas_autorizadas").select("nombre,relacion,telefono")
+      .eq("centro_id", ctrId).eq("alumno_id", alumnoId).order("created_at");
+    var list = r.data || [];
+    if (!list.length) return;
+    box.style.display = "";
+    box.innerHTML = '<div class="al-drw-label">🔒 Recogida autorizada</div>' +
+      list.map(function(p) {
+        return '<div style="font-size:13px;color:var(--txt);padding:3px 0;">🧑 ' + _alEsc(p.nombre) +
+          (p.relacion ? ' <span style="color:var(--muted);">· ' + _alEsc(p.relacion) + '</span>' : '') +
+          (p.telefono ? ' <span style="color:var(--muted);">· ' + _alEsc(p.telefono) + '</span>' : '') + '</div>';
+      }).join("");
+  } catch (e) {}
+}
 
 async function _alLoadFamilias(alumnoId) {
   var box = document.getElementById("al-ficha-familias");
