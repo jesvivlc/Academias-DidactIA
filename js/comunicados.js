@@ -209,16 +209,23 @@ function _comVerComunicado(id) {
   var modal = document.createElement('div');
   modal.id = 'com-ver-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var idiomas = [['es','Español'],['en','English'],['fr','Français'],['ar','العربية'],['ro','Română'],['uk','Українська'],['zh','中文'],['de','Deutsch'],['pt','Português']];
+  var langSel = '<select id="com-ver-lang" onchange="window._comTraducir(\'' + com.id + '\', this.value)" '
+    + 'style="font-size:12px;padding:4px 8px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;color:#555;cursor:pointer;">'
+    + idiomas.map(function(l){ return '<option value="' + l[0] + '">🌐 ' + l[1] + '</option>'; }).join('') + '</select>';
+
   modal.innerHTML = ''
     + '<div style="background:#fff;border-radius:12px;max-width:min(580px,calc(100vw - 24px));width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);">'
     + '<div style="padding:20px 24px 16px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">'
-    + '<div>'
-    + '<div style="font-size:16px;font-weight:600;color:#222;">' + _escCom(com.titulo || '') + '</div>'
+    + '<div style="min-width:0;">'
+    + '<div id="com-ver-title" style="font-size:16px;font-weight:600;color:#222;">' + _escCom(com.titulo || '') + '</div>'
     + '<div style="font-size:12px;color:var(--txt3);margin-top:4px;">📅 ' + _escCom(com.fecha || '') + ' · ' + _comDestLabel(com.destinatarios) + '</div>'
     + '</div>'
     + '<button onclick="document.getElementById(\'com-ver-modal\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;padding:0;flex-shrink:0;">✕</button>'
     + '</div>'
-    + '<div style="padding:24px;font-size:14px;color:#333;line-height:1.8;">' + cuerpoHtml + '</div>'
+    + '<div style="padding:12px 24px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' + langSel
+    + '<span id="com-ver-note" style="display:none;font-size:11px;color:var(--txt3);"></span></div>'
+    + '<div id="com-ver-body" style="padding:16px 24px 24px;font-size:14px;color:#333;line-height:1.8;">' + cuerpoHtml + '</div>'
     + '<div style="padding:14px 24px;border-top:1px solid #e0e0e0;display:flex;justify-content:flex-end;">'
     + '<button onclick="document.getElementById(\'com-ver-modal\').remove()" style="padding:8px 18px;border:1px solid #e0e0e0;border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#555;">Cerrar</button>'
     + '</div>'
@@ -226,6 +233,77 @@ function _comVerComunicado(id) {
   document.body.appendChild(modal);
   modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
 }
+
+// ── Traducción multi-idioma (Gemini vía EF chat, cacheada) ───────────
+var _comTradCache = {};   // { comunicadoId: { lang: {titulo, cuerpo} } }
+
+async function _comIA(systemPrompt, userMsg) {
+  try {
+    var r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+        system_prompt: systemPrompt,
+        centro_id: (typeof ctrId !== 'undefined' ? ctrId : '') || '',
+        role: 'familia',
+        user_name: (typeof currentUserName !== 'undefined' ? currentUserName : ''),
+        user_id: (typeof currentUser !== 'undefined' && currentUser ? currentUser.id : ''),
+      }),
+    });
+    if (!r.ok) return null;
+    var j = await r.json();
+    return j.type === 'text' ? j.text : null;
+  } catch (e) { return null; }
+}
+
+window._comTraducir = async function (id, lang) {
+  var com = _comLastData.find(function (c) { return c.id === id; });
+  if (!com) return;
+  var titleEl = document.getElementById('com-ver-title');
+  var bodyEl  = document.getElementById('com-ver-body');
+  var noteEl  = document.getElementById('com-ver-note');
+  if (!titleEl || !bodyEl) return;
+
+  var aplicar = function (o, traducido) {
+    titleEl.textContent = (o.titulo || com.titulo || '');
+    bodyEl.innerHTML = _escCom(o.cuerpo || '').replace(/\n/g, '<br>');
+    bodyEl.dir = (lang === 'ar' || lang === 'he' || lang === 'ur') ? 'rtl' : 'ltr';
+    if (noteEl) {
+      noteEl.textContent = traducido ? '🌐 Traducido automáticamente — el original está en español.' : '';
+      noteEl.style.display = traducido ? '' : 'none';
+    }
+  };
+
+  if (lang === 'es') { aplicar({ titulo: com.titulo, cuerpo: com.cuerpo }, false); return; }
+
+  _comTradCache[id] = _comTradCache[id] || {};
+  if (_comTradCache[id][lang]) { aplicar(_comTradCache[id][lang], true); return; }
+
+  bodyEl.innerHTML = '<span style="color:var(--txt3);">⟳ Traduciendo…</span>';
+  if (noteEl) noteEl.style.display = 'none';
+
+  var nombres = { en: 'inglés', fr: 'francés', ar: 'árabe', ro: 'rumano', uk: 'ucraniano', zh: 'chino', de: 'alemán', pt: 'portugués' };
+  var sys = 'Eres un traductor profesional de comunicaciones escolares. Traduce el comunicado al idioma indicado manteniendo un tono formal y respetuoso. ' +
+    'Devuelve EXCLUSIVAMENTE un objeto JSON {"titulo":"…","cuerpo":"…"} con la traducción; conserva los saltos de línea del cuerpo como \\n. Sin texto adicional ni markdown.';
+  var usr = 'Idioma de destino: ' + (nombres[lang] || lang) + '.\n\nTÍTULO: ' + (com.titulo || '') + '\n\nCUERPO:\n' + (com.cuerpo || '');
+
+  try {
+    var txt = await _comIA(sys, usr);
+    if (!txt) { aplicar({ titulo: com.titulo, cuerpo: com.cuerpo }, false); if (typeof showToast === 'function') showToast('No se pudo traducir. Inténtalo de nuevo.'); return; }
+    var clean = txt.replace(/```json/gi, '').replace(/```/g, '').trim();
+    var obj = null;
+    try { obj = JSON.parse(clean); } catch (e) {
+      var m = clean.match(/\{[\s\S]*\}/);
+      if (m) { try { obj = JSON.parse(m[0]); } catch (e2) { obj = null; } }
+    }
+    if (!obj || (!obj.titulo && !obj.cuerpo)) { aplicar({ titulo: com.titulo, cuerpo: com.cuerpo }, false); if (typeof showToast === 'function') showToast('No se pudo interpretar la traducción.'); return; }
+    _comTradCache[id][lang] = obj;
+    aplicar(obj, true);
+  } catch (e) {
+    aplicar({ titulo: com.titulo, cuerpo: com.cuerpo }, false);
+  }
+};
 
 // ── Formulario helpers ────────────────────────────────────────────
 
