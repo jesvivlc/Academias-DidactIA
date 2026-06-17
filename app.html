@@ -1187,6 +1187,7 @@
       <div class="planner-tabs tabs-in-hdr">
         <button class="planner-tab active" id="analisis-tab-dash" onclick="analisisTab('dashboard')">📊 Dashboard</button>
         <button class="planner-tab"        id="analisis-tab-inf"  onclick="analisisTab('informes')">📄 Informes PDF</button>
+        <button class="planner-tab"        id="analisis-tab-part" onclick="analisisTab('participacion')">👪 Participación familiar</button>
       </div>
     </div>
     <!-- Dashboard → analytics.js renderiza en #analytics-container (sin cambios) -->
@@ -1198,6 +1199,10 @@
       <div id="inf-container">
         <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
       </div>
+    </div>
+    <!-- Participación familiar → participacion.js renderiza en #part-container -->
+    <div id="analisis-participacion" style="display:none;flex:1;min-height:0;">
+      <div id="part-container"></div>
     </div>
   </div>
 
@@ -1535,6 +1540,7 @@
 <script src="js/actas.js"></script>
 <script src="js/prevision.js"></script>
 <script src="js/documentos.js"></script>
+<script src="js/participacion.js"></script>
 <script src="js/agenda.js"></script>
 
 <script>
@@ -1702,16 +1708,20 @@
 
   /* ── Análisis = fusión Dashboard (analytics.js) + Informes PDF (informes.js) ── */
   window.analisisTab = function (which) {
-    var verInf = (which === 'informes');
     var dash = document.getElementById('analisis-dashboard');
     var inf  = document.getElementById('analisis-informes');
+    var part = document.getElementById('analisis-participacion');
     var bd   = document.getElementById('analisis-tab-dash');
     var bi   = document.getElementById('analisis-tab-inf');
-    if (dash) dash.style.display = verInf ? 'none' : '';
-    if (inf)  inf.style.display  = verInf ? '' : 'none';
-    if (bd) bd.classList.toggle('active', !verInf);
-    if (bi) bi.classList.toggle('active', verInf);
-    if (verInf) { if (typeof initInformes === 'function') initInformes(); }
+    var bp   = document.getElementById('analisis-tab-part');
+    if (dash) dash.style.display = which === 'dashboard' ? '' : 'none';
+    if (inf)  inf.style.display  = which === 'informes' ? '' : 'none';
+    if (part) part.style.display = which === 'participacion' ? '' : 'none';
+    if (bd) bd.classList.toggle('active', which === 'dashboard');
+    if (bi) bi.classList.toggle('active', which === 'informes');
+    if (bp) bp.classList.toggle('active', which === 'participacion');
+    if (which === 'informes') { if (typeof initInformes === 'function') initInformes(); }
+    else if (which === 'participacion') { if (typeof initParticipacion === 'function') initParticipacion(); }
     else { if (typeof initAnalyticsPanel === 'function') initAnalyticsPanel(); }
   };
   function initAnalisis() { window.analisisTab('dashboard'); }
