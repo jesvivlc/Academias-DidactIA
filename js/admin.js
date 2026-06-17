@@ -603,6 +603,9 @@ async function _loadTramosNotif() {
 }
 
 async function _loadGruposProfesor() {
+  // El campo "grupos afectados" se eliminó: el grupo se deriva del horario por
+  // tramo al notificar. Si el campo no existe, no hacemos nada.
+  if (!document.getElementById("notif-grupos")) return;
   if (!currentUserName || !sb || !ctrId) return;
   const parte = currentUserName.trim().split(/\s+/).find(p => p.length > 2);
   if (!parte) return;
@@ -628,7 +631,6 @@ async function notificarAusenciaProfesor() {
   const fechaFin = document.getElementById("notif-fecha-fin")?.value || fechaIni;
   const motivoTipo = document.getElementById("notif-motivo")?.value || "asunto_propio";
   const tipoDia  = document.querySelector('input[name="notif-tipo"]:checked')?.value || "dia";
-  const grupos   = document.getElementById("notif-grupos")?.value.trim();
   const instruc  = document.getElementById("notif-instrucciones")?.value.trim();
   const msgEl    = document.getElementById("notif-msg");
   const multiDay = !!fechaFin && fechaFin > fechaIni;
@@ -680,6 +682,23 @@ async function notificarAusenciaProfesor() {
     7:{hora_inicio:"15:00",hora_fin:"16:00"},8:{hora_inicio:"16:00",hora_fin:"17:00"}
   };
 
+  // Grupo afectado por tramo: se deriva del horario del profesor ese día
+  // (sustituye al antiguo campo manual "grupos afectados").
+  let tramoGrupo = {};
+  if (tipoDia === "tramos" && !multiDay && tramosSeleccionados.length) {
+    const DIAS = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+    const diaNom = DIAS[new Date(fechaIni + "T12:00:00").getDay()];
+    const parte = (currentUserName || "").trim().split(/\s+/).find(p => p.length > 2) || currentUserName || "";
+    const { data: hg } = await sb.from("horarios_grupo")
+      .select("tramo,grupo_horario")
+      .eq("centro_id", ctrId)
+      .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
+      .eq("dia", diaNom)
+      .ilike("profesor_nombre", `%${parte}%`);
+    (hg || []).forEach(h => { if (h.tramo != null && h.grupo_horario) tramoGrupo[String(h.tramo)] = h.grupo_horario; });
+  }
+  const gruposDeriv = [...new Set(tramosSeleccionados.map(n => tramoGrupo[String(n)]).filter(Boolean))].join(", ");
+
   const obsMeta  = ausenciaId ? `\n§RRHH§${ausenciaId}` : "";
   const obsBase  = instruc || "";
 
@@ -698,7 +717,7 @@ async function notificarAusenciaProfesor() {
           rows.push({
             centro_id: ctrId, fecha, tramo: n,
             hora_inicio: t.hora_inicio || null, hora_fin: t.hora_fin || null,
-            grupo_horario: grupos || null, profesor_ausente: currentUserName,
+            grupo_horario: tramoGrupo[String(n)] || null, profesor_ausente: currentUserName,
             profesor_sustituto: null, cubierta: false, creado_por: currentUser.id,
             observaciones: (obsBase || "(Ausencia — tramos concretos)") + obsMeta,
           });
@@ -745,7 +764,7 @@ async function notificarAusenciaProfesor() {
       fecha_fin: fechaFin || fechaIni,
       tipo_ausencia: tipoAusencia,
       motivo: MOTIVO_LABELS[motivoTipo] || motivoTipo,
-      grupos: grupos || "—",
+      grupos: gruposDeriv || "—",
       instrucciones: instruc || "Sin instrucciones específicas.",
     }),
   }).catch(() => {});
@@ -753,7 +772,6 @@ async function notificarAusenciaProfesor() {
   _sustNotifMsg(msgEl, "✅ Ausencia notificada a jefatura. Estado visible en tu historial.", "ok");
 
   // Limpiar formulario (mantener fechas)
-  document.getElementById("notif-grupos").value = "";
   document.getElementById("notif-instrucciones").value = "";
   const jf = document.getElementById("notif-justificante-file");
   if (jf) jf.value = "";

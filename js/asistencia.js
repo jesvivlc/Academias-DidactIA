@@ -81,7 +81,9 @@
   }
 
   /* ── UPSERT de un registro de asistencia ────────────────────── */
-  async function _upsertAsistencia(alumnoId, estado, observacion) {
+  // skipPush=true → no notifica a la familia (se usa en el marcado masivo para
+  // no spamear; el push individual de ausente sigue en el toggle por alumno).
+  async function _upsertAsistencia(alumnoId, estado, observacion, skipPush) {
     var payload = {
       centro_id: ctrId,
       alumno_id: alumnoId,
@@ -98,12 +100,28 @@
       .select("id").single();
     if (r.error) throw r.error;
 
-    // Notificar si ausente (inmediato)
-    if (estado === "ausente") {
+    // Notificar si ausente (inmediato), salvo en marcado masivo
+    if (estado === "ausente" && !skipPush) {
       _notificarFamiliaAsistencia(alumnoId, estado, observacion);
     }
     return r.data;
   }
+
+  /* ── Marcar a TODOS los alumnos con un estado (masivo, sin push) ── */
+  window._asistMarcarTodos = async function (estado) {
+    if (!_st || !_st.alumnos.length) return;
+    if (estado === "ausente" && !confirm("¿Marcar a TODOS los alumnos como ausentes? No se enviará aviso a las familias (puedes ajustar alumno a alumno).")) return;
+    for (var i = 0; i < _st.alumnos.length; i++) {
+      var al = _st.alumnos[i];
+      var rec = _st.records[al.id] || {};
+      try {
+        await _upsertAsistencia(al.id, estado, rec.observacion || null, true);
+        _st.records[al.id] = Object.assign({}, rec, { estado: estado });
+      } catch (e) { /* sigue con el resto */ }
+      _renderFilaAlumno(al.id);
+    }
+    _renderCounter();
+  };
 
   /* ── Render del contador ─────────────────────────────────────── */
   function _renderCounter() {
@@ -252,6 +270,10 @@
           '<div style="font-size:12px;color:var(--muted);margin-top:2px;">Tramo ' + _aEsc(String(tramo)) + ' · ' + _aEsc(fecha) + '</div>',
         '</div>',
         '<div id="asist-counter" style="font-size:12px;color:var(--muted);text-align:right;max-width:220px;line-height:1.4;"></div>',
+      '</div>',
+      '<div style="display:flex;gap:8px;padding:10px 20px;border-bottom:1px solid var(--line);background:var(--paper);flex-wrap:wrap;">',
+        '<button class="asist-btn asist-btn--ok" onclick="window._asistMarcarTodos(\'presente\')">✓ Todos presentes</button>',
+        '<button class="asist-btn asist-btn--danger" onclick="window._asistMarcarTodos(\'ausente\')">✗ Todos ausentes</button>',
       '</div>',
       '<div id="asist-body" style="flex:1;overflow-y:auto;padding:16px 20px;">',
         '<div style="color:var(--muted);text-align:center;padding:40px 0;">Cargando alumnos…</div>',

@@ -628,8 +628,10 @@ function toggleRole() {
 function showTab(t) {
   document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
   document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
-  document.getElementById("tab-"+t).classList.add("active");
-  document.getElementById("panel-"+t).classList.add("active");
+  const _tabEl = document.getElementById("tab-"+t);
+  if (_tabEl) _tabEl.classList.add("active");
+  const _panelEl = document.getElementById("panel-"+t);
+  if (_panelEl) _panelEl.classList.add("active");
   if (t === "admin") loadAdmin();
   if (t === "users") loadUsersPanel();
   if (t === "comedor") { if (role === "familia") loadFamiliaComedor(); else loadComedor(); }
