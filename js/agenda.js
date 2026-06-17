@@ -17,9 +17,12 @@ window.initAgenda = function () {
         <div>
           <div class="ag-eyebrow">CENTRO · AGENDA</div>
           <h1 class="ag-title">Agenda del Centro</h1>
-          <p class="ag-sub">Sustituciones · Tutorías · Salidas · Ausencias de profesores</p>
+          <p class="ag-sub">Sustituciones · Tutorías · Salidas · Ausencias · Eventos del centro</p>
         </div>
-        <button class="ag-nav-btn" style="white-space:nowrap;font-size:12px;padding:7px 12px;" onclick="window._agExportICS()" title="Exportar el mes a tu calendario (Google/Apple/Outlook)">📅 Exportar .ics</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${_agPuedeGestionar() ? '<button class="ag-nav-btn" style="white-space:nowrap;font-size:12px;padding:7px 12px;background:#1F7A8C;color:#fff;border-color:#1F7A8C;" onclick="window._agNuevoEvento()">+ Nuevo evento</button>' : ''}
+          <button class="ag-nav-btn" style="white-space:nowrap;font-size:12px;padding:7px 12px;" onclick="window._agExportICS()" title="Exportar el mes a tu calendario (Google/Apple/Outlook)">📅 Exportar .ics</button>
+        </div>
       </div>
       <div class="ag-body">
         <div class="ag-split">
@@ -73,6 +76,7 @@ async function _agLoadMonth() {
       <span class="ag-leg"><span class="ag-dot ag-c-ok"></span>Sust. cubiertas</span>
       <span class="ag-leg"><span class="ag-dot ag-c-tut"></span>Tutorías</span>
       <span class="ag-leg"><span class="ag-dot ag-c-info"></span>Salidas</span>
+      <span class="ag-leg"><span class="ag-dot ag-c-evt"></span>Eventos</span>
       ${!isFamilia ? '<span class="ag-leg"><span class="ag-dot ag-c-warning"></span>Ausencias</span>' : ''}
     </div>
     ${_agBuildGrid(y, m, window._agEvents)}`;
@@ -149,11 +153,12 @@ function _agShowDay(fecha, scrollToRight) {
     return;
   }
 
-  const ORDER = { salida: 0, sust: 1, tut: 2, ausencia: 3 };
+  const ORDER = { evento: 0, salida: 1, sust: 2, tut: 3, ausencia: 4 };
   evs.sort((a, b) => (ORDER[a.type] || 9) - (ORDER[b.type] || 9) || (a.hora || '').localeCompare(b.hora || ''));
 
-  const ICONS = { sust: '🔄', tut: '📅', salida: '🚌', ausencia: '🏥' };
+  const ICONS = { sust: '🔄', tut: '📅', salida: '🚌', ausencia: '🏥', evento: '🗓️' };
   const NAVS  = { sust: "showTab('sust')", tut: "showTab('tutorias')", salida: "showTab('salidas')", ausencia: "showTab('rrhh')" };
+  const puedeGest = _agPuedeGestionar();
 
   right.innerHTML = `
     <div class="ag-day-hdr">
@@ -163,15 +168,22 @@ function _agShowDay(fecha, scrollToRight) {
       </div>
       <span style="font-size:12px;color:var(--muted);background:var(--surface-sunk);padding:4px 10px;border-radius:20px">${evs.length} evento${evs.length > 1 ? 's' : ''}</span>
     </div>
-    ${evs.map(e => `
-      <div class="ag-ev-card ag-ev-${e.color}" onclick="${NAVS[e.type] || ''}">
+    ${evs.map(e => {
+      const esEvt = e.type === 'evento';
+      const nav = esEvt ? '' : (NAVS[e.type] || '');
+      const borrable = esEvt && puedeGest && e._id;
+      return `
+      <div class="ag-ev-card ag-ev-${e.color}"${nav ? ` onclick="${nav}"` : ' style="cursor:default"'}>
         <span class="ag-ev-icon">${ICONS[e.type] || '📌'}</span>
         <div class="ag-ev-body">
-          <div class="ag-ev-label">${_agEsc(e.label)}</div>
+          <div class="ag-ev-label">${e.hora ? `<span style="color:var(--muted);font-weight:600">${e.hora} · </span>` : ''}${_agEsc(e.label)}</div>
           <div class="ag-ev-detail">${_agEsc(e.detail)}</div>
         </div>
-        <span class="ag-ev-arr">›</span>
-      </div>`).join('')}`;
+        ${borrable
+          ? `<button class="ag-nav-btn" style="padding:3px 8px;font-size:12px;color:var(--danger)" title="Eliminar evento" onclick="event.stopPropagation();window._agBorrarEvento('${e._id}')">✕</button>`
+          : (nav ? '<span class="ag-ev-arr">›</span>' : '')}
+      </div>`;
+    }).join('')}`;
 
   if (scrollToRight && window.innerWidth <= 768) right.scrollIntoView({ behavior: 'smooth' });
 }
@@ -183,7 +195,7 @@ async function _agFetchEvents(from, to) {
   const isProf   = window.role === 'profesional';
   const userId   = window.currentUser?.id;
 
-  const [sustR, tutR, salR, ausR] = await Promise.all([
+  const [sustR, tutR, salR, ausR, evtR] = await Promise.all([
     // Sustituciones (familia: RLS filtra a grupos de sus hijos)
     window.sb.from('sustituciones')
       .select('id,fecha,tramo,grupo_horario,profesor_ausente,profesor_sustituto,cubierta')
@@ -208,12 +220,18 @@ async function _agFetchEvents(from, to) {
           .lte('fecha', to).gte('fecha_fin', from)
           .in('estado', ['pendiente', 'aprobada']).limit(200)
       : Promise.resolve({ data: [] }),
+
+    // Eventos del centro (RLS: familia solo los visible_para='todos')
+    window.sb.from('eventos_centro')
+      .select('id,titulo,fecha,hora,tipo,descripcion,visible_para')
+      .eq('centro_id', ctrId).gte('fecha', from).lte('fecha', to).limit(300),
   ]);
 
   const sust    = sustR.data || [];
   let   tut     = tutR.data  || [];
   const salidas = salR.data  || [];
   const aus     = ausR.data  || [];
+  const eventos = evtR.data  || [];
 
   // Profesional: solo sus propias tutorías en el calendario personal
   if (isProf) tut = tut.filter(t => t.tutor_id === userId);
@@ -261,6 +279,18 @@ async function _agFetchEvents(from, to) {
     }
   });
 
+  const EVT_TIPO = {
+    evento: 'Evento', reunion: 'Reunión', festivo: 'Festivo',
+    evaluacion: 'Evaluación', plazo: 'Plazo', otro: 'Otro',
+  };
+  eventos.forEach(e => events.push({
+    type: 'evento', fecha: e.fecha, hora: (e.hora || '').slice(0, 5),
+    color: 'evt',
+    label: e.titulo || 'Evento del centro',
+    detail: [EVT_TIPO[e.tipo] || 'Evento', e.descripcion].filter(Boolean).join(' · '),
+    _id: e.id, _gestionable: true,
+  }));
+
   return events;
 }
 
@@ -295,6 +325,116 @@ window._agExportICS = function () {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
   if (typeof showToast === 'function') showToast('📅 Agenda exportada (.ics)');
+};
+
+/* ── EVENTOS DEL CENTRO (crear / borrar) ── */
+function _agPuedeGestionar() {
+  return ['admin', 'admin_institucional', 'director', 'jefatura', 'superadmin'].includes(window.role);
+}
+
+window._agNuevoEvento = function () {
+  if (!_agPuedeGestionar()) return;
+  const fecha = window._agSelFecha || new Date().toISOString().split('T')[0];
+  const old = document.getElementById('ag-evt-modal');
+  if (old) old.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'ag-evt-modal';
+  wrap.className = 'ag-modal-ov';
+  wrap.innerHTML = `
+    <div class="ag-modal">
+      <div class="ag-modal-hd">
+        <h3>🗓️ Nuevo evento del centro</h3>
+        <button class="ag-x" onclick="document.getElementById('ag-evt-modal').remove()">✕</button>
+      </div>
+      <div class="ag-modal-bd">
+        <label class="ag-fl">Título *</label>
+        <input id="ag-evt-titulo" class="ag-in" type="text" placeholder="Claustro, reunión, festivo…" maxlength="120">
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="ag-fl">Fecha *</label>
+            <input id="ag-evt-fecha" class="ag-in" type="date" value="${fecha}">
+          </div>
+          <div style="flex:1;">
+            <label class="ag-fl">Hora <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <input id="ag-evt-hora" class="ag-in" type="time">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="ag-fl">Tipo</label>
+            <select id="ag-evt-tipo" class="ag-in">
+              <option value="evento">Evento</option>
+              <option value="reunion">Reunión / Claustro</option>
+              <option value="evaluacion">Evaluación</option>
+              <option value="plazo">Plazo</option>
+              <option value="festivo">Festivo / No lectivo</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label class="ag-fl">Visible para</label>
+            <select id="ag-evt-vis" class="ag-in">
+              <option value="todos">Todos (incl. familias)</option>
+              <option value="staff">Solo personal del centro</option>
+            </select>
+          </div>
+        </div>
+        <label class="ag-fl">Descripción <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+        <textarea id="ag-evt-desc" class="ag-in" rows="2" placeholder="Detalles del evento…" maxlength="500"></textarea>
+      </div>
+      <div class="ag-modal-ft">
+        <button class="ag-nav-btn" onclick="document.getElementById('ag-evt-modal').remove()">Cancelar</button>
+        <button class="ag-nav-btn" style="background:#1F7A8C;color:#fff;border-color:#1F7A8C;" onclick="window._agGuardarEvento(this)">Guardar evento</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click', e => { if (e.target === wrap) wrap.remove(); });
+  setTimeout(() => { const t = document.getElementById('ag-evt-titulo'); if (t) t.focus(); }, 50);
+};
+
+window._agGuardarEvento = async function (btn) {
+  const titulo = (document.getElementById('ag-evt-titulo')?.value || '').trim();
+  const fecha  = document.getElementById('ag-evt-fecha')?.value || '';
+  const horaR  = document.getElementById('ag-evt-hora')?.value || '';
+  const tipo   = document.getElementById('ag-evt-tipo')?.value || 'evento';
+  const vis    = document.getElementById('ag-evt-vis')?.value || 'todos';
+  const desc   = (document.getElementById('ag-evt-desc')?.value || '').trim();
+  if (!titulo) { if (typeof showToast === 'function') showToast('Indica un título'); return; }
+  if (!fecha)  { if (typeof showToast === 'function') showToast('Indica una fecha'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  const { error } = await window.sb.from('eventos_centro').insert({
+    centro_id:   window.ctrId,
+    titulo,
+    fecha,
+    hora:        horaR || null,
+    tipo,
+    descripcion: desc || null,
+    visible_para: vis,
+    creado_por:  window.currentUser?.id || null,
+  });
+  if (error) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar evento'; }
+    if (typeof showToast === 'function') showToast('Error: ' + error.message);
+    return;
+  }
+  const modal = document.getElementById('ag-evt-modal');
+  if (modal) modal.remove();
+  if (typeof showToast === 'function') showToast('🗓️ Evento creado');
+  window._agSelFecha = fecha;
+  // Si el evento es de otro mes, navegar a él
+  const d = new Date(fecha + 'T12:00:00');
+  window._agYear = d.getFullYear();
+  window._agMonth = d.getMonth();
+  _agLoadMonth();
+};
+
+window._agBorrarEvento = async function (id) {
+  if (!id || !_agPuedeGestionar()) return;
+  if (!confirm('¿Eliminar este evento del centro?')) return;
+  const { error } = await window.sb.from('eventos_centro').delete().eq('id', id);
+  if (error) { if (typeof showToast === 'function') showToast('Error: ' + error.message); return; }
+  if (typeof showToast === 'function') showToast('Evento eliminado');
+  _agLoadMonth();
 };
 
 /* ── HELPERS ── */
@@ -333,6 +473,7 @@ function _agEnsureStyles() {
     .ag-c-tut     { background:#7A5C9E; }
     .ag-c-info    { background:var(--info); }
     .ag-c-warning { background:var(--warning); }
+    .ag-c-evt     { background:#1F7A8C; }
     .ag-c-muted   { background:var(--muted-2); }
 
     /* Grid mes */
@@ -363,6 +504,7 @@ function _agEnsureStyles() {
     .ag-ev-tut     { border-left-color:#7A5C9E; }
     .ag-ev-info    { border-left-color:var(--info); }
     .ag-ev-warning { border-left-color:var(--warning); }
+    .ag-ev-evt     { border-left-color:#1F7A8C; }
     .ag-ev-muted   { border-left-color:var(--muted-2); }
     .ag-ev-icon  { font-size:18px;flex:0 0 auto; }
     .ag-ev-body  { flex:1;min-width:0; }
@@ -371,6 +513,19 @@ function _agEnsureStyles() {
     .ag-ev-arr   { color:var(--muted-2);font-size:16px;flex:0 0 auto; }
 
     .ag-loading { text-align:center;padding:40px;color:var(--muted);font-size:13px; }
+
+    /* Modal nuevo evento */
+    .ag-modal-ov { position:fixed;inset:0;background:rgba(20,20,30,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px; }
+    .ag-modal    { background:var(--paper);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:100%;max-width:480px;max-height:92vh;overflow:auto;border:1px solid var(--line); }
+    .ag-modal-hd { display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line); }
+    .ag-modal-hd h3 { margin:0;font-size:16px;font-weight:700;color:var(--txt); }
+    .ag-x        { background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:6px; }
+    .ag-x:hover  { background:var(--surface-sunk); }
+    .ag-modal-bd { padding:16px 18px;display:flex;flex-direction:column;gap:4px; }
+    .ag-fl       { font-size:12px;font-weight:600;color:var(--txt2);margin:8px 0 3px; }
+    .ag-in       { width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line-2);border-radius:8px;font-size:14px;font-family:inherit;background:var(--paper);color:var(--txt); }
+    .ag-in:focus { outline:none;border-color:#1F7A8C;box-shadow:0 0 0 3px rgba(31,122,140,.12); }
+    .ag-modal-ft { display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid var(--line); }
 
     @media(max-width:768px){
       .ag-split { flex-direction:column;overflow:auto; }
