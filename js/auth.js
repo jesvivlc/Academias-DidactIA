@@ -524,6 +524,10 @@ async function loadUserProfile(user) {
   const tabEnc = document.getElementById("tab-encuestas");
   if (tabEnc) tabEnc.style.display = (["familia","admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
 
+  // Préstamo de recursos: personal del centro (no familia)
+  const tabRec = document.getElementById("tab-recursos");
+  if (tabRec) tabRec.style.display = (["profesional","admin","admin_institucional","director","jefatura","orientador","superadmin"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -661,6 +665,7 @@ function showTab(t) {
   if (t === "tutorias") initTutorias();
   if (t === "agenda") initAgenda();
   if (t === "encuestas" && typeof initEncuestas === "function") initEncuestas();
+  if (t === "recursos" && typeof initRecursos === "function") initRecursos();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {
