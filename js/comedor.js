@@ -175,6 +175,7 @@ async function loadComedor() {
     alergias:      a.alergias     || null,
     dieta_especial:a.dieta_especial || null,
     se_queda:      asistMap[a.id]?.se_queda ?? false,
+    tupper:        asistMap[a.id]?.tupper ?? false,
     plaza_fija:    asistMap[a.id]?.plaza_fija ?? false,
     nota_dia:      asistMap[a.id]?.nota_dia  ?? null,
     db_id:         asistMap[a.id]?.id ?? null
@@ -225,10 +226,13 @@ function renderComedorList() {
   populateGruposComedor();
   container.innerHTML = filtered.map(a => {
     const badges = _comedorAlergiasBadges(a);
+    const cEstado = a.se_queda ? (a.tupper ? "tupper" : "si") : "no";
+    const segBtn = (val, label, onBg, onTxt) =>
+      `<button onclick="_comSetEstado('${a.alumno_id}','${val}')" style="border:1px solid ${cEstado===val?onBg:'var(--bdr)'};background:${cEstado===val?onBg:'var(--srf)'};color:${cEstado===val?onTxt:'var(--txt2)'};border-radius:6px;padding:5px 9px;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .12s;">${label}</button>`;
     return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:${a.se_queda?"var(--ink-ll)":"var(--srf2)"};border:1.5px solid ${a.se_queda?"var(--ink-l)":"var(--bdr)"};border-radius:var(--r-sm);transition:all .15s;">
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:500;color:var(--txt);">${_cEsc(a.nombre)}</div>
-        <div style="font-size:11px;color:var(--txt3);">${_cEsc(a.curso || "")}${a.plaza_fija?' · <span style="color:var(--ink);font-weight:500;">Plaza fija</span>':''}</div>
+        <div style="font-size:11px;color:var(--txt3);">${_cEsc(a.curso || "")}${a.plaza_fija?' · <span style="color:var(--ink);font-weight:500;">Plaza fija</span>':''}${a.tupper?' · <span style="color:var(--warning);font-weight:500;">🥡 Tupper</span>':''}</div>
         ${badges}
         <div style="display:flex;align-items:center;gap:6px;margin-top:5px;">
           <button onclick="_comedorEditarNota('${a.alumno_id}')" title="Nota del día"
@@ -237,12 +241,11 @@ function renderComedorList() {
           </button>
         </div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;flex-shrink:0;">
-        <span style="font-size:13px;color:var(--txt2);">${a.se_queda?"✅ Se queda":"❌ No se queda"}</span>
-        <input type="checkbox" ${a.se_queda?"checked":""}
-          style="width:18px;height:18px;cursor:pointer;accent-color:var(--ink);"
-          onchange="toggleAsistencia('${a.alumno_id}', this.checked)">
-      </label>
+      <div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+        ${segBtn("no", "❌ No", "var(--danger)", "#fff")}
+        ${segBtn("si", "✅ Sí", "var(--success)", "#fff")}
+        ${segBtn("tupper", "🥡 Tupper", "var(--warning)", "#fff")}
+      </div>
     </div>`;
   }).join("");
 }
@@ -309,12 +312,15 @@ async function _comedorGuardarNota(alumnoId, nota, overlay) {
 }
 window._comedorEditarNota = _comedorEditarNota;
 
-async function toggleAsistencia(alumnoId, seQueda) {
+// Estado de comedor con 3 opciones: 'no' | 'si' (menú) | 'tupper' (se queda con su comida).
+async function _comSetEstado(alumnoId, estado) {
   const alumno = comedorData.find(a => a.alumno_id === alumnoId);
   if (!alumno) return;
+  const seQueda = estado !== "no";
+  const tupper  = estado === "tupper";
 
-  // Aviso si el alumno tiene alergia o dieta especial registrada
-  if (seQueda && (alumno.alergias || alumno.dieta_especial)) {
+  // Aviso si el alumno tiene alergia o dieta especial registrada (solo si se queda con menú)
+  if (seQueda && !tupper && (alumno.alergias || alumno.dieta_especial)) {
     var avisoMsg = '';
     if (alumno.alergias)      avisoMsg += `⚠️ ALERGIA: ${alumno.alergias}`;
     if (alumno.dieta_especial) avisoMsg += (avisoMsg ? '\n' : '') + `🥗 DIETA: ${alumno.dieta_especial}`;
@@ -328,24 +334,28 @@ async function toggleAsistencia(alumnoId, seQueda) {
   const { data: profile } = await sb.from("profiles").select("id").eq("user_id", currentUser.id).single();
 
   if (alumno.db_id) {
-    await sb.from("asistencia_comedor").update({ se_queda: seQueda }).eq("id", alumno.db_id);
+    await sb.from("asistencia_comedor").update({ se_queda: seQueda, tupper: tupper }).eq("id", alumno.db_id);
   } else {
     const { data } = await sb.from("asistencia_comedor").insert({
       centro_id: ctrId, alumno_id: alumnoId, fecha: comedorFecha,
-      se_queda: seQueda, plaza_fija: false, registrado_por: profile?.id
+      se_queda: seQueda, tupper: tupper, plaza_fija: false, registrado_por: profile?.id
     }).select().single();
     if (data) alumno.db_id = data.id;
   }
 
   alumno.se_queda = seQueda;
+  alumno.tupper = tupper;
   updateComedorStats();
   renderComedorList();
   var toast = document.createElement("div");
   toast.style.cssText = "position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:10px 18px;border-radius:var(--r-sm);font-size:13px;z-index:9999;box-shadow:var(--sh-lg);animation:fu .2s ease;";
-  toast.textContent = seQueda ? "✅ Marcado como asistente" : "❌ No asistente";
+  toast.textContent = tupper ? "🥡 Se queda con tupper" : (seQueda ? "✅ Se queda al comedor" : "❌ No se queda");
   document.body.appendChild(toast);
   setTimeout(function() { toast.remove(); }, 2200);
 }
+window._comSetEstado = _comSetEstado;
+// Compatibilidad: toggle binario antiguo → estado
+async function toggleAsistencia(alumnoId, seQueda) { return _comSetEstado(alumnoId, seQueda ? "si" : "no"); }
 
 function printComedor() {
   const seQuedan = comedorData.filter(a => a.se_queda);
