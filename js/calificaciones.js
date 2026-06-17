@@ -185,11 +185,16 @@ async function _calBoletinPDF(hijo, btnId) {
     var EVALS = ['1ª Evaluación', '2ª Evaluación', '3ª Evaluación', 'Final'];
     var EVALS_LBL = ['1ª Ev.', '2ª Ev.', '3ª Ev.', 'Final'];
     var porAsig = {};
+    var obsList = [];   // observaciones (comentarios) no vacías, para el boletín
     data.forEach(function (c) {
       var k = c.asignatura || '—';
       if (!porAsig[k]) porAsig[k] = { prof: c.profesor_nombre || '' };
       porAsig[k][c.evaluacion] = c.nota;
+      if (c.observaciones && String(c.observaciones).trim()) {
+        obsList.push({ asig: k, eval: c.evaluacion || '', obs: String(c.observaciones).trim() });
+      }
     });
+    obsList.sort(function (a, b) { return a.asig.localeCompare(b.asig, 'es'); });
     var asigs = Object.keys(porAsig).sort(function (a, b) { return a.localeCompare(b, 'es'); });
     var body = asigs.map(function (a) {
       var row = porAsig[a];
@@ -248,6 +253,23 @@ async function _calBoletinPDF(hijo, btnId) {
         headStyles: { fillColor: [rgb.r, rgb.g, rgb.b], textColor: 255, fontSize: 9 },
         columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' } },
         alternateRowStyles: { fillColor: [244, 242, 238] },
+        didDrawPage: pageDraw
+      });
+    }
+
+    // Sección de observaciones / comentarios del profesorado
+    if (obsList.length) {
+      var oy = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 12;
+      if (oy > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); oy = 38; }
+      doc.setFontSize(12); doc.setFont(undefined, 'bold'); doc.setTextColor(rgb.r, rgb.g, rgb.b);
+      doc.text('Observaciones del profesorado', 12, oy);
+      doc.autoTable({
+        body: obsList.map(function (o) { return [o.asig + (o.eval ? ' · ' + o.eval : ''), o.obs]; }),
+        startY: oy + 3,
+        margin: { top: 32, bottom: 16 },
+        styles: { fontSize: 9, cellPadding: 2.2, overflow: 'linebreak' },
+        columnStyles: { 0: { cellWidth: 48, fontStyle: 'bold', textColor: [60, 60, 60] }, 1: { textColor: [40, 40, 40] } },
+        theme: 'plain',
         didDrawPage: pageDraw
       });
     }
@@ -354,10 +376,89 @@ async function calCargarAlumnos() {
       '<div style="overflow-x:auto;"><table class="tbl">' +
         '<thead><tr><th>Alumno</th><th style="width:110px;text-align:center;">Nota</th><th>Observaciones</th></tr></thead>' +
         '<tbody>' + rows + '</tbody></table></div>' +
-      '<div style="display:flex;justify-content:flex-end;margin-top:14px;">' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">' +
+        '<button class="btn btn-s" id="cal-ia-btn" onclick="_calGenComentarios()" title="Genera un comentario para cada alumno con nota a partir de su calificación (rellena solo las observaciones vacías; editable)">✨ Comentarios IA</button>' +
         '<button class="btn btn-p" onclick="calGuardar()">💾 Guardar calificaciones</button>' +
       '</div>' +
     '</div>';
+}
+
+// Llamada a Gemini (EF chat) en modo texto plano (role:familia → sin function calling).
+async function _calIA(systemPrompt, userMsg) {
+  try {
+    var r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ANON_KEY, 'apikey': ANON_KEY },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+        system_prompt: systemPrompt,
+        centro_id: ctrId || '',
+        role: 'familia',
+        user_name: (typeof currentUserName !== 'undefined' ? currentUserName : ''),
+        user_id: (currentUser ? currentUser.id : ''),
+      }),
+    });
+    if (!r.ok) return null;
+    var j = await r.json();
+    return j.type === 'text' ? j.text : null;
+  } catch (e) { return null; }
+}
+
+// Genera comentarios de evaluación con IA para los alumnos con nota.
+// Rellena SOLO las observaciones vacías (no pisa lo que el profe ya escribió).
+async function _calGenComentarios() {
+  var grupo = (document.getElementById('cal-prof-grupo') || {}).value;
+  var asig  = ((document.getElementById('cal-prof-asig') || {}).value || '').trim();
+  var evalu = (document.getElementById('cal-prof-eval') || {}).value;
+  var btn = document.getElementById('cal-ia-btn');
+  var trs = document.querySelectorAll('#cal-prof-tabla tr[data-alumno-id]');
+
+  // Recopilar alumnos con nota y observación vacía
+  var pend = [];
+  for (var i = 0; i < trs.length; i++) {
+    var tr = trs[i];
+    var nota = ((tr.querySelector('.cal-nota') || {}).value || '').trim();
+    var obs  = ((tr.querySelector('.cal-obs') || {}).value || '').trim();
+    if (nota !== '' && obs === '') pend.push({ tr: tr, nombre: tr.dataset.alumnoNombre, nota: nota });
+  }
+  if (!pend.length) { _calToast('No hay alumnos con nota y observación vacía.', 'warn'); return; }
+  if (typeof API === 'undefined') { _calToast('IA no disponible.', 'error'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '✨ Generando…'; }
+  var rest = function () { if (btn) { btn.disabled = false; btn.textContent = '✨ Comentarios IA'; } };
+
+  var lista = pend.map(function (p, idx) { return (idx + 1) + '. ' + p.nombre + ' — nota: ' + p.nota; }).join('\n');
+  var sys = 'Eres un docente español redactando los comentarios del boletín de notas de la asignatura "' + asig + '" (' + evalu + '). ' +
+    'Para cada alumno escribe UNA observación breve (máx. 18 palabras), en español, en tercera persona, con un tono constructivo y profesional acorde a la nota: ' +
+    'felicita y anima si la nota es alta (≥7), reconoce el esfuerzo y señala áreas de mejora si es media (5–6.9), y motiva con tacto sin ser duro si es baja (<5). ' +
+    'No menciones el número de la nota. Devuelve EXCLUSIVAMENTE un array JSON válido [{"nombre":"…","comentario":"…"}], sin texto adicional ni markdown.';
+  var usr = 'Alumnos y notas:\n' + lista;
+
+  try {
+    var txt = await _calIA(sys, usr);
+    if (!txt) { _calToast('La IA no devolvió respuesta. Inténtalo de nuevo.', 'error'); rest(); return; }
+    var clean = txt.replace(/```json/gi, '').replace(/```/g, '').trim();
+    var arr;
+    try { arr = JSON.parse(clean); } catch (e) {
+      var m = clean.match(/\[[\s\S]*\]/);
+      arr = m ? JSON.parse(m[0]) : null;
+    }
+    if (!Array.isArray(arr)) { _calToast('No se pudo interpretar la respuesta de la IA.', 'error'); rest(); return; }
+
+    var byName = {};
+    arr.forEach(function (o) { if (o && o.nombre) byName[String(o.nombre).trim().toLowerCase()] = String(o.comentario || '').trim(); });
+    var n = 0;
+    pend.forEach(function (p) {
+      var c = byName[String(p.nombre).trim().toLowerCase()];
+      var inp = p.tr.querySelector('.cal-obs');
+      if (c && inp && !inp.value.trim()) { inp.value = c; n++; }
+    });
+    _calToast(n ? ('✨ ' + n + ' comentario(s) generado(s). Revísalos y guarda.') : 'No se pudo emparejar ningún comentario.', n ? 'ok' : 'warn');
+  } catch (e) {
+    _calToast('Error al generar comentarios.', 'error');
+  } finally {
+    rest();
+  }
 }
 
 async function calGuardar() {
