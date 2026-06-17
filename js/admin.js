@@ -416,13 +416,32 @@ function _sustDedupeNombres(arr) {
   return m;
 }
 
+// Tokens significativos (len>2) normalizados de un nombre.
+function _sustTokens(name) { return _sustNombreNorm(name).split(" ").filter(t => t.length > 2); }
+// ¿El nombre "suelto" (p.ej. profiles.full_name "Bruno Sánchez") corresponde a un
+// nombre de horario ("SÁNCHEZ GONZÁLEZ BRUNO")? True si TODOS los tokens del suelto
+// aparecen en el del horario (tolera orden invertido, tildes, comas, apellidos extra).
+function _sustNombreCoincide(loose, horario) {
+  const lt = _sustTokens(loose);
+  if (!lt.length) return false;
+  const ht = new Set(_sustTokens(horario));
+  return lt.every(t => ht.has(t));
+}
+// De una lista de nombres de horario, los que corresponden al nombre suelto (deduplicados).
+function _sustHorarioNombresDe(loose, horarioNombres) {
+  const map = _sustDedupeNombres((horarioNombres || []).filter(n => _sustNombreCoincide(loose, n)));
+  return [...map.values()];
+}
+
 // Núcleo reutilizable: profesores libres (y de guardia) para una fecha + hora,
 // deduplicados por nombre normalizado y ordenados por equidad de guardias.
-async function _sustCalcularLibres(fecha, horaRefRaw) {
+// Excluye a los profesores que ESTÁN ausentes ese día/tramo (no se pueden sugerir).
+async function _sustCalcularLibres(fecha, horaRefRaw, excluirExtra) {
   const _ca = typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26";
   const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
   const dia = diasNombre[new Date(fecha + "T12:00:00").getDay()];
   const horaRef = String(horaRefRaw || "00:00").slice(0, 5);
+  const horaSql = horaRef + ":00";
 
   const { data: todos } = await sb.from("horarios_grupo").select("profesor_nombre")
     .eq("centro_id", ctrId).eq("curso_escolar", _ca).not("profesor_nombre", "is", null);
@@ -430,21 +449,44 @@ async function _sustCalcularLibres(fecha, horaRefRaw) {
 
   const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre")
     .eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
-    .filter("hora_inicio", "lte", horaRef + ":00").filter("hora_fin", "gt", horaRef + ":00");
+    .filter("hora_inicio", "lte", horaSql).filter("hora_fin", "gt", horaSql);
   const ocupadosKeys = new Set((conClase || []).map(r => _sustNombreNorm(r.profesor_nombre)).filter(Boolean));
 
   const { data: conGuardia } = await sb.from("horarios_grupo").select("profesor_nombre")
     .eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
     .ilike("actividad_nombre", "%guardia%")
-    .filter("hora_inicio", "lte", horaRef + ":00").filter("hora_fin", "gt", horaRef + ":00");
+    .filter("hora_inicio", "lte", horaSql).filter("hora_fin", "gt", horaSql);
   const guardiaKeys = new Set((conGuardia || []).map(r => _sustNombreNorm(r.profesor_nombre)).filter(Boolean));
+
+  // Profesores que ESE día están ausentes en un tramo que solapa esta hora → excluir.
+  const ausentesKeys = new Set();
+  try {
+    const { data: aus } = await sb.from("sustituciones")
+      .select("profesor_ausente,hora_inicio,hora_fin,tramo")
+      .eq("centro_id", ctrId).eq("fecha", fecha);
+    (aus || []).forEach(s => {
+      if (!s.profesor_ausente) return;
+      const hi = (s.hora_inicio || "").slice(0, 8), hf = (s.hora_fin || "").slice(0, 8);
+      // solapa si la franja cubre horaRef, o si la fila es de día completo (sin tramo)
+      const solapa = (!s.tramo) || (hi && hf && hi <= horaSql && hf > horaSql);
+      if (solapa) {
+        // El nombre del ausente puede venir en formato "suelto"; excluir todas sus variantes de horario
+        _sustHorarioNombresDe(s.profesor_ausente, [...todosMap.values()]).forEach(n => ausentesKeys.add(_sustNombreNorm(n)));
+        ausentesKeys.add(_sustNombreNorm(s.profesor_ausente));
+      }
+    });
+  } catch (e) {}
+  (excluirExtra || []).forEach(n => {
+    _sustHorarioNombresDe(n, [...todosMap.values()]).forEach(x => ausentesKeys.add(_sustNombreNorm(x)));
+    ausentesKeys.add(_sustNombreNorm(n));
+  });
 
   let guardCounts = {};
   if (typeof getGuardiaCountsByName === "function") { try { guardCounts = await getGuardiaCountsByName(); } catch (e) {} }
   const countNorm = {};
   Object.keys(guardCounts || {}).forEach(n => { const k = _sustNombreNorm(n); countNorm[k] = (countNorm[k] || 0) + (guardCounts[n] || 0); });
 
-  let libresKeys = [...todosMap.keys()].filter(k => !ocupadosKeys.has(k));
+  let libresKeys = [...todosMap.keys()].filter(k => !ocupadosKeys.has(k) && !ausentesKeys.has(k));
   const deGuardia = guardiaKeys.size > 0;
   if (deGuardia) libresKeys = libresKeys.filter(k => guardiaKeys.has(k));
 

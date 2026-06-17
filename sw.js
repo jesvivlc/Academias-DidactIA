@@ -1,6 +1,6 @@
 // Service Worker DidactIA — network-first para assets propios.
 // Bump CACHE en cada cambio estructural para purgar cachés antiguas.
-const CACHE = 'didactia-v11';
+const CACHE = 'didactia-v12';
 const PRECACHE = [
   '/app.html',
   '/index.html',
@@ -40,6 +40,7 @@ const PRECACHE = [
   '/js/prevision.js',
   '/js/documentos.js',
   '/js/participacion.js',
+  '/js/plancobertura.js',
   '/manifest.json'
 ];
 
@@ -66,8 +67,11 @@ self.addEventListener('activate', function(e) {
 self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
   if (new URL(e.request.url).origin !== location.origin) return; // Supabase/CDN pasan directos
+  // Forzar revalidación contra el servidor (evita servir JS/HTML viejos del HTTP cache).
+  var req = e.request;
+  try { req = new Request(e.request, { cache: 'no-cache' }); } catch (_) { req = e.request; }
   e.respondWith(
-    fetch(e.request).then(function(res) {
+    fetch(req).then(function(res) {
       if (res && res.ok) {
         var clone = res.clone();
         caches.open(CACHE).then(function(c) { c.put(e.request, clone); });

@@ -489,17 +489,25 @@ async function _crearSustituciones(ausencia, profesorNombre) {
   // Usar curso activo del centro (global de config.js; fallback seguro)
   var cursoEscolar = (typeof cursoActivo !== "undefined" && cursoActivo) ? cursoActivo : "2025-26";
 
-  // Buscar clases del profesor en horarios_grupo (wildcards para tolerar
-  // diferencias de formato entre profiles.full_name y horarios_grupo.profesor_nombre)
+  // Buscar clases del profesor en horarios_grupo. El nombre del perfil
+  // ("Bruno Sánchez") suele NO coincidir con el del horario ("SÁNCHEZ … BRUNO"):
+  // distinto orden, tildes y comas. Por eso traemos todas las clases del día y
+  // filtramos en JS con el matcher robusto por tokens (_sustNombreCoincide, admin.js).
   var tramosResult = await sb.from("horarios_grupo")
-    .select("tramo, hora_inicio, hora_fin, grupo_horario, dia")
+    .select("tramo, hora_inicio, hora_fin, grupo_horario, dia, profesor_nombre")
     .eq("centro_id", ctrId)
     .eq("curso_escolar", cursoEscolar)
     .in("dia", diasNeeded)
-    .ilike("profesor_nombre", "%" + profesorNombre + "%");
+    .not("profesor_nombre", "is", null)
+    .limit(20000);
+
+  var coincide = (typeof _sustNombreCoincide === "function")
+    ? _sustNombreCoincide
+    : function(loose, h) { return String(h || "").toLowerCase().indexOf(String(loose || "").toLowerCase()) !== -1; };
 
   var tramosPorDia = {};
   (tramosResult.data || []).forEach(function(t) {
+    if (!coincide(profesorNombre, t.profesor_nombre)) return;
     if (!tramosPorDia[t.dia]) tramosPorDia[t.dia] = [];
     tramosPorDia[t.dia].push(t);
   });
