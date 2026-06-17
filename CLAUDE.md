@@ -328,6 +328,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/comunicado_lecturas.sql` — tabla `comunicado_lecturas` (registro central de lectura de comunicados) + UNIQUE(comunicado_id,user_id) + RLS (propio rw + staff read) ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/documentos_centro.sql` — tabla `documentos_centro` (biblioteca de circulares/normativa/PGA) + RLS `docs_read`/`docs_manage` + bucket privado `documentos-centro` + 4 políticas de Storage por centro ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/tutoria_espera.sql` — tabla `tutoria_espera` (lista de espera de tutorías) + RLS (staff ALL + familia read/ins/del propio) + índice ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/eventos_centro.sql` — tabla `eventos_centro` (eventos generales de la Agenda) + RLS `ev_read`/`ev_manage` + índice ✅ aplicado 2026-06-17 vía Management API

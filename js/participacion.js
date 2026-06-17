@@ -32,12 +32,16 @@ async function _partCargar() {
     window.sb.from("encuesta_respuestas").select("encuesta_id,familia_id").eq("centro_id", ctrId),
     window.sb.from("tutoria_citas").select("familia_id").eq("centro_id", ctrId),
     window.sb.from("participantes_salida").select("autorizado").eq("centro_id", ctrId),
+    window.sb.from("comunicados").select("id,titulo,destinatarios,created_at").eq("centro_id", ctrId).neq("destinatarios", "solo_profesores").order("created_at", { ascending: false }).limit(50),
+    window.sb.from("comunicado_lecturas").select("comunicado_id,user_id").eq("centro_id", ctrId),
   ]);
   var push = res[0].data || [];
   var encuestas = res[1].data || [];
   var respuestas = res[2].data || [];
   var citas = res[3].data || [];
   var participantes = res[4].data || [];
+  var comunicados = res[5].data || [];
+  var lecturas = res[6].data || [];
 
   // Push: familias con al menos una suscripción
   var pushFam = {};
@@ -64,9 +68,21 @@ async function _partCargar() {
   var totPart = participantes.length;
   var autorizados = participantes.filter(function (p) { return p.autorizado; }).length;
 
-  // Denominadores por grupo para encuestas dirigidas a un grupo
+  // Comunicados: lecturas por familias
+  var lectFamGlobal = {};
+  var lectPorCom = {};
+  lecturas.forEach(function (l) {
+    if (!famSet[l.user_id]) return;  // solo lecturas de familias
+    lectFamGlobal[l.user_id] = true;
+    if (!lectPorCom[l.comunicado_id]) lectPorCom[l.comunicado_id] = {};
+    lectPorCom[l.comunicado_id][l.user_id] = true;
+  });
+  var nLeyeronCom = Object.keys(lectFamGlobal).length;
+
+  // Denominadores por grupo (encuestas y comunicados dirigidos a un grupo)
   var gruposNecesarios = {};
   encuestas.forEach(function (e) { if ((e.destinatarios || "").indexOf("grupo:") === 0) gruposNecesarios[e.destinatarios.replace("grupo:", "")] = true; });
+  comunicados.forEach(function (c) { if ((c.destinatarios || "").indexOf("grupo:") === 0) gruposNecesarios[c.destinatarios.replace("grupo:", "")] = true; });
   var famPorGrupo = {};
   var gruposList = Object.keys(gruposNecesarios);
   if (gruposList.length) {
@@ -92,6 +108,7 @@ async function _partCargar() {
     '<div class="part-kpis">' +
       _partKpi("Familias registradas", totalFam, null, "👪") +
       _partKpi("Con notificaciones push", nPush, _partPct(nPush, totalFam), "🔔") +
+      _partKpi("Leyeron comunicados", nLeyeronCom, _partPct(nLeyeronCom, totalFam), "📣") +
       _partKpi("Respondieron encuestas", nRespAlguna, _partPct(nRespAlguna, totalFam), "📊") +
       _partKpi("Solicitaron tutoría", nTut, _partPct(nTut, totalFam), "📅") +
     '</div>';
@@ -125,7 +142,27 @@ async function _partCargar() {
   }
   html += '</div>';
 
-  html += '<div class="part-foot">Datos calculados en tiempo real. La lectura de comunicados se guarda por dispositivo y no se contabiliza aquí.</div>';
+  // Lectura por comunicado (últimos enviados a familias)
+  html += '<div class="part-sec"><div class="part-sec-h">Lectura de comunicados</div>';
+  if (!comunicados.length) {
+    html += '<div class="part-empty">No hay comunicados dirigidos a familias.</div>';
+  } else {
+    html += comunicados.slice(0, 12).map(function (c) {
+      var nFams = Object.keys(lectPorCom[c.id] || {}).length;
+      var denom = (c.destinatarios || "").indexOf("grupo:") === 0
+        ? Object.keys(famPorGrupo[c.destinatarios.replace("grupo:", "")] || {}).length
+        : totalFam;
+      var dest = c.destinatarios === "solo_familias" ? "Familias" : c.destinatarios === "todos" ? "Todos" : c.destinatarios.replace("grupo:", "Grupo ");
+      return '<div class="part-enc">' +
+        '<div class="part-enc-top"><span class="part-enc-ttl">' + _partEsc(c.titulo) + '</span>' +
+        '<span class="part-enc-dest">' + dest + '</span></div>' +
+        _partBar(nFams + (denom ? " de " + denom : "") + " familias", nFams, denom || nFams) +
+        '</div>';
+    }).join("");
+  }
+  html += '</div>';
+
+  html += '<div class="part-foot">Datos calculados en tiempo real. La lectura de comunicados se registra cuando la familia abre el comunicado en la app (a partir de ahora).</div>';
   html += '</div>';
   el.innerHTML = html;
 }

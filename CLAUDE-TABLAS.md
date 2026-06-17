@@ -64,6 +64,7 @@
 | `actas_reunion` | centro_id, titulo, fecha, tipo (claustro/ccp/departamento/evaluacion/tutores/otro), notas_raw, resumen, acuerdos (jsonb[]), tareas (jsonb: `[{tarea,responsable,fecha}]`), creado_por, created_at | Actas de reuniones con resumen IA. RLS `actas_all` (dirección). Módulo `js/actas.js` |
 | `documentos_centro` | centro_id, titulo, categoria (circular/normativa/pga/calendario/formulario/otro), descripcion, tipo ('archivo'\|'enlace'), url, storage_path, visible_para ('todos'\|'staff'\|'familias'), subido_por, created_at | Biblioteca de documentos del centro. RLS `docs_read` (familia solo todos/familias) + `docs_manage` (dirección). Archivos en **bucket privado `documentos-centro`** (`{centro_id}/…`, signed URL). Módulo `js/documentos.js` |
 | `tutoria_espera` | centro_id, tutor_id, alumno_id, alumno_nombre, grupo_horario, familia_id (NOT NULL), fecha, notificado (bool), created_at | Lista de espera de tutorías. RLS `tut_esp_staff` (staff ALL) + familia read/ins/del propio. Al liberarse un hueco (cancelación) se avisa por push a la 1ª en cola. Módulo `js/tutoria.js` |
+| `comunicado_lecturas` | centro_id, comunicado_id (CASCADE), user_id (NOT NULL), created_at; UNIQUE(comunicado_id, user_id) | Registro central de lectura de comunicados (se inserta al abrir uno, `_comMarkLeido` en `js/comunicados.js`). RLS `comlec_own_rw` (propio) + `comlec_staff_read` (staff). Alimenta el dashboard de participación (`js/participacion.js`). |
 
 ---
 

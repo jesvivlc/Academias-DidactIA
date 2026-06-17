@@ -30,11 +30,21 @@ function _comGetLeidos() {
 
 function _comMarkLeido(id) {
   var l = _comGetLeidos();
-  if (!l.includes(id)) {
+  var nuevo = !l.includes(id);
+  if (nuevo) {
     l.push(id);
     try { localStorage.setItem(_comKey(), JSON.stringify(l)); } catch (e) {}
   }
   _comUpdateTabBadge();
+  // Registro de lectura en BD (idempotente por UNIQUE comunicado_id+user_id), fire-and-forget
+  if (nuevo && currentUser && currentUser.id) {
+    try {
+      sb.from('comunicado_lecturas')
+        .upsert({ centro_id: ctrId, comunicado_id: id, user_id: currentUser.id },
+                { onConflict: 'comunicado_id,user_id', ignoreDuplicates: true })
+        .then(function () {}, function () {});
+    } catch (e) {}
+  }
 }
 
 // ── Tab badge ────────────────────────────────────────────────────
