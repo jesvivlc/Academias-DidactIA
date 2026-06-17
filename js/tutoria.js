@@ -163,6 +163,8 @@ async function _tutLoadCitasProfesor() {
       .limit(300);
     if (error) throw error;
     if (!data.length) { pane.innerHTML = '<div class="tut-empty">No tienes citas próximas.</div>'; return; }
+    window._tutCitasCache = {};
+    data.forEach(c => { window._tutCitasCache[c.id] = c; });
     const today = new Date().toISOString().split('T')[0];
     const upcoming = data.filter(c => c.fecha >= today);
     const atrasadas = data.filter(c => c.fecha < today && c.estado !== 'realizada');
@@ -189,6 +191,10 @@ function _tutCitaCardProf(c) {
   } else if (c.estado === 'confirmada') {
     acciones.push(`<button class="tut-btn tut-btn-done" onclick="window._tutMarcarRealizada('${_tutArg(c.id)}')">✓ Realizada</button>`);
     acciones.push(`<button class="tut-btn tut-btn-cancel" onclick="window._tutCancelarProf('${_tutArg(c.id)}','${_tutArg(c.familia_id)}','${_tutArg(c.alumno_nombre)}','${_tutArg(c.fecha)}','${_tutArg(c.hora_inicio)}')">✕ Cancelar</button>`);
+  }
+  // Acta PDF disponible en citas confirmadas o ya realizadas
+  if (c.estado === 'confirmada' || c.estado === 'realizada') {
+    acciones.push(`<button class="tut-btn" style="background:var(--surface-sunk);color:var(--txt2);" onclick="window._tutActaPDF('${_tutArg(c.id)}')">📄 Acta PDF</button>`);
   }
   const motivoHtml = c.motivo ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">💬 ${_tutEsc(c.motivo)}</div>` : '';
   const notasHtml = `<div style="margin-top:10px"><input class="tut-notes-inp" id="notas-${c.id}" placeholder="Notas internas (solo para ti)…" value="${_tutEsc(c.notas_tutor || '')}" onblur="window._tutGuardarNotas('${_tutArg(c.id)}',this.value)"></div>`;
@@ -242,6 +248,77 @@ window._tutGuardarNotas = async function (citaId, notas) {
   await window.sb.from('tutoria_citas')
     .update({ notas_tutor: notas || null })
     .eq('id', citaId).eq('centro_id', window.ctrId);
+  // Mantener la caché al día para el acta PDF
+  if (window._tutCitasCache && window._tutCitasCache[citaId]) window._tutCitasCache[citaId].notas_tutor = notas || null;
+};
+
+// Acta de tutoría en PDF (cabecera logo+color del centro, reutiliza helpers de informes.js).
+window._tutActaPDF = async function (citaId) {
+  const c = (window._tutCitasCache || {})[citaId];
+  if (!c) { _tutToast('No se encontró la cita.', true); return; }
+  if (typeof _infEnsureLibs !== 'function') { _tutToast('Exportación no disponible.', true); return; }
+  try {
+    await _infEnsureLibs();
+    const centro = await _infCentroInfo();
+    const logoImg = await _infImgToDataURL(centro.logo);
+    const rgb = _infHexToRgb(centro.color);
+    const jsPDF = window.jspdf.jsPDF;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+
+    // Cabecera
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.rect(0, 0, W, 26, 'F');
+    let x = 12;
+    if (logoImg && logoImg.dataURL) {
+      try {
+        let h = 16, w = h * (logoImg.w / logoImg.h);
+        if (w > 38) { w = 38; h = w * (logoImg.h / logoImg.w); }
+        doc.addImage(logoImg.dataURL, 'PNG', 12, 5, w, h); x = 12 + w + 6;
+      } catch (e) {}
+    }
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13); doc.setFont(undefined, 'bold');
+    doc.text(centro.nombre || 'Centro', x, 11);
+    doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    doc.text('ACTA DE TUTORÍA', x, 18);
+    const hoy = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    doc.setFontSize(8.5); doc.text(hoy, W - 12, 11, { align: 'right' });
+
+    // Cuerpo: campos
+    let y = 40;
+    const field = (label, val) => {
+      if (y > H - 30) { doc.addPage(); y = 20; }
+      doc.setFont(undefined, 'bold'); doc.setFontSize(9); doc.setTextColor(rgb.r, rgb.g, rgb.b);
+      doc.text(String(label).toUpperCase(), 12, y);
+      doc.setFont(undefined, 'normal'); doc.setFontSize(11); doc.setTextColor(40, 40, 40);
+      const lines = doc.splitTextToSize(String(val || '—'), W - 24);
+      doc.text(lines, 12, y + 6);
+      y += 6 + lines.length * 5.6 + 6;
+    };
+    field('Alumno/a', (c.alumno_nombre || '—') + (c.grupo_horario ? ' · Grupo ' + c.grupo_horario : ''));
+    field('Tutor/a', (typeof window.currentUserName !== 'undefined' ? window.currentUserName : '') || '—');
+    field('Fecha y hora de la tutoría', _tutFechaLegible(c.fecha) + ' · ' + (c.hora_inicio || '').slice(0, 5) + '–' + (c.hora_fin || '').slice(0, 5));
+    if (c.motivo) field('Motivo', c.motivo);
+    field('Acuerdos y observaciones', c.notas_tutor || '(Sin notas registradas en la tutoría.)');
+
+    // Firma
+    y = Math.max(y + 6, H - 38);
+    doc.setDrawColor(180, 180, 180); doc.line(12, y, 80, y);
+    doc.setFontSize(9); doc.setTextColor(110, 110, 110); doc.text('Firma del tutor/a', 12, y + 5);
+
+    // Pie
+    doc.setFontSize(8); doc.setTextColor(130, 130, 130);
+    doc.text(centro.nombre || 'Centro', 12, H - 8);
+    doc.text('Generado por DidactIA', W - 12, H - 8, { align: 'right' });
+
+    const safe = (c.alumno_nombre || 'alumno').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').toLowerCase();
+    doc.save('acta_tutoria_' + safe + '_' + c.fecha + '.pdf');
+    _tutToast('✓ Acta descargada');
+  } catch (e) {
+    _tutToast('No se pudo generar el acta.', true);
+  }
 };
 
 /* ── DISPONIBILIDAD TUTOR ── */
