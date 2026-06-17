@@ -406,8 +406,9 @@ async function _calIA(systemPrompt, userMsg) {
 
 // Genera comentarios de evaluación con IA para los alumnos con nota.
 // Rellena SOLO las observaciones vacías (no pisa lo que el profe ya escribió).
+// Empareja por NÚMERO de orden (no por nombre) y procesa en lotes para evitar
+// que la respuesta de Gemini se trunque con grupos grandes.
 async function _calGenComentarios() {
-  var grupo = (document.getElementById('cal-prof-grupo') || {}).value;
   var asig  = ((document.getElementById('cal-prof-asig') || {}).value || '').trim();
   var evalu = (document.getElementById('cal-prof-eval') || {}).value;
   var btn = document.getElementById('cal-ia-btn');
@@ -427,33 +428,51 @@ async function _calGenComentarios() {
   if (btn) { btn.disabled = true; btn.textContent = '✨ Generando…'; }
   var rest = function () { if (btn) { btn.disabled = false; btn.textContent = '✨ Comentarios IA'; } };
 
-  var lista = pend.map(function (p, idx) { return (idx + 1) + '. ' + p.nombre + ' — nota: ' + p.nota; }).join('\n');
   var sys = 'Eres un docente español redactando los comentarios del boletín de notas de la asignatura "' + asig + '" (' + evalu + '). ' +
-    'Para cada alumno escribe UNA observación breve (máx. 18 palabras), en español, en tercera persona, con un tono constructivo y profesional acorde a la nota: ' +
+    'Recibes una lista NUMERADA de alumnos con su nota. Para CADA alumno de la lista escribe UNA observación breve (máx. 18 palabras), ' +
+    'en español, en tercera persona, con un tono constructivo y profesional acorde a la nota: ' +
     'felicita y anima si la nota es alta (≥7), reconoce el esfuerzo y señala áreas de mejora si es media (5–6.9), y motiva con tacto sin ser duro si es baja (<5). ' +
-    'No menciones el número de la nota. Devuelve EXCLUSIVAMENTE un array JSON válido [{"nombre":"…","comentario":"…"}], sin texto adicional ni markdown.';
-  var usr = 'Alumnos y notas:\n' + lista;
+    'No menciones el número de la nota. Es OBLIGATORIO devolver un objeto por CADA número de la lista. ' +
+    'Devuelve EXCLUSIVAMENTE un array JSON válido con la forma [{"n":1,"comentario":"…"},{"n":2,"comentario":"…"}], ' +
+    'donde "n" es el número que precede al alumno. Sin texto adicional ni markdown.';
 
-  try {
-    var txt = await _calIA(sys, usr);
-    if (!txt) { _calToast('La IA no devolvió respuesta. Inténtalo de nuevo.', 'error'); rest(); return; }
+  // Procesa un lote (chunk de pend, con su offset global) y rellena observaciones.
+  async function genLote(chunk, offset) {
+    var lista = chunk.map(function (p, idx) { return (idx + 1) + '. ' + p.nombre + ' — nota: ' + p.nota; }).join('\n');
+    var txt = await _calIA(sys, 'Alumnos y notas:\n' + lista);
+    if (!txt) return 0;
     var clean = txt.replace(/```json/gi, '').replace(/```/g, '').trim();
-    var arr;
+    var arr = null;
     try { arr = JSON.parse(clean); } catch (e) {
       var m = clean.match(/\[[\s\S]*\]/);
-      arr = m ? JSON.parse(m[0]) : null;
+      if (m) { try { arr = JSON.parse(m[0]); } catch (e2) { arr = null; } }
     }
-    if (!Array.isArray(arr)) { _calToast('No se pudo interpretar la respuesta de la IA.', 'error'); rest(); return; }
-
-    var byName = {};
-    arr.forEach(function (o) { if (o && o.nombre) byName[String(o.nombre).trim().toLowerCase()] = String(o.comentario || '').trim(); });
-    var n = 0;
-    pend.forEach(function (p) {
-      var c = byName[String(p.nombre).trim().toLowerCase()];
+    if (!Array.isArray(arr)) return 0;
+    var done = 0;
+    arr.forEach(function (o) {
+      if (!o) return;
+      var num = parseInt(o.n, 10);
+      if (isNaN(num)) return;
+      var p = chunk[num - 1];               // número 1-based dentro del lote
+      if (!p) return;
+      var c = String(o.comentario || '').trim();
       var inp = p.tr.querySelector('.cal-obs');
-      if (c && inp && !inp.value.trim()) { inp.value = c; n++; }
+      if (c && inp && !inp.value.trim()) { inp.value = c; done++; }
     });
-    _calToast(n ? ('✨ ' + n + ' comentario(s) generado(s). Revísalos y guarda.') : 'No se pudo emparejar ningún comentario.', n ? 'ok' : 'warn');
+    return done;
+  }
+
+  try {
+    var CH = 20, total = 0;
+    for (var s = 0; s < pend.length; s += CH) {
+      total += await genLote(pend.slice(s, s + CH), s);
+    }
+    var faltan = pend.length - total;
+    if (total === 0) {
+      _calToast('La IA no devolvió comentarios. Inténtalo de nuevo.', 'error');
+    } else {
+      _calToast('✨ ' + total + ' comentario(s) generado(s)' + (faltan > 0 ? ' (' + faltan + ' sin generar — reintenta)' : '') + '. Revísalos y guarda.', faltan > 0 ? 'warn' : 'ok');
+    }
   } catch (e) {
     _calToast('Error al generar comentarios.', 'error');
   } finally {
