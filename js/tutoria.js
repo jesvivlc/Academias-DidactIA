@@ -15,7 +15,9 @@ function _tutEsc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function _tutArg(s) {
-  return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  // Escapa para un string JS entre comillas simples dentro de un atributo on…="…"
+  // (comillas dobles → &quot; para no romper el atributo; p.ej. nombres con ").
+  return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 function _tutFechaLegible(d) {
   if (!d) return '';
@@ -493,7 +495,9 @@ window._tutFamOnFecha = async function (fecha) {
     .in('disp_id', dispIds)
     .eq('fecha', fecha)
     .not('estado', 'eq', 'cancelada');
-  const takenSet = new Set((taken || []).map(t => `${t.disp_id}_${t.hora_inicio}`));
+  // Las columnas `time` vuelven con segundos ("09:00:00"); los slots generados
+  // son "HH:MM" → normalizar a HH:MM para que los ocupados se marquen bien.
+  const takenSet = new Set((taken || []).map(t => `${t.disp_id}_${(t.hora_inicio || '').slice(0, 5)}`));
 
   grid.innerHTML = allSlots.map((s, i) => {
     const key = `${s.disp_id}_${s.hora_inicio}`;
