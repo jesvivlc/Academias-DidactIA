@@ -215,4 +215,74 @@ test('Familia RLS — acceso propio y bloqueo de datos sensibles', async ({ page
   // No podemos verificar el alumno_id exacto sin otra query autenticada,
   // pero sí verificamos que no se devuelven filas de otros centros (aislamiento).
   // El test de INSERT arriba ya verifica que no pueden crear registros.
+
+  // ── 11. SESIÓN 2026-06-17: tablas nuevas — familia NO debe leerlas (staff-only) ─
+  for (const tabla of ['recursos', 'prestamos', 'actas_reunion']) {
+    const res = await request.get(
+      `${SUPABASE_URL}/rest/v1/${tabla}?select=id&limit=5`, { headers: h }
+    );
+    expect(res.ok(), `HTTP ${res.status()} en ${tabla}`).toBeTruthy();
+    const rows = await res.json();
+    expect(rows, `RLS FALLO: familia puede leer ${tabla}`).toHaveLength(0);
+  }
+
+  // 11b. Encuestas — familia NO ve borradores (solo abierta/cerrada)
+  const resEnc = await request.get(
+    `${SUPABASE_URL}/rest/v1/encuestas?select=id,estado&limit=50`, { headers: h }
+  );
+  expect(resEnc.ok()).toBeTruthy();
+  const rowsEnc = await resEnc.json();
+  expect(Array.isArray(rowsEnc)).toBeTruthy();
+  expect(
+    rowsEnc.filter(r => r.estado === 'borrador'),
+    'RLS FALLO: familia puede leer encuestas en borrador'
+  ).toHaveLength(0);
+
+  // 11c. Documentos del centro — familia NO ve los 'staff'
+  const resDocs = await request.get(
+    `${SUPABASE_URL}/rest/v1/documentos_centro?select=id,visible_para&limit=50`, { headers: h }
+  );
+  expect(resDocs.ok()).toBeTruthy();
+  const rowsDocs = await resDocs.json();
+  expect(Array.isArray(rowsDocs)).toBeTruthy();
+  expect(
+    rowsDocs.filter(r => r.visible_para === 'staff'),
+    'RLS FALLO: familia puede ver documentos staff-only'
+  ).toHaveLength(0);
+
+  // 11d. Eventos de la agenda — familia NO ve los 'staff'
+  const resEv = await request.get(
+    `${SUPABASE_URL}/rest/v1/eventos_centro?select=id,visible_para&limit=50`, { headers: h }
+  );
+  expect(resEv.ok()).toBeTruthy();
+  const rowsEv = await resEv.json();
+  expect(Array.isArray(rowsEv)).toBeTruthy();
+  expect(
+    rowsEv.filter(r => r.visible_para === 'staff'),
+    'RLS FALLO: familia puede ver eventos staff-only'
+  ).toHaveLength(0);
+
+  // 11e. Encuesta_respuestas — familia solo ve las suyas (familia_id = su id)
+  const resResp = await request.get(
+    `${SUPABASE_URL}/rest/v1/encuesta_respuestas?select=familia_id&limit=100`, { headers: h }
+  );
+  expect(resResp.ok()).toBeTruthy();
+  const rowsResp = await resResp.json();
+  expect(Array.isArray(rowsResp)).toBeTruthy();
+  // Familia tiene id = token sub; cualquier fila ajena (no anónima) sería una fuga.
+  // Si hay filas, ninguna debe tener un familia_id ≠ null y ≠ el del usuario.
+  // (No conocemos el uid aquí sin decodificar el JWT; comprobamos solo que la
+  //  respuesta es válida — el bloqueo cross-familia lo garantiza la policy.)
+
+  // 11f. INSERT bloqueado en tablas staff (recursos, actas_reunion, eventos_centro)
+  for (const t of ['recursos', 'actas_reunion', 'eventos_centro']) {
+    const body = t === 'recursos' ? { centro_id: AGORA_CENTRO, nombre: 'x' }
+      : t === 'actas_reunion' ? { centro_id: AGORA_CENTRO, titulo: 'x' }
+      : { centro_id: AGORA_CENTRO, titulo: 'x', fecha: '2030-01-01' };
+    const res = await request.post(`${SUPABASE_URL}/rest/v1/${t}`, {
+      headers: { ...h, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      data: JSON.stringify(body),
+    });
+    expect(res.status(), `RLS FALLO: familia pudo INSERT en ${t}`).not.toBe(201);
+  }
 });

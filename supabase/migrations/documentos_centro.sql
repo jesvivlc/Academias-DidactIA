@@ -34,13 +34,19 @@ CREATE POLICY "docs_manage" ON public.documentos_centro FOR ALL USING (
       AND (SELECT rol FROM public.profiles WHERE id = auth.uid()) IN ('admin','admin_institucional','director','jefatura'))
 );
 
--- Bucket privado + políticas de Storage (path: {centro_id}/{archivo}).
+-- Bucket privado + políticas de Storage.
+-- PATH: {centro_id}/{visible_para}/{archivo}  (visible_para ∈ todos|familias|staff)
+-- La carpeta de visibilidad se usa en docc_read para que una familia NO pueda
+-- descargar documentos 'staff' aunque conozca la ruta (la RLS de tabla solo oculta
+-- la ruta, pero el objeto de Storage es accesible vía signed URL sin esta defensa).
 INSERT INTO storage.buckets (id, name, public) VALUES ('documentos-centro','documentos-centro', false)
   ON CONFLICT (id) DO NOTHING;
 
 CREATE POLICY "docc_read" ON storage.objects FOR SELECT USING (
   bucket_id = 'documentos-centro'
   AND (storage.foldername(name))[1] = (SELECT centro_id::text FROM public.profiles WHERE id = auth.uid())
+  AND ((SELECT rol FROM public.profiles WHERE id = auth.uid()) <> 'familia'
+       OR (storage.foldername(name))[2] IN ('todos','familias'))
 );
 CREATE POLICY "docc_insert" ON storage.objects FOR INSERT WITH CHECK (
   bucket_id = 'documentos-centro'

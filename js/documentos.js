@@ -165,7 +165,10 @@ window._docGuardar = async function (btn) {
     if (btn) { btn.disabled = true; btn.textContent = "Subiendo…"; }
     var ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
     var safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
-    var path = window.ctrId + "/" + Date.now() + "_" + safe + (safe.endsWith("." + ext) ? "" : "." + ext);
+    // La carpeta de visibilidad ({centro}/{visible_para}/…) la usa la RLS de Storage
+    // para impedir que una familia descargue documentos 'staff' aunque conozca la ruta.
+    var visFolder = (vis === "staff" || vis === "familias") ? vis : "todos";
+    var path = window.ctrId + "/" + visFolder + "/" + Date.now() + "_" + safe + (safe.endsWith("." + ext) ? "" : "." + ext);
     var up = await window.sb.storage.from(_DOC_BUCKET).upload(path, file, { upsert: false });
     if (up.error) { if (btn) { btn.disabled = false; btn.textContent = "Subir"; } showToast("Error al subir: " + up.error.message); return; }
     payload.storage_path = path;
