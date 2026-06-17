@@ -292,6 +292,20 @@ async function _calcularLibres(
     if (key) ocupadosNorm.add(key);
   }
 
+  // Excluir a los profesores que están ELLOS MISMOS ausentes ese día (figuran
+  // como profesor_ausente en alguna sustitución de la fecha): aunque tengan un
+  // hueco libre en su horario, no están en el centro y no deben sugerirse.
+  const { data: ausentesRows, error: aErr } = await sb
+    .from("sustituciones").select("profesor_ausente")
+    .eq("centro_id", centro_id).eq("fecha", fecha)
+    .not("profesor_ausente", "is", null);
+  if (aErr) console.error(`[agent] ausentes del día error: ${aErr.message}`);
+  for (const a of (ausentesRows ?? []) as { profesor_ausente: string }[]) {
+    const key = normalizarNombre((a.profesor_ausente ?? "").trim());
+    if (key) ocupadosNorm.add(key);
+  }
+  console.log(`[agent] ausentes del día excluidos: ${ausentesRows?.length ?? 0}`);
+
   const libres = [...universo.entries()]
     .filter(([key]) => !ocupadosNorm.has(key))
     .map(([, display]) => display)
