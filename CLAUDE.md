@@ -91,6 +91,8 @@ js/
   recursos.js           initRecursos (Préstamo de recursos): pills Préstamos (activos+vencidos+historial, devolver) e Inventario (CRUD recursos, prestar). Sincroniza recursos.estado. Tablas recursos + prestamos. Staff, no familia
   actas.js              initActas (Actas de reuniones): dictado/pegado de notas → "✨ Generar acta con IA" (EF chat role:familia, JSON resumen/acuerdos/tareas editable) → guardar; lista por fecha, detalle, PDF (helpers de informes.js). Tabla actas_reunion. Dirección
   prevision.js          window.preverCobertura (sin tab): botón "Previsión" en Sustituciones → sustituciones futuras sin cubrir (14d), cruza horarios_grupo para profesores libres, ordena por equidad (getGuardiaCountsByName), asigna sugerido en un clic (_prevAsignar → UPDATE + guardia + notify-sustitucion)
+  documentos.js         initDocumentos (Biblioteca de documentos): tablón de circulares/normativa/PGA/calendario/formularios; dirección sube archivo (bucket privado `documentos-centro`, signed URL) o enlace con categoría + visible_para (todos/familias/staff); filtro por categoría; descarga según rol (RLS). Tabla documentos_centro
+  participacion.js      initParticipacion (pill "Participación familiar" en Análisis): KPIs de familias registradas/con push/que respondieron encuestas/que pidieron tutoría + tasa autorización de salidas + respuesta por encuesta. Solo lee tablas existentes
   palette.js            command palette global ⌘K (alumnos/profesores/aulas)
 sql/
   planner-tables.sql    DDL: materias, aulas, disponibilidad_profesor, necesidades_lectivas, horario_generado
@@ -106,8 +108,10 @@ supabase/migrations/
   menu_comedor.sql      DDL menu_comedor + RLS menu_read/menu_manage + UNIQUE(centro,fecha)
   recursos.sql          DDL recursos + prestamos + RLS staff-only + índices
   actas_reunion.sql     DDL actas_reunion (resumen IA claustros) + RLS actas_all + índice
+  documentos_centro.sql DDL documentos_centro + RLS + bucket privado documentos-centro + RLS de Storage
+  tutoria_espera.sql    DDL tutoria_espera (lista de espera tutorías) + RLS + índice
 manifest.json                   PWA manifest (start_url /app.html, scope /, iconos SVG incl. maskable, id, categories)
-sw.js                           Service Worker (network-first, precache de todos los js/, push handler con icono inline, notificationclick → enfoca/abre /app.html). CACHE didactia-v10
+sw.js                           Service Worker (network-first, precache de todos los js/, push handler con icono inline, notificationclick → enfoca/abre /app.html). CACHE didactia-v11
 n8n-briefing-matutino.json      Workflow n8n: briefing matutino automático (importar en n8n)
 tests/
   aislamiento-centros.spec.js   Playwright e2e: RLS multi-tenant (Agora vs Buñol)
@@ -324,6 +328,8 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/documentos_centro.sql` — tabla `documentos_centro` (biblioteca de circulares/normativa/PGA) + RLS `docs_read`/`docs_manage` + bucket privado `documentos-centro` + 4 políticas de Storage por centro ✅ aplicado 2026-06-17 vía Management API
+> - `supabase/migrations/tutoria_espera.sql` — tabla `tutoria_espera` (lista de espera de tutorías) + RLS (staff ALL + familia read/ins/del propio) + índice ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/eventos_centro.sql` — tabla `eventos_centro` (eventos generales de la Agenda) + RLS `ev_read`/`ev_manage` + índice ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/encuestas.sql` — tablas `encuestas` + `encuesta_respuestas` (encuestas a familias) + RLS por centro/rol + índices (incl. UNIQUE por familia anti-doble-respuesta) ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/menu_comedor.sql` — tabla `menu_comedor` (menú semanal del comedor) + RLS `menu_read`(todo el centro)/`menu_manage`(dirección) + UNIQUE(centro,fecha) ✅ aplicado 2026-06-17 vía Management API
