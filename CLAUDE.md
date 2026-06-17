@@ -311,9 +311,10 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `supabase/migrations/tutorias.sql` — 2 tablas (`tutoria_disponibilidad` + `tutoria_citas`) + RLS (5 políticas) + índices
+> - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/tutorias.sql` — 2 tablas (`tutoria_disponibilidad` + `tutoria_citas`) + RLS (5 políticas: staff ALL + familia read/CUD propio) + índices. ✅ aplicado y verificado 2026-06-17 vía Management API (tutoria_citas 4 políticas, tutoria_disponibilidad 2). El módulo `js/tutoria.js` ya estaba desplegado pero sus tablas no existían en prod → quedaba roto hasta aplicar esto.
 > - `supabase/migrations/bucket_documentos_justificantes.sql` — **fix bug pérdida de datos**: crea el bucket privado `documentos` + 4 políticas de Storage staff-only por centro (path `justificantes/{centro_id}/…`, `centro_id` = segmento `[2]`). `js/admin.js` subía justificantes a este bucket pero no existía → se perdían en silencio (`.catch(()=>{})`, ahora con `console.warn`). ✅ aplicado y verificado 2026-06-16 vía Management API (bucket privado + documentos_read/insert/update/delete)
 > - `supabase/migrations/rls_familia_lockdown_fase3.sql` — **fix privacidad RGPD (fase 3)**: restricciones para `sustituciones` (familia: SELECT solo grupos de sus hijos), `comunicados` (familia: SELECT sin `solo_profesores` y solo enviados), `salidas_didacticas` (familia: SELECT solo `estado='publicada'`), `participantes_salida` (familia: SELECT+UPDATE solo sus hijos), `notificaciones_salida` (staff-only). 10 políticas creadas. ✅ aplicado 2026-06-15 vía Management API
 > - `supabase/migrations/asistencia_clase.sql` — tabla `asistencia_clase` + RLS `asistencia_clase_centro` + índice `idx_asistencia_clase_fecha` ✅ ejecutado 2026-06-13 vía Management API

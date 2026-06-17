@@ -152,4 +152,7 @@
 <script src="js/calidad.js"></script>
 <script src="js/salidas.js"></script>
 <script src="js/alumnos.js"></script>
+<script src="js/asistencia.js"></script>
+<script src="js/tutoria.js"></script>
+<script src="js/agenda.js"></script>
 ```
