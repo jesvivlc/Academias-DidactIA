@@ -223,6 +223,7 @@ async function loadSustituciones(filtro) {
     c.innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">No hay sustituciones registradas.</div>';
     return;
   }
+  window._sustData = data;
   c.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Tramo</th><th>Grupo</th><th>Ausente</th><th>Sustituto</th><th>Instrucciones</th><th>Justificante</th><th>Estado</th><th></th></tr></thead><tbody>
     ${data.map(s => {
       const cubierta = s.cubierta
@@ -233,12 +234,15 @@ async function loadSustituciones(filtro) {
       const justCell  = justPath
         ? `<button onclick="window._descargarJustificante('${justPath.replace(/'/g,"\\'")}')" style="background:#e8f0fe;color:#1a56db;border:none;border-radius:12px;padding:2px 10px;font-size:11px;cursor:pointer;">📎 Ver</button>`
         : '<span style="color:var(--txt3);font-size:11px;">—</span>';
+      const sustCell = s.profesor_sustituto
+        ? s.profesor_sustituto
+        : `<button onclick="window._sustAsignar('${s.id}')" style="background:#e8f0fe;color:#1a56db;border:none;border-radius:12px;padding:3px 12px;font-size:11px;font-weight:600;cursor:pointer;">+ Asignar</button>`;
       return `<tr>
         <td style="white-space:nowrap;">${s.fecha || "—"}</td>
         <td>${s.hora_inicio ? s.hora_inicio.slice(0,5) + "–" + (s.hora_fin||"").slice(0,5) : "—"}</td>
         <td>${s.grupo_horario || "—"}</td>
         <td>${s.profesor_ausente || "—"}</td>
-        <td>${s.profesor_sustituto || "—"}</td>
+        <td>${sustCell}</td>
         <td style="font-size:12px;color:var(--txt2);max-width:180px;" title="${(instrText||"").replace(/"/g,"&quot;")}">${instrText ? (instrText.length>60?instrText.slice(0,60)+"…":instrText) : "—"}</td>
         <td>${justCell}</td>
         <td>${cubierta}</td>
@@ -393,76 +397,185 @@ async function buscarProfesorLibreAgente() {
   }
 }
 
+// Normaliza un nombre de profesor para comparar/deduplicar: mayúsculas, sin
+// tildes, sin comas (Buñol tiene "APELLIDOS NOMBRE" y "APELLIDOS, NOMBRE" como
+// dos variantes del MISMO profesor) y espacios colapsados.
+function _sustNombreNorm(s) {
+  return String(s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/,/g, " ").replace(/\s+/g, " ").trim();
+}
+// Devuelve un Map normKey → nombre a mostrar (prefiere la variante SIN coma).
+function _sustDedupeNombres(arr) {
+  const m = new Map();
+  (arr || []).forEach(n => {
+    if (!n) return;
+    const k = _sustNombreNorm(n);
+    const prev = m.get(k);
+    if (!prev || (prev.includes(",") && !n.includes(","))) m.set(k, n);
+  });
+  return m;
+}
+
+// Núcleo reutilizable: profesores libres (y de guardia) para una fecha + hora,
+// deduplicados por nombre normalizado y ordenados por equidad de guardias.
+async function _sustCalcularLibres(fecha, horaRefRaw) {
+  const _ca = typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26";
+  const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  const dia = diasNombre[new Date(fecha + "T12:00:00").getDay()];
+  const horaRef = String(horaRefRaw || "00:00").slice(0, 5);
+
+  const { data: todos } = await sb.from("horarios_grupo").select("profesor_nombre")
+    .eq("centro_id", ctrId).eq("curso_escolar", _ca).not("profesor_nombre", "is", null);
+  const todosMap = _sustDedupeNombres((todos || []).map(r => r.profesor_nombre));
+
+  const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre")
+    .eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
+    .filter("hora_inicio", "lte", horaRef + ":00").filter("hora_fin", "gt", horaRef + ":00");
+  const ocupadosKeys = new Set((conClase || []).map(r => _sustNombreNorm(r.profesor_nombre)).filter(Boolean));
+
+  const { data: conGuardia } = await sb.from("horarios_grupo").select("profesor_nombre")
+    .eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
+    .ilike("actividad_nombre", "%guardia%")
+    .filter("hora_inicio", "lte", horaRef + ":00").filter("hora_fin", "gt", horaRef + ":00");
+  const guardiaKeys = new Set((conGuardia || []).map(r => _sustNombreNorm(r.profesor_nombre)).filter(Boolean));
+
+  let guardCounts = {};
+  if (typeof getGuardiaCountsByName === "function") { try { guardCounts = await getGuardiaCountsByName(); } catch (e) {} }
+  const countNorm = {};
+  Object.keys(guardCounts || {}).forEach(n => { const k = _sustNombreNorm(n); countNorm[k] = (countNorm[k] || 0) + (guardCounts[n] || 0); });
+
+  let libresKeys = [...todosMap.keys()].filter(k => !ocupadosKeys.has(k));
+  const deGuardia = guardiaKeys.size > 0;
+  if (deGuardia) libresKeys = libresKeys.filter(k => guardiaKeys.has(k));
+
+  const lista = libresKeys.map(k => ({ nombre: todosMap.get(k), carga: countNorm[k] || 0 }))
+    .sort((a, b) => a.carga - b.carga || a.nombre.localeCompare(b.nombre, "es"));
+  const todosDisplay = [...todosMap.values()].sort((a, b) => a.localeCompare(b, "es"));
+  return { lista, todos: todosDisplay, deGuardia };
+}
+
 async function cargarProfesoresLibresEnSelect(tramoOverride) {
   const _td = await _getTramosData();
-
-  const ahora = new Date();
-  const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
-  // Usar la fecha del formulario si está disponible (puede ser un día futuro/pasado)
   const fechaFormVal = document.getElementById("sust-fecha")?.value;
-  const fechaForm = fechaFormVal ? new Date(fechaFormVal + "T12:00:00") : ahora;
-  const dia = diasNombre[fechaForm.getDay()];
+  const fecha = fechaFormVal || new Date().toISOString().split("T")[0];
+  let horaRef;
+  if (tramoOverride && _td[tramoOverride]) horaRef = _td[tramoOverride].hi;
+  else { const a = new Date(); horaRef = String(a.getHours()).padStart(2,"0") + ":" + String(a.getMinutes()).padStart(2,"0"); }
 
-  let horaRef = String(ahora.getHours()).padStart(2,"0") + ":" + String(ahora.getMinutes()).padStart(2,"0");
-  if (tramoOverride && _td[tramoOverride]) {
-    horaRef = _td[tramoOverride].hi;
-  }
-
-  const _ca = typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26";
-  const { data: todos } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("curso_escolar", _ca).not("profesor_nombre", "is", null);
-  if (!todos) return;
-  const todosProfes = [...new Set(todos.map(r => r.profesor_nombre).filter(Boolean))].sort();
-
-  const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
-    .filter("hora_inicio", "lte", horaRef + ":00")
-    .filter("hora_fin", "gt", horaRef + ":00");
-
-  const ocupados = new Set((conClase || []).map(r => r.profesor_nombre).filter(Boolean));
-  const libres = todosProfes.filter(p => !ocupados.has(p));
-  const ocupadosList = todosProfes.filter(p => ocupados.has(p));
-
-  const diaActual = dia;
-  const horaRefGuardia = tramoOverride && _td[tramoOverride] ? _td[tramoOverride].hi : horaRef;
-
-  const { data: conGuardia } = await sb.from("horarios_grupo")
-    .select("profesor_nombre")
-    .eq("centro_id", ctrId)
-    .eq("curso_escolar", _ca)
-    .eq("dia", diaActual)
-    .ilike("actividad_nombre", "%guardia%")
-    .filter("hora_inicio", "lte", horaRefGuardia + ":00")
-    .filter("hora_fin", "gt", horaRefGuardia + ":00");
-
-  const profesGuardia = new Set((conGuardia || []).map(r => r.profesor_nombre).filter(Boolean));
-  const disponibles = profesGuardia.size > 0 ? libres.filter(p => profesGuardia.has(p)) : libres;
-
-  // Equity sorting: order by fewest guards done this trimester
-  let guardCounts = {};
-  if (typeof getGuardiaCountsByName === "function") {
-    try { guardCounts = await getGuardiaCountsByName(); } catch(e) {}
-  }
-  const disponiblesOrdenados = disponibles
-    .map(p => ({ n: p, c: guardCounts[p] || 0 }))
-    .sort((a, b) => a.c - b.c || a.n.localeCompare(b.n, "es"));
+  const { lista, todos, deGuardia } = await _sustCalcularLibres(fecha, horaRef);
+  const _opt = (v, t) => '<option value="' + String(v).replace(/"/g, "&quot;") + '">' + t + '</option>';
 
   const selSust = document.getElementById("sust-sustituto");
-  const selAus = document.getElementById("sust-ausente");
   if (selSust) {
-    const etiqueta = profesGuardia.size > 0 ? "Seleccionar de guardia (por equidad)…" : "Seleccionar libre (por equidad)…";
+    const etiqueta = deGuardia ? "Seleccionar de guardia (por equidad)…" : "Seleccionar libre (por equidad)…";
     selSust.innerHTML = '<option value="">' + etiqueta + '</option>'
-      + disponiblesOrdenados.map(p => '<option value="' + p.n + '">' + p.n + ' (' + p.c + ' g.)</option>').join("");
+      + lista.map(p => _opt(p.nombre, p.nombre + " (" + p.carga + " g.)")).join("");
   }
+  const selAus = document.getElementById("sust-ausente");
   if (selAus) {
-    let ausentesOpciones = todosProfes;
-    if (ausentesOpciones.length === 0) {
-      const { data: profData } = await sb.from("profesores")
-        .select("nombre").eq("centro_id", ctrId).eq("activo", true).order("nombre");
-      ausentesOpciones = (profData || []).map(p => p.nombre).filter(Boolean);
+    let ausentes = todos;
+    if (!ausentes.length) {
+      const { data: profData } = await sb.from("profesores").select("nombre").eq("centro_id", ctrId).eq("activo", true).order("nombre");
+      ausentes = [..._sustDedupeNombres((profData || []).map(p => p.nombre)).values()].sort((a, b) => a.localeCompare(b, "es"));
     }
     selAus.innerHTML = '<option value="">Seleccionar profesor ausente…</option>'
-      + ausentesOpciones.map(p => '<option value="' + p + '">' + p + '</option>').join("");
+      + ausentes.map(p => _opt(p, p)).join("");
   }
 }
+
+// ── Asignar sustituto a una fila PENDIENTE existente (sin crear duplicados) ──
+window._sustAsignar = async function (id) {
+  const s = (window._sustData || []).find(x => String(x.id) === String(id));
+  if (!s) { alert("No se encontró la sustitución."); return; }
+  const _td = await _getTramosData();
+  const horaRef = (s.hora_inicio && s.hora_inicio.slice(0, 5)) || (_td[parseInt(s.tramo)] && _td[parseInt(s.tramo)].hi) || "09:00";
+
+  let ov = document.getElementById("sust-asignar-modal");
+  if (ov) ov.remove();
+  ov = document.createElement("div");
+  ov.id = "sust-asignar-modal";
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(20,20,30,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";
+  ov.innerHTML = '<div style="background:var(--paper,#fff);border-radius:14px;max-width:440px;width:100%;border:1px solid var(--line,#e0e0e0);box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--line,#e0e0e0);font-weight:700;font-size:16px;">Asignar sustituto</div>' +
+    '<div style="padding:16px 20px;">' +
+      '<div style="font-size:13px;color:var(--txt2,#555);margin-bottom:12px;">' +
+        '<strong>' + (s.profesor_ausente || "—") + '</strong> · ' + (s.fecha || "—") +
+        ' · Tramo ' + (s.tramo || "—") + (s.grupo_horario ? " · " + s.grupo_horario : "") + '</div>' +
+      '<label style="font-size:12px;font-weight:600;color:var(--txt2,#555);display:block;margin-bottom:4px;">Sustituto</label>' +
+      '<select id="sust-asignar-sel" style="width:100%;padding:9px 11px;border:1px solid var(--line-2,#ccc);border-radius:8px;font-size:14px;"><option value="">Calculando…</option></select>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2,#555);margin-top:10px;cursor:pointer;"><input type="checkbox" id="sust-asignar-todos"> Mostrar todos los profesores (no solo libres)</label>' +
+    '</div>' +
+    '<div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--line,#e0e0e0);">' +
+      '<button onclick="document.getElementById(\'sust-asignar-modal\').remove()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--line-2,#ccc);background:#fff;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>' +
+      '<button id="sust-asignar-ok" onclick="window._sustConfirmarAsignar(\'' + id + '\')" style="padding:8px 14px;border-radius:8px;border:none;background:var(--ink,#1a73e8);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Asignar y notificar</button>' +
+    '</div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener("click", e => { if (e.target === ov) ov.remove(); });
+
+  const { lista, todos } = await _sustCalcularLibres(s.fecha, horaRef);
+  window._sustAsignarLibres = lista;
+  window._sustAsignarTodos = todos;
+  const _render = (usarTodos) => {
+    const sel = document.getElementById("sust-asignar-sel");
+    if (!sel) return;
+    const _o = (v, t) => '<option value="' + String(v).replace(/"/g, "&quot;") + '">' + t + '</option>';
+    if (usarTodos) {
+      sel.innerHTML = '<option value="">Seleccionar profesor…</option>' + todos.map(n => _o(n, n)).join("");
+    } else if (lista.length) {
+      sel.innerHTML = '<option value="">Seleccionar libre (por equidad)…</option>' + lista.map(p => _o(p.nombre, p.nombre + " (" + p.carga + " g.)")).join("");
+    } else {
+      sel.innerHTML = '<option value="">No hay profesores libres — marca "mostrar todos"</option>';
+    }
+  };
+  _render(false);
+  const chk = document.getElementById("sust-asignar-todos");
+  if (chk) chk.addEventListener("change", () => _render(chk.checked));
+};
+
+window._sustConfirmarAsignar = async function (id) {
+  const sel = document.getElementById("sust-asignar-sel");
+  const nombre = sel ? sel.value.trim() : "";
+  if (!nombre) { alert("Selecciona un sustituto."); return; }
+  const s = (window._sustData || []).find(x => String(x.id) === String(id));
+  const okBtn = document.getElementById("sust-asignar-ok");
+  if (okBtn) { okBtn.disabled = true; okBtn.textContent = "Asignando…"; }
+
+  const { error } = await sb.from("sustituciones")
+    .update({ profesor_sustituto: nombre, cubierta: true }).eq("id", id);
+  if (error) { if (okBtn) { okBtn.disabled = false; okBtn.textContent = "Asignar y notificar"; } alert("Error: " + error.message); return; }
+
+  // Equidad
+  if (s && typeof registrarGuardiaEnBD === "function") {
+    try { registrarGuardiaEnBD(nombre, s.fecha, parseInt(s.tramo) || null, s.grupo_horario || null); } catch (e) {}
+  }
+  // Email a ausente + sustituto (la EF maneja ambos)
+  fetch(`${SB_URL}/functions/v1/notify-sustitucion`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+    body: JSON.stringify({ sustitucion_id: id, evento: "asignacion" }),
+  }).catch(() => {});
+  // Push al sustituto si tiene cuenta
+  (async () => {
+    try {
+      const { data: perfil } = await sb.from("profiles").select("user_id").eq("centro_id", ctrId)
+        .ilike("full_name", `%${nombre.replace(/,/g, " ").trim().split(/\s+/)[0]}%`).limit(1);
+      const uid = perfil?.[0]?.user_id;
+      if (uid) {
+        fetch(`${SB_URL}/functions/v1/send-push`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+          body: JSON.stringify({ user_ids: [uid], title: "📋 Guardia asignada",
+            body: `Tramo ${s?.tramo || "—"} · ${s?.grupo_horario || ""} · ${s?.fecha || ""}`, tag: "guardia" }),
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  })();
+
+  const ov = document.getElementById("sust-asignar-modal");
+  if (ov) ov.remove();
+  if (typeof showToast === "function") showToast("✅ " + nombre + " asignado y notificado");
+  await loadSustituciones(sustFiltroActivo);
+};
 
 async function toggleCubierta(id, estadoActual) {
   const nuevoEstado = !estadoActual;

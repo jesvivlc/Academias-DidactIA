@@ -141,6 +141,11 @@ function _emailWrap(centroNombre: string, body: string): string {
       <h2 style="color:#fff;margin:0;font-size:17px;">DidactIA — ${centroNombre}</h2>
     </div>
     <div style="padding:24px 28px;">${body}
+      <div style="text-align:center;margin:18px 0 4px;">
+        <a href="https://didactia.eu/app.html" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 26px;border-radius:8px;">
+          Abrir DidactIA →
+        </a>
+      </div>
       <p style="color:#999;font-size:12px;margin-top:24px;border-top:1px solid #e0e0e0;padding-top:14px;">
         ${centroNombre} · Gestionado con DidactIA
       </p>

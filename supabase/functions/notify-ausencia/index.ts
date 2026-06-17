@@ -97,8 +97,13 @@ serve(async (req) => {
             </p>
             <p style="font-size:14px;color:#222;margin:0;white-space:pre-wrap;">${instrucciones}</p>
           </div>
-          <p style="font-size:13px;color:#1a73e8;">
-            Accede a DidactIA → Sustituciones para asignar guardia y gestionar la cobertura.
+          <div style="text-align:center;margin:8px 0 4px;">
+            <a href="https://didactia.eu/app.html" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;">
+              Gestionar la cobertura en DidactIA →
+            </a>
+          </div>
+          <p style="font-size:12px;color:#999;text-align:center;margin:6px 0 0;">
+            Accede a Sustituciones para asignar guardia.
           </p>
           <p style="color:#999;font-size:12px;margin-top:20px;border-top:1px solid #e0e0e0;padding-top:14px;">
             ${centroNombre} · Gestionado con DidactIA
