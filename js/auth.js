@@ -510,6 +510,10 @@ async function loadUserProfile(user) {
   const tabTutorias = document.getElementById("tab-tutorias");
   if (tabTutorias) tabTutorias.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","familia"].includes(role)) ? "block" : "none";
 
+  // Mensajes familia↔centro: visible para familia y staff (no superadmin sin centro)
+  const tabMensajes = document.getElementById("tab-mensajes");
+  if (tabMensajes) tabMensajes.style.display = (["familia","profesional","admin","admin_institucional","director","jefatura","orientador","superadmin"].includes(role)) ? "block" : "none";
+
   // Agenda del Centro: visible para todos los roles autenticados
   const navAgenda = document.getElementById("nav-agenda");
   if (navAgenda) navAgenda.style.display = "flex";

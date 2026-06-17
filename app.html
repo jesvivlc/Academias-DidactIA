@@ -140,6 +140,7 @@
   <div class="tab" id="tab-alumnos"            onclick="showTab('alumnos')"     style="display:none">🎓 Alumnos</div>
   <div class="tab" id="tab-pasarlista"         onclick="showTab('pasarlista')"  style="display:none">📋 Pasar lista</div>
   <div class="tab" id="tab-tutorias"           onclick="showTab('tutorias')"    style="display:none">📅 Tutorías</div>
+  <div class="tab" id="tab-mensajes"           onclick="showTab('mensajes')"   style="display:none">💬 Mensajes</div>
   <div class="tab" id="tab-agenda"             onclick="showTab('agenda')"      style="display:none">🗓️ Agenda</div>
   <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
   <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
@@ -241,6 +242,9 @@
         </button>
         <button class="nav-item" id="nav-tutorias" data-tab="tutorias" onclick="showTab('tutorias')" style="display:none;--nav-color:#7A5C9E">
           <i class="ti ti-calendar-user"></i><span class="nav-item-label">Tutorías</span>
+        </button>
+        <button class="nav-item" id="nav-mensajes" data-tab="mensajes" onclick="showTab('mensajes')" style="display:none;--nav-color:#2E8B7A">
+          <i class="ti ti-message-circle"></i><span class="nav-item-label">Mensajes</span>
         </button>
         <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none;--nav-color:#185FA5">
           <i class="ti ti-replace"></i><span class="nav-item-label">Sustituciones</span>
@@ -935,6 +939,9 @@
   <!-- TUTORÍAS PANEL -->
   <div class="panel" id="panel-tutorias" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
+  <!-- MENSAJES PANEL -->
+  <div class="panel" id="panel-mensajes" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
   <!-- AGENDA PANEL -->
   <div class="panel" id="panel-agenda" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
@@ -1480,6 +1487,7 @@
 <script src="js/alumnos.js"></script>
 <script src="js/asistencia.js"></script>
 <script src="js/tutoria.js"></script>
+<script src="js/mensajes.js"></script>
 <script src="js/agenda.js"></script>
 
 <script>
@@ -1496,7 +1504,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', alumnos:'Alumnos', pasarlista:'Pasar lista', tutorias:'Tutorías', agenda:'Agenda del Centro', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', alumnos:'Alumnos', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -1507,6 +1515,7 @@
     alumnos:   { icon:'ti-users-group',     label:'Alumnos' },
     pasarlista:{ icon:'ti-checkbox',        label:'Pasar lista' },
     tutorias:  { icon:'ti-calendar-user',  label:'Tutorías' },
+    mensajes:  { icon:'ti-message-circle', label:'Mensajes' },
     agenda:    { icon:'ti-calendar',        label:'Agenda' },
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
@@ -1525,6 +1534,7 @@
     'tab-alumnos':     { nav:'nav-alumnos',      bn:null },
     'tab-pasarlista':  { nav:'nav-pasarlista',   bn:null },
     'tab-tutorias':    { nav:'nav-tutorias',     bn:null },
+    'tab-mensajes':    { nav:'nav-mensajes',     bn:null },
     'tab-agenda':      { nav:'nav-agenda',       bn:null },
     'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
     'tab-admin':       { nav:'nav-admin',        bn:null },
@@ -1621,6 +1631,7 @@
         if (t === 'alumnos' && typeof initAlumnos === 'function') initAlumnos();
         if (t === 'pasarlista' && typeof initAsistenciaVista === 'function') initAsistenciaVista();
         if (t === 'agenda' && typeof initAgenda === 'function') initAgenda();
+        if (t === 'mensajes' && typeof initMensajes === 'function') initMensajes();
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
         if (t === 'orientacion' && typeof initOrientacion === 'function') initOrientacion();
