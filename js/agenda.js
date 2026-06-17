@@ -13,10 +13,13 @@ window.initAgenda = function () {
 
   el.innerHTML = `
     <div class="ag-page">
-      <div class="ag-hdr">
-        <div class="ag-eyebrow">CENTRO · AGENDA</div>
-        <h1 class="ag-title">Agenda del Centro</h1>
-        <p class="ag-sub">Sustituciones · Tutorías · Salidas · Ausencias de profesores</p>
+      <div class="ag-hdr" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div>
+          <div class="ag-eyebrow">CENTRO · AGENDA</div>
+          <h1 class="ag-title">Agenda del Centro</h1>
+          <p class="ag-sub">Sustituciones · Tutorías · Salidas · Ausencias de profesores</p>
+        </div>
+        <button class="ag-nav-btn" style="white-space:nowrap;font-size:12px;padding:7px 12px;" onclick="window._agExportICS()" title="Exportar el mes a tu calendario (Google/Apple/Outlook)">📅 Exportar .ics</button>
       </div>
       <div class="ag-body">
         <div class="ag-split">
@@ -260,6 +263,39 @@ async function _agFetchEvents(from, to) {
 
   return events;
 }
+
+/* ── EXPORTAR A iCal (.ics) ── */
+window._agExportICS = function () {
+  const evs = window._agEvents || [];
+  if (!evs.length) { if (typeof showToast === 'function') showToast('No hay eventos este mes'); return; }
+  const escT = s => String(s || '').replace(/\\/g, '\\\\').replace(/[,;]/g, m => '\\' + m).replace(/\r?\n/g, '\\n');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//DidactIA//Agenda//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+  evs.forEach((e, i) => {
+    if (!e.fecha) return;
+    const d = e.fecha.replace(/-/g, '');
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:didactia-' + e.type + '-' + i + '-' + d + '@didactia.eu');
+    if (e.hora && /^\d{2}:\d{2}/.test(e.hora)) {
+      const hh = parseInt(e.hora.slice(0, 2), 10), mm = parseInt(e.hora.slice(3, 5), 10);
+      const pad = n => String(n).padStart(2, '0');
+      lines.push('DTSTART:' + d + 'T' + pad(hh) + pad(mm) + '00');
+      lines.push('DTEND:' + d + 'T' + pad((hh + 1) % 24) + pad(mm) + '00');
+    } else {
+      lines.push('DTSTART;VALUE=DATE:' + d);
+    }
+    lines.push('SUMMARY:' + escT(e.label));
+    if (e.detail) lines.push('DESCRIPTION:' + escT(e.detail));
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'agenda_didactia.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  if (typeof showToast === 'function') showToast('📅 Agenda exportada (.ics)');
+};
 
 /* ── HELPERS ── */
 function _agEsc(s) {
