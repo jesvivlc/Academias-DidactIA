@@ -528,6 +528,10 @@ async function loadUserProfile(user) {
   const tabRec = document.getElementById("tab-recursos");
   if (tabRec) tabRec.style.display = (["profesional","admin","admin_institucional","director","jefatura","orientador","superadmin"].includes(role)) ? "block" : "none";
 
+  // Actas de reuniones (resumen IA): dirección/admin/jefatura
+  const tabActas = document.getElementById("tab-actas");
+  if (tabActas) tabActas.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -666,6 +670,7 @@ function showTab(t) {
   if (t === "agenda") initAgenda();
   if (t === "encuestas" && typeof initEncuestas === "function") initEncuestas();
   if (t === "recursos" && typeof initRecursos === "function") initRecursos();
+  if (t === "actas" && typeof initActas === "function") initActas();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

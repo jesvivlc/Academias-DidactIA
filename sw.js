@@ -36,6 +36,7 @@ const PRECACHE = [
   '/js/encuestas.js',
   '/js/menu.js',
   '/js/recursos.js',
+  '/js/actas.js',
   '/manifest.json'
 ];
 

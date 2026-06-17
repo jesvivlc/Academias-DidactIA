@@ -144,6 +144,7 @@
   <div class="tab" id="tab-agenda"             onclick="showTab('agenda')"      style="display:none">🗓️ Agenda</div>
   <div class="tab" id="tab-encuestas"          onclick="showTab('encuestas')"   style="display:none">📊 Encuestas</div>
   <div class="tab" id="tab-recursos"           onclick="showTab('recursos')"    style="display:none">📦 Recursos</div>
+  <div class="tab" id="tab-actas"              onclick="showTab('actas')"       style="display:none">📝 Actas</div>
   <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
   <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
   <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
@@ -302,6 +303,9 @@
         </button>
         <button class="nav-item" id="nav-calidad" data-tab="calidad" onclick="showTab('calidad')" style="display:none;--nav-color:#7b5e2a">
           <i class="ti ti-award"></i><span class="nav-item-label">Calidad</span>
+        </button>
+        <button class="nav-item" id="nav-actas" data-tab="actas" onclick="showTab('actas')" style="display:none;--nav-color:#5a4a8a">
+          <i class="ti ti-notes"></i><span class="nav-item-label">Actas</span>
         </button>
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
           <i class="ti ti-users"></i><span class="nav-item-label">Usuarios</span>
@@ -959,6 +963,9 @@
   <!-- RECURSOS PANEL -->
   <div class="panel" id="panel-recursos" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
+  <!-- ACTAS PANEL -->
+  <div class="panel" id="panel-actas" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
   <!-- COMEDOR PANEL -->
   <div class="panel" id="panel-comedor" style="flex-direction:column;">
     <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
@@ -1515,6 +1522,7 @@
 <script src="js/encuestas.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/recursos.js"></script>
+<script src="js/actas.js"></script>
 <script src="js/agenda.js"></script>
 
 <script>
@@ -1535,7 +1543,7 @@
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
-    analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad',
+    analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad', actas:'Actas de reuniones',
     asistente:'Asistente IA'
   };
   var MAS_CFG = {
@@ -1555,6 +1563,7 @@
     planner:      { icon:'ti-calendar-event',  label:'Planner' },
     analisis:     { icon:'ti-chart-histogram', label:'Análisis' },
     calidad:      { icon:'ti-award',           label:'Calidad' },
+    actas:        { icon:'ti-notes',           label:'Actas' },
     comunicados:  { icon:'ti-speakerphone',    label:'Comunicados' }
   };
   /* IDs: tab → nav-item sidebar, nav-item bottom-nav */
@@ -1567,6 +1576,7 @@
     'tab-agenda':      { nav:'nav-agenda',       bn:null },
     'tab-encuestas':   { nav:'nav-encuestas',    bn:null },
     'tab-recursos':    { nav:'nav-recursos',     bn:null },
+    'tab-actas':       { nav:'nav-actas',        bn:null },
     'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
     'tab-admin':       { nav:'nav-admin',        bn:null },
     'tab-sust':        { nav:'nav-sust',         bn:'bn-sust' },
@@ -1664,6 +1674,7 @@
         if (t === 'agenda' && typeof initAgenda === 'function') initAgenda();
         if (t === 'encuestas' && typeof initEncuestas === 'function') initEncuestas();
         if (t === 'recursos' && typeof initRecursos === 'function') initRecursos();
+        if (t === 'actas' && typeof initActas === 'function') initActas();
         if (t === 'mensajes' && typeof initMensajes === 'function') initMensajes();
         if (t === 'planner'  && typeof initPlannerPanel === 'function') initPlannerPanel();
         if (t === 'analisis') initAnalisis();
