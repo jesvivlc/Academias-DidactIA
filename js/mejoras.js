@@ -754,7 +754,8 @@ async function renderHomeFamilia(force) {
     '<div id="fh-salidas"  class="home-card" style="margin-bottom:8px;display:none;"></div>' +
     '<div id="fh-comunicados" class="home-card" style="margin-bottom:8px;display:none;"></div>' +
     '<div id="fh-incidencias" class="home-card" style="margin-bottom:8px;display:none;"></div>' +
-    '<div id="fh-recogida" class="home-card" style="margin-bottom:8px;"></div>';
+    '<div id="fh-recogida" class="home-card" style="margin-bottom:8px;"></div>' +
+    '<div id="fh-menu" style="margin-bottom:8px;"></div>';
 
   window._fhSelectHijo = function(idx) {
     _homeFamiliaHijoIdx = idx;
@@ -1003,6 +1004,11 @@ async function renderHomeFamilia(force) {
 
   // ── Personas autorizadas para recoger ──
   _fhCargarRecogida(alumno);
+
+  // ── Menú del comedor (semana actual; se oculta si no hay nada publicado) ──
+  if (typeof renderMenuComedor === "function") {
+    try { renderMenuComedor("fh-menu", { hideIfEmpty: true }); } catch (e) {}
+  }
 }
 
 // Personas autorizadas a recoger al alumno (gestión por la familia).

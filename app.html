@@ -960,6 +960,16 @@
       <div style="display:flex;gap:8px;">
         <button id="btn-vista-dia" onclick="showComedorVista('dia')" style="background:var(--ink);color:#fff;border:none;border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;font-weight:500;">Hoy / Fecha</button>
         <button id="btn-vista-historico" onclick="showComedorVista('historico')" style="background:white;border:1px solid var(--bdr);border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;color:var(--txt2);">Histórico</button>
+        <button id="btn-vista-menu" onclick="showComedorVista('menu')" style="background:white;border:1px solid var(--bdr);border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;color:var(--txt2);">📋 Menú</button>
+      </div>
+
+      <!-- Vista: menú semanal -->
+      <div id="comedor-vista-menu" style="display:none;">
+        <div class="pg-hdr" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div><div class="pg-title">Menú del comedor</div><div class="pg-sub">Menú semanal publicado para las familias.</div></div>
+          <button id="btn-menu-editar" onclick="window.menuComedorEditor()" style="display:none;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-weight:600;">✏️ Editar menú</button>
+        </div>
+        <div id="menu-readonly"></div>
       </div>
 
       <!-- Vista: día -->
@@ -1496,6 +1506,7 @@
 <script src="js/tutoria.js"></script>
 <script src="js/mensajes.js"></script>
 <script src="js/encuestas.js"></script>
+<script src="js/menu.js"></script>
 <script src="js/agenda.js"></script>
 
 <script>

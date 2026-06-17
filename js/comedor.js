@@ -460,19 +460,24 @@ function verDiaHistorico(fecha) {
 function showComedorVista(vista) {
   const vDia = document.getElementById("comedor-vista-dia");
   const vHist = document.getElementById("comedor-vista-historico");
+  const vMenu = document.getElementById("comedor-vista-menu");
   const btnDia = document.getElementById("btn-vista-dia");
   const btnHist = document.getElementById("btn-vista-historico");
-  if (vista === 'dia') {
-    if (vDia) vDia.style.display = "";
-    if (vHist) vHist.style.display = "none";
-    if (btnDia) { btnDia.style.background = "var(--ink)"; btnDia.style.color = "#fff"; btnDia.style.border = "none"; }
-    if (btnHist) { btnHist.style.background = "white"; btnHist.style.color = "var(--txt2)"; btnHist.style.border = "1px solid var(--bdr)"; }
-  } else {
-    if (vDia) vDia.style.display = "none";
-    if (vHist) vHist.style.display = "";
-    if (btnDia) { btnDia.style.background = "white"; btnDia.style.color = "var(--txt2)"; btnDia.style.border = "1px solid var(--bdr)"; }
-    if (btnHist) { btnHist.style.background = "var(--ink)"; btnHist.style.color = "#fff"; btnHist.style.border = "none"; }
-    loadComedorHistorico();
+  const btnMenu = document.getElementById("btn-vista-menu");
+  const _on  = (b) => { if (b) { b.style.background = "var(--ink)"; b.style.color = "#fff"; b.style.border = "none"; } };
+  const _off = (b) => { if (b) { b.style.background = "white"; b.style.color = "var(--txt2)"; b.style.border = "1px solid var(--bdr)"; } };
+  if (vDia)  vDia.style.display  = vista === 'dia' ? "" : "none";
+  if (vHist) vHist.style.display = vista === 'historico' ? "" : "none";
+  if (vMenu) vMenu.style.display = vista === 'menu' ? "" : "none";
+  _off(btnDia); _off(btnHist); _off(btnMenu);
+  if (vista === 'dia')  _on(btnDia);
+  if (vista === 'historico') { _on(btnHist); loadComedorHistorico(); }
+  if (vista === 'menu') {
+    _on(btnMenu);
+    const gestiona = ["admin","admin_institucional","director","jefatura","superadmin"].includes(window.role);
+    const eb = document.getElementById("btn-menu-editar");
+    if (eb) eb.style.display = gestiona ? "inline-block" : "none";
+    if (typeof renderMenuComedor === "function") renderMenuComedor("menu-readonly");
   }
 }
 
