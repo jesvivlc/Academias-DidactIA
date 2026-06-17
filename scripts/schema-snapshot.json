@@ -577,6 +577,7 @@
       "estado",
       "full_name",
       "id",
+      "idioma",
       "institucion_id",
       "rol",
       "updated_at",

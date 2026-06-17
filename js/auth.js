@@ -291,7 +291,7 @@ async function loadUserProfile(user) {
   // Get profile with centro info
   const { data: profile, error } = await sb
     .from("profiles")
-    .select("id, centro_id, rol, full_name, activo")
+    .select("id, centro_id, rol, full_name, activo, idioma")
     .eq("user_id", user.id)
     .single();
 
@@ -306,6 +306,7 @@ async function loadUserProfile(user) {
 
   role = profile.rol || "familia";
   currentUserName = profile.full_name || user.email;
+  window.userIdioma = profile.idioma || "es";   // idioma preferido (auto-traducción)
 
   if (profile.activo === false) {
     const errEl = document.getElementById("login-err");

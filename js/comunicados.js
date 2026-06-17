@@ -210,9 +210,10 @@ function _comVerComunicado(id) {
   modal.id = 'com-ver-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
   var idiomas = [['es','Español'],['en','English'],['fr','Français'],['ar','العربية'],['ro','Română'],['uk','Українська'],['zh','中文'],['de','Deutsch'],['pt','Português']];
+  var idiomaPref = (typeof window.userIdioma !== 'undefined' ? window.userIdioma : 'es') || 'es';
   var langSel = '<select id="com-ver-lang" onchange="window._comTraducir(\'' + com.id + '\', this.value)" '
     + 'style="font-size:12px;padding:4px 8px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;color:#555;cursor:pointer;">'
-    + idiomas.map(function(l){ return '<option value="' + l[0] + '">🌐 ' + l[1] + '</option>'; }).join('') + '</select>';
+    + idiomas.map(function(l){ return '<option value="' + l[0] + '"' + (l[0] === idiomaPref ? ' selected' : '') + '>🌐 ' + l[1] + '</option>'; }).join('') + '</select>';
 
   modal.innerHTML = ''
     + '<div style="background:#fff;border-radius:12px;max-width:min(580px,calc(100vw - 24px));width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18);">'
@@ -232,6 +233,8 @@ function _comVerComunicado(id) {
     + '</div>';
   document.body.appendChild(modal);
   modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  // Auto-traducir al idioma preferido de la familia (si no es español)
+  if (idiomaPref && idiomaPref !== 'es') window._comTraducir(com.id, idiomaPref);
 }
 
 // ── Traducción multi-idioma (Gemini vía EF chat, cacheada) ───────────
@@ -260,6 +263,11 @@ async function _comIA(systemPrompt, userMsg) {
 window._comTraducir = async function (id, lang) {
   var com = _comLastData.find(function (c) { return c.id === id; });
   if (!com) return;
+  // Recordar el idioma preferido de la familia (persistente)
+  if (typeof role !== 'undefined' && role === 'familia' && typeof currentUser !== 'undefined' && currentUser) {
+    window.userIdioma = lang;
+    sb.from('profiles').update({ idioma: lang }).eq('user_id', currentUser.id).then(function () {}, function () {});
+  }
   var titleEl = document.getElementById('com-ver-title');
   var bodyEl  = document.getElementById('com-ver-body');
   var noteEl  = document.getElementById('com-ver-note');
