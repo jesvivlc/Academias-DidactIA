@@ -123,7 +123,10 @@ async function _recLoadPrestamos() {
   var devueltos = ps.filter(function (p) { return p.fecha_devolucion; });
   var hoy = _recHoy();
 
+  window._recPrestamosCache = ps;
   var html = '<div class="rec-toolbar"><button class="rec-btn rec-btn-primary" onclick="window._recNuevoPrestamo()">+ Nuevo préstamo</button>' +
+    '<span style="flex:1"></span>' +
+    '<button class="rec-btn" onclick="window._recExportar()">📥 Exportar Excel</button>' +
     '<span class="rec-count">' + activos.length + ' activo' + (activos.length !== 1 ? "s" : "") + '</span></div>';
 
   html += '<div class="rec-sec-ttl">Préstamos activos</div>';
@@ -198,6 +201,32 @@ window._recDevolver = async function (prestamoId, recursoId) {
   await window.sb.from("recursos").update({ estado: "disponible" }).eq("id", recursoId);
   showToast("✅ Recurso devuelto");
   _recLoadPrestamos();
+};
+
+/* ── Exportación contable de préstamos ── */
+window._recExportar = function () {
+  if (typeof XLSX === "undefined") { showToast("Librería de Excel no disponible"); return; }
+  var ps = window._recPrestamosCache || [];
+  if (!ps.length) { showToast("No hay préstamos para exportar"); return; }
+  var hoy = _recHoy();
+  var aoa = [["Recurso", "Código", "Categoría", "Prestado a", "Fecha préstamo", "Devolución prevista", "Devuelto", "Estado", "Notas"]];
+  ps.forEach(function (p) {
+    var r = p.recursos || {};
+    var activo = !p.fecha_devolucion;
+    var venc = activo && p.fecha_prevista && p.fecha_prevista < hoy;
+    aoa.push([
+      r.nombre || "—", r.codigo || "", r.categoria || "",
+      p.persona || "", _recFmtFecha(p.fecha_prestamo), p.fecha_prevista ? _recFmtFecha(p.fecha_prevista) : "",
+      p.fecha_devolucion ? _recFmtFecha(p.fecha_devolucion) : "",
+      p.fecha_devolucion ? "Devuelto" : (venc ? "Vencido" : "Activo"),
+      p.notas || "",
+    ]);
+  });
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{ wch: 26 }, { wch: 12 }, { wch: 14 }, { wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 10 }, { wch: 26 }];
+  XLSX.utils.book_append_sheet(wb, ws, "Préstamos");
+  XLSX.writeFile(wb, "prestamos-" + new Date().toISOString().split("T")[0] + ".xlsx");
 };
 
 /* ── Modal genérico ── */

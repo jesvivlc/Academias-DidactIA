@@ -535,3 +535,67 @@ async function exportarHistoricoCSV() {
 
   XLSX.writeFile(wb, "historico-comedor-" + new Date().toISOString().split("T")[0] + ".xlsx");
 }
+
+// Informe mensual de facturación del comedor: comidas por alumno en el mes,
+// distinguiendo menú (facturable) de tupper (trae su comida). Export Excel.
+async function comedorInformeMensual() {
+  if (typeof XLSX === "undefined") { alert("La librería de exportación (Excel) no está disponible."); return; }
+  const inp = document.getElementById("comedor-mes-informe");
+  let mes = inp && inp.value;  // formato YYYY-MM
+  if (!mes) {
+    const hoy = new Date();
+    mes = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0");
+  }
+  const [y, m] = mes.split("-").map(Number);
+  const desde = `${y}-${String(m).padStart(2, "0")}-01`;
+  const ultimo = new Date(y, m, 0).getDate();
+  const hasta = `${y}-${String(m).padStart(2, "0")}-${String(ultimo).padStart(2, "0")}`;
+
+  // Precio por menú (opcional, para calcular importe)
+  let precio = 0;
+  const pStr = prompt("Precio por menú (€) para calcular el importe. Deja vacío o 0 para solo contar comidas.", "");
+  if (pStr) { precio = parseFloat(pStr.replace(",", ".")) || 0; }
+
+  const { data: rows, error } = await sb.from("asistencia_comedor")
+    .select("fecha,se_queda,tupper,alumno_id,alumnos(nombre,grupo_horario,curso)")
+    .eq("centro_id", ctrId).eq("se_queda", true)
+    .gte("fecha", desde).lte("fecha", hasta)
+    .limit(50000);
+  if (error) { alert("Error al generar el informe: " + error.message); return; }
+  if (!rows || !rows.length) { alert("No hay comidas registradas en " + mes + "."); return; }
+
+  // Agrupar por alumno
+  const byAl = {};
+  rows.forEach(r => {
+    const al = r.alumnos || {};
+    const key = r.alumno_id || al.nombre || "—";
+    if (!byAl[key]) byAl[key] = { nombre: al.nombre || "—", grupo: al.grupo_horario || al.curso || "—", menu: 0, tupper: 0 };
+    if (r.tupper) byAl[key].tupper++; else byAl[key].menu++;
+  });
+  const lista = Object.values(byAl).sort((a, b) =>
+    (a.grupo || "").localeCompare(b.grupo || "", "es") || (a.nombre || "").localeCompare(b.nombre || "", "es"));
+
+  const cabecera = precio > 0
+    ? ["Alumno", "Grupo", "Días con menú", "Días con tupper", "Total días", "Importe (€)"]
+    : ["Alumno", "Grupo", "Días con menú", "Días con tupper", "Total días"];
+  const aoa = [cabecera];
+  let totMenu = 0, totTup = 0, totImp = 0;
+  lista.forEach(a => {
+    const total = a.menu + a.tupper;
+    totMenu += a.menu; totTup += a.tupper;
+    const fila = [a.nombre, a.grupo, a.menu, a.tupper, total];
+    if (precio > 0) { const imp = a.menu * precio; totImp += imp; fila.push(Number(imp.toFixed(2))); }
+    aoa.push(fila);
+  });
+  const filaTot = ["TOTAL", "", totMenu, totTup, totMenu + totTup];
+  if (precio > 0) filaTot.push(Number(totImp.toFixed(2)));
+  aoa.push([]); aoa.push(filaTot);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = precio > 0
+    ? [{ wch: 28 }, { wch: 12 }, { wch: 14 }, { wch: 15 }, { wch: 11 }, { wch: 12 }]
+    : [{ wch: 28 }, { wch: 12 }, { wch: 14 }, { wch: 15 }, { wch: 11 }];
+  XLSX.utils.book_append_sheet(wb, ws, "Facturación " + mes);
+  XLSX.writeFile(wb, "comedor-facturacion-" + mes + ".xlsx");
+}
