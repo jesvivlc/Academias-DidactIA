@@ -145,6 +145,7 @@
   <div class="tab" id="tab-encuestas"          onclick="showTab('encuestas')"   style="display:none">📊 Encuestas</div>
   <div class="tab" id="tab-recursos"           onclick="showTab('recursos')"    style="display:none">📦 Recursos</div>
   <div class="tab" id="tab-actas"              onclick="showTab('actas')"       style="display:none">📝 Actas</div>
+  <div class="tab" id="tab-documentos"         onclick="showTab('documentos')"  style="display:none">📁 Documentos</div>
   <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
   <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
   <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
@@ -280,6 +281,9 @@
         </button>
         <button class="nav-item" id="nav-encuestas" data-tab="encuestas" onclick="showTab('encuestas')" style="display:none;--nav-color:#1F7A8C">
           <i class="ti ti-chart-bar"></i><span class="nav-item-label">Encuestas</span>
+        </button>
+        <button class="nav-item" id="nav-documentos" data-tab="documentos" onclick="showTab('documentos')" style="display:none;--nav-color:#3E6B8A">
+          <i class="ti ti-folder"></i><span class="nav-item-label">Documentos</span>
         </button>
         <button class="nav-item" id="nav-ib" data-tab="ib" onclick="showTab('ib')" style="display:none;--nav-color:#534AB7">
           <i class="ti ti-school"></i><span class="nav-item-label">IB</span>
@@ -967,6 +971,9 @@
   <!-- ACTAS PANEL -->
   <div class="panel" id="panel-actas" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
+  <!-- DOCUMENTOS PANEL -->
+  <div class="panel" id="panel-documentos" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
   <!-- COMEDOR PANEL -->
   <div class="panel" id="panel-comedor" style="flex-direction:column;">
     <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
@@ -1525,6 +1532,7 @@
 <script src="js/recursos.js"></script>
 <script src="js/actas.js"></script>
 <script src="js/prevision.js"></script>
+<script src="js/documentos.js"></script>
 <script src="js/agenda.js"></script>
 
 <script>
@@ -1545,7 +1553,7 @@
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
-    analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad', actas:'Actas de reuniones',
+    analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad', actas:'Actas de reuniones', documentos:'Documentos del centro',
     asistente:'Asistente IA'
   };
   var MAS_CFG = {
@@ -1555,6 +1563,7 @@
     mensajes:  { icon:'ti-message-circle', label:'Mensajes' },
     agenda:    { icon:'ti-calendar',        label:'Agenda' },
     encuestas: { icon:'ti-chart-bar',       label:'Encuestas' },
+    documentos:{ icon:'ti-folder',          label:'Documentos' },
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
     espacios:  { icon:'ti-door',            label:'Espacios' },
@@ -1577,6 +1586,7 @@
     'tab-mensajes':    { nav:'nav-mensajes',     bn:null },
     'tab-agenda':      { nav:'nav-agenda',       bn:null },
     'tab-encuestas':   { nav:'nav-encuestas',    bn:null },
+    'tab-documentos':  { nav:'nav-documentos',   bn:null },
     'tab-recursos':    { nav:'nav-recursos',     bn:null },
     'tab-actas':       { nav:'nav-actas',        bn:null },
     'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
@@ -1675,6 +1685,7 @@
         if (t === 'pasarlista' && typeof initAsistenciaVista === 'function') initAsistenciaVista();
         if (t === 'agenda' && typeof initAgenda === 'function') initAgenda();
         if (t === 'encuestas' && typeof initEncuestas === 'function') initEncuestas();
+        if (t === 'documentos' && typeof initDocumentos === 'function') initDocumentos();
         if (t === 'recursos' && typeof initRecursos === 'function') initRecursos();
         if (t === 'actas' && typeof initActas === 'function') initActas();
         if (t === 'mensajes' && typeof initMensajes === 'function') initMensajes();

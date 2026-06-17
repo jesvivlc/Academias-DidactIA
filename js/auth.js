@@ -532,6 +532,10 @@ async function loadUserProfile(user) {
   const tabActas = document.getElementById("tab-actas");
   if (tabActas) tabActas.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
 
+  // Documentos del centro: visible para todos los roles (RLS filtra por visible_para)
+  const tabDocs = document.getElementById("tab-documentos");
+  if (tabDocs) tabDocs.style.display = "block";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -671,6 +675,7 @@ function showTab(t) {
   if (t === "encuestas" && typeof initEncuestas === "function") initEncuestas();
   if (t === "recursos" && typeof initRecursos === "function") initRecursos();
   if (t === "actas" && typeof initActas === "function") initActas();
+  if (t === "documentos" && typeof initDocumentos === "function") initDocumentos();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

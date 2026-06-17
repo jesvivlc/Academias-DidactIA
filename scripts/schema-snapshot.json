@@ -3,7 +3,7 @@
     "description": "Snapshot de columnas por tabla (esquema public) para scripts/verify-columns.js. Regenerar con: node scripts/verify-columns.js --refresh (requiere SUPABASE_MGMT_TOKEN).",
     "projectRef": "rflfsbrdmgaidhvbuvwb",
     "generatedAt": "2026-06-17",
-    "tableCount": 69
+    "tableCount": 70
   },
   "tables": {
     "acciones_capa": [
@@ -199,6 +199,19 @@
       "tipo_documento",
       "titulo",
       "transcripcion"
+    ],
+    "documentos_centro": [
+      "categoria",
+      "centro_id",
+      "created_at",
+      "descripcion",
+      "id",
+      "storage_path",
+      "subido_por",
+      "tipo",
+      "titulo",
+      "url",
+      "visible_para"
     ],
     "ee_borradores": [
       "centro_id",
