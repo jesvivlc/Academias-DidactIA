@@ -416,6 +416,15 @@ function _sustDedupeNombres(arr) {
   return m;
 }
 
+// ¿Una actividad del horario es una GUARDIA? Acepta cualquier grafía: "Guardia",
+// "Guàrdia" (valenciano), "Guardia de pati/biblioteca", "Vigilància", "G", "GD"…
+// (insensible a tildes y mayúsculas).
+function _sustEsGuardia(act) {
+  const n = String(act || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  return n.indexOf("guardia") >= 0 || n.indexOf("vigilanc") >= 0
+      || n === "g" || n === "gd" || n === "g." || n === "guar";
+}
+
 // Tokens significativos (len>2) normalizados de un nombre.
 function _sustTokens(name) { return _sustNombreNorm(name).split(" ").filter(t => t.length > 2); }
 // ¿El nombre "suelto" (p.ej. profiles.full_name "Bruno Sánchez") corresponde a un
@@ -447,16 +456,22 @@ async function _sustCalcularLibres(fecha, horaRefRaw, excluirExtra) {
     .eq("centro_id", ctrId).eq("curso_escolar", _ca).not("profesor_nombre", "is", null);
   const todosMap = _sustDedupeNombres((todos || []).map(r => r.profesor_nombre));
 
-  const { data: conClase } = await sb.from("horarios_grupo").select("profesor_nombre")
+  // Una sola consulta del tramo con la actividad → clasificar en JS:
+  // - GUARDIA  → el profesor está de guardia (DISPONIBLE para sustituir, prioritario)
+  // - cualquier otra (asignatura) → ocupado dando clase
+  const { data: enSlot } = await sb.from("horarios_grupo").select("profesor_nombre,actividad_nombre")
     .eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
     .filter("hora_inicio", "lte", horaSql).filter("hora_fin", "gt", horaSql);
-  const ocupadosKeys = new Set((conClase || []).map(r => _sustNombreNorm(r.profesor_nombre)).filter(Boolean));
-
-  const { data: conGuardia } = await sb.from("horarios_grupo").select("profesor_nombre")
-    .eq("centro_id", ctrId).eq("curso_escolar", _ca).eq("dia", dia)
-    .ilike("actividad_nombre", "%guardia%")
-    .filter("hora_inicio", "lte", horaSql).filter("hora_fin", "gt", horaSql);
-  const guardiaKeys = new Set((conGuardia || []).map(r => _sustNombreNorm(r.profesor_nombre)).filter(Boolean));
+  const ocupadosKeys = new Set();
+  const guardiaKeys = new Set();
+  (enSlot || []).forEach(r => {
+    const k = _sustNombreNorm(r.profesor_nombre);
+    if (!k) return;
+    if (_sustEsGuardia(r.actividad_nombre)) guardiaKeys.add(k);
+    else ocupadosKeys.add(k);
+  });
+  // Si un profe tiene clase y guardia en el mismo tramo (dato inconsistente), prevalece guardia.
+  guardiaKeys.forEach(k => ocupadosKeys.delete(k));
 
   // Profesores que ESE día están ausentes en un tramo que solapa esta hora → excluir.
   const ausentesKeys = new Set();
