@@ -55,6 +55,13 @@
 | `push_subscriptions` | id, user_id (NOT NULL), centro_id (nullable), subscription (jsonb), created_at | Suscripciones Web Push. RLS `push_own` + `push_superadmin`. La EF `send-push` lee de aquí (service_role); las familias se suscriben desde `js/familias.js` (`initPushFamilias`) |
 | `tutoria_disponibilidad` | centro_id, tutor_id (→profiles), grupo_horario, dia_semana (1–5), hora_inicio (time), hora_fin (time), duracion_min (DEFAULT 20), activo (bool), created_at | Ventanas de disponibilidad del tutor. RLS: staff ALL; familia SELECT solo activas. Módulo `js/tutoria.js` |
 | `tutoria_citas` | centro_id, disp_id (→tutoria_disponibilidad), tutor_id, alumno_id, alumno_nombre (denom.), grupo_horario (denom.), familia_id, fecha, hora_inicio, hora_fin, motivo, notas_tutor, estado (solicitada/confirmada/realizada/cancelada), cancelada_por (tutor/familia); UNIQUE(disp_id, fecha, hora_inicio) | Citas de tutoría. El UNIQUE impide doble reserva con race condition. RLS: staff ALL; familia SELECT/INSERT/UPDATE propias (`familia_id=auth.uid()`). Módulo `js/tutoria.js` |
+| `eventos_centro` | centro_id, titulo, fecha, hora (time nullable), tipo (evento/reunion/festivo/evaluacion/plazo/otro), descripcion, visible_para ('todos'\|'staff'), creado_por, created_at | Eventos generales de la Agenda. RLS `ev_read` (staff todo; familia solo `visible_para='todos'`) + `ev_manage` (admin/dir/jefatura). Módulo `js/agenda.js` |
+| `encuestas` | centro_id, titulo, descripcion, preguntas (jsonb: `[{id,texto,tipo:escala\|opcion\|si_no\|texto,opciones?}]`), destinatarios ('todos'\|'grupo:XXXX'), estado (borrador/abierta/cerrada), anonima (bool), fecha_cierre, creado_por, created_at | Encuestas a familias. RLS `enc_read` (familia no ve borradores) + `enc_manage` (dirección). Módulo `js/encuestas.js` |
+| `encuesta_respuestas` | encuesta_id (CASCADE), centro_id, familia_id (null si anónima), respuestas (jsonb `{pregunta_id:valor}`), created_at; UNIQUE(encuesta_id, familia_id) WHERE familia_id NOT NULL | Respuestas a encuestas. RLS `enc_resp_read` (staff todas; familia las suyas) + `enc_resp_insert`. |
+| `menu_comedor` | centro_id, fecha, primer, segundo, postre, notas, created_at, updated_at; UNIQUE(centro_id, fecha) | Menú diario del comedor. RLS `menu_read` (todo el centro) + `menu_manage` (dirección). Módulo `js/menu.js` |
+| `recursos` | centro_id, nombre, categoria, codigo, estado (disponible/prestado/baja), notas, created_at | Inventario de material prestable. RLS `rec_all` (staff, no familia). Módulo `js/recursos.js` |
+| `prestamos` | centro_id, recurso_id (CASCADE), persona, prestado_a_id (→profiles, opcional), fecha_prestamo, fecha_prevista, fecha_devolucion (null=activo), notas, registrado_por, created_at | Registro de préstamos. RLS `prest_all` (staff, no familia). Al prestar/devolver sincroniza `recursos.estado`. Módulo `js/recursos.js` |
+| `actas_reunion` | centro_id, titulo, fecha, tipo (claustro/ccp/departamento/evaluacion/tutores/otro), notas_raw, resumen, acuerdos (jsonb[]), tareas (jsonb: `[{tarea,responsable,fecha}]`), creado_por, created_at | Actas de reuniones con resumen IA. RLS `actas_all` (dirección). Módulo `js/actas.js` |
 
 ---
 
@@ -125,6 +132,11 @@
 | Orientación | (portal trámites visible_familia) | — | ✅ | ✅ (+orientador/jefatura/director) |
 | Salidas Didácticas | ✅ (autorización) | ✅ | ✅ | ✅ |
 | Alumnos (directorio + ficha) | — | ✅ | ✅ | ✅ (+orientador/director/jefatura) |
+| Agenda del Centro | ✅ | ✅ | ✅ (+ crear eventos) | ✅ |
+| Encuestas | ✅ (responder) | — | ✅ (gestión) | ✅ (+director/jefatura) |
+| Menú comedor | ✅ (home, lectura) | ✅ (lectura) | ✅ (edición) | ✅ |
+| Recursos (préstamo) | — | ✅ | ✅ | ✅ (+orientador/director/jefatura) |
+| Actas (resumen IA claustros) | — | — | ✅ | ✅ (+director/jefatura) |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
@@ -154,5 +166,12 @@
 <script src="js/alumnos.js"></script>
 <script src="js/asistencia.js"></script>
 <script src="js/tutoria.js"></script>
+<script src="js/mensajes.js"></script>
+<script src="js/encuestas.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/recursos.js"></script>
+<script src="js/actas.js"></script>
+<script src="js/prevision.js"></script>
 <script src="js/agenda.js"></script>
 ```
+> Nota: `js/actas.js` y `js/prevision.js` usan helpers de `informes.js` (`_infEnsureLibs`…) y `guardias.js`/`admin.js` respectivamente — ya cargados antes. Módulos sin tab propio: `prevision.js` (botón "Previsión" en Sustituciones) y `menu.js` (vista "Menú" en Comedor + bloque en home de familias).
