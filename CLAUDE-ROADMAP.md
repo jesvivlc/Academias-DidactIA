@@ -158,6 +158,16 @@ CREATE INDEX idx_plazos_ib_centro_fecha ON public.plazos_ib (centro_id, fecha_li
 
 ---
 
+### Recordatorio de tutorías (`n8n-recordatorio-tutorias.json`) ⏳ pendiente importar
+
+**Trigger:** diario a las 18:00 (cron `0 18 * * *`).
+
+**Nodos (5):** Diario 18:00 (scheduleTrigger) → Config y fecha (code: `SUPABASE_KEY` service_role + URL + `tomorrow`) → Get Citas Mañana (httpRequest GET `tutoria_citas?fecha=eq.{tomorrow}&estado=eq.confirmada`) → Build Push (code: un ítem por cita con `user_ids=[familia_id,tutor_id]`, título "📅 Recordatorio de tutoría", cuerpo con fecha+hora+alumno) → Send Push (httpRequest POST `{SUPABASE_URL}/functions/v1/send-push`, Bearer service_role).
+
+**Notas:** envía **push** (no email) a familia y tutor la tarde anterior a cada cita **confirmada**; si una de las dos partes no tiene suscripción push, `send-push` simplemente la omite. Si no hay citas confirmadas mañana, el Build devuelve `[]` y no envía nada. **Pendiente:** importar en n8n y pegar la `service_role` key en "Config y fecha".
+
+---
+
 ## Centro de demostración
 
 Archivo: `sql/demo-center.sql` — ejecutar en Supabase SQL Editor con rol service_role.
