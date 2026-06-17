@@ -37,6 +37,7 @@ const PRECACHE = [
   '/js/menu.js',
   '/js/recursos.js',
   '/js/actas.js',
+  '/js/prevision.js',
   '/manifest.json'
 ];
 
