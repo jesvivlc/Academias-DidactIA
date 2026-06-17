@@ -3,7 +3,7 @@
     "description": "Snapshot de columnas por tabla (esquema public) para scripts/verify-columns.js. Regenerar con: node scripts/verify-columns.js --refresh (requiere SUPABASE_MGMT_TOKEN).",
     "projectRef": "rflfsbrdmgaidhvbuvwb",
     "generatedAt": "2026-06-17",
-    "tableCount": 63
+    "tableCount": 65
   },
   "tables": {
     "acciones_capa": [
@@ -196,6 +196,27 @@
       "id",
       "palabras",
       "version"
+    ],
+    "encuesta_respuestas": [
+      "centro_id",
+      "created_at",
+      "encuesta_id",
+      "familia_id",
+      "id",
+      "respuestas"
+    ],
+    "encuestas": [
+      "anonima",
+      "centro_id",
+      "creado_por",
+      "created_at",
+      "descripcion",
+      "destinatarios",
+      "estado",
+      "fecha_cierre",
+      "id",
+      "preguntas",
+      "titulo"
     ],
     "espacios": [
       "capacidad",

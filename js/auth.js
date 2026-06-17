@@ -520,6 +520,10 @@ async function loadUserProfile(user) {
   const tabAgenda = document.getElementById("tab-agenda");
   if (tabAgenda) tabAgenda.style.display = "block";
 
+  // Encuestas a familias: familia responde; dirección gestiona y ve resultados
+  const tabEnc = document.getElementById("tab-encuestas");
+  if (tabEnc) tabEnc.style.display = (["familia","admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -656,6 +660,7 @@ function showTab(t) {
   if (t === "salidas") initSalidasPanel();
   if (t === "tutorias") initTutorias();
   if (t === "agenda") initAgenda();
+  if (t === "encuestas" && typeof initEncuestas === "function") initEncuestas();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {
