@@ -501,14 +501,20 @@ async function _sustCalcularLibres(fecha, horaRefRaw, excluirExtra) {
   const countNorm = {};
   Object.keys(guardCounts || {}).forEach(n => { const k = _sustNombreNorm(n); countNorm[k] = (countNorm[k] || 0) + (guardCounts[n] || 0); });
 
-  let libresKeys = [...todosMap.keys()].filter(k => !ocupadosKeys.has(k) && !ausentesKeys.has(k));
+  // Disponibles = no dan clase ni están ausentes. Se separan en:
+  //  · guardia → asignados a guardia ese tramo (prioritarios)
+  //  · libres  → tienen hueco (ni clase ni guardia)
+  const dispKeys = [...todosMap.keys()].filter(k => !ocupadosKeys.has(k) && !ausentesKeys.has(k));
+  const _mk = (k) => ({ nombre: todosMap.get(k), carga: countNorm[k] || 0 });
+  const _byEquidad = (a, b) => a.carga - b.carga || a.nombre.localeCompare(b.nombre, "es");
+  const guardia = dispKeys.filter(k => guardiaKeys.has(k)).map(_mk).sort(_byEquidad);
+  const libres  = dispKeys.filter(k => !guardiaKeys.has(k)).map(_mk).sort(_byEquidad);
   const deGuardia = guardiaKeys.size > 0;
-  if (deGuardia) libresKeys = libresKeys.filter(k => guardiaKeys.has(k));
-
-  const lista = libresKeys.map(k => ({ nombre: todosMap.get(k), carga: countNorm[k] || 0 }))
-    .sort((a, b) => a.carga - b.carga || a.nombre.localeCompare(b.nombre, "es"));
   const todosDisplay = [...todosMap.values()].sort((a, b) => a.localeCompare(b, "es"));
-  return { lista, todos: todosDisplay, deGuardia };
+
+  // Compat: `lista` = lo que ya consumían el formulario y el modal "+ Asignar".
+  const lista = deGuardia ? guardia : guardia.concat(libres);
+  return { lista, guardia, libres, todos: todosDisplay, deGuardia };
 }
 
 async function cargarProfesoresLibresEnSelect(tramoOverride) {

@@ -614,7 +614,8 @@
           <button class="btn btn-s" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
           <button class="btn btn-s" onclick="exportarSustituciones()"><i class="ti ti-download"></i> Exportar parte</button>
           <button class="btn btn-s" onclick="window.preverCobertura && preverCobertura()"><i class="ti ti-calendar-stats"></i> Previsión</button>
-          <button class="btn-ia" onclick="window.planCoberturaDia && planCoberturaDia()"><i class="ti ti-sparkles"></i> Plan del día (sugerir sustitutos)</button>
+          <button class="btn btn-s" onclick="window.planCoberturaDia && planCoberturaDia()"><i class="ti ti-list-check"></i> Plan manual</button>
+          <button class="btn-ia" onclick="window.agenteSustituciones && agenteSustituciones()"><i class="ti ti-robot"></i> Agente: cubrir el día</button>
         </div>
       </div>
 
@@ -645,7 +646,7 @@
           <strong>DidactIA te sugiere quién cubre cada tramo sin cubrir.</strong>
           <span>Cruza el horario del día, descarta a quien tiene clase o está ausente y propone al profesor libre con menos guardias. Tú confirmas antes de asignar.</span>
         </div>
-        <button class="btn-ia" id="agent-buscar-btn" onclick="window.planCoberturaDia && planCoberturaDia()"><i class="ti ti-sparkles"></i> Generar plan del día</button>
+        <button class="btn-ia" id="agent-buscar-btn" onclick="window.agenteSustituciones && agenteSustituciones()"><i class="ti ti-robot"></i> Lanzar agente</button>
       </div>
 
       <!-- Registration form (collapsible) -->
@@ -1540,6 +1541,7 @@
 <script src="js/actas.js"></script>
 <script src="js/prevision.js"></script>
 <script src="js/plancobertura.js"></script>
+<script src="js/agente.js"></script>
 <script src="js/documentos.js"></script>
 <script src="js/participacion.js"></script>
 <script src="js/agenda.js"></script>
