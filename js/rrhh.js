@@ -211,7 +211,13 @@ async function _renderRrhhAdmin() {
         '<div class="pg-title">Gestión de ausencias</div>' +
         '<div class="pg-sub">Revisión y aprobación de solicitudes del profesorado</div>' +
       '</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+        '<label style="font-size:11px;color:var(--txt3);display:flex;align-items:center;gap:5px;" title="Normativa que aplica el copiloto de IA al evaluar permisos">⚖️ Régimen' +
+          '<select class="fi" id="rrhh-regimen" style="width:auto;font-size:12px;padding:5px 8px;" onchange="_rrhhSetRegimen(this.value)">' +
+            '<option value="concertada">Concertada</option>' +
+            '<option value="privada">Privada</option>' +
+            '<option value="funcionario">Funcionario (pública)</option>' +
+          '</select></label>' +
         '<button class="btn btn-s" onclick="exportarRrhhExcel()">📥 Exportar</button>' +
         '<button class="btn btn-p" onclick="_cargarAusenciasAdmin()">↺ Actualizar</button>' +
       '</div>' +
@@ -231,7 +237,192 @@ async function _renderRrhhAdmin() {
       '</div>' +
     '</div>';
 
+  var rs = document.getElementById("rrhh-regimen");
+  if (rs) rs.value = _rrhhGetRegimen();
   await _cargarAusenciasAdmin();
+}
+
+/* ── Copiloto legal de RRHH (IA orientativa) ─────────────────────────── */
+var _RRHH_REGIMENES = {
+  concertada: "Convenio colectivo de empresas de enseñanza privada sostenidas total o parcialmente con fondos públicos (centros CONCERTADOS)",
+  privada:    "Convenio colectivo nacional de centros de enseñanza privada de régimen general o enseñanza reglada sin financiación pública (centros PRIVADOS)",
+  funcionario:"Normativa de función pública docente: EBEP (RDL 5/2015), normativa autonómica de personal docente y, en su caso, el régimen de permisos y licencias del funcionariado",
+};
+function _rrhhGetRegimen() {
+  try { return localStorage.getItem("rrhh_regimen_" + ctrId) || "concertada"; } catch (e) { return "concertada"; }
+}
+window._rrhhSetRegimen = function (v) {
+  try { localStorage.setItem("rrhh_regimen_" + ctrId, v); } catch (e) {}
+};
+
+async function _rrhhGeminiLegal(systemPrompt, userMsg) {
+  try {
+    var r = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON_KEY, "apikey": ANON_KEY },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: userMsg }] }],
+        system_prompt: systemPrompt,
+        centro_id: ctrId || "",
+        role: "familia",  // fuerza texto (sin function calling)
+        user_name: (typeof currentUserName !== "undefined" ? currentUserName : ""),
+        user_id: (window.currentUser ? window.currentUser.id : ""),
+      }),
+    });
+    if (!r.ok) return null;
+    var j = await r.json();
+    return j.type === "text" ? j.text : null;
+  } catch (e) { return null; }
+}
+function _rrhhParseJson(txt) {
+  if (!txt) return null;
+  try {
+    var c = txt.replace(/```json/gi, "").replace(/```/g, "").trim();
+    var a = c.indexOf("{"), b = c.lastIndexOf("}");
+    if (a >= 0 && b > a) c = c.slice(a, b + 1);
+    return JSON.parse(c);
+  } catch (e) { return null; }
+}
+function _rrhhEscH(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function _rrhhDias(a) {
+  try {
+    var d1 = new Date(a.fecha + "T12:00:00"), d2 = new Date((a.fecha_fin || a.fecha) + "T12:00:00");
+    return Math.round((d2 - d1) / 86400000) + 1;
+  } catch (e) { return 1; }
+}
+
+window._rrhhEvaluarIA = async function (id) {
+  var a = (_rrhhAusencias || []).find(function (x) { return String(x.id) === String(id); });
+  if (!a) { alert("Solicitud no encontrada."); return; }
+  _rrhhEnsureStyles();
+  var regimen = _rrhhGetRegimen();
+  var dias = _rrhhDias(a);
+  var old = document.getElementById("rrhh-ia-modal");
+  if (old) old.remove();
+  var w = document.createElement("div");
+  w.id = "rrhh-ia-modal";
+  w.className = "ria-ov";
+  w.innerHTML = '<div class="ria-modal">' +
+    '<div class="ria-hd"><div><div class="ria-eyebrow">RRHH · COPILOTO LEGAL</div>' +
+      '<h3 class="ria-ttl">Evaluación de permiso</h3></div>' +
+      '<button class="ria-x" onclick="document.getElementById(\'rrhh-ia-modal\').remove()">✕</button></div>' +
+    '<div class="ria-bd">' +
+      '<div class="ria-req">' +
+        '<div><strong>' + _rrhhEscH(a._nombre || "Profesor") + '</strong></div>' +
+        '<div class="ria-meta">' + (AUSENCIA_TIPOS[a.tipo] || a.tipo || "—") + ' · ' +
+          _rrhhEscH(a.fecha) + (a.fecha_fin && a.fecha_fin !== a.fecha ? " → " + _rrhhEscH(a.fecha_fin) : "") +
+          ' · ' + dias + ' día' + (dias !== 1 ? "s" : "") + '</div>' +
+        (a.motivo ? '<div class="ria-motivo">“' + _rrhhEscH(a.motivo) + '”</div>' : '') +
+      '</div>' +
+      '<label class="ria-fl">Normativa aplicable</label>' +
+      '<select class="ria-sel" id="ria-regimen">' +
+        ['concertada','privada','funcionario'].map(function (k) {
+          var lbl = k === "concertada" ? "Escuela concertada" : k === "privada" ? "Escuela privada" : "Funcionario (escuela pública)";
+          return '<option value="' + k + '"' + (k === regimen ? " selected" : "") + '>' + lbl + '</option>';
+        }).join("") +
+      '</select>' +
+      '<button class="ria-btn ria-btn-ia" id="ria-go" onclick="window._rrhhLanzarEval(\'' + id + '\')">✨ Analizar con IA</button>' +
+      '<div id="ria-out"></div>' +
+    '</div>' +
+    '<div class="ria-ft">' +
+      '<div class="ria-disc">Recomendación orientativa generada por IA. <strong>No es vinculante</strong>; la decisión corresponde a dirección/secretaría.</div>' +
+    '</div></div>';
+  document.body.appendChild(w);
+  w.addEventListener("click", function (e) { if (e.target === w) w.remove(); });
+};
+
+window._rrhhLanzarEval = async function (id) {
+  var a = (_rrhhAusencias || []).find(function (x) { return String(x.id) === String(id); });
+  if (!a) return;
+  var regSel = document.getElementById("ria-regimen");
+  var regimen = regSel ? regSel.value : _rrhhGetRegimen();
+  _rrhhSetRegimen(regimen);
+  var out = document.getElementById("ria-out");
+  var go = document.getElementById("ria-go");
+  if (go) { go.disabled = true; go.textContent = "✨ Analizando normativa…"; }
+  if (out) out.innerHTML = '<div class="ria-load">Consultando la normativa aplicable…</div>';
+
+  var dias = _rrhhDias(a);
+  var sys = "Eres un asistente jurídico-laboral experto en la normativa española de permisos y licencias del personal docente. " +
+    "Evalúa la solicitud conforme a esta normativa: " + (_RRHH_REGIMENES[regimen] || regimen) + ". " +
+    "Emite una recomendación ORIENTATIVA (no vinculante). Sé prudente: si faltan datos, el motivo es ambiguo o el caso depende de circunstancias no acreditadas, recomienda \"revisar\". " +
+    "NO inventes números de artículo exactos si no estás seguro; usa referencias genéricas y márcalo en 'alerta'. " +
+    "Responde EXCLUSIVAMENTE con un JSON: {\"recomendacion\":\"aprobar|denegar|revisar\",\"permiso_tipo\":\"retribuido|no_retribuido|deber_inexcusable|baja_it|otro\",\"fundamento\":\"referencia orientativa al artículo/convenio\",\"requisitos\":[\"...\"],\"dias\":\"cómputo o límite aplicable\",\"explicacion\":\"1-3 frases\",\"alerta\":\"qué debe verificar dirección manualmente, o cadena vacía\"}";
+  var userMsg = "Solicitud de ausencia de un docente. Tipo: " + (AUSENCIA_TIPOS[a.tipo] || a.tipo) +
+    ". Motivo indicado: " + (a.motivo || "(no especificado)") +
+    ". Fechas: " + a.fecha + (a.fecha_fin && a.fecha_fin !== a.fecha ? " a " + a.fecha_fin : "") +
+    " (" + dias + " día(s) naturales). Evalúa si procede conceder el permiso, su naturaleza (retribuido o no) y los requisitos.";
+
+  var resp = await _rrhhGeminiLegal(sys, userMsg);
+  var j = _rrhhParseJson(resp);
+  if (go) { go.disabled = false; go.textContent = "✨ Volver a analizar"; }
+  if (!j) {
+    if (out) out.innerHTML = '<div class="ria-err">No se pudo generar la evaluación. Inténtalo de nuevo.</div>';
+    return;
+  }
+  var rec = (j.recomendacion || "revisar").toLowerCase();
+  var col = rec === "aprobar" ? ["#1e6b3a", "#e8f5e9", "✓ Recomendación: APROBAR"]
+          : rec === "denegar" ? ["#b83232", "#fde8e8", "✕ Recomendación: DENEGAR"]
+          : ["#9a6a1a", "#fff7e0", "⚠ Recomendación: REVISAR manualmente"];
+  var reqs = Array.isArray(j.requisitos) ? j.requisitos.filter(Boolean) : [];
+  var html = '<div class="ria-rec" style="background:' + col[1] + ';color:' + col[0] + ';">' + col[2] + '</div>' +
+    '<div class="ria-grid">' +
+      (j.permiso_tipo ? '<div class="ria-cell"><span>Naturaleza</span>' + _rrhhEscH(j.permiso_tipo).replace(/_/g, " ") + '</div>' : '') +
+      (j.dias ? '<div class="ria-cell"><span>Días/cómputo</span>' + _rrhhEscH(j.dias) + '</div>' : '') +
+    '</div>' +
+    (j.explicacion ? '<p class="ria-exp">' + _rrhhEscH(j.explicacion) + '</p>' : '') +
+    (j.fundamento ? '<div class="ria-fund"><span>Fundamento (orientativo)</span>' + _rrhhEscH(j.fundamento) + '</div>' : '') +
+    (reqs.length ? '<div class="ria-reqs"><span>Requisitos</span><ul>' + reqs.map(function (x) { return '<li>' + _rrhhEscH(x) + '</li>'; }).join("") + '</ul></div>' : '') +
+    (j.alerta ? '<div class="ria-alert">⚠ ' + _rrhhEscH(j.alerta) + '</div>' : '') +
+    '<div class="ria-actions">' +
+      '<button class="ria-btn ria-btn-ok" onclick="document.getElementById(\'rrhh-ia-modal\').remove();aprobarAusencia(\'' + id + '\')">✓ Aprobar solicitud</button>' +
+      '<button class="ria-btn ria-btn-no" onclick="document.getElementById(\'rrhh-ia-modal\').remove();rechazarAusencia(\'' + id + '\')">✕ Rechazar solicitud</button>' +
+    '</div>';
+  if (out) out.innerHTML = html;
+};
+
+function _rrhhEnsureStyles() {
+  if (document.getElementById("ria-styles")) return;
+  var s = document.createElement("style");
+  s.id = "ria-styles";
+  s.textContent = [
+    ".ria-ov{position:fixed;inset:0;background:rgba(20,20,30,.5);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto;}",
+    ".ria-modal{background:var(--paper,#fff);border-radius:14px;max-width:520px;width:100%;border:1px solid var(--line,#e0e0e0);box-shadow:0 24px 70px rgba(0,0,0,.32);}",
+    ".ria-hd{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line,#e0e0e0);}",
+    ".ria-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted,#888);margin-bottom:3px;}",
+    ".ria-ttl{margin:0;font-size:18px;font-weight:700;color:var(--txt,#222);font-family:var(--font-display,inherit);}",
+    ".ria-x{background:none;border:none;font-size:17px;color:var(--muted,#888);cursor:pointer;padding:4px 8px;border-radius:6px;}",
+    ".ria-bd{padding:18px 22px;}",
+    ".ria-req{background:var(--surface-sunk,#f2f1ec);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;}",
+    ".ria-meta{font-size:12px;color:var(--muted,#888);margin-top:3px;}",
+    ".ria-motivo{font-size:12.5px;color:var(--txt2,#555);font-style:italic;margin-top:6px;}",
+    ".ria-fl{display:block;font-size:12px;font-weight:600;color:var(--txt2,#555);margin:6px 0 4px;}",
+    ".ria-sel{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line-2,#ccc);border-radius:8px;font-size:14px;background:var(--paper,#fff);}",
+    ".ria-btn{padding:9px 14px;border-radius:8px;border:1px solid var(--line-2,#ccc);background:var(--paper,#fff);color:var(--txt2,#555);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}",
+    ".ria-btn-ia{width:100%;margin-top:12px;background:var(--accent-soft,#f3e1d5);color:var(--accent-ink,#7A3E1F);border-color:var(--accent-soft,#f3e1d5);}",
+    ".ria-btn-ia:disabled{opacity:.7;cursor:default;}",
+    ".ria-load,.ria-err{text-align:center;padding:20px;color:var(--muted,#888);font-size:13px;}",
+    ".ria-err{color:#b83232;}",
+    ".ria-rec{margin-top:16px;border-radius:10px;padding:11px 14px;font-weight:700;font-size:14px;text-align:center;}",
+    ".ria-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}",
+    ".ria-cell{flex:1;min-width:120px;background:var(--surface-sunk,#f2f1ec);border-radius:8px;padding:9px 11px;font-size:13px;text-transform:capitalize;}",
+    ".ria-cell span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#888);margin-bottom:3px;}",
+    ".ria-exp{font-size:13.5px;color:var(--txt,#222);line-height:1.5;margin:12px 0;}",
+    ".ria-fund{font-size:12.5px;color:var(--txt2,#555);background:var(--surface-sunk,#f2f1ec);border-radius:8px;padding:9px 11px;margin-bottom:10px;}",
+    ".ria-fund span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#888);margin-bottom:3px;}",
+    ".ria-reqs{font-size:12.5px;color:var(--txt2,#555);margin-bottom:10px;}",
+    ".ria-reqs span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#888);margin-bottom:3px;}",
+    ".ria-reqs ul{margin:0;padding-left:18px;line-height:1.6;}",
+    ".ria-alert{background:#fff7e0;color:#9a6a1a;border-radius:8px;padding:9px 12px;font-size:12.5px;margin-bottom:10px;}",
+    ".ria-actions{display:flex;gap:10px;margin-top:16px;}",
+    ".ria-btn-ok{flex:1;background:#e8f5e9;color:#1e6b3a;border-color:#cfe8d3;}",
+    ".ria-btn-no{flex:1;background:#fde8e8;color:#b83232;border-color:#f5cccc;}",
+    ".ria-ft{padding:12px 22px;border-top:1px solid var(--line,#e0e0e0);}",
+    ".ria-disc{font-size:11px;color:var(--muted,#888);line-height:1.5;}",
+  ].join("");
+  document.head.appendChild(s);
 }
 
 function filtrarRrhh(estado) {
@@ -387,7 +578,8 @@ function _renderAusenciasAdminLista() {
       : (a.fecha || "—");
     var isPendiente = !a.estado || a.estado === "pendiente";
     var acciones = isPendiente
-      ? '<div style="display:flex;gap:5px;">' +
+      ? '<div style="display:flex;gap:5px;flex-wrap:wrap;">' +
+          '<button onclick="_rrhhEvaluarIA(\'' + a.id + '\')" style="' + BTN + 'background:#f3e1d5;color:#7A3E1F;">✨ Evaluar (IA)</button>' +
           '<button onclick="aprobarAusencia(\'' + a.id + '\')" style="' + BTN + 'background:#e8f5e9;color:#1e6b3a;">✓ Aprobar</button>' +
           '<button onclick="rechazarAusencia(\'' + a.id + '\')" style="' + BTN + 'background:#fde8e8;color:#b83232;">✕ Rechazar</button>' +
         '</div>'
