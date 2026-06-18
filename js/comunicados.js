@@ -72,7 +72,10 @@ function initComunicadosPanel() {
       + '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="_comToggleForm()">'
       + '<div class="card-hdr" style="margin:0;padding:0;"><div class="card-ico o">📢</div>'
       + '<div><div class="card-title">Nuevo comunicado</div></div></div>'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + '<button class="btn-ia" onclick="event.stopPropagation();window.agenteComunicacion&&agenteComunicacion()" style="white-space:nowrap;"><i class="ti ti-robot"></i> Agente: redactar</button>'
       + '<span id="com-form-toggle" style="font-size:22px;line-height:1;color:var(--txt3);padding:0 4px;">＋</span>'
+      + '</div>'
       + '</div>'
       + '<div id="com-form-body" style="display:none;margin-top:16px;border-top:1px solid #f0f0f0;padding-top:16px;">'
       // ─ fila: plantilla + destinatarios
@@ -449,6 +452,148 @@ async function enviarComunicado() {
   _comToggleForm();
 
   await loadComunicados();
+}
+
+// Núcleo reutilizable de envío: inserta + email (send-comunicado) + push a familias.
+async function _comEnviarNucleo(titulo, cuerpo, dest) {
+  var r = await sb.from('comunicados').insert({
+    centro_id: ctrId, titulo: titulo, cuerpo: cuerpo, destinatarios: dest,
+    creado_por: currentUser.id, fecha: new Date().toISOString().split('T')[0], estado: 'enviado',
+  }).select().single();
+  if (r.error) return { ok: false, error: r.error.message };
+  var enviados = 0;
+  try {
+    var er = await sb.functions.invoke('send-comunicado', { body: { comunicado_id: r.data.id } });
+    if (!er.error && er.data && er.data.enviados != null) enviados = er.data.enviados;
+  } catch (e) {}
+  _comPushFamilias(dest, titulo);
+  return { ok: true, enviados: enviados, id: r.data.id };
+}
+
+/* ════════ AGENTE DE COMUNICACIÓN A FAMILIAS (modo asistido) ════════ */
+function _agcParse(txt) {
+  if (!txt) return null;
+  try {
+    var c = txt.replace(/```json/gi, '').replace(/```/g, '').trim();
+    var a = c.indexOf('{'), b = c.lastIndexOf('}');
+    if (a >= 0 && b > a) c = c.slice(a, b + 1);
+    return JSON.parse(c);
+  } catch (e) { return null; }
+}
+
+window.agenteComunicacion = function () {
+  _agcEnsureStyles();
+  var old = document.getElementById('agc-modal');
+  if (old) old.remove();
+  var w = document.createElement('div');
+  w.id = 'agc-modal';
+  w.className = 'agc-ov';
+  w.innerHTML = '<div class="agc-modal">' +
+    '<div class="agc-hd"><div style="display:flex;gap:11px;align-items:center;"><div class="agc-bot">🤖</div>' +
+      '<div><div class="agc-eyebrow">AGENTE DE COMUNICACIÓN</div><h3 class="agc-ttl">Redactar comunicado a familias</h3></div></div>' +
+      '<button class="agc-x" onclick="document.getElementById(\'agc-modal\').remove()">✕</button></div>' +
+    '<div class="agc-bd">' +
+      '<label class="agc-fl">Dime qué quieres comunicar (en pocas palabras)</label>' +
+      '<textarea id="agc-brief" class="agc-in" rows="3" placeholder="Ej.: Convoca a las familias de 2ESOA a una reunión el martes 25 a las 17h en el aula B03. / Avisa de que mañana no hay clase por el día del docente."></textarea>' +
+      '<button class="agc-btn agc-btn-ia" id="agc-go" onclick="window._agcRedactar()">✨ Redactar con IA</button>' +
+      '<div id="agc-out"></div>' +
+    '</div>' +
+    '<div class="agc-ft"><div class="agc-disc">El agente redacta el borrador; tú lo revisas y editas antes de enviar. Cada familia lo recibe en su idioma al abrirlo.</div></div>' +
+  '</div>';
+  document.body.appendChild(w);
+  w.addEventListener('click', function (e) { if (e.target === w) w.remove(); });
+  setTimeout(function () { var t = document.getElementById('agc-brief'); if (t) t.focus(); }, 50);
+};
+
+window._agcRedactar = async function () {
+  var brief = ((document.getElementById('agc-brief') || {}).value || '').trim();
+  if (brief.length < 8) { if (typeof showToast === 'function') showToast('Describe qué quieres comunicar'); else alert('Describe qué quieres comunicar'); return; }
+  var go = document.getElementById('agc-go');
+  var out = document.getElementById('agc-out');
+  if (go) { go.disabled = true; go.textContent = '✨ Redactando…'; }
+  if (out) out.innerHTML = '<div class="agc-load">🤖 Redactando el comunicado…</div>';
+
+  var sys = 'Eres el responsable de comunicación de un centro educativo español. A partir de una instrucción breve de dirección, redacta un comunicado para las familias: claro, cordial y profesional, listo para enviar. ' +
+    'Deduce los destinatarios de la instrucción. Responde SOLO con JSON: {"titulo":"asunto breve","cuerpo":"texto del comunicado, 2-5 frases, con saludo y despedida del centro","destinatarios":"todos|solo_familias|solo_profesores|grupo:CODIGO","grupo":"código del grupo si aplica, p.ej. 2ESOA, o vacío"}. ' +
+    'Usa "grupo:CODIGO" solo si la instrucción menciona un grupo concreto; si es para todas las familias usa "solo_familias"; si es para todo el centro usa "todos". No inventes datos que no estén en la instrucción.';
+  var resp = await _comIA(sys, brief);
+  var j = _agcParse(resp);
+  if (go) { go.disabled = false; go.textContent = '✨ Volver a redactar'; }
+  if (!j || !j.titulo) { if (out) out.innerHTML = '<div class="agc-err">No se pudo redactar. Inténtalo de nuevo.</div>'; return; }
+
+  var dest = j.destinatarios || 'solo_familias';
+  var grupo = j.grupo || (dest.indexOf('grupo:') === 0 ? dest.replace('grupo:', '') : '');
+  var destBase = dest.indexOf('grupo:') === 0 ? 'grupo' : dest;
+  var destOpts = [['solo_familias', 'Todas las familias'], ['todos', 'Todo el centro'], ['solo_profesores', 'Solo profesorado'], ['grupo', 'Familias de un grupo']];
+  if (out) out.innerHTML =
+    '<div class="agc-draft">' +
+      '<label class="agc-fl">Asunto</label>' +
+      '<input id="agc-titulo" class="agc-in" type="text" value="' + _escCom(j.titulo) + '">' +
+      '<label class="agc-fl">Mensaje</label>' +
+      '<textarea id="agc-cuerpo" class="agc-in" rows="7">' + _escCom(j.cuerpo || '') + '</textarea>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:160px;"><label class="agc-fl">Destinatarios</label>' +
+          '<select id="agc-dest" class="agc-in" onchange="window._agcDestChange(this.value)">' +
+            destOpts.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === destBase ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+          '</select></div>' +
+        '<div style="flex:1;min-width:120px;" id="agc-grupo-wrap"' + (destBase === 'grupo' ? '' : ' style="display:none;flex:1;min-width:120px;"') + '><label class="agc-fl">Grupo</label>' +
+          '<input id="agc-grupo" class="agc-in" type="text" value="' + _escCom(grupo) + '" placeholder="Ej: 2ESOA"></div>' +
+      '</div>' +
+      '<button class="agc-btn agc-btn-primary" id="agc-send" onclick="window._agcEnviar()">✓ Revisar y enviar</button>' +
+    '</div>';
+};
+
+window._agcDestChange = function (v) {
+  var wrap = document.getElementById('agc-grupo-wrap');
+  if (wrap) wrap.style.display = v === 'grupo' ? '' : 'none';
+};
+
+window._agcEnviar = async function () {
+  var titulo = ((document.getElementById('agc-titulo') || {}).value || '').trim();
+  var cuerpo = ((document.getElementById('agc-cuerpo') || {}).value || '').trim();
+  var destBase = (document.getElementById('agc-dest') || {}).value || 'solo_familias';
+  if (!titulo || !cuerpo) { alert('El asunto y el mensaje no pueden estar vacíos.'); return; }
+  var dest = destBase;
+  if (destBase === 'grupo') {
+    var g = ((document.getElementById('agc-grupo') || {}).value || '').trim();
+    if (!g) { alert('Indica el grupo.'); return; }
+    dest = 'grupo:' + g;
+  }
+  if (!confirm('¿Enviar el comunicado ahora a "' + (destBase === 'grupo' ? dest.replace('grupo:', 'grupo ') : destBase === 'todos' ? 'todo el centro' : destBase === 'solo_profesores' ? 'el profesorado' : 'todas las familias') + '"?')) return;
+  var send = document.getElementById('agc-send');
+  if (send) { send.disabled = true; send.textContent = 'Enviando…'; }
+  var res = await _comEnviarNucleo(titulo, cuerpo, dest);
+  if (!res.ok) { if (send) { send.disabled = false; send.textContent = '✓ Revisar y enviar'; } alert('Error: ' + res.error); return; }
+  var m = document.getElementById('agc-modal'); if (m) m.remove();
+  if (typeof showToast === 'function') showToast('✅ Comunicado enviado' + (res.enviados ? ' · ✉ ' + res.enviados : ''));
+  if (typeof loadComunicados === 'function') { try { loadComunicados(); } catch (e) {} }
+};
+
+function _agcEnsureStyles() {
+  if (document.getElementById('agc-styles')) return;
+  var s = document.createElement('style');
+  s.id = 'agc-styles';
+  s.textContent = [
+    '.agc-ov{position:fixed;inset:0;background:rgba(20,20,30,.5);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto;}',
+    '.agc-modal{background:var(--paper,#fff);border-radius:16px;max-width:560px;width:100%;border:1px solid var(--line,#e0e0e0);box-shadow:0 24px 70px rgba(0,0,0,.34);}',
+    '.agc-hd{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line,#e0e0e0);}',
+    '.agc-bot{width:38px;height:38px;border-radius:11px;background:var(--accent-soft,#f3e1d5);display:flex;align-items:center;justify-content:center;font-size:20px;}',
+    '.agc-eyebrow{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted,#888);margin-bottom:2px;}',
+    '.agc-ttl{margin:0;font-size:18px;font-weight:700;color:var(--txt,#222);font-family:var(--font-display,inherit);}',
+    '.agc-x{background:none;border:none;font-size:17px;color:var(--muted,#888);cursor:pointer;padding:4px 8px;border-radius:6px;}',
+    '.agc-bd{padding:18px 22px;}',
+    '.agc-fl{display:block;font-size:12px;font-weight:600;color:var(--txt2,#555);margin:10px 0 4px;}',
+    '.agc-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line-2,#ccc);border-radius:8px;font-size:14px;font-family:inherit;background:var(--paper,#fff);color:var(--txt,#222);line-height:1.45;}',
+    '.agc-btn{padding:9px 14px;border-radius:8px;border:1px solid var(--line-2,#ccc);background:var(--paper,#fff);color:var(--txt2,#555);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}',
+    '.agc-btn-ia{width:100%;margin-top:12px;background:var(--accent-soft,#f3e1d5);color:var(--accent-ink,#7A3E1F);border-color:var(--accent-soft,#f3e1d5);}',
+    '.agc-btn-primary{width:100%;margin-top:14px;background:var(--ink,#1a73e8);color:#fff;border-color:var(--ink,#1a73e8);}',
+    '.agc-load,.agc-err{text-align:center;padding:18px;color:var(--muted,#888);font-size:13px;}',
+    '.agc-err{color:#b83232;}',
+    '.agc-draft{margin-top:14px;border-top:1px dashed var(--line-2,#ccc);padding-top:12px;}',
+    '.agc-ft{padding:12px 22px;border-top:1px solid var(--line,#e0e0e0);}',
+    '.agc-disc{font-size:11.5px;color:var(--muted,#888);line-height:1.5;}',
+  ].join('');
+  document.head.appendChild(s);
 }
 
 // ── Realtime: nuevos comunicados en vivo ──────────────────────────
