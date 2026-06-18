@@ -221,7 +221,8 @@ async function _renderRrhhAdmin() {
             '<option value="funcionario">Funcionario (pública)</option>' +
           '</select></label>' +
         '<button class="btn btn-s" onclick="exportarRrhhExcel()">📥 Exportar</button>' +
-        '<button class="btn btn-p" onclick="_cargarAusenciasAdmin()">↺ Actualizar</button>' +
+        '<button class="btn btn-p" onclick="window.agenteRRHH && agenteRRHH()" style="background:var(--accent,#C76B3D);">🤖 Agente: evaluar pendientes</button>' +
+        '<button class="btn btn-s" onclick="_cargarAusenciasAdmin()">↺ Actualizar</button>' +
       '</div>' +
     '</div>' +
 
@@ -397,25 +398,34 @@ function _rrhhComponerMensaje(j) {
   return partes.join("\n");
 }
 
-// Aprueba/rechaza guardando el mensaje al profesor y notificándole (push).
+// Núcleo: aplica la resolución (estado + mensaje al profesor + sustituciones + push).
+// Devuelve true/false. NO toca la UI (lo hace quien lo llama).
+async function _rrhhAplicar(id, accion, mensaje) {
+  var a = (_rrhhAusencias || []).find(function (x) { return String(x.id) === String(id); });
+  if (!a) return false;
+  if (accion === "aprobar" && a.estado === "aprobada") return false;
+  var payload = accion === "aprobar"
+    ? { estado: "aprobada", aprobada_por: currentUser.id, nota_resolucion: mensaje || null }
+    : { estado: "rechazada", motivo_rechazo: mensaje || null, nota_resolucion: mensaje || null };
+  var upd = await sb.from("ausencias_profesor").update(payload).eq("id", id);
+  if (upd.error) { return false; }
+  if (accion === "aprobar") {
+    var nombreProf = await _getNombreProfesor(a.profile_id);
+    if (nombreProf) { try { await _crearSustituciones(a, nombreProf); } catch (e) {} }
+  }
+  _rrhhNotificarProfesor(a, accion === "aprobar" ? "aprobada" : "rechazada", mensaje);
+  return true;
+}
+
+// Aprueba/rechaza desde el modal individual (lee el textarea editable).
 window._rrhhResolver = async function (id, accion) {
   var a = (_rrhhAusencias || []).find(function (x) { return String(x.id) === String(id); });
   if (!a) return;
   if (accion === "aprobar" && a.estado === "aprobada") { alert("Esta ausencia ya estaba aprobada."); return; }
   var ta = document.getElementById("ria-msg");
   var mensaje = ta ? ta.value.trim() : "";
-
-  var payload = accion === "aprobar"
-    ? { estado: "aprobada", aprobada_por: currentUser.id, nota_resolucion: mensaje || null }
-    : { estado: "rechazada", motivo_rechazo: mensaje || null, nota_resolucion: mensaje || null };
-  var upd = await sb.from("ausencias_profesor").update(payload).eq("id", id);
-  if (upd.error) { alert("Error: " + upd.error.message); return; }
-
-  if (accion === "aprobar") {
-    var nombreProf = await _getNombreProfesor(a.profile_id);
-    if (nombreProf) { try { await _crearSustituciones(a, nombreProf); } catch (e) {} }
-  }
-  _rrhhNotificarProfesor(a, accion === "aprobar" ? "aprobada" : "rechazada", mensaje);
+  var ok = await _rrhhAplicar(id, accion, mensaje);
+  if (!ok) { alert("No se pudo aplicar la resolución."); return; }
   var m = document.getElementById("rrhh-ia-modal"); if (m) m.remove();
   if (typeof showToast === "function") showToast(accion === "aprobar" ? "✅ Aprobada y notificada al profesor" : "Rechazada y notificada al profesor");
   await _cargarAusenciasAdmin();
@@ -472,11 +482,128 @@ function _rrhhEnsureStyles() {
     ".ria-actions{display:flex;gap:10px;margin-top:16px;}",
     ".ria-btn-ok{flex:1;background:#e8f5e9;color:#1e6b3a;border-color:#cfe8d3;}",
     ".ria-btn-no{flex:1;background:#fde8e8;color:#b83232;border-color:#f5cccc;}",
-    ".ria-ft{padding:12px 22px;border-top:1px solid var(--line,#e0e0e0);}",
+    ".ria-ft{padding:12px 22px;border-top:1px solid var(--line,#e0e0e0);display:flex;justify-content:flex-end;}",
     ".ria-disc{font-size:11px;color:var(--muted,#888);line-height:1.5;}",
+    ".rag-bot{width:38px;height:38px;border-radius:11px;background:var(--accent-soft,#f3e1d5);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto;}",
+    ".rag-card{border:1px solid var(--line,#e0e0e0);border-radius:12px;padding:14px 16px;margin-bottom:12px;}",
+    ".rag-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}",
+    ".rag-badge{font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;flex:0 0 auto;}",
+    ".rag-exp{font-size:13px;color:var(--txt,#222);line-height:1.5;margin:9px 0;}",
+    ".rag-msg{margin-top:6px;resize:vertical;line-height:1.4;}",
+    ".rag-actions{display:flex;gap:10px;margin-top:10px;}",
+    ".rag-resuelto{font-size:13px;font-weight:700;}",
   ].join("");
   document.head.appendChild(s);
 }
+
+/* ════════ AGENTE RRHH — evalúa TODAS las pendientes y monta la bandeja ════════ */
+window.agenteRRHH = async function () {
+  _rrhhEnsureStyles();
+  var pend = (_rrhhAusencias || []).filter(function (a) { return !a.estado || a.estado === "pendiente"; });
+  var regimen = _rrhhGetRegimen();
+  var old = document.getElementById("rrhh-ag-modal");
+  if (old) old.remove();
+  var w = document.createElement("div");
+  w.id = "rrhh-ag-modal";
+  w.className = "ria-ov";
+  w.innerHTML = '<div class="ria-modal" style="max-width:640px;">' +
+    '<div class="ria-hd"><div style="display:flex;gap:11px;align-items:center;"><div class="rag-bot">🤖</div>' +
+      '<div><div class="ria-eyebrow">AGENTE DE RRHH · PERMISOS</div><h3 class="ria-ttl">Bandeja de permisos</h3></div></div>' +
+      '<button class="ria-x" onclick="document.getElementById(\'rrhh-ag-modal\').remove()">✕</button></div>' +
+    '<div class="ria-bd" id="rag-bd"><div class="ria-load">🤖 Evaluando ' + pend.length + ' solicitud(es) contra la normativa…</div></div>' +
+    '<div class="ria-ft" id="rag-ft"><div class="ria-disc">El agente evalúa con la normativa de <strong>' +
+      (regimen === "concertada" ? "escuela concertada" : regimen === "privada" ? "escuela privada" : "función pública (EBEP)") +
+      '</strong>. Recomendaciones orientativas; la decisión es tuya.</div></div>';
+  document.body.appendChild(w);
+  w.addEventListener("click", function (e) { if (e.target === w) w.remove(); });
+
+  if (!pend.length) {
+    document.getElementById("rag-bd").innerHTML = '<div class="ria-load">✅ No hay solicitudes pendientes de resolver.</div>';
+    document.getElementById("rag-ft").innerHTML = "";
+    return;
+  }
+
+  window._ragEval = {};
+  var bd = document.getElementById("rag-bd");
+  for (var i = 0; i < pend.length; i++) {
+    var a = pend[i];
+    bd.innerHTML = '<div class="ria-load">🤖 Evaluando ' + (i + 1) + ' / ' + pend.length + ' (' + _rrhhEscH(a._nombre || "profesor") + ')…</div>';
+    var j = await _rrhhEvaluarUna(a, regimen);
+    window._ragEval[a.id] = j;
+  }
+  _ragRender(pend);
+};
+
+async function _rrhhEvaluarUna(a, regimen) {
+  var dias = _rrhhDias(a);
+  var sys = "Eres un asistente jurídico-laboral experto en permisos y licencias del personal docente en España. " +
+    "Evalúa la solicitud conforme a: " + (_RRHH_REGIMENES[regimen] || regimen) + ". Recomendación ORIENTATIVA, no vinculante. " +
+    "Sé prudente: si faltan datos o es dudoso, recomienda \"revisar\". No inventes artículos exactos; usa referencias genéricas y márcalo en 'alerta'. " +
+    "Responde SOLO con JSON: {\"recomendacion\":\"aprobar|denegar|revisar\",\"permiso_tipo\":\"retribuido|no_retribuido|deber_inexcusable|baja_it|otro\",\"fundamento\":\"referencia orientativa\",\"requisitos\":[\"...\"],\"dias\":\"cómputo aplicable\",\"explicacion\":\"1-2 frases\",\"alerta\":\"qué verificar o vacío\"}";
+  var um = "Tipo: " + (AUSENCIA_TIPOS[a.tipo] || a.tipo) + ". Motivo: " + (a.motivo || "(no especificado)") +
+    ". Fechas: " + a.fecha + (a.fecha_fin && a.fecha_fin !== a.fecha ? " a " + a.fecha_fin : "") + " (" + dias + " día(s)).";
+  var resp = await _rrhhGeminiLegal(sys, um);
+  return _rrhhParseJson(resp) || { recomendacion: "revisar", explicacion: "No se pudo evaluar automáticamente; revísala a mano.", alerta: "" };
+}
+
+function _ragRender(pend) {
+  var bd = document.getElementById("rag-bd");
+  var ft = document.getElementById("rag-ft");
+  var nAprob = 0;
+  var cards = pend.map(function (a) {
+    var j = (window._ragEval || {})[a.id] || {};
+    var rec = (j.recomendacion || "revisar").toLowerCase();
+    if (rec === "aprobar") nAprob++;
+    var col = rec === "aprobar" ? ["#1e6b3a", "#e8f5e9", "Aprobar"]
+            : rec === "denegar" ? ["#b83232", "#fde8e8", "Denegar"]
+            : ["#9a6a1a", "#fff7e0", "Revisar"];
+    var dias = _rrhhDias(a);
+    return '<div class="rag-card" id="rag-card-' + a.id + '">' +
+      '<div class="rag-top">' +
+        '<div><strong>' + _rrhhEscH(a._nombre || "Profesor") + '</strong>' +
+          '<div class="ria-meta">' + (AUSENCIA_TIPOS[a.tipo] || a.tipo) + ' · ' + _rrhhEscH(a.fecha) +
+          (a.fecha_fin && a.fecha_fin !== a.fecha ? " → " + _rrhhEscH(a.fecha_fin) : "") + ' · ' + dias + ' día' + (dias !== 1 ? "s" : "") +
+          (a.motivo ? ' · “' + _rrhhEscH(a.motivo) + '”' : '') + '</div></div>' +
+        '<span class="rag-badge" style="background:' + col[1] + ';color:' + col[0] + ';">' + col[2] + '</span>' +
+      '</div>' +
+      (j.explicacion ? '<div class="rag-exp">' + _rrhhEscH(j.explicacion) + (j.fundamento ? ' <span style="color:var(--muted,#888);">(' + _rrhhEscH(j.fundamento) + ')</span>' : '') + '</div>' : '') +
+      (j.alerta ? '<div class="ria-alert" style="margin:6px 0;">⚠ ' + _rrhhEscH(j.alerta) + '</div>' : '') +
+      '<textarea class="ria-sel rag-msg" id="rag-msg-' + a.id + '" rows="2" placeholder="Mensaje para el profesor…">' + _rrhhEscH(_rrhhComponerMensaje(j)) + '</textarea>' +
+      '<div class="rag-actions">' +
+        '<button class="ria-btn ria-btn-ok" style="flex:1;" onclick="window._ragResolver(\'' + a.id + '\',\'aprobar\')">✓ Aprobar y enviar</button>' +
+        '<button class="ria-btn ria-btn-no" style="flex:1;" onclick="window._ragResolver(\'' + a.id + '\',\'rechazar\')">✕ Rechazar y enviar</button>' +
+      '</div></div>';
+  }).join("");
+  bd.innerHTML = cards;
+  if (ft) ft.innerHTML = (nAprob
+      ? '<button class="ria-btn ria-btn-ok" onclick="window._ragAprobarRecomendadas()">✓ Aprobar las ' + nAprob + ' recomendadas</button>'
+      : '<div class="ria-disc">Ninguna recomendación de aprobación automática; revísalas una a una.</div>');
+}
+
+window._ragResolver = async function (id, accion) {
+  var ta = document.getElementById("rag-msg-" + id);
+  var mensaje = ta ? ta.value.trim() : "";
+  var ok = await _rrhhAplicar(id, accion, mensaje);
+  var card = document.getElementById("rag-card-" + id);
+  if (ok && card) {
+    card.style.opacity = ".5";
+    card.querySelector(".rag-actions").innerHTML = '<span class="rag-resuelto" style="color:' + (accion === "aprobar" ? "#1e6b3a" : "#b83232") + ';">' + (accion === "aprobar" ? "✓ Aprobada y notificada" : "✕ Rechazada y notificada") + '</span>';
+    var tx = card.querySelector(".rag-msg"); if (tx) tx.disabled = true;
+  } else if (!ok) { showToast("No se pudo aplicar"); }
+};
+
+window._ragAprobarRecomendadas = async function () {
+  if (!confirm("¿Aprobar todas las solicitudes que el agente recomienda aprobar? Se notificará a cada profesor.")) return;
+  var ids = Object.keys(window._ragEval || {}).filter(function (id) {
+    var j = window._ragEval[id];
+    var card = document.getElementById("rag-card-" + id);
+    return j && (j.recomendacion || "").toLowerCase() === "aprobar" && card && card.style.opacity !== "0.5";
+  });
+  var n = 0;
+  for (var i = 0; i < ids.length; i++) { await window._ragResolver(ids[i], "aprobar"); n++; }
+  showToast(n ? "✅ " + n + " solicitud(es) aprobadas y notificadas" : "Nada que aprobar");
+  await _cargarAusenciasAdmin();
+};
 
 function filtrarRrhh(estado) {
   _rrhhFiltroEstado = estado;

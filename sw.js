@@ -1,6 +1,6 @@
 // Service Worker DidactIA — network-first para assets propios.
 // Bump CACHE en cada cambio estructural para purgar cachés antiguas.
-const CACHE = 'didactia-v15';
+const CACHE = 'didactia-v16';
 const PRECACHE = [
   '/app.html',
   '/index.html',
