@@ -107,14 +107,16 @@ async function _cargarMisAusencias() {
     var fechaStr = (a.fecha_fin && a.fecha_fin !== a.fecha)
       ? a.fecha + " → " + a.fecha_fin
       : (a.fecha || "—");
-    var rechazoInfo = (a.estado === "rechazada" && a.motivo_rechazo)
-      ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">Motivo: ' + a.motivo_rechazo + '</div>'
+    var nota = a.nota_resolucion || (a.estado === "rechazada" ? a.motivo_rechazo : "");
+    var notaCol = a.estado === "rechazada" ? "var(--red)" : "var(--txt2)";
+    var notaInfo = nota
+      ? '<div style="font-size:11px;color:' + notaCol + ';margin-top:3px;white-space:pre-wrap;">' + _rrhhEscH(nota) + '</div>'
       : "";
     return '<tr>' +
       '<td>' + fechaStr + '</td>' +
       '<td style="font-size:12px;">' + (AUSENCIA_TIPOS[a.tipo] || a.tipo || "—") + '</td>' +
       '<td style="font-size:12px;color:var(--txt3);">' + (a.motivo || "—") + '</td>' +
-      '<td>' + _badgeEstado(a.estado || "pendiente") + rechazoInfo + '</td>' +
+      '<td>' + _badgeEstado(a.estado || "pendiente") + notaInfo + '</td>' +
       '</tr>';
   }).join("");
 
@@ -376,12 +378,63 @@ window._rrhhLanzarEval = async function (id) {
     (j.fundamento ? '<div class="ria-fund"><span>Fundamento (orientativo)</span>' + _rrhhEscH(j.fundamento) + '</div>' : '') +
     (reqs.length ? '<div class="ria-reqs"><span>Requisitos</span><ul>' + reqs.map(function (x) { return '<li>' + _rrhhEscH(x) + '</li>'; }).join("") + '</ul></div>' : '') +
     (j.alerta ? '<div class="ria-alert">⚠ ' + _rrhhEscH(j.alerta) + '</div>' : '') +
+    '<label class="ria-fl" style="margin-top:14px;">✉️ Mensaje que recibirá el profesor (editable)</label>' +
+    '<textarea id="ria-msg" class="ria-sel" rows="4" style="resize:vertical;line-height:1.45;">' + _rrhhEscH(_rrhhComponerMensaje(j)) + '</textarea>' +
     '<div class="ria-actions">' +
-      '<button class="ria-btn ria-btn-ok" onclick="document.getElementById(\'rrhh-ia-modal\').remove();aprobarAusencia(\'' + id + '\')">✓ Aprobar solicitud</button>' +
-      '<button class="ria-btn ria-btn-no" onclick="document.getElementById(\'rrhh-ia-modal\').remove();rechazarAusencia(\'' + id + '\')">✕ Rechazar solicitud</button>' +
+      '<button class="ria-btn ria-btn-ok" onclick="window._rrhhResolver(\'' + id + '\',\'aprobar\')">✓ Aprobar y enviar</button>' +
+      '<button class="ria-btn ria-btn-no" onclick="window._rrhhResolver(\'' + id + '\',\'rechazar\')">✕ Rechazar y enviar</button>' +
     '</div>';
   if (out) out.innerHTML = html;
 };
+
+// Compone el mensaje (editable) que recibirá el profesor a partir de la evaluación IA.
+function _rrhhComponerMensaje(j) {
+  var partes = [];
+  if (j.explicacion) partes.push(j.explicacion);
+  if (j.fundamento) partes.push("Fundamento: " + j.fundamento);
+  var reqs = Array.isArray(j.requisitos) ? j.requisitos.filter(Boolean) : [];
+  if (reqs.length) partes.push("Requisitos: " + reqs.join("; "));
+  return partes.join("\n");
+}
+
+// Aprueba/rechaza guardando el mensaje al profesor y notificándole (push).
+window._rrhhResolver = async function (id, accion) {
+  var a = (_rrhhAusencias || []).find(function (x) { return String(x.id) === String(id); });
+  if (!a) return;
+  if (accion === "aprobar" && a.estado === "aprobada") { alert("Esta ausencia ya estaba aprobada."); return; }
+  var ta = document.getElementById("ria-msg");
+  var mensaje = ta ? ta.value.trim() : "";
+
+  var payload = accion === "aprobar"
+    ? { estado: "aprobada", aprobada_por: currentUser.id, nota_resolucion: mensaje || null }
+    : { estado: "rechazada", motivo_rechazo: mensaje || null, nota_resolucion: mensaje || null };
+  var upd = await sb.from("ausencias_profesor").update(payload).eq("id", id);
+  if (upd.error) { alert("Error: " + upd.error.message); return; }
+
+  if (accion === "aprobar") {
+    var nombreProf = await _getNombreProfesor(a.profile_id);
+    if (nombreProf) { try { await _crearSustituciones(a, nombreProf); } catch (e) {} }
+  }
+  _rrhhNotificarProfesor(a, accion === "aprobar" ? "aprobada" : "rechazada", mensaje);
+  var m = document.getElementById("rrhh-ia-modal"); if (m) m.remove();
+  if (typeof showToast === "function") showToast(accion === "aprobar" ? "✅ Aprobada y notificada al profesor" : "Rechazada y notificada al profesor");
+  await _cargarAusenciasAdmin();
+};
+
+// Notifica al profesor la resolución de su ausencia (push, fire-and-forget).
+async function _rrhhNotificarProfesor(a, estado, mensaje) {
+  try {
+    if (!a || !a.profile_id) return;
+    var titulo = estado === "aprobada" ? "✅ Ausencia aprobada" : "❌ Ausencia no aprobada";
+    var base = (estado === "aprobada" ? "Tu solicitud del " + a.fecha + " ha sido aprobada." : "Tu solicitud del " + a.fecha + " no ha sido aprobada.");
+    var body = base + (mensaje ? " " + mensaje.replace(/\s+/g, " ").slice(0, 160) : "");
+    await fetch(SB_URL + "/functions/v1/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON_KEY, "apikey": ANON_KEY },
+      body: JSON.stringify({ user_ids: [a.profile_id], title: titulo, body: body, tag: "rrhh", url: "/app.html" }),
+    });
+  } catch (e) {}
+}
 
 function _rrhhEnsureStyles() {
   if (document.getElementById("ria-styles")) return;
@@ -630,19 +683,23 @@ async function aprobarAusencia(id) {
   } else {
     alert("✅ Ausencia aprobada.\nNo se encontró nombre de profesor para generar sustituciones automáticas.");
   }
+  _rrhhNotificarProfesor(ausencia, "aprobada", "");
 
   await _cargarAusenciasAdmin();
 }
 
 async function rechazarAusencia(id) {
-  var motivo = prompt("Motivo del rechazo (opcional):");
+  var motivo = prompt("Motivo del rechazo (se enviará al profesor):");
   if (motivo === null) return;
+  motivo = motivo.trim();
 
   var upd = await sb.from("ausencias_profesor")
-    .update({ estado: "rechazada", motivo_rechazo: motivo.trim() || null })
+    .update({ estado: "rechazada", motivo_rechazo: motivo || null, nota_resolucion: motivo || null })
     .eq("id", id);
 
   if (upd.error) { alert("Error al rechazar: " + upd.error.message); return; }
+  var a = (_rrhhAusencias || []).find(function (x) { return String(x.id) === String(id); });
+  if (a) _rrhhNotificarProfesor(a, "rechazada", motivo);
   await _cargarAusenciasAdmin();
 }
 

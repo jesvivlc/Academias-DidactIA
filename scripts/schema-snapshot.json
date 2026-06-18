@@ -2,7 +2,7 @@
   "_meta": {
     "description": "Snapshot de columnas por tabla (esquema public) para scripts/verify-columns.js. Regenerar con: node scripts/verify-columns.js --refresh (requiere SUPABASE_MGMT_TOKEN).",
     "projectRef": "rflfsbrdmgaidhvbuvwb",
-    "generatedAt": "2026-06-17",
+    "generatedAt": "2026-06-18",
     "tableCount": 72
   },
   "tables": {
@@ -109,6 +109,7 @@
       "id",
       "motivo",
       "motivo_rechazo",
+      "nota_resolucion",
       "profile_id",
       "tipo",
       "tramo",
