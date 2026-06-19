@@ -1139,8 +1139,8 @@ footer{
   <div class="lp-modules-intro">
     <div>
       <div class="s-eyebrow reveal">Lo que incluye</div>
-      <h2 class="reveal">Ocho módulos.<br><em>Un solo acceso.</em></h2>
-      <p class="s-sub reveal" style="margin-bottom:0">Diseñados para resolver los problemas más frecuentes en la gestión diaria de cualquier centro.</p>
+      <h2 class="reveal">Más de 25 módulos.<br><em>Un solo acceso.</em></h2>
+      <p class="s-sub reveal" style="margin-bottom:0">Desde la guardia de mañana hasta el boletín de fin de trimestre — todo en la misma plataforma, sin integraciones ni papel.</p>
     </div>
 
     <!-- Orbital visual -->
@@ -1179,10 +1179,10 @@ footer{
         <span class="lp-orbital__num">03</span>Comedor
       </div>
       <div class="lp-orbital__chip" style="bottom:7%;right:3%">
-        <span class="lp-orbital__num">04</span>Admin
+        <span class="lp-orbital__num">04</span>Agentes IA
       </div>
       <div class="lp-orbital__chip" style="top:50%;right:3%;transform:translateY(-50%)">
-        <span class="lp-orbital__num">05</span>App PWA
+        <span class="lp-orbital__num">05</span>Familias
       </div>
     </div>
   </div>
@@ -1236,6 +1236,35 @@ footer{
         <h3>Comunicados internos</h3>
         <p>Avisos y mensajes internos con plantillas y enrutamiento por destinatario.</p>
         <span class="modulo-tag">Con plantillas</span>
+      </div>
+      <div class="modulo-item reveal" onclick="selectModulo(8,this)">
+        <div class="m-num">09</div>
+        <h3>Planner de horarios</h3>
+        <p>Generador con IA y backtracking CSP. Tablero drag &amp; drop y publicación directa.</p>
+        <span class="modulo-tag">Con IA</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-1" onclick="selectModulo(9,this)">
+        <div class="m-num">10</div>
+        <h3>Calificaciones y boletines</h3>
+        <p>Notas por evaluación, observaciones generadas por IA y boletín PDF en un clic.</p>
+        <span class="modulo-tag">PDF instant</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-2" onclick="selectModulo(10,this)">
+        <div class="m-num">11</div>
+        <h3>Salidas didácticas</h3>
+        <p>Autorización digital de familias, control de pagos, lista de embarque y cocina.</p>
+        <span class="modulo-tag">Sin autorizaciones en papel</span>
+      </div>
+      <div class="modulo-item reveal reveal-delay-3" onclick="selectModulo(11,this)">
+        <div class="m-num">12</div>
+        <h3>Agentes IA autónomos</h3>
+        <p>Cuatro agentes que analizan y proponen: guardias, RRHH, comunicados y orientación.</p>
+        <span class="modulo-tag">Nuevo</span>
+      </div>
+      <div class="modulo-item reveal" style="opacity:.55;cursor:default;pointer-events:none">
+        <div class="m-num" style="background:var(--off);color:var(--txt3);font-size:16px">+</div>
+        <h3 style="color:var(--txt2)">Y 13 módulos más</h3>
+        <p>Agenda · Tutorías · Orientación · Encuestas · Documentos · Mensajería · Analytics · Recursos · Espacios · Calidad · IB · Asistencia · Alumnos</p>
       </div>
     </div>
     <div class="modulo-preview reveal" id="modulo-preview">
@@ -1464,6 +1493,129 @@ footer{
         </div>
       </div>
 
+      <!-- SCREEN 8: Planner de horarios -->
+      <div class="mock-screen" id="screen-8">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Planner · Tablero</span>
+          <span class="mock-topbar-badge">2ºESO A</span>
+        </div>
+        <div class="mock-content">
+          <table style="width:100%;border-collapse:collapse;font-size:10.5px">
+            <tr>
+              <td style="padding:2px 4px;color:var(--txt3);font-size:9px;width:34px"></td>
+              <td style="padding:2px 4px;color:var(--txt3);font-weight:600;text-align:center;font-size:10px">Lun</td>
+              <td style="padding:2px 4px;color:var(--txt3);font-weight:600;text-align:center;font-size:10px">Mar</td>
+              <td style="padding:2px 4px;color:var(--txt3);font-weight:600;text-align:center;font-size:10px">Mié</td>
+              <td style="padding:2px 4px;color:var(--txt3);font-weight:600;text-align:center;font-size:10px">Jue</td>
+              <td style="padding:2px 4px;color:var(--txt3);font-weight:600;text-align:center;font-size:10px">Vie</td>
+            </tr>
+            <tr>
+              <td style="padding:3px 4px;font-size:9px;color:var(--txt3)">08:50</td>
+              <td style="padding:2px"><div style="background:#dbeafe;border-radius:4px;padding:4px 5px;font-size:10px;color:#1e40af;font-weight:500;text-align:center">Mates</div></td>
+              <td style="padding:2px"><div style="background:#dcfce7;border-radius:4px;padding:4px 5px;font-size:10px;color:#166534;font-weight:500;text-align:center">Lengua</div></td>
+              <td style="padding:2px"><div style="background:#fef3c7;border-radius:4px;padding:4px 5px;font-size:10px;color:#92400e;font-weight:500;text-align:center">Inglés</div></td>
+              <td style="padding:2px"><div style="background:#fce7f3;border-radius:4px;padding:4px 5px;font-size:10px;color:#831843;font-weight:500;text-align:center">C.Nat</div></td>
+              <td style="padding:2px"><div style="background:#dbeafe;border-radius:4px;padding:4px 5px;font-size:10px;color:#1e40af;font-weight:500;text-align:center">Mates</div></td>
+            </tr>
+            <tr>
+              <td style="padding:3px 4px;font-size:9px;color:var(--txt3)">09:40</td>
+              <td style="padding:2px"><div style="background:#ede9fe;border-radius:4px;padding:4px 5px;font-size:10px;color:#5b21b6;font-weight:500;text-align:center">Física</div></td>
+              <td style="padding:2px"><div style="background:#fef3c7;border-radius:4px;padding:4px 5px;font-size:10px;color:#92400e;font-weight:500;text-align:center">Inglés</div></td>
+              <td style="padding:2px"><div style="background:#dcfce7;border-radius:4px;padding:4px 5px;font-size:10px;color:#166534;font-weight:500;text-align:center">Lengua</div></td>
+              <td style="padding:2px"><div style="background:#dbeafe;border-radius:4px;padding:4px 5px;font-size:10px;color:#1e40af;font-weight:500;text-align:center">Mates</div></td>
+              <td style="padding:2px"><div style="background:#fce7f3;border-radius:4px;padding:4px 5px;font-size:10px;color:#831843;font-weight:500;text-align:center">C.Nat</div></td>
+            </tr>
+            <tr>
+              <td style="padding:3px 4px;font-size:9px;color:var(--txt3)">☕</td>
+              <td colspan="5" style="padding:2px"><div style="background:var(--off);border-radius:4px;padding:3px 5px;font-size:9px;color:var(--txt3);text-align:center">Recreo 11:20–11:50</div></td>
+            </tr>
+            <tr>
+              <td style="padding:3px 4px;font-size:9px;color:var(--txt3)">11:50</td>
+              <td style="padding:2px"><div style="background:#dcfce7;border-radius:4px;padding:4px 5px;font-size:10px;color:#166534;font-weight:500;text-align:center">Lengua</div></td>
+              <td style="padding:2px"><div style="background:#ede9fe;border-radius:4px;padding:4px 5px;font-size:10px;color:#5b21b6;font-weight:500;text-align:center">Física</div></td>
+              <td style="padding:2px"><div style="background:#dbeafe;border-radius:4px;padding:4px 5px;font-size:10px;color:#1e40af;font-weight:500;text-align:center">Mates</div></td>
+              <td style="padding:2px"><div style="background:#fef3c7;border-radius:4px;padding:4px 5px;font-size:10px;color:#92400e;font-weight:500;text-align:center">Inglés</div></td>
+              <td style="padding:2px"><div style="background:#ede9fe;border-radius:4px;padding:4px 5px;font-size:10px;color:#5b21b6;font-weight:500;text-align:center">Física</div></td>
+            </tr>
+          </table>
+          <div style="margin-top:10px;padding:8px 10px;background:var(--off);border-radius:6px;font-size:11px;color:var(--txt2)">✨ Generado con IA — sin conflictos de aula ni profesor · <span style="color:#0e2a4a;font-weight:500;cursor:pointer">Publicar horario →</span></div>
+        </div>
+      </div>
+
+      <!-- SCREEN 9: Calificaciones -->
+      <div class="mock-screen" id="screen-9">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Calificaciones · 1ºBAC A</span>
+          <span class="mock-topbar-badge">2ª Evaluación</span>
+        </div>
+        <div class="mock-content">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div style="flex:1;background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--txt3)">Lengua Castellana</div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--txt3);white-space:nowrap">2ª Eval.</div>
+          </div>
+          <table class="mock-table">
+            <tr><th>Alumno</th><th>Nota</th><th>Observación IA</th></tr>
+            <tr><td>Ana Gómez</td><td><span style="color:#166534;font-weight:600">8.5</span></td><td style="font-size:10px;color:var(--txt3)">Buena progresión...</td></tr>
+            <tr><td>Borja Más</td><td><span style="color:#dc2626;font-weight:600">4.0</span></td><td style="font-size:10px;color:var(--txt3)">Necesita refuerzo...</td></tr>
+            <tr><td>Clara Ruiz</td><td><span style="color:#166534;font-weight:600">9.0</span></td><td style="font-size:10px;color:var(--txt3)">Excelente nivel...</td></tr>
+            <tr><td>David Puig</td><td><span style="color:#166534;font-weight:600">7.0</span></td><td style="font-size:10px;color:var(--txt3)">Mejora constante...</td></tr>
+          </table>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <div style="flex:1;background:#0e2a4a;color:white;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:500;text-align:center">Guardar notas</div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:6px 12px;font-size:11px;color:var(--txt2);text-align:center;white-space:nowrap">⬇ Boletín PDF</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 10: Salidas didácticas -->
+      <div class="mock-screen" id="screen-10">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Salida · Museu de Ciències</span>
+          <span class="mock-topbar-badge">2ºESO · 28 may</span>
+        </div>
+        <div class="mock-content">
+          <div class="mock-stat-row">
+            <div class="mock-stat"><div class="mock-stat-n">42</div><div class="mock-stat-l">Total</div></div>
+            <div class="mock-stat"><div class="mock-stat-n" style="color:#166534">38</div><div class="mock-stat-l">Autorizados</div></div>
+            <div class="mock-stat"><div class="mock-stat-n" style="color:#dc2626">4</div><div class="mock-stat-l">Pendientes</div></div>
+          </div>
+          <table class="mock-table" style="margin-top:10px">
+            <tr><th>Alumno</th><th>Autorizado</th><th>Pagado</th></tr>
+            <tr><td>Ana Gómez</td><td><span class="mock-pill ok">Sí</span></td><td><span class="mock-pill ok">Sí</span></td></tr>
+            <tr><td>Borja Más</td><td><span class="mock-pill pend">No</span></td><td><span class="mock-pill pend">No</span></td></tr>
+            <tr><td>Clara Ruiz</td><td><span class="mock-pill ok">Sí</span></td><td><span class="mock-pill ok">Sí</span></td></tr>
+          </table>
+          <div style="margin-top:10px;padding:8px 10px;background:var(--off);border-radius:6px;font-size:11px;color:var(--txt2)">💬 Las familias autorizan desde la app — sin formularios en papel. Las autorizaciones llegan en tiempo real.</div>
+        </div>
+      </div>
+
+      <!-- SCREEN 11: Agentes IA -->
+      <div class="mock-screen" id="screen-11">
+        <div class="mock-topbar">
+          <span class="mock-topbar-title">Agentes IA · Centro</span>
+          <span class="mock-topbar-badge">4 agentes</span>
+        </div>
+        <div class="mock-content">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:600;color:#0e2a4a;margin-bottom:3px">🛡 Agente de sustituciones</div>
+              <div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Propone quién cubre cada tramo — prioriza guardias por equidad.</div>
+              <span style="background:#dbeafe;color:#1e40af;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:500">3 tramos sin cubrir hoy</span>
+            </div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:600;color:#0e2a4a;margin-bottom:3px">📋 Agente de RRHH</div>
+              <div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Evalúa solicitudes de ausencia contra EBEP/convenio. Recomienda aprobar o denegar.</div>
+              <span style="background:#fef3c7;color:#92400e;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:500">2 solicitudes pendientes</span>
+            </div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:600;color:#0e2a4a;margin-bottom:3px">🧭 Agente de orientación</div>
+              <div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Detecta alumnos en riesgo cruzando asistencia, notas e incidencias abiertas.</div>
+              <span style="background:#fce7f3;color:#831843;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:500">1 alerta activa</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
@@ -1652,9 +1804,17 @@ footer{
 /* ── Modulo tabs ── */
 const moduloData=[
   {icon:'💬',title:'Asistente IA conversacional',desc:'Cualquier miembro de la comunidad educativa puede preguntar en lenguaje natural. El sistema responde con datos reales del centro, filtrados según el rol del usuario.',features:['Horarios de alumnos y profesores','Información del centro por rol','Búsqueda directa de alumnos','Acceso para familias, profesores y dirección']},
-  {icon:'🔄',title:'Guardias y sustituciones',desc:'Visualiza en tiempo real qué profesores están libres en cada tramo horario. Gestiona sustituciones, consulta el historial y expórtalo cuando necesites.',features:['Profesores libres ahora mismo','Asignación de guardias','Historial de sustituciones','Exportación a CSV']},
-  {icon:'🍽️',title:'Comedor escolar',desc:'Control de asistencia diaria sin papel. Filtra por grupo, ve los datos históricos y exporta informes para la cocina o la administración del centro.',features:['Registro diario de asistencia','Filtro por grupo y fecha','Toast de confirmación instantáneo','Exportación de informes']},
-  {icon:'⚙️',title:'Panel de administración',desc:'Gestiona usuarios, roles e invitaciones. Configura los módulos activos para cada centro y personaliza la identidad visual con los colores y logo propios.',features:['Gestión de roles e invitaciones','Módulos activables por centro','Identidad visual personalizada','Vista multicentro para grupos']}
+  {icon:'🔄',title:'Guardias y sustituciones',desc:'Visualiza en tiempo real qué profesores están libres en cada tramo horario. Gestiona sustituciones, consulta el historial y expórtalo cuando necesites.',features:['Profesores libres ahora mismo','Asignación de guardias','Historial de sustituciones','Notificación automática por email']},
+  {icon:'🍽️',title:'Comedor escolar',desc:'Control de asistencia diaria sin papel. Filtra por grupo, ve los datos históricos y exporta informes para la cocina o la administración del centro.',features:['Registro diario de asistencia','Alergias y dietas por alumno','Menú semanal editable','Informe contable mensual en PDF']},
+  {icon:'⚙️',title:'Panel de administración',desc:'Gestiona usuarios, roles e invitaciones. Configura los módulos activos para cada centro y personaliza la identidad visual con los colores y logo propios.',features:['Gestión de roles e invitaciones','Identidad visual personalizada','Vista multicentro','Onboarding de nuevo centro en minutos']},
+  {icon:'📱',title:'App móvil (PWA)',desc:'Instalable en cualquier smartphone sin pasar por la App Store. Siempre actualizada, con notificaciones push para familias y profesores.',features:['Sin App Store ni Google Play','Notificaciones push en tiempo real','Funciona sin conexión','Compatible iOS y Android']},
+  {icon:'👔',title:'RRHH y ausencias',desc:'Justificantes, aprobación de ausencias y generación automática de sustituciones cuando se aprueba una baja. Copiloto legal IA incluido.',features:['Solicitud de ausencias con justificante','Aprobación genera sustituciones automáticamente','Copiloto IA: EBEP y convenio colectivo','Notificación automática al solicitante']},
+  {icon:'⚠️',title:'Incidencias de convivencia',desc:'Registro tipificado con IA según la normativa de 5 CCAA. Protocolo PREVI integrado. Notificación automática a jefatura en incidencias graves.',features:['Tipificación legal IA (5 CCAA)','Protocolo PREVI integrado','Notificación automática a jefatura','Informe borrador editable']},
+  {icon:'📢',title:'Comunicados internos',desc:'Avisos y mensajes internos con plantillas, enrutamiento por rol o grupo, y push a familias. Multi-idioma con traducción IA al leer.',features:['Envío por email y push','Enrutamiento por rol/grupo','Plantillas predefinidas','Traducción automática para familias']},
+  {icon:'📅',title:'Planner de horarios IA',desc:'Generador automático de horarios con backtracking CSP y heurísticas neuroeducativas. Tablero drag & drop con validación de hard constraints en tiempo real.',features:['Motor CSP sin conflictos','Tablero drag & drop','Vista cross-grupo por profesor','Publicación directa en la app']},
+  {icon:'📝',title:'Calificaciones y boletines',desc:'Gradebook por evaluación, observaciones generadas por IA y boletín PDF en un clic para familias y dirección.',features:['Notas editables por evaluación','Comentarios IA por alumno','Boletín PDF con logo del centro','Vista familia de solo lectura']},
+  {icon:'🚌',title:'Salidas didácticas',desc:'Gestión digital completa: autorización de familias, control de pagos, lista de embarque, menú de cocina y circular generada por IA.',features:['Autorización digital de familias','Control de pagos','Lista de embarque (check-in)','Circular generada por IA']},
+  {icon:'🤖',title:'Agentes IA autónomos',desc:'Cuatro agentes que analizan y proponen: guardias, RRHH, comunicados y orientación. Modo asistido: el equipo directivo confirma antes de ejecutar.',features:['Agente de guardias y sustituciones','Agente de RRHH/permisos','Agente de comunicación a familias','Agente de riesgo académico']}
 ];
 
 function selectModulo(idx,el){
