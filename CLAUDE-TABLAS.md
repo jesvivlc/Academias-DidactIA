@@ -136,12 +136,16 @@
 | Salidas Didácticas | ✅ (autorización) | ✅ | ✅ | ✅ |
 | Alumnos (directorio + ficha) | — | ✅ | ✅ | ✅ (+orientador/director/jefatura) |
 | Agenda del Centro | ✅ | ✅ | ✅ (+ crear eventos) | ✅ |
+| Tutorías (reserva de citas) | ✅ (solicitar+cancelar) | ✅ (disponibilidad+confirmar) | ✅ (read-only) | ✅ (+director/jefatura) |
+| Mensajería familia↔centro | ✅ (sus hijos) | ✅ | ✅ | ✅ |
 | Encuestas | ✅ (responder) | — | ✅ (gestión) | ✅ (+director/jefatura) |
 | Menú comedor | ✅ (home, lectura) | ✅ (lectura) | ✅ (edición) | ✅ |
 | Recursos (préstamo) | — | ✅ | ✅ | ✅ (+orientador/director/jefatura) |
 | Actas (resumen IA claustros) | — | — | ✅ | ✅ (+director/jefatura) |
 | Documentos del centro | ✅ (según visible_para) | ✅ | ✅ (+ subir) | ✅ |
 | Participación familiar (pill en Análisis) | — | — | ✅ | ✅ (+director/jefatura) |
+| Agentes IA (panel + 4 agentes asistidos) | — | — | ✅ | ✅ (+director/jefatura) |
+| Control asistencia aula (Pasar lista) | — | ✅ | ✅ | ✅ (+director/jefatura) |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
 
