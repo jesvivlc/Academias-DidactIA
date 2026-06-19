@@ -325,12 +325,13 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `supabase/migrations/mensajes.sql` — tabla `mensajes` + RLS (módulo Mensajería familia↔centro). Sin esto el módulo falla con error 42P01.
-> - `supabase/migrations/personas_autorizadas.sql` — tabla `personas_autorizadas` (ficha de alumno → personas autorizadas a recogerle). Sin esto la sección de personas autorizadas en Alumnos falla.
-> - `supabase/migrations/profiles_idioma.sql` — `ALTER TABLE profiles ADD COLUMN idioma text DEFAULT 'es'`. Sin esto la traducción de comunicados falla silenciosamente.
-> - `supabase/migrations/asistencia_comedor_tupper.sql` — `ALTER TABLE asistencia_comedor ADD COLUMN tupper boolean DEFAULT false`. Sin esto el toggle de 3 estados del comedor falla al leer/escribir.
+> - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/mensajes.sql` — tabla `mensajes` + RLS `msg_familia`/`msg_staff` + 2 índices (módulo Mensajería familia↔centro). ✅ aplicado 2026-06-19 vía Management API (`ejecutar-migraciones-laptop.mjs`)
+> - `supabase/migrations/personas_autorizadas.sql` — tabla `personas_autorizadas` + RLS `pa_familia`/`pa_staff` + índice (personas autorizadas a recoger al alumno, ficha Alumnos). ✅ aplicado 2026-06-19 vía Management API
+> - `supabase/migrations/profiles_idioma.sql` — `profiles.idioma text DEFAULT 'es'` (idioma preferido para traducción automática de comunicados). ✅ aplicado 2026-06-19 vía Management API
+> - `supabase/migrations/asistencia_comedor_tupper.sql` — `asistencia_comedor.tupper bool DEFAULT false` (toggle 3 estados del comedor: No / Tupper / Menú). ✅ aplicado 2026-06-19 vía Management API
 > - `supabase/migrations/20260619_cron_agente_cobertura.sql` — pg_cron `agente-cobertura-diaria` (`0 6 * * 1-5`) → EF `agente-cobertura-diaria` (plan de cobertura del día por email+push, modo preparar+avisar). Programado solo para Buñol. ✅ aplicado 2026-06-19 vía Management API. **Nota:** `ausencias_profesor.nota_resolucion` (mensaje de resolución al profesor) también añadida vía Management API el 2026-06-18.
 > - `supabase/migrations/comunicado_lecturas.sql` — tabla `comunicado_lecturas` (registro central de lectura de comunicados) + UNIQUE(comunicado_id,user_id) + RLS (propio rw + staff read) ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/documentos_centro.sql` — tabla `documentos_centro` (biblioteca de circulares/normativa/PGA) + RLS `docs_read`/`docs_manage` + bucket privado `documentos-centro` + 4 políticas de Storage por centro ✅ aplicado 2026-06-17 vía Management API
@@ -376,6 +377,7 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-19 21:01` · `70bed6f` — docs: migraciones laptop pendientes + módulos tabla (tutorias/mensajes/agentes/pasar lista)
 - `2026-06-19 20:55` · `5eab7eb` — docs(CLAUDE.md): añadir entrada changelog sesión docs 2026-06-19
 - `2026-06-19 19:38` · `c3232f7` — docs(CLAUDE): sesión 2026-06-19 — 11 módulos nuevos + recap laptop (agentes, mensajes, encuestas, menú, recursos, actas, documentos, plancobertura, prevision, participacion, + updates comedor/tutorias/rrhh/orientacion/calificaciones)
 - `2026-06-19` · `6ff0a1f` — docs: **agente de cobertura programado** + cron aplicado (`20260619_cron_agente_cobertura.sql`). EF `agente-cobertura-diaria` desplegada en Supabase; pg_cron a las 06:00 UTC (08:00 Madrid) L-V para IES Buñol. No asigna — detecta ausencias, propone sustitutos, envía email HTML + push a dirección.
