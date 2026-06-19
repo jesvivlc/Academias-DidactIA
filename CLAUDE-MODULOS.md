@@ -46,6 +46,9 @@
   - `_comedorEditarNota(alumnoId)`: modal para editar `nota_dia` del día (UPSERT en `asistencia_comedor`); si no existe registro lo crea
   - `toggleAsistencia`: si el alumno tiene alergia o dieta y se marca como asistente → toast rojo 5s con el aviso (no bloquea el toggle)
   - `_cEsc()`: helper XSS local (no usa el global `_esc` que es de `users.js`)
+- **Estado "Con tupper"** (`asistencia_comedor.tupper bool DEFAULT false`, 2026-06-17): toggle de **3 estados** en la UI: ✗ No come / 🥡 Con tupper / ✓ Menú del comedor. `toggleAsistencia` cicla entre los tres estados (no come → tupper → menú → no come). Badges diferenciados en la lista. El campo `tupper` se añade por migración `asistencia_comedor_tupper.sql`.
+- **Informe contable mensual** (`_comedorInformeContable`): PDF/Excel del histórico de asistencia mensual con subtotales por grupo, distinción menú/tupper, y total facturado (precio/día configurable en `info_centro`).
+- **Menú semanal** visible en la home de familias via `window.renderMenuComedor(el)` (ver módulo `menu.js`).
 
 ### Sustituciones (admin.js) — vistas diferenciadas por rol
 
@@ -128,6 +131,7 @@
 - Badges: ⏳ pendiente · ✓ aprobada · ✕ rechazada
 - Helpers: `_getCursoEscolar()`, `_getTrimestreActual()` — usados también desde `admin.js` (globales)
 - **IMPORTANTE:** `ausencias_profesor` NO tiene columnas `trabajo_alumnos` ni `justificante_url` — el CLAUDE.md anterior estaba incorrecto. Las instrucciones van en `sustituciones.observaciones`; los justificantes en Storage con path `justificantes/{ctrId}/{sustId}.{ext}` marcados via `§JUST§` en observaciones
+- **Copiloto legal IA** (`_rrhhEvaluarConIA`, 2026-06-18): botón "✨ Evaluar con IA" en cada solicitud pendiente (vista admin). Gemini analiza tipo+motivo+días contra EBEP/convenio → devuelve `{recomendacion, articulo_aplicado, mensaje_profesor}`. Se muestra en un panel expandible antes de que el admin pulse Aprobar/Rechazar. El mensaje redactado para el profesor se incluye en el email de notificación de resolución (`notify-ausencia`). El agente no actúa por sí solo.
 
 ### Incidencias — vistas diferenciadas por rol (incidencias.js)
 
@@ -166,6 +170,8 @@
 - `_comCheckAndBadge()`: ejecutado 1200ms tras login — fetch solo de IDs (limit 500), actualiza badge, inicia realtime
 - EF `send-comunicado`: enruta por `destinatarios`; para `grupo:XXXX` hace join `alumnos→familia_alumno→profiles`; envía un email por destinatario vía Resend
 - **Validación:** si `destinatarios = grupo_especifico` y el campo grupo está vacío → bloquea el envío con error visible (no cae silenciosamente a "todos")
+- **Registro de lecturas** (`tabla comunicado_lecturas`, 2026-06-18): al abrir el modal detalle → UPSERT en `comunicado_lecturas` (UNIQUE comunicado_id+user_id). Alimenta el dashboard de participación familiar (`js/participacion.js`). Badge "No leído" sigue usando localStorage como cache rápida; la tabla es la fuente de verdad.
+- **Multi-idioma** (2026-06-17): campo `idioma` en `profiles` (configurable por la familia en la vista Comunicados). Al abrir el detalle de un comunicado, si `profiles.idioma` difiere del español → Gemini traduce el cuerpo al vuelo (solo en cliente, no persiste). Familia puede cambiar su idioma preferido desde la misma vista.
 
 ### Planner — generador de horarios (planner.js)
 - Tab **"Planner"** visible solo para `admin` y `superadmin`; `#tab-planner` y `#nav-planner` sincronizados en `updateBentoDashboard()` para que aparezca en el drawer Más móvil
@@ -273,6 +279,7 @@
 - **Estadísticas** (`oriEstadisticas`): 6 bloques (4 tarjetas, barras por medida, línea de alertas 6m por nivel, donut estado de informes, top-10 cuestionarios pendientes, trámites por estado) con Chart.js; export **PDF** (tablas) y **Excel** (6 hojas).
 - **Notificaciones push** (helper `_oriPush` → EF `send-push`, silencioso/no bloqueante): cuestionario completado→orientador; nueva alerta→orientador/jefatura/director/admin; informe validado→director/admin; trámite `visible_familia`→familias (`familia_alumno.profile_id`).
 - **Portal de familias** (`oriRenderTramitesFamilia`): sección autocontenida inyectada en la home de la familia (MutationObserver, sin tocar otros archivos); muestra trámites de hijos vinculados con `visible_familia=true` — **sin datos clínicos**. Lee vía RPC `familia_tramites_visibles()` (SECURITY DEFINER); `expedientes_orientacion`/`tramites_orientacion` son staff-only por RLS (la familia no las consulta directamente).
+- **Detección de riesgo académico** (2026-06-17): botón "🎓 Detectar riesgo académico" en el Panel de riesgo (junto al botón de riesgo psicosocial). Cruza `asistencia_clase` (% de ausencias en los últimos 30d), `calificaciones` (notas < 5) e `incidencias` abiertas, agrupando por `alumno_id`. Genera lista ordenada por severidad combinada. Gemini redacta un borrador de alerta por cada caso → checkboxes → INSERT solo los confirmados en `alertas_orientacion`.
 - **Responsive** (CSS inyectado una vez, sin tocar `styles.css`): tabla→tarjetas en <768px, pestañas→`<select>`, modales 95%+×, FAB "Nuevo expediente", ellipsis. Toasts verde/rojo reutilizan `_calToast`/`showToast`.
 
 ### Calificaciones — gradebook (calificaciones.js)
@@ -289,6 +296,7 @@
 - **Vista profesor — push al guardar**: `calGuardar()` llama `_calNotificarFamilias` tras UPSERT — diffa `data-nota-orig` vs valor actual, avisa solo si cambió (fire-and-forget vía EF `send-push`). El push dice "📝 Nueva calificación" sin incluir el valor (la familia lo consulta en la app)
 - **Exportación**: `calExportarCSV()` → xlsx con SheetJS; `calExportarPDF()` → PDF landscape jsPDF (cargas on-demand)
 - **Superadmin**: selector de centro `cal-f-centro` → `calChangeCentro(id)` recarga datos del centro seleccionado
+- **Comentarios de boletín con IA** (`_calComentariosIA`, 2026-06-17): botón "✨ Generar comentarios" en la vista profesor. Gemini genera un comentario personalizado por alumno (2-3 frases) basado en notas y asignatura, en lotes de 20 para evitar timeout. Empareja por número/índice de alumno. Cada comentario es editable antes de guardar en `calificaciones.observaciones` (campo añadido al boletín PDF).
 - **CSS** (`.cal-list-panel`, `.cal-filtros-wrap`, `.cal-list-scroll`, `.cal-detail-panel`, `.cal-alumno-empty`, `.cal-alumno-content`; hover/sel rows en `#cal-admin-tabla`; responsive ≤900px oculta panel derecho)
 - **Importante**: `#panel-calificaciones` tiene `flex-direction:column` + `overflow:hidden`; `#cal-container` tiene `flex:1;min-height:0;overflow:hidden;display:flex;` — `initCalificaciones` resetea `flexDirection='column'` antes de cada vista y `_calRenderAdmin` lo sobrescribe a `'row'`
 
@@ -309,7 +317,7 @@
 
 ### Tutorías — reserva de citas tutor-familia (tutoria.js)
 - Tab **"📅 Tutorías"** (`#nav-tutorias`, `#panel-tutorias`) en grupo Docencia; visible para `profesional`, `familia`, `admin`, `admin_institucional`, `director`, `jefatura`, `superadmin`
-- **Tablas**: `tutoria_disponibilidad` (ventanas semanales del tutor: grupo_horario, dia_semana 1–5, hora_inicio/fin, duracion_min, activo) + `tutoria_citas` (citas concretas con UNIQUE(disp_id, fecha, hora_inicio) para evitar doble reserva; alumno_nombre y grupo_horario denormalizados). Migración: `supabase/migrations/tutorias.sql` (**pendiente ejecutar en SQL Editor**)
+- **Tablas**: `tutoria_disponibilidad` (ventanas semanales del tutor: grupo_horario, dia_semana 1–5, hora_inicio/fin, duracion_min, activo) + `tutoria_citas` (citas concretas con UNIQUE(disp_id, fecha, hora_inicio) para evitar doble reserva; alumno_nombre y grupo_horario denormalizados) + `tutoria_espera` (lista de espera: familia_id, disp_id, alumno_id, creada_at). Migración `tutorias.sql` ✅ aplicada.
 - **RLS**: `tut_disp_staff` ALL por centro (no familia); `tut_disp_familia_read` SELECT activas (familia puede leer disponibilidad); `tut_citas_staff` ALL por centro (no familia); `tut_citas_familia_*` SELECT/INSERT/UPDATE solo `familia_id = auth.uid()`
 - **Vista profesional** (`_tutRenderProfesor`): 2 tabs — (a) **Mis citas**: lista de citas próximas y atrasadas (Confirmar / Cancelar / Realizada), campo de notas internas por cita (`notas_tutor`, guardado onblur); (b) **Mi disponibilidad** (`_tutLoadDispProfesor`): CRUD de ventanas horarias — formulario con grupo (auto-detecta de `horarios_grupo ilike nombre`), día de semana, hora inicio/fin, duración
 - **Vista familia** (`_tutRenderFamilia`): selector de hijo (chips si >1) → disponibilidad del tutor del grupo del hijo → date picker filtrado por `dia_semana` → generación de sub-slots en cliente (ventana / duracion_min) → marcar tomados (query `tutoria_citas` para ese disp_id+fecha) → solicitar; tab **Mis citas** con historial y botón Cancelar
@@ -318,6 +326,8 @@
 - **Helpers**: `_tutEsc(s)`, `_tutArg(s)`, `_tutFechaLegible(d)`, `_tutEstadoBadge(estado)`, `_tutPush(userIds, title, body)` → EF `send-push` fire-and-forget, `_tutToast(msg, isErr)`, `_tutEnsureStyles()` inyecta CSS una vez (idempotente)
 - `window._tutSlots` — array de slots calculados para la fecha seleccionada (indexados por `_tutFamSelSlot`); `_tutFamDisp` — disponibilidad cacheada del tutor activo; `_tutFamHijos`/`_tutFamHijoIdx` — hijos y selección activa
 - **Constraint 23505**: al solicitar, si la ranura ya fue tomada concurrentemente → toast explicativo sin crash
+- **Lista de espera** (`tabla tutoria_espera`, 2026-06-18): si no hay huecos disponibles, familia se apunta a la lista de espera de esa ventana horaria. Al cancelarse una cita → push automático a la primera familia en cola ("Ha quedado libre un hueco en la tutoría de [tutor]").
+- **Acta de tutoría en PDF** (2026-06-17): botón "⬇ Acta PDF" en citas con estado `realizada`. PDF con cabecera logo+color + datos de la cita (alumno, grupo, fecha, hora, tutor) + campo `notas_tutor`. jsPDF on-demand, reutiliza helpers de `informes.js`.
 
 ### Agenda del Centro — calendario unificado (agenda.js)
 - Nav **"📅 Agenda"** (`#nav-agenda`, grupo Centro, color `#5B7FA8`), visible para **todos los roles autenticados** (RLS filtra lo que ve cada uno). `#panel-agenda`.
@@ -325,8 +335,10 @@
 - **Grilla mensual** (`_agBuildGrid`): CSS Grid 7 cols (L/M/X/J/V/S/D); celdas con dots de color (máx. 5 + "+N"); hoy con borde `--ink`; seleccionado con tint `--ink 14%`. Navegación `window._agNavMonth(delta)` → `_agLoadMonth()`.
 - **Panel del día** (`_agShowDay`): tarjetas `.ag-ev-card` ordenadas por tipo (salidas → sust → tut → ausencias) y luego hora. Clic navega al módulo origen (`showTab('sust')` / `'tutorias'` / `'salidas'` / `'rrhh'`).
 - **Colores por tipo**: `danger` (sust. sin cubrir) · `ok` (sust. cubiertas) · `#7A5C9E` = `ag-c-tut` (tutorías) · `info` (salidas) · `warning` (ausencias aprobadas) · `muted` (ausencias pendientes).
-- **`_agFetchEvents(from, to)`**: 4 queries en paralelo. `sustituciones` (RLS familia → solo grupos de sus hijos), `tutoria_citas` (familia → solo las suyas; profesional → solo las suyas como tutor), `salidas_didacticas` (familia → solo `estado='publicada'`), `ausencias_profesor` (omitido para familia). Ausencias multi-día expandidas a días individuales en cliente.
-- **Estado**: `window._agYear`, `window._agMonth`, `window._agEvents[]`, `window._agSelFecha`. No hay tabla propia, es una vista agregada.
+- **`_agFetchEvents(from, to)`**: 4 queries en paralelo (+ `eventos_centro`). `sustituciones` (RLS familia → solo grupos de sus hijos), `tutoria_citas` (familia → solo las suyas; profesional → solo las suyas como tutor), `salidas_didacticas` (familia → solo `estado='publicada'`), `ausencias_profesor` (omitido para familia), `eventos_centro` (familia → solo `visible_para='todos'`). Ausencias multi-día expandidas a días individuales en cliente.
+- **Eventos del centro** (`tabla eventos_centro`): admin crea desde la Agenda — modal "Nuevo evento": título, descripción, fecha inicio/fin, todo_el_dia, visible_para. RLS: staff ALL + familia READ solo `visible_para='todos'`.
+- **Exportación .ics / iCal**: botón "📅 Exportar .ics" — genera iCal con todos los eventos del mes visible (sustituciones, tutorías, salidas, ausencias, eventos propios). Compatible Google Calendar / Outlook / Apple Calendar.
+- **Estado**: `window._agYear`, `window._agMonth`, `window._agEvents[]`, `window._agSelFecha`. No hay tabla propia de calendario, es una vista agregada.
 - **XSS**: `_agEsc(s)` en todos los `innerHTML` con datos de usuario.
 - **Responsive** ≤768px: columnas en `flex-direction:column`; clic en día hace `scrollIntoView` al panel derecho.
 
@@ -335,7 +347,104 @@
 - Subida multi-grupo (select multiple), descarga signed URL (1h), toggle "Mis materiales/Todos", form "solo mis clases"
 - Bucket privado `materiales` en Supabase Storage (`{centro_id}/…`)
 
----
+### Mensajería — familia ↔ centro (mensajes.js)
+- Nav **"💬 Mensajes"** (`#nav-mensajes`, grupo Centro, color `#2E8B7A`), visible para todos los roles autenticados. `#panel-mensajes`.
+- **Vista split**: lista de hilos 300px izquierda (alumno + último mensaje + timestamp) + conversación derecha (burbujas derecha/izquierda).
+- **Hilos por alumno**: cada conversación está vinculada a un `alumno_id` concreto. Familia abre hilo desde su portal; staff ve todos los hilos del centro.
+- **Push en cada mensaje**: `_msgPush(userIds, title, body)` → EF `send-push` fire-and-forget.
+- **Tabla**: `mensajes` — id, centro_id, alumno_id, remitente_id, destinatario_ids[], mensaje, leido, created_at. RLS por centro.
+- **XSS**: `_msgEsc(s)`. Timestamps relativos/absolutos (`_msgHora`).
 
+### Encuestas a familias (encuestas.js)
+- Nav **"📋 Encuestas"** (`#nav-encuestas`, grupo Centro, color `#1F7A8C`), visible todos los roles. `#panel-encuestas`.
+- **Vista staff** (`_encRenderStaff`): lista de encuestas con filtros estado (borrador/abierta/cerrada); formulario nueva encuesta (título, descripción, tipo de pregunta, opciones); acción "Publicar" → cambia a estado `abierta` + push a familias.
+- **Tipos de pregunta** (`_encTipoLabel`): `escala` (1–5), `opcion` (múltiple), `si_no`, `texto` (libre).
+- **Vista familia** (`_encRenderFamilia`): encuestas abiertas con formulario de respuesta. INSERT en `encuesta_respuestas`. Respuesta ya enviada → solo lectura.
+- **Resultados** (staff): al abrir una encuesta cerrada → porcentajes + gráfico de barras inline.
+- **Helper `_encGestiona()`**: roles admin/admin_institucional/director/jefatura/superadmin pueden crear y publicar.
+- **Push** (`_encPush`): al abrir encuesta → EF `send-push` a todas las familias del centro.
+- **Tablas**: `encuestas` (id, centro_id, titulo, descripcion, tipo, opciones jsonb, estado, created_at) + `encuesta_respuestas` (id, encuesta_id, familia_id, respuesta, created_at). RLS por centro.
+
+### Menú del comedor (menu.js)
+- Exportable: `window.renderMenuComedor(el, opts)` para la home de familias. Módulo nav opcional si el centro lo activa.
+- **Vista semana**: grid L-V con primero/segundo/postre/alérgenos por día (`tabla menu_comedor`, UNIQUE(centro_id, fecha)).
+- **Navegación de semanas**: botones ‹/›; `_menuLunes(d)` calcula el lunes de cualquier semana.
+- **Edición inline** (admin/director/jefatura): clic en celda → textarea editable → UPSERT en `menu_comedor`.
+- **Variables**: `_MENU_DOW = ["Lunes"…"Viernes"]`, `_menuSemanaFechas(lunes)` → 5 fechas.
+- **Tabla**: `menu_comedor` — id, centro_id, fecha, primer_plato, segundo_plato, postre, alergenos, updated_at. UNIQUE(centro_id, fecha).
+
+### Préstamo de recursos (recursos.js)
+- Nav **"📦 Recursos"** (`#nav-recursos`, grupo Centro, color `#9A6A3C`), visible profesional/admin/superadmin. `#panel-recursos`.
+- **Tabs**: Préstamos (activos/devueltos) · Inventario (CRUD recursos).
+- **Categorías** (`_REC_CATS`): Portátil, Tablet, Libro, Proyector, Material deportivo, Instrumento, Otro.
+- **Préstamo**: asigna recurso a alumno o profesor (search), fecha de devolución prevista; botón "Devolver". Estado: activo / devuelto / vencido (color rojo si fecha_devolucion < hoy).
+- **Exportación**: Excel con todos los préstamos del histórico (`_recExportar`, SheetJS).
+- **Tablas**: `recursos` (id, centro_id, nombre, categoria, descripcion, disponible, created_at) + `prestamos` (id, centro_id, recurso_id, prestado_a, prestado_a_tipo, fecha_prestamo, fecha_devolucion_prevista, fecha_devolucion_real, estado, notas). RLS por centro.
+- **XSS**: `_recEsc(s)`.
+
+### Actas de reuniones (actas.js)
+- Nav **"📝 Actas"** (`#nav-actas`, grupo Centro, color `#5a4a8a`), visible admin/director/jefatura/superadmin. `#panel-actas`.
+- **Tipos** (`_ACT_TIPOS`): Claustro, CCP, Departamento, Junta de evaluación, Reunión de tutores, Otra reunión.
+- **Creación**: título, tipo, fecha, asistentes (texto libre), contenido del acta (textarea + voz).
+- **Resumen IA** (`_actGemini`): botón "✨ Resumir con IA" → Gemini extrae en JSON estructurado: acuerdos, pendientes, próximos pasos. Parseo con `_actParseJson` (strip ``` ``` antes de parse). Se muestra como secciones editable antes de guardar en `acuerdos/pendientes/proximos_pasos` (jsonb).
+- **Reconocimiento de voz** (`_actSR`): `SpeechRecognition`, modo continuo, español.
+- **Tabla**: `actas_reunion` — id, centro_id, tipo, titulo, fecha, asistentes (text), contenido, acuerdos (jsonb), pendientes (jsonb), proximos_pasos (jsonb), creada_por, created_at. RLS por centro.
+- **XSS**: `_actEsc(s)`.
+
+### Documentos del centro (documentos.js)
+- Nav **"📄 Documentos"** (`#nav-documentos`, grupo Centro, color `#3E6B8A`), visible todos los roles. `#panel-documentos`.
+- **Categorías** (`_DOC_CATS`): Circular, Normativa, PGA/Proyecto, Calendario, Formulario, Otro. Filtros por categoría con chips.
+- **Subida** (admin/director/jefatura/superadmin): modal con título, categoría, descripción, `visible_para` (todos/profesores/familias), upload al bucket privado `documentos-centro` (path `{centro_id}/{uuid}.{ext}`).
+- **Descarga**: signed URL de 1h vía `createSignedUrl`. Solo el archivo — nunca el bucket entero.
+- **Acceso familia**: solo documentos con `visible_para='todos'` o `'familias'`.
+- **Tabla**: `documentos_centro` — id, centro_id, titulo, categoria, descripcion, tipo (archivo/enlace), url, storage_path, visible_para (todos/profesores/familias), subido_por, created_at. RLS: staff ALL + familia SELECT `visible_para IN ('todos','familias')`.
+- **Bucket**: `documentos-centro` (privado, staff-only por centro, path `{centro_id}/…`). RLS de Storage auditada.
+- **XSS**: `_docEsc(s)`.
+
+### Agentes IA — panel central y agentes asistidos (agente.js + agentes.js)
+- Nav **"🤖 Agentes"** (`#nav-agentes`, grupo Administración, color terracota `#C76B3D`), visible admin/admin_institucional/director/jefatura/superadmin. `#panel-agentes`.
+- **Panel central** (`js/agentes.js`, `window.initAgentesPanel`): 4 tarjetas con dato en vivo (query a BD al renderizar) + botón que lanza el agente correspondiente.
+
+**4 agentes asistidos** (`js/agente.js`):
+
+1. **Agente de sustituciones** (`window.agenteSustituciones(fechaArg)`):
+   - Modal con plan completo de cobertura del día. Prioriza profesores **de guardia** → libres por equidad (menos guardias del trimestre). Asignación global: un mismo profesor no cubre dos tramos simultáneos. Navegación ± días.
+   - Confirmar → aplica todas las asignaciones en un clic (UPSERT en `sustituciones` + INSERT en `guardias_realizadas`).
+   - Reutiliza helpers de `admin.js` (`_sustCalcularLibres`, `_sustNombreNorm`) y `guardias.js` (`registrarGuardiaEnBD`).
+
+2. **Agente de RRHH/permisos** (`window.agenteRRHH()`):
+   - Carga todas las solicitudes pendientes del centro. Para cada una: Gemini evalúa tipo+motivo+días contra EBEP/convenio → Recomendación (Aprobar/Denegar) + artículo aplicado + borrador de respuesta al profesor.
+   - La recomendación y el mensaje llegan al profesor en el email de resolución (`beaaebe`).
+   - Interfaz: tarjeta por solicitud, admin confirma/corrige antes de ejecutar. Nunca actúa solo.
+
+3. **Agente de comunicación** (`window.agenteComunicacion()`):
+   - Admin escribe orden breve ("avisa a las familias de 3ºESO que el lunes no hay clase"). Gemini redacta el comunicado completo, infiere destinatarios. Preview editable → confirmar → `send-comunicado` + `send-push` en el idioma de cada familia.
+
+4. **Agente de orientación/riesgo** (`window.agenteOrientacion()`):
+   - Cruza `asistencia_clase` (% ausencias 30d) + `calificaciones` (notas < 5) + `incidencias` abiertas → lista de alumnos ordenada por severidad. Gemini redacta borrador de alerta para cada caso. Orientador selecciona casos y confirma antes de INSERT en `alertas_orientacion`.
+
+**Agente programado** (`supabase/functions/agente-cobertura-diaria/index.ts`):
+- pg_cron `0 6 * * 1-5` (08:00 Madrid). Autónomo: detecta ausencias del día, calcula sustitutos por equidad, envía email HTML con tabla propuesta + push a admins. **NO asigna** — solo informa. Validado en IES Buñol.
+
+### Plan de cobertura del día (plancobertura.js)
+- `window.planCoberturaDia(fecha)` — modal lanzado desde el botón "📋 Plan de cobertura" en la vista admin de Sustituciones.
+- Tabla por tramo: ausente, grupo, sugerencia de sustituto (profesor libre + menos guardias del trimestre). Botón "Asignar" individual por fila. Navegación ± días.
+- **Diferencia con el agente**: el plan de cobertura es manual (el admin elige uno a uno) mientras el agente propone un plan completo de golpe.
+- Reutiliza helpers de `admin.js` y `guardias.js`.
+- **XSS**: `_pcEsc(s)`.
+
+### Previsión de cobertura (prevision.js)
+- `window.preverCobertura(dias)` — modal con sustituciones sin cubrir de los próximos N días (defecto 14). Sugiere el sustituto más equitativo por tramo.
+- Botón "🔮 Previsión" en la vista admin de Sustituciones.
+- Calcula libres cruzando `horarios_grupo` (quién no tiene clase ese día/tramo) con `sustituciones` (quién ya está asignado) y `guardias_realizadas` (equidad trimestral).
+- **XSS**: `_prevEsc(s)`.
+
+### Dashboard de participación familiar (participacion.js)
+- Renderizado en `#part-container` dentro de `#panel-analisis` (pill "Participación" añadida al módulo Análisis). Visible admin/director/jefatura/superadmin.
+- **6 métricas**: push activado (% familias suscritas), encuestas respondidas (% respuesta por encuesta), tutorías solicitadas (familias activas vs total), autorizaciones de salidas (% autorizados), comunicados leídos (`comunicado_lecturas`, UNIQUE), promedio global de participación.
+- Gráfico de barras por encuesta (Chart.js inline).
+- **Tabla `comunicado_lecturas`**: id, comunicado_id, user_id, centro_id, created_at. UNIQUE(comunicado_id, user_id). Se registra al abrir el modal detalle de un comunicado (UPSERT en `comunicados.js`).
+
+---
 
 > Estado del proyecto (tablas verificadas, storage buckets, RPCs, módulos por rol, orden de scripts): @CLAUDE-TABLAS.md

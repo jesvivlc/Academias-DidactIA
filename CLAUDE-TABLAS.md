@@ -179,6 +179,9 @@
 <script src="js/prevision.js"></script>
 <script src="js/documentos.js"></script>
 <script src="js/participacion.js"></script>
+<script src="js/plancobertura.js"></script>
+<script src="js/agente.js"></script>
+<script src="js/agentes.js"></script>
 <script src="js/agenda.js"></script>
 ```
-> Nota: `js/actas.js` y `js/prevision.js` usan helpers de `informes.js` (`_infEnsureLibs`…) y `guardias.js`/`admin.js` respectivamente — ya cargados antes. Módulos sin tab propio: `prevision.js` (botón "Previsión" en Sustituciones) y `menu.js` (vista "Menú" en Comedor + bloque en home de familias).
+> Nota: `js/actas.js` y `js/prevision.js` usan helpers de `informes.js` (`_infEnsureLibs`…) y `guardias.js`/`admin.js` respectivamente — ya cargados antes. `js/plancobertura.js` y `js/agente.js` requieren que `admin.js` y `guardias.js` estén cargados (reutilizan `_sustCalcularLibres`, `registrarGuardiaEnBD`). Módulos sin tab propio: `prevision.js` (botón en Sustituciones), `menu.js` (vista Menú en Comedor + home familia), `plancobertura.js` (botón en Sustituciones), `agente.js` (modal global, llamado desde Agentes + Sustituciones).
