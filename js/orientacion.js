@@ -1559,6 +1559,7 @@ async function oriPanelRiesgo() {
     '<div class="pg-hdr" style="margin-bottom:18px;">' +
       '<div><div class="pg-title">📊 Panel de riesgo</div><div class="pg-sub">' + lista.length + ' alerta' + (lista.length === 1 ? "" : "s") + ' activa' + (lista.length === 1 ? "" : "s") + '</div></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn" onclick="window.agenteOrientacion&&agenteOrientacion()" style="border:none;background:var(--accent,#C76B3D);color:#fff;">🤖 Agente de riesgo</button>' +
         '<button class="btn" onclick="oriDetectarRiesgoAcademico()" style="border:1px solid var(--bdr);background:var(--srf);">🎯 Detectar riesgo académico</button>' +
         '<button class="btn" onclick="oriDetectarRiesgosIA()" style="border:1px solid var(--bdr);background:var(--srf);">✨ Detectar riesgos (IA)</button>' +
         '<button class="btn btn-p" onclick="oriModalAlertaManual()">+ Generar alerta manual</button>' +
@@ -1890,6 +1891,157 @@ async function oriCrearAlertasSeleccionadas() {
   oriPanelRiesgo();
 }
 window.oriCrearAlertasSeleccionadas = oriCrearAlertasSeleccionadas;
+
+/* ════════ AGENTE DE ORIENTACIÓN / RIESGO (modo asistido) ════════ */
+// Cruce determinista (faltas de aula + notas + incidencias, 30 días) → lista de
+// alumnos en riesgo con sus señales. Reutilizable por el agente.
+async function _oriCalcularRiesgo() {
+  const desde = new Date(); desde.setDate(desde.getDate() - 30);
+  const desdeStr = desde.toISOString().slice(0, 10);
+  const [almRes, asisRes, calRes, incRes] = await Promise.all([
+    sb.from("alumnos").select("id,nombre,grupo_horario,curso").eq("centro_id", ctrId),
+    sb.from("asistencia_clase").select("alumno_id,estado").eq("centro_id", ctrId).gte("fecha", desdeStr).limit(50000),
+    sb.from("calificaciones").select("alumno_id,nota").eq("centro_id", ctrId).limit(50000),
+    sb.from("incidencias").select("alumno_nombre,estado").eq("centro_id", ctrId).gte("fecha", desdeStr).limit(5000),
+  ]);
+  const alumnos = almRes.data || [];
+  const faltas = {}, retrasos = {};
+  (asisRes.data || []).forEach(r => {
+    if (r.estado === "ausente") faltas[r.alumno_id] = (faltas[r.alumno_id] || 0) + 1;
+    else if (r.estado === "retraso") retrasos[r.alumno_id] = (retrasos[r.alumno_id] || 0) + 1;
+  });
+  const notaSum = {}, notaN = {}, suspensos = {};
+  (calRes.data || []).forEach(c => {
+    if (c.nota == null) return;
+    const v = Number(c.nota);
+    notaSum[c.alumno_id] = (notaSum[c.alumno_id] || 0) + v;
+    notaN[c.alumno_id] = (notaN[c.alumno_id] || 0) + 1;
+    if (v < 5) suspensos[c.alumno_id] = (suspensos[c.alumno_id] || 0) + 1;
+  });
+  const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
+  const incByName = {};
+  (incRes.data || []).forEach(i => { const k = norm(i.alumno_nombre); if (k) incByName[k] = (incByName[k] || 0) + 1; });
+
+  const detect = [];
+  alumnos.forEach(a => {
+    const f = faltas[a.id] || 0;
+    const media = notaN[a.id] ? (notaSum[a.id] / notaN[a.id]) : null;
+    const susp = suspensos[a.id] || 0;
+    const inc = incByName[norm(a.nombre)] || 0;
+    const sigAsis = f >= 3, sigRend = (media != null && media < 5) || susp >= 3, sigCond = inc >= 2;
+    const nSig = (sigAsis ? 1 : 0) + (sigRend ? 1 : 0) + (sigCond ? 1 : 0);
+    if (!nSig) return;
+    const alto = f >= 5 || (media != null && media < 3.5) || inc >= 3 || nSig >= 2;
+    const partes = [];
+    if (f) partes.push(f + " falta" + (f > 1 ? "s" : "") + " de aula");
+    if (retrasos[a.id]) partes.push(retrasos[a.id] + " retraso" + (retrasos[a.id] > 1 ? "s" : ""));
+    if (media != null) partes.push("media " + media.toFixed(1) + (susp ? " · " + susp + " susp." : ""));
+    if (inc) partes.push(inc + " incidencia" + (inc > 1 ? "s" : ""));
+    detect.push({
+      alumno_id: a.id, nombre: a.nombre, grupo: a.grupo_horario || a.curso || "—",
+      nivel_riesgo: alto ? "alto" : "medio",
+      tipo: nSig >= 2 ? "combinada" : (sigAsis ? "asistencia" : sigRend ? "rendimiento" : "conducta"),
+      descripcion: partes.join(" · ") + " (últimos 30 días)",
+    });
+  });
+  detect.sort((x, y) => (x.nivel_riesgo === "alto" ? 0 : 1) - (y.nivel_riesgo === "alto" ? 0 : 1) || x.nombre.localeCompare(y.nombre, "es"));
+  return detect;
+}
+
+const _AGORI_MAX_IA = 12;  // tope de borradores IA por barrido (los demás usan el texto de señales)
+
+window.agenteOrientacion = async function () {
+  _oriShowModal(
+    '<div style="display:flex;gap:11px;align-items:center;margin-bottom:14px;">' +
+      '<div style="width:38px;height:38px;border-radius:11px;background:var(--accent-soft,#f3e1d5);display:flex;align-items:center;justify-content:center;font-size:20px;">🤖</div>' +
+      '<div><div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);">AGENTE DE ORIENTACIÓN · RIESGO</div>' +
+      '<div style="font-size:17px;font-weight:700;color:var(--txt);">Detección y borradores de alerta</div></div></div>' +
+    '<div id="ori-ag-body" style="text-align:center;color:var(--txt3);font-size:13px;padding:24px;"><span class="spin">⟳</span> Cruzando faltas de aula, notas e incidencias (últimos 30 días)…</div>', 640
+  );
+  const body = () => document.getElementById("ori-ag-body");
+  const cerrar = '<div style="display:flex;justify-content:flex-end;margin-top:14px;"><button class="btn" onclick="_oriCloseModal()" style="border:1px solid var(--bdr);background:var(--srf);">Cerrar</button></div>';
+  try {
+    const detect = await _oriCalcularRiesgo();
+    if (!detect.length) {
+      if (body()) body().innerHTML = '<div style="color:var(--txt3);font-size:13px;">No se detectaron alumnos en riesgo con los datos de los últimos 30 días.</div>' + cerrar;
+      return;
+    }
+    window._agoriList = detect;
+    // Redacción IA de borradores para los de mayor riesgo (con progreso)
+    const sys = "Eres orientador/a de un centro educativo español. Redacta un BORRADOR breve (2-4 frases) de alerta de orientación para el equipo, a partir de señales OBJETIVAS del alumno. Tono profesional y prudente, sin juicios ni diagnósticos, centrado en los datos y en primeros pasos razonables (citar a la familia, seguimiento con el tutor, revisar asistencia/rendimiento). No inventes datos que no aparezcan. Devuelve solo el texto.";
+    for (let i = 0; i < detect.length && i < _AGORI_MAX_IA; i++) {
+      const x = detect[i];
+      if (body()) body().innerHTML = '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:24px;"><span class="spin">⟳</span> Redactando borradores ' + (i + 1) + '/' + Math.min(detect.length, _AGORI_MAX_IA) + '…</div>';
+      const usr = "Alumno: " + x.nombre + " (" + x.grupo + "). Nivel de riesgo: " + x.nivel_riesgo + ". Tipo: " + x.tipo + ". Señales: " + x.descripcion + ".";
+      let txt = null;
+      try { txt = await _oriGemini(sys, usr); } catch (e) {}
+      x.borrador = (txt && txt.trim()) || x.descripcion;
+    }
+    detect.forEach(x => { if (!x.borrador) x.borrador = x.descripcion; });
+
+    const items = detect.map((x, i) =>
+      '<div style="border:1px solid var(--bdr);border-radius:var(--r-sm);padding:11px 13px;margin-bottom:9px;">' +
+        '<label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;">' +
+          '<input type="checkbox" class="agori-chk" data-i="' + i + '" checked style="margin-top:3px;width:16px;height:16px;accent-color:var(--ink);">' +
+          '<div style="flex:1;">' +
+            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">' +
+              '<span style="font-size:13px;font-weight:600;color:var(--txt);">' + _oriEsc(x.nombre) + '</span>' +
+              '<span style="font-size:12px;color:var(--txt2);">' + _oriEsc(x.grupo) + '</span>' +
+              _oriRiesgoBadge(x.nivel_riesgo) + _oriTipoBadge(x.tipo, "var(--srf2)", "var(--txt2)") +
+            '</div>' +
+            '<div style="font-size:11.5px;color:var(--txt3);margin-bottom:6px;">' + _oriEsc(x.descripcion) + '</div>' +
+          '</div>' +
+        '</label>' +
+        '<textarea class="agori-msg" data-i="' + i + '" rows="3" style="width:100%;box-sizing:border-box;font-size:12.5px;border:1px solid var(--bdr);border-radius:8px;padding:8px;line-height:1.45;font-family:inherit;">' + _oriEsc(x.borrador) + '</textarea>' +
+      '</div>'
+    ).join("");
+    const altos = detect.filter(x => x.nivel_riesgo === "alto").length;
+    if (body()) body().innerHTML =
+      '<div style="background:var(--accent-soft,#f3e1d5);color:var(--accent-ink,#7A3E1F);border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.5;margin-bottom:14px;">' +
+        '🤖 He detectado <strong>' + detect.length + '</strong> alumno(s) con señales de riesgo (' + altos + ' de nivel alto). ' +
+        'He redactado un borrador de alerta para cada uno. Revísalos y confirma los que quieras crear.' +
+        (detect.length > _AGORI_MAX_IA ? ' <em>(Borradores IA en los ' + _AGORI_MAX_IA + ' de mayor riesgo; el resto lleva el resumen de señales.)</em>' : '') +
+      '</div>' +
+      items +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">' +
+        '<button class="btn" onclick="_oriCloseModal()" style="border:1px solid var(--bdr);background:var(--srf);">Cancelar</button>' +
+        '<button class="btn btn-p" onclick="window._agoriCrear()">✓ Crear alertas seleccionadas</button>' +
+      '</div>';
+  } catch (err) {
+    if (body()) body().innerHTML = '<div style="color:#a50e0e;font-size:13px;">Error al analizar: ' + _oriEsc(err.message || String(err)) + '</div>' + cerrar;
+  }
+};
+
+window._agoriCrear = async function () {
+  const chks = Array.from(document.querySelectorAll(".agori-chk")).filter(ch => ch.checked);
+  if (!chks.length) { alert("No has seleccionado ninguna alerta."); return; }
+  const lista = window._agoriList || [];
+  const rows = chks.map(ch => {
+    const i = parseInt(ch.dataset.i, 10);
+    const x = lista[i];
+    const ta = document.querySelector('.agori-msg[data-i="' + i + '"]');
+    const texto = ta ? ta.value.trim() : x.descripcion;
+    return {
+      centro_id: ctrId, alumno_id: x.alumno_id,
+      tipo: ["rendimiento", "asistencia", "conducta", "combinada"].includes(x.tipo) ? x.tipo : "combinada",
+      nivel_riesgo: ["bajo", "medio", "alto"].includes(x.nivel_riesgo) ? x.nivel_riesgo : "medio",
+      descripcion_ia: texto || x.descripcion || null, estado: "nueva",
+    };
+  });
+  const { error } = await sb.from("alertas_orientacion").insert(rows);
+  if (error) { _oriToast("Error al crear las alertas: " + error.message, "error"); return; }
+  (async () => {
+    try {
+      for (const ch of chks) {
+        const x = lista[parseInt(ch.dataset.i, 10)];
+        if (x) await _oriNotificarAlerta(x.nombre, x.nivel_riesgo, x.tipo, x.descripcion);
+      }
+    } catch (_) {}
+  })();
+  _oriCloseModal();
+  _oriToast(rows.length + " alerta(s) creada(s) y orientación avisada", "ok");
+  oriPanelRiesgo();
+};
 
 // ════════════════════════════════════════════════════════════════════════════
 //  PASO 5 — PORTAL DE FAMILIAS: trámites visibles de los hijos vinculados
