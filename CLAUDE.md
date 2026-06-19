@@ -373,6 +373,7 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-19 19:38` · `c3232f7` — docs(CLAUDE): sesión 2026-06-19 — 11 módulos nuevos + recap laptop (agentes, mensajes, encuestas, menú, recursos, actas, documentos, plancobertura, prevision, participacion, + updates comedor/tutorias/rrhh/orientacion/calificaciones)
 - `2026-06-19` · `6ff0a1f` — docs: **agente de cobertura programado** + cron aplicado (`20260619_cron_agente_cobertura.sql`). EF `agente-cobertura-diaria` desplegada en Supabase; pg_cron a las 06:00 UTC (08:00 Madrid) L-V para IES Buñol. No asigna — detecta ausencias, propone sustitutos, envía email HTML + push a dirección.
 - `2026-06-19` · `b9b39b5` — feat(agente): **versión programada del agente de sustituciones** (`supabase/functions/agente-cobertura-diaria/index.ts`). Autónoma: detecta ausencias del día, busca profesores libres, ordena por equidad trimestral, envía email con tabla HTML + push a admins. Validada en IES Buñol.
 - `2026-06-19` · `4bde233` — docs(changelog): panel central de Agentes
