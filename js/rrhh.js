@@ -497,8 +497,26 @@ function _rrhhEnsureStyles() {
 }
 
 /* ════════ AGENTE RRHH — evalúa TODAS las pendientes y monta la bandeja ════════ */
+// Carga las ausencias en _rrhhAusencias sin depender del DOM del panel (para que
+// el agente funcione lanzado desde el panel "Agentes").
+async function _rrhhEnsureData() {
+  if (_rrhhAusencias && _rrhhAusencias.length) return;
+  var result = await sb.from("ausencias_profesor").select("*").eq("centro_id", ctrId)
+    .order("fecha", { ascending: false }).limit(300);
+  var ausencias = result.data || [];
+  var ids = [];
+  ausencias.forEach(function (a) { if (a.profile_id && ids.indexOf(a.profile_id) === -1) ids.push(a.profile_id); });
+  var map = {};
+  if (ids.length) {
+    var p = await sb.from("profiles").select("id, full_name").in("id", ids);
+    (p.data || []).forEach(function (x) { map[x.id] = x.full_name || "—"; });
+  }
+  _rrhhAusencias = ausencias.map(function (a) { return Object.assign({}, a, { _nombre: map[a.profile_id] || "—" }); });
+}
+
 window.agenteRRHH = async function () {
   _rrhhEnsureStyles();
+  await _rrhhEnsureData();
   var pend = (_rrhhAusencias || []).filter(function (a) { return !a.estado || a.estado === "pendiente"; });
   var regimen = _rrhhGetRegimen();
   var old = document.getElementById("rrhh-ag-modal");

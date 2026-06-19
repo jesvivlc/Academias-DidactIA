@@ -536,6 +536,10 @@ async function loadUserProfile(user) {
   const tabDocs = document.getElementById("tab-documentos");
   if (tabDocs) tabDocs.style.display = "block";
 
+  // Panel de Agentes: dirección/admin/jefatura (los agentes son operativos de gestión)
+  const tabAgentes = document.getElementById("tab-agentes");
+  if (tabAgentes) tabAgentes.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -676,6 +680,7 @@ function showTab(t) {
   if (t === "recursos" && typeof initRecursos === "function") initRecursos();
   if (t === "actas" && typeof initActas === "function") initActas();
   if (t === "documentos" && typeof initDocumentos === "function") initDocumentos();
+  if (t === "agentes" && typeof initAgentesPanel === "function") initAgentesPanel();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

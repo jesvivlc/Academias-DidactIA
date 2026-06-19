@@ -146,6 +146,7 @@
   <div class="tab" id="tab-recursos"           onclick="showTab('recursos')"    style="display:none">📦 Recursos</div>
   <div class="tab" id="tab-actas"              onclick="showTab('actas')"       style="display:none">📝 Actas</div>
   <div class="tab" id="tab-documentos"         onclick="showTab('documentos')"  style="display:none">📁 Documentos</div>
+  <div class="tab" id="tab-agentes"            onclick="showTab('agentes')"     style="display:none">🤖 Agentes</div>
   <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
   <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
   <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
@@ -234,6 +235,10 @@
         </button>
         <button class="nav-item" id="nav-asistente" data-tab="asistente" onclick="showTab('asistente')" style="--nav-color:var(--info)">
           <i class="ti ti-sparkles"></i><span class="nav-item-label">Asistente IA</span>
+          <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
+        </button>
+        <button class="nav-item" id="nav-agentes" data-tab="agentes" onclick="showTab('agentes')" style="display:none;--nav-color:#C76B3D">
+          <i class="ti ti-robot"></i><span class="nav-item-label">Agentes</span>
           <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
         </button>
 
@@ -975,6 +980,9 @@
   <!-- DOCUMENTOS PANEL -->
   <div class="panel" id="panel-documentos" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
+  <!-- AGENTES PANEL -->
+  <div class="panel" id="panel-agentes" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
+
   <!-- COMEDOR PANEL -->
   <div class="panel" id="panel-comedor" style="flex-direction:column;">
     <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
@@ -1544,6 +1552,7 @@
 <script src="js/agente.js"></script>
 <script src="js/documentos.js"></script>
 <script src="js/participacion.js"></script>
+<script src="js/agentes.js"></script>
 <script src="js/agenda.js"></script>
 
 <script>
@@ -1565,7 +1574,7 @@
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
     analisis:'Análisis', orientacion:'Orientación', calidad:'Calidad', actas:'Actas de reuniones', documentos:'Documentos del centro',
-    asistente:'Asistente IA'
+    agentes:'Agentes', asistente:'Asistente IA'
   };
   var MAS_CFG = {
     alumnos:   { icon:'ti-users-group',     label:'Alumnos' },
@@ -1575,6 +1584,7 @@
     agenda:    { icon:'ti-calendar',        label:'Agenda' },
     encuestas: { icon:'ti-chart-bar',       label:'Encuestas' },
     documentos:{ icon:'ti-folder',          label:'Documentos' },
+    agentes:   { icon:'ti-robot',           label:'Agentes' },
     ib:        { icon:'ti-school',          label:'IB' },
     rrhh:      { icon:'ti-briefcase',       label:'RRHH' },
     espacios:  { icon:'ti-door',            label:'Espacios' },
@@ -1598,6 +1608,7 @@
     'tab-agenda':      { nav:'nav-agenda',       bn:null },
     'tab-encuestas':   { nav:'nav-encuestas',    bn:null },
     'tab-documentos':  { nav:'nav-documentos',   bn:null },
+    'tab-agentes':     { nav:'nav-agentes',      bn:null },
     'tab-recursos':    { nav:'nav-recursos',     bn:null },
     'tab-actas':       { nav:'nav-actas',        bn:null },
     'tab-comedor':     { nav:'nav-comedor',      bn:'bn-comedor' },
@@ -1697,6 +1708,7 @@
         if (t === 'agenda' && typeof initAgenda === 'function') initAgenda();
         if (t === 'encuestas' && typeof initEncuestas === 'function') initEncuestas();
         if (t === 'documentos' && typeof initDocumentos === 'function') initDocumentos();
+        if (t === 'agentes' && typeof initAgentesPanel === 'function') initAgentesPanel();
         if (t === 'recursos' && typeof initRecursos === 'function') initRecursos();
         if (t === 'actas' && typeof initActas === 'function') initActas();
         if (t === 'mensajes' && typeof initMensajes === 'function') initMensajes();
