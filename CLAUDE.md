@@ -328,6 +328,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > - _(ninguna)_
 >
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/20260619_cron_agente_cobertura.sql` — pg_cron `agente-cobertura-diaria` (`0 6 * * 1-5`) → EF `agente-cobertura-diaria` (plan de cobertura del día por email+push, modo preparar+avisar). Programado solo para Buñol. ✅ aplicado 2026-06-19 vía Management API. **Nota:** `ausencias_profesor.nota_resolucion` (mensaje de resolución al profesor) también añadida vía Management API el 2026-06-18.
 > - `supabase/migrations/comunicado_lecturas.sql` — tabla `comunicado_lecturas` (registro central de lectura de comunicados) + UNIQUE(comunicado_id,user_id) + RLS (propio rw + staff read) ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/documentos_centro.sql` — tabla `documentos_centro` (biblioteca de circulares/normativa/PGA) + RLS `docs_read`/`docs_manage` + bucket privado `documentos-centro` + 4 políticas de Storage por centro ✅ aplicado 2026-06-17 vía Management API
 > - `supabase/migrations/tutoria_espera.sql` — tabla `tutoria_espera` (lista de espera de tutorías) + RLS (staff ALL + familia read/ins/del propio) + índice ✅ aplicado 2026-06-17 vía Management API
