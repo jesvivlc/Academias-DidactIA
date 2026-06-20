@@ -176,7 +176,7 @@ function _agShowDay(fecha, scrollToRight) {
       <div class="ag-ev-card ag-ev-${e.color}"${nav ? ` onclick="${nav}"` : ' style="cursor:default"'}>
         <span class="ag-ev-icon">${ICONS[e.type] || '📌'}</span>
         <div class="ag-ev-body">
-          <div class="ag-ev-label">${e.hora ? `<span style="color:var(--muted);font-weight:600">${e.hora} · </span>` : ''}${_agEsc(e.label)}</div>
+          <div class="ag-ev-label">${e.hora ? `<span style="color:var(--muted);font-weight:600">${_agEsc(e.hora)} · </span>` : ''}${_agEsc(e.label)}</div>
           <div class="ag-ev-detail">${_agEsc(e.detail)}</div>
         </div>
         ${borrable
