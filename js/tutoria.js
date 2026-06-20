@@ -740,13 +740,33 @@ async function _tutRenderAdmin(el) {
       <div class="tut-hdr">
         <div class="tut-eyebrow">DIRECCIÓN · TUTORÍAS</div>
         <h1 class="tut-title">Tutorías</h1>
-        <p class="tut-sub">Vista general de todas las citas de tutoría del centro.</p>
+        <p class="tut-sub">Gestión de disponibilidad y seguimiento de citas del centro.</p>
+        <div class="tut-tabs">
+          <button class="tut-tab tut-act" onclick="window._tutAdminTab('citas',this)">📅 Citas</button>
+          <button class="tut-tab" onclick="window._tutAdminTab('disp',this)">🕐 Disponibilidad tutores</button>
+        </div>
       </div>
-      <div class="tut-body" id="tut-admin-body">
-        <p style="color:var(--muted);font-size:13px">Cargando…</p>
+      <div class="tut-body">
+        <div id="tut-admin-citas"><p style="color:var(--muted);font-size:13px">Cargando…</p></div>
+        <div id="tut-admin-disp" style="display:none"></div>
       </div>
     </div>`;
-  const pane = document.getElementById('tut-admin-body');
+  _tutAdminLoadCitas();
+}
+
+window._tutAdminTab = function (tab, btn) {
+  document.querySelectorAll('.tut-tab').forEach(b => b.classList.remove('tut-act'));
+  btn.classList.add('tut-act');
+  const pc = document.getElementById('tut-admin-citas');
+  const pd = document.getElementById('tut-admin-disp');
+  if (pc) pc.style.display = tab === 'citas' ? '' : 'none';
+  if (pd) pd.style.display = tab === 'disp' ? '' : 'none';
+  if (tab === 'disp') _tutAdminLoadDisp();
+};
+
+async function _tutAdminLoadCitas() {
+  const pane = document.getElementById('tut-admin-citas');
+  if (!pane) return;
   try {
     const { data, error } = await window.sb.from('tutoria_citas')
       .select('*')
@@ -754,7 +774,19 @@ async function _tutRenderAdmin(el) {
       .order('fecha', { ascending: false }).order('hora_inicio')
       .limit(500);
     if (error) throw error;
-    if (!data.length) { pane.innerHTML = '<div class="tut-empty">No hay citas registradas en este centro.</div>'; return; }
+    if (!data.length) {
+      pane.innerHTML = `
+        <div style="background:var(--info-soft);border:1px solid var(--info);border-radius:10px;padding:16px 18px;margin-bottom:18px">
+          <strong style="color:var(--info);font-size:13px;display:block;margin-bottom:6px">ℹ️ Cómo funciona el módulo de Tutorías</strong>
+          <ol style="margin:0;padding-left:18px;font-size:13px;color:var(--txt);line-height:1.7">
+            <li>Un <strong>profesional (tutor)</strong> define sus ventanas horarias en la pestaña <em>Disponibilidad tutores</em>.</li>
+            <li>La <strong>familia</strong> elige un hueco desde su portal y solicita la cita.</li>
+            <li>El tutor confirma o cancela desde su vista de Tutorías.</li>
+          </ol>
+        </div>
+        <div class="tut-empty">Aún no hay citas registradas en este centro. Empieza configurando la disponibilidad de los tutores.</div>`;
+      return;
+    }
     const cols = ['Alumno', 'Grupo', 'Fecha', 'Hora', 'Estado', 'Motivo'];
     pane.innerHTML = `
       <p style="font-size:13px;color:var(--muted);margin:0 0 14px">${data.length} citas totales</p>
@@ -773,5 +805,50 @@ async function _tutRenderAdmin(el) {
       </div>`;
   } catch (e) {
     pane.innerHTML = '<div class="tut-empty">Error al cargar citas: ' + (e && e.message ? e.message : String(e)) + '</div>';
+  }
+}
+
+async function _tutAdminLoadDisp() {
+  const pane = document.getElementById('tut-admin-disp');
+  if (!pane) return;
+  pane.innerHTML = '<p style="color:var(--muted);font-size:13px">Cargando…</p>';
+  try {
+    const { data, error } = await window.sb.from('tutoria_disponibilidad')
+      .select('*, profiles(full_name)')
+      .eq('centro_id', window.ctrId)
+      .order('tutor_id').order('dia_semana').order('hora_inicio');
+    if (error) throw error;
+    const dias = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+    if (!data.length) {
+      pane.innerHTML = `
+        <div style="background:var(--warning-soft);border:1px solid var(--warning);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:var(--txt)">
+          <strong style="color:var(--warning);display:block;margin-bottom:4px">⚠️ Ningún tutor ha configurado disponibilidad todavía</strong>
+          Pide a los tutores que inicien sesión y vayan a <strong>Tutorías → Mi disponibilidad</strong> para añadir sus ventanas horarias.
+        </div>`;
+      return;
+    }
+    // Agrupar por tutor
+    const byTutor = {};
+    data.forEach(d => {
+      const name = (d.profiles && d.profiles.full_name) || d.tutor_id;
+      if (!byTutor[name]) byTutor[name] = [];
+      byTutor[name].push(d);
+    });
+    let html = '';
+    for (const [tutor, slots] of Object.entries(byTutor)) {
+      html += `<div style="margin-bottom:20px">
+        <h3 style="font-size:13px;font-weight:700;color:var(--txt);margin:0 0 10px">👤 ${_tutEsc(tutor)}</h3>
+        ${slots.map(s => `
+          <div class="tut-disp-row" style="opacity:${s.activo ? 1 : 0.45}">
+            <div class="tut-disp-info">
+              <div class="tut-disp-label">${dias[s.dia_semana] || s.dia_semana} · ${_tutEsc(s.grupo_horario || '—')}</div>
+              <div class="tut-disp-hora">${(s.hora_inicio || '').slice(0,5)}–${(s.hora_fin || '').slice(0,5)} · ${s.duracion_min} min/cita${s.activo ? '' : ' · <em>inactiva</em>'}</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    }
+    pane.innerHTML = `<p style="font-size:13px;color:var(--muted);margin:0 0 16px">${data.length} ventanas de disponibilidad configuradas</p>` + html;
+  } catch (e) {
+    pane.innerHTML = '<div class="tut-empty">Error: ' + (e && e.message ? e.message : String(e)) + '</div>';
   }
 }
