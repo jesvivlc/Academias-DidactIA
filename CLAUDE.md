@@ -377,6 +377,7 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-21 00:38` · `8545580` — feat(calificaciones): evaluación competencial LOMLOE completa — auto-comentario, boletín PDF, vista admin
 - `2026-06-21` — feat(calificaciones): **boletín PDF incluye sección competencial LOMLOE** (`_calBoletinPDF`). Si existe la tabla `comentarios_competenciales` y hay datos para el alumno, el PDF añade una tabla "Evaluación por competencias clave (LOMLOE)" tras las observaciones: asignatura × evaluación × niveles (texto) × comentario. Silencioso si la tabla no existe aún (try/catch).
 - `2026-06-21` — feat(calificaciones): **panel admin muestra evaluación competencial** (`_calLoadCompetencialAdmin`). Al abrir el detalle de un alumno (dirección/admin), se carga async (fire-and-forget) la evaluación competencial de `comentarios_competenciales` y se renderiza con pills de color por nivel (Iniciado=danger / En proceso=warning / Adquirido=info / Avanzado=success) bajo la tabla de notas. Si el alumno cambia mientras carga, se descarta el resultado.
 - `2026-06-21 00:28` · `518561f` — feat(calificaciones): comentario competencial se actualiza automáticamente al cambiar el nivel
