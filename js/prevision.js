@@ -54,7 +54,8 @@ async function _prevCargar(dias) {
 
   // 2. Horario del centro (para saber quién está libre cada día/tramo)
   var hr = await window.sb.from("horarios_grupo")
-    .select("dia,tramo,profesor_nombre").eq("centro_id", window.ctrId).limit(20000);
+    .select("dia,tramo,profesor_nombre").eq("centro_id", window.ctrId)
+    .eq("curso_escolar", window.cursoActivo || "2025-26").limit(20000);
   var horas = hr.data || [];
   // Conjunto de todos los profesores conocidos
   var todos = {};
