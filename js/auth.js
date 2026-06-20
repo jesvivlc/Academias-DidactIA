@@ -604,6 +604,7 @@ async function loadUserProfile(user) {
   setTimeout(initRealtimeNotifications, 800);
   setTimeout(_comCheckAndBadge, 1200);
   setTimeout(function() { if (typeof window._msgCheckAndBadge === "function") window._msgCheckAndBadge(); }, 1600);
+  setTimeout(function() { if (typeof window._msgInitRealtime === "function") window._msgInitRealtime(); }, 1700);
   setTimeout(function() { if (typeof window._initPushButton === "function") window._initPushButton(); }, 1800);
 }
 

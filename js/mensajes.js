@@ -83,14 +83,73 @@ function _msgEnsureStyles() {
 
 var _msgFamHijoIdx = 0;
 var _msgStaffSel = null;   // {alumno_id, familia_id, alumno_nombre, familia_nombre}
+var _msgRealtime = null;
 
 window.initMensajes = function () {
   var el = document.getElementById("panel-mensajes");
   if (!el) return;
   _msgEnsureStyles();
+  _msgInitRealtime();
   if (role === "familia") _msgRenderFamilia(el);
   else _msgRenderStaff(el);
 };
+
+function _msgShowToast(text) {
+  var t = document.getElementById("msg-toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "msg-toast";
+    t.style.cssText = "position:fixed;bottom:calc(72px + env(safe-area-inset-bottom,0));right:16px;background:#222;color:#fff;"
+      + "padding:12px 20px;border-radius:10px;font-size:13px;z-index:9100;"
+      + "box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:min(320px,calc(100vw - 32px));line-height:1.5;cursor:pointer;";
+    t.addEventListener("click", function () { t.style.display = "none"; });
+    document.body.appendChild(t);
+  }
+  t.textContent = text;
+  t.style.display = "block";
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function () { if (t) t.style.display = "none"; }, 5000);
+}
+
+function _msgInitRealtime() {
+  if (_msgRealtime || !ctrId) return;
+  _msgRealtime = sb.channel("msg_rt_" + ctrId)
+    .on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "mensajes",
+      filter: "centro_id=eq." + ctrId,
+    }, function (payload) {
+      var m = payload.new;
+      if (!m) return;
+      _msgCheckAndBadge();
+      var panelVisible = document.getElementById("panel-mensajes") &&
+        document.getElementById("panel-mensajes").classList.contains("active");
+      if (role === "familia") {
+        // Only notify if this message is for the current family (from center)
+        if (m.familia_id !== currentUser.id || m.de_familia) return;
+        // Refresh thread if panel is open and same child
+        var hijo = currentUserAlumnos && currentUserAlumnos[_msgFamHijoIdx];
+        if (panelVisible && hijo && m.alumno_id === hijo.id) {
+          _msgFamCargar();
+        } else {
+          _msgShowToast("💬 Nuevo mensaje del centro");
+        }
+      } else {
+        // Staff: new message from a family
+        if (!m.de_familia) return;
+        // Refresh conversation list
+        var list = document.getElementById("msg-list");
+        if (list) _msgStaffCargarLista();
+        // Refresh thread if the active conversation matches
+        if (_msgStaffSel && m.alumno_id === _msgStaffSel.alumno_id && m.familia_id === _msgStaffSel.familia_id) {
+          _msgStaffCargarHilo();
+        } else {
+          _msgShowToast("💬 Nuevo mensaje de una familia");
+        }
+      }
+    })
+    .subscribe();
+}
+window._msgInitRealtime = _msgInitRealtime;
 
 /* ═══════════ VISTA FAMILIA ═══════════ */
 async function _msgRenderFamilia(el) {
