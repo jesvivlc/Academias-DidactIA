@@ -563,8 +563,21 @@ function initRealtimeNotifications() {
         tabSust.style.outline = '2px solid var(--ink)';
         tabSust.style.outlineOffset = '-2px';
       }
+      // Refresh the badge count for today's uncovered substitutions
+      _sustRefreshBadge();
     })
     .subscribe();
+}
+
+async function _sustRefreshBadge() {
+  try {
+    var today = new Date().toISOString().split('T')[0];
+    var r = await sb.from('sustituciones').select('id', { count: 'exact', head: true })
+      .eq('centro_id', ctrId).eq('fecha', today).eq('cubierta', false);
+    var n = r.count || 0;
+    var tabSust = document.getElementById('tab-sust');
+    if (tabSust) tabSust.textContent = n > 0 ? '🔄 Sustituciones (' + n + ')' : '🔄 Sustituciones';
+  } catch(e) {}
 }
 
 function showToast(msg) {
