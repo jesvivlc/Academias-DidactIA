@@ -376,8 +376,9 @@ async function calCargarAlumnos() {
       '<div style="overflow-x:auto;"><table class="tbl">' +
         '<thead><tr><th>Alumno</th><th style="width:110px;text-align:center;">Nota</th><th>Observaciones</th></tr></thead>' +
         '<tbody>' + rows + '</tbody></table></div>' +
-      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap;">' +
         '<button class="btn btn-s" id="cal-ia-btn" onclick="_calGenComentarios()" title="Genera un comentario para cada alumno con nota a partir de su calificación (rellena solo las observaciones vacías; editable)">✨ Comentarios IA</button>' +
+        '<button class="btn btn-s" id="cal-comp-btn" onclick="_calGenCompetencial()" title="Genera una valoración por competencias LOMLOE (CCL, STEM, CD, CPSAA…) para cada alumno con nota">🎯 Competencial IA</button>' +
         '<button class="btn btn-p" onclick="calGuardar()">💾 Guardar calificaciones</button>' +
       '</div>' +
     '</div>';
@@ -479,6 +480,183 @@ async function _calGenComentarios() {
     rest();
   }
 }
+
+// ── COMENTARIOS COMPETENCIALES IA (LOMLOE) ──────────────────────────────────────
+// Genera para cada alumno con nota una valoración de 2-3 frases referenciando
+// las competencias clave LOMLOE más relevantes para la asignatura.
+// Abre un modal editable; el docente puede aplicar cada comentario al campo
+// "Observaciones" de la tabla o exportarlos todos al boletín.
+
+// Mapa orientativo asignatura → competencias más relevantes (LOMLOE)
+var _CAL_COMP_MAP = [
+  { re: /matem|álgebra|cálculo|estadíst/i,   comps: ['STEM','CPSAA','CCL'] },
+  { re: /física|química|biolog|ciencias nat/i, comps: ['STEM','CCL','CPSAA'] },
+  { re: /lengua|literatura|español|castellan/i, comps: ['CCL','CPSAA','CCEC'] },
+  { re: /inglés|francés|alemán|idioma|lengua ex/i, comps: ['CCL','CP','CPSAA'] },
+  { re: /historia|geografía|sociales|económ/i,  comps: ['CC','CCL','CPSAA'] },
+  { re: /música|plástica|arte|expresión/i,      comps: ['CCEC','CE','CPSAA'] },
+  { re: /tecnolog|informát|robótic|program/i,   comps: ['STEM','CD','CE'] },
+  { re: /educación física|ef\b|deport/i,        comps: ['CPSAA','CC','CCEC'] },
+  { re: /filosofía|ética|valores/i,             comps: ['CC','CPSAA','CCL'] },
+  { re: /religión/i,                            comps: ['CCEC','CC','CPSAA'] },
+  { re: /economía|empresa/i,                    comps: ['CE','STEM','CC'] },
+];
+
+var _CAL_COMP_LABELS = {
+  CCL:   'Comunicación lingüística (CCL)',
+  CP:    'Plurilingüe (CP)',
+  STEM:  'Matemática y científico-tecnológica (STEM)',
+  CD:    'Digital (CD)',
+  CPSAA: 'Personal, social y de aprender a aprender (CPSAA)',
+  CC:    'Ciudadana (CC)',
+  CE:    'Emprendedora (CE)',
+  CCEC:  'Conciencia y expresión cultural (CCEC)',
+};
+
+function _calDetectarCompetencias(asig) {
+  for (var i = 0; i < _CAL_COMP_MAP.length; i++) {
+    if (_CAL_COMP_MAP[i].re.test(asig)) return _CAL_COMP_MAP[i].comps;
+  }
+  return ['CPSAA', 'CCL', 'STEM'];
+}
+
+async function _calGenCompetencial() {
+  var asig  = ((document.getElementById('cal-prof-asig') || {}).value || '').trim();
+  var evalu = (document.getElementById('cal-prof-eval') || {}).value;
+  var btn   = document.getElementById('cal-comp-btn');
+  var trs   = document.querySelectorAll('#cal-prof-tabla tr[data-alumno-id]');
+
+  var pend = [];
+  for (var i = 0; i < trs.length; i++) {
+    var tr   = trs[i];
+    var nota = ((tr.querySelector('.cal-nota') || {}).value || '').trim();
+    if (nota !== '') pend.push({ tr: tr, nombre: tr.dataset.alumnoNombre, nota: nota, idx: pend.length });
+  }
+  if (!pend.length) { _calToast('Carga alumnos con nota primero.', 'warn'); return; }
+  if (typeof API === 'undefined') { _calToast('IA no disponible.', 'error'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '🎯 Generando…'; }
+  var rest = function () { if (btn) { btn.disabled = false; btn.textContent = '🎯 Competencial IA'; } };
+
+  var comps = _calDetectarCompetencias(asig);
+  var compLabels = comps.map(function (c) { return _CAL_COMP_LABELS[c] || c; }).join(', ');
+
+  var sys = 'Eres un docente español elaborando el informe de evaluación por competencias clave LOMLOE. ' +
+    'Asignatura: "' + asig + '" (' + evalu + '). ' +
+    'Las competencias clave más relevantes para esta asignatura son: ' + compLabels + '. ' +
+    'Para CADA alumno escribe exactamente 2 frases en español, en tercera persona, que: ' +
+    '(1) valoren el progreso en las competencias indicadas según la nota (alta ≥7, media 5-6.9, baja <5); ' +
+    '(2) mencionen al menos 1 competencia clave con su sigla entre paréntesis, ej: "…ha demostrado buenas capacidades en STEM…". ' +
+    'Tono profesional y constructivo. Máximo 40 palabras por alumno. ' +
+    'Es OBLIGATORIO devolver un objeto por CADA número de la lista. ' +
+    'Devuelve EXCLUSIVAMENTE un array JSON: [{"n":1,"comentario":"…"},{"n":2,"comentario":"…"}]. Sin markdown.';
+
+  try {
+    // Procesar en lotes de 20
+    var resultados = {};
+    var CH = 20;
+    for (var s = 0; s < pend.length; s += CH) {
+      var chunk = pend.slice(s, s + CH);
+      var lista = chunk.map(function (p, idx) { return (idx + 1) + '. ' + p.nombre + ' — nota: ' + p.nota; }).join('\n');
+      var txt = await _calIA(sys, 'Alumnos y notas:\n' + lista);
+      if (txt) {
+        var clean = txt.replace(/```json/gi, '').replace(/```/g, '').trim();
+        var arr = null;
+        try { arr = JSON.parse(clean); } catch (e) {
+          var m = clean.match(/\[[\s\S]*\]/);
+          if (m) try { arr = JSON.parse(m[0]); } catch (e2) {}
+        }
+        if (Array.isArray(arr)) {
+          arr.forEach(function (o) {
+            var num = parseInt(o.n, 10);
+            if (!isNaN(num) && chunk[num - 1]) resultados[chunk[num - 1].idx] = String(o.comentario || '').trim();
+          });
+        }
+      }
+    }
+    _calAbrirModalCompetencial(pend, resultados, asig, evalu, comps);
+  } catch (e) {
+    _calToast('Error al generar informe competencial.', 'error');
+  } finally {
+    rest();
+  }
+}
+
+function _calAbrirModalCompetencial(pend, resultados, asig, evalu, comps) {
+  // Eliminar modal previo si existe
+  var prev = document.getElementById('cal-comp-modal');
+  if (prev) prev.remove();
+
+  var compPills = comps.map(function (c) {
+    return '<span style="display:inline-block;background:var(--info-soft);color:var(--info);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;margin-right:4px">' + c + '</span>';
+  }).join('');
+
+  var rows = pend.map(function (p, i) {
+    var comentario = resultados[p.idx] || '';
+    return '<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--paper)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+        '<span style="font-weight:600;font-size:13px;color:var(--txt)">' + _calEsc(p.nombre) + '</span>' +
+        '<span style="font-size:12px;color:var(--muted)">Nota: ' + _calEsc(p.nota) + '</span>' +
+      '</div>' +
+      '<textarea id="cal-comp-txt-' + i + '" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--txt);background:var(--paper-2);box-sizing:border-box;resize:vertical;font-family:var(--font-ui)">' +
+        _calEsc(comentario) +
+      '</textarea>' +
+      '<div style="text-align:right;margin-top:6px">' +
+        '<button onclick="_calCompAplicarUno(' + i + ')" style="font-size:12px;padding:4px 12px;border:1px solid var(--ink);border-radius:6px;background:transparent;color:var(--ink);cursor:pointer">Aplicar como observación</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  var modal = document.createElement('div');
+  modal.id = 'cal-comp-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:8500;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;background:rgba(0,0,0,.45);overflow-y:auto';
+  modal.innerHTML =
+    '<div style="background:var(--paper);border-radius:16px;width:100%;max-width:680px;box-shadow:var(--sh-lg);overflow:hidden">' +
+      '<div style="padding:20px 24px 16px;border-bottom:1px solid var(--line)">' +
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">INFORME COMPETENCIAL · IA</div>' +
+        '<h2 style="font-family:var(--font-display);font-size:22px;margin:0 0 6px;color:var(--txt)">' + _calEsc(asig) + ' · ' + _calEsc(evalu) + '</h2>' +
+        '<div style="margin-bottom:0">' + compPills + '</div>' +
+      '</div>' +
+      '<div style="padding:20px 24px;max-height:60vh;overflow-y:auto">' + rows + '</div>' +
+      '<div style="padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
+        '<button onclick="_calCompAplicarTodo(' + pend.length + ')" style="padding:9px 18px;border-radius:8px;background:var(--ink);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">✅ Aplicar todo al boletín</button>' +
+        '<button onclick="document.getElementById(\'cal-comp-modal\').remove()" style="padding:9px 18px;border-radius:8px;background:var(--surface-sunk);color:var(--txt2);border:none;font-size:13px;cursor:pointer">Cerrar</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+
+  // Cierra al clicar fuera
+  modal.addEventListener('click', function (e) { if (e.target === modal) modal.remove(); });
+
+  // Guarda referencia a las filas de la tabla para poder copiar al input
+  window._calCompPend = pend;
+}
+
+window._calCompAplicarUno = function (i) {
+  var pend = window._calCompPend || [];
+  var p    = pend[i];
+  if (!p) return;
+  var txt = (document.getElementById('cal-comp-txt-' + i) || {}).value || '';
+  var inp = p.tr.querySelector('.cal-obs');
+  if (inp) { inp.value = txt; }
+  _calToast('Aplicado a ' + p.nombre + '.', 'ok');
+};
+
+window._calCompAplicarTodo = function (total) {
+  var pend = window._calCompPend || [];
+  var n = 0;
+  for (var i = 0; i < total; i++) {
+    var p   = pend[i];
+    if (!p) continue;
+    var txt = (document.getElementById('cal-comp-txt-' + i) || {}).value || '';
+    var inp = p.tr.querySelector('.cal-obs');
+    if (inp && txt) { inp.value = txt; n++; }
+  }
+  _calToast('✅ ' + n + ' comentario(s) competenciales aplicados. Recuerda guardar.', 'ok');
+  var modal = document.getElementById('cal-comp-modal');
+  if (modal) modal.remove();
+};
+// ────────────────────────────────────────────────────────────────────────────────
 
 async function calGuardar() {
   var grupo = (document.getElementById('cal-prof-grupo') || {}).value;
