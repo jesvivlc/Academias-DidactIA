@@ -274,6 +274,42 @@ async function _calBoletinPDF(hijo, btnId) {
       });
     }
 
+    // Sección de evaluación competencial LOMLOE (si la tabla existe y hay datos)
+    try {
+      var rComp = await sb.from('comentarios_competenciales')
+        .select('asignatura,evaluacion,niveles,comentario')
+        .eq('centro_id', ctrId)
+        .eq('alumno_nombre', hijo.nombre || '');
+      var compData = rComp.data || [];
+      if (compData.length) {
+        compData.sort(function (a, b) {
+          return (a.asignatura || '').localeCompare(b.asignatura || '', 'es') ||
+                 (a.evaluacion || '').localeCompare(b.evaluacion || '', 'es');
+        });
+        var cy = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 12;
+        if (cy > H - 50) { doc.addPage(); pageDraw(); cy = 38; }
+        doc.setFontSize(12); doc.setFont(undefined, 'bold'); doc.setTextColor(rgb.r, rgb.g, rgb.b);
+        doc.text('Evaluación por competencias clave (LOMLOE)', 12, cy);
+        var _NIV_LBL = ['', 'Iniciado', 'En proceso', 'Adquirido', 'Avanzado'];
+        var compBody = compData.map(function (d) {
+          var niv = Object.entries(d.niveles || {}).map(function (kv) {
+            return kv[0] + ': ' + (_NIV_LBL[kv[1]] || '');
+          }).join('\n');
+          return [d.asignatura || '—', d.evaluacion || '—', niv || '—', d.comentario || '—'];
+        });
+        doc.autoTable({
+          head: [['Asignatura', 'Evaluación', 'Competencias', 'Observación']],
+          body: compBody,
+          startY: cy + 4,
+          margin: { top: 32, bottom: 16 },
+          styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak' },
+          headStyles: { fillColor: [rgb.r, rgb.g, rgb.b], textColor: 255, fontSize: 8 },
+          columnStyles: { 0: { cellWidth: 38 }, 1: { cellWidth: 22 }, 2: { cellWidth: 58 } },
+          didDrawPage: pageDraw
+        });
+      }
+    } catch (_) { /* tabla aún no existe — se omite la sección */ }
+
     var safe = (hijo.nombre || 'alumno').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').toLowerCase();
     doc.save('boletin_' + safe + '_' + new Date().toISOString().split('T')[0] + '.pdf');
     _calToast('✅ Boletín descargado', 'ok');
@@ -1161,6 +1197,49 @@ function _calAbrirAlumno(nombre, grupo) {
   html += '</tbody></table></div>';
 
   panel.innerHTML = html;
+  _calLoadCompetencialAdmin(panel, nombre);
+}
+
+// Carga y muestra la sección competencial LOMLOE en el panel de detalle del alumno (admin/director).
+// Fire-and-forget: no bloquea el render inicial de notas.
+async function _calLoadCompetencialAdmin(panel, nombre) {
+  try {
+    var r = await sb.from('comentarios_competenciales')
+      .select('asignatura,evaluacion,niveles,comentario')
+      .eq('centro_id', ctrId)
+      .eq('alumno_nombre', nombre);
+    var data = r.data || [];
+    if (!data.length) return;
+    if (_calSelectedAlumno !== nombre) return; // el usuario cambió de alumno mientras cargaba
+    data.sort(function (a, b) {
+      return (a.asignatura || '').localeCompare(b.asignatura || '', 'es') ||
+             (a.evaluacion || '').localeCompare(b.evaluacion || '', 'es');
+    });
+    var _NL = ['', 'Iniciado', 'En proceso', 'Adquirido', 'Avanzado'];
+    var _NC = ['', 'var(--danger)', 'var(--warning)', 'var(--info)', 'var(--success)'];
+    var _NB = ['', 'var(--danger-soft)', 'var(--warning-soft)', 'var(--info-soft)', 'var(--success-soft)'];
+    var h = '<div style="padding:0 20px 20px;">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-top:4px;">Competencias clave · LOMLOE</div>';
+    data.forEach(function (d) {
+      var pills = Object.entries(d.niveles || {}).map(function (kv) {
+        var n = kv[1]; var lbl = _NL[n] || '';
+        return '<span style="display:inline-block;background:' + (_NB[n]||'var(--surface-sunk)') + ';color:' + (_NC[n]||'var(--muted)') + ';border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;margin:2px 2px 2px 0;">' +
+          _calEsc(kv[0]) + ' · ' + _calEsc(lbl) + '</span>';
+      }).join('');
+      h += '<div style="background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<span style="font-weight:600;font-size:13px;color:var(--txt);">' + _calEsc(d.asignatura || '—') + '</span>' +
+          '<span style="font-size:11px;color:var(--muted);">' + _calEsc(d.evaluacion || '—') + '</span>' +
+        '</div>';
+      if (pills) h += '<div style="margin-bottom:' + (d.comentario ? '7px' : '0') + ';">' + pills + '</div>';
+      if (d.comentario) h += '<div style="font-size:12px;color:var(--txt2);padding-top:7px;border-top:1px solid var(--line);">' + _calEsc(d.comentario) + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+    if (document.getElementById('cal-alumno-panel') === panel && _calSelectedAlumno === nombre) {
+      panel.insertAdjacentHTML('beforeend', h);
+    }
+  } catch (_) { /* tabla aún no aplicada — se omite sin error */ }
 }
 
 // ── EXPORT CSV (SheetJS) ──
