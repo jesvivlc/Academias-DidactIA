@@ -148,8 +148,11 @@ window._msgFamEnviar = async function () {
 async function _msgRenderStaff(el) {
   el.innerHTML =
     '<div class="msg-page">' +
-      '<div class="msg-hdr"><div class="msg-eyebrow">Comunicación con familias</div><div class="msg-title">Mensajes</div>' +
-        '<div class="msg-sub">Conversaciones con las familias del centro.</div></div>' +
+      '<div class="msg-hdr" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">' +
+        '<div><div class="msg-eyebrow">Comunicación con familias</div><div class="msg-title">Mensajes</div>' +
+          '<div class="msg-sub">Conversaciones con las familias del centro.</div></div>' +
+        '<button onclick="window._msgStaffNuevo()" style="flex:0 0 auto;padding:9px 16px;border-radius:9px;border:none;background:var(--ink);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">+ Nueva conversación</button>' +
+      '</div>' +
       '<div class="msg-body">' +
         '<div class="msg-list" id="msg-list"><div class="msg-empty">Cargando…</div></div>' +
         '<div class="msg-thread" id="msg-thread"><div class="msg-empty">← Selecciona una conversación</div></div>' +
@@ -157,6 +160,100 @@ async function _msgRenderStaff(el) {
     '</div>';
   _msgStaffCargarLista();
 }
+
+window._msgStaffNuevo = function () {
+  var old = document.getElementById("msg-nuevo-ov");
+  if (old) old.remove();
+  var ov = document.createElement("div");
+  ov.id = "msg-nuevo-ov";
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(20,20,30,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";
+  ov.innerHTML =
+    '<div style="background:var(--paper);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:100%;max-width:460px;max-height:82vh;display:flex;flex-direction:column;border:1px solid var(--line);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);flex:0 0 auto;">' +
+        '<div style="font-size:16px;font-weight:700;color:var(--txt);">Nueva conversación</div>' +
+        '<button onclick="document.getElementById(\'msg-nuevo-ov\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);line-height:1;padding:4px 8px;">✕</button>' +
+      '</div>' +
+      '<div style="padding:14px 20px 10px;flex:0 0 auto;">' +
+        '<input id="msg-nuevo-busca" type="text" placeholder="Buscar alumno por nombre…" autocomplete="off"' +
+          ' style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;font-family:inherit;background:var(--paper);color:var(--txt);"' +
+          ' oninput="window._msgNuevoBuscar()">' +
+      '</div>' +
+      '<div id="msg-nuevo-lista" style="flex:1;overflow-y:auto;padding:4px 20px 16px;display:flex;flex-direction:column;gap:4px;">' +
+        '<div style="text-align:center;color:var(--muted);font-size:13px;padding:28px 0;">Escribe para buscar alumnos</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+  setTimeout(function () { var i = document.getElementById("msg-nuevo-busca"); if (i) i.focus(); }, 60);
+};
+
+window._msgNuevoBuscar = async function () {
+  var inp = document.getElementById("msg-nuevo-busca");
+  var lista = document.getElementById("msg-nuevo-lista");
+  if (!inp || !lista) return;
+  var q = (inp.value || "").trim();
+  if (q.length < 2) {
+    lista.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:28px 0;">Escribe al menos 2 letras</div>';
+    return;
+  }
+  lista.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:28px 0;">Buscando…</div>';
+  var r = await window.sb.from("alumnos").select("id,nombre,grupo_horario").eq("centro_id", window.ctrId).ilike("nombre", "%" + q + "%").limit(20);
+  var alumnos = r.data || [];
+  if (!alumnos.length) {
+    lista.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:28px 0;">Sin resultados</div>';
+    return;
+  }
+  lista.innerHTML = alumnos.map(function (a) {
+    return '<div style="padding:10px 12px;border:1px solid var(--line);border-radius:9px;cursor:pointer;background:var(--paper);transition:background .12s;"' +
+      ' onclick="window._msgNuevoSelAlumno(\'' + a.id + '\',\'' + _msgArg(a.nombre) + '\')"' +
+      ' onmouseenter="this.style.background=\'var(--paper-2)\'" onmouseleave="this.style.background=\'var(--paper)\'">' +
+      '<div style="font-weight:600;font-size:13.5px;color:var(--txt);">' + _msgEsc(a.nombre) + '</div>' +
+      (a.grupo_horario ? '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + _msgEsc(a.grupo_horario) + '</div>' : '') +
+    '</div>';
+  }).join("");
+};
+
+window._msgNuevoSelAlumno = async function (alumnoId, alumnoNombre) {
+  var lista = document.getElementById("msg-nuevo-lista");
+  if (lista) lista.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:28px 0;">Buscando familia vinculada…</div>';
+  var rf = await window.sb.from("familia_alumno").select("profile_id,profiles(full_name)").eq("alumno_id", alumnoId);
+  var familias = (rf.data || []).filter(function (fa) { return fa.profile_id; }).map(function (fa) {
+    return { id: fa.profile_id, nombre: (fa.profiles && fa.profiles.full_name) || "Familia" };
+  });
+  if (!familias.length) {
+    if (typeof showToast === "function") showToast("Este alumno no tiene familiar registrado en el sistema");
+    var ov = document.getElementById("msg-nuevo-ov");
+    if (ov) ov.remove();
+    return;
+  }
+  var ov = document.getElementById("msg-nuevo-ov");
+  if (ov) ov.remove();
+  if (familias.length === 1) {
+    _msgStaffAbrir(alumnoId, familias[0].id, alumnoNombre);
+    return;
+  }
+  // Varias familias vinculadas — seleccionar
+  var pickOv = document.createElement("div");
+  pickOv.id = "msg-pick-ov";
+  pickOv.style.cssText = "position:fixed;inset:0;background:rgba(20,20,30,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";
+  pickOv.innerHTML =
+    '<div style="background:var(--paper);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:100%;max-width:380px;border:1px solid var(--line);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);">' +
+        '<div style="font-size:15px;font-weight:700;color:var(--txt);">¿Con qué familiar? — ' + _msgEsc(alumnoNombre) + '</div>' +
+        '<button onclick="document.getElementById(\'msg-pick-ov\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);">✕</button>' +
+      '</div>' +
+      '<div style="padding:14px 18px 18px;display:flex;flex-direction:column;gap:8px;">' +
+        familias.map(function (f) {
+          return '<button onclick="document.getElementById(\'msg-pick-ov\').remove();window._msgStaffAbrir(\'' + alumnoId + '\',\'' + f.id + '\',\'' + _msgArg(alumnoNombre) + '\')"' +
+            ' style="text-align:left;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--paper);cursor:pointer;font-size:14px;font-weight:600;color:var(--txt);font-family:inherit;">' +
+            _msgEsc(f.nombre) +
+          '</button>';
+        }).join("") +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(pickOv);
+  pickOv.addEventListener("click", function (e) { if (e.target === pickOv) pickOv.remove(); });
+};
 
 async function _msgStaffCargarLista() {
   var list = document.getElementById("msg-list");

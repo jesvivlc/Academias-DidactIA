@@ -52,7 +52,7 @@ async function _encCargarLista() {
     .eq("centro_id", window.ctrId).order("created_at", { ascending: false });
   var encs = r.data || [];
   if (!encs.length) {
-    box.innerHTML = '<div class="enc-empty">Aún no hay encuestas. Crea la primera con “+ Nueva encuesta”.</div>';
+    box.innerHTML = '<div class=”enc-empty”>Aún no hay encuestas.' + (_encGestiona() ? ' Crea la primera con “+ Nueva encuesta”.' : '') + '</div>';
     return;
   }
   // Conteo de respuestas por encuesta
@@ -65,7 +65,7 @@ async function _encCargarLista() {
     var badge = _encEstadoBadge[e.estado] || ["—", "var(--muted)"];
     var nq = (e.preguntas || []).length;
     var nr = counts[e.id] || 0;
-    var dest = e.destinatarios === "todos" ? "Todas las familias" : e.destinatarios.replace("grupo:", "Grupo ");
+    var dest = !e.destinatarios || e.destinatarios === "todos" ? "Todas las familias" : e.destinatarios.replace("grupo:", "Grupo ");
     return '<div class="enc-card">' +
       '<div class="enc-card-main" onclick="window._encResultados(\'' + e.id + '\')">' +
         '<div class="enc-card-top"><span class="enc-badge" style="background:' + badge[1] + '">' + badge[0] + '</span>' +

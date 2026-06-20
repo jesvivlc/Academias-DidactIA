@@ -262,6 +262,7 @@ async function _updateIncTabCount() {
 // ── Lista de incidencias ────────────────────────────────────────
 
 async function loadIncidencias(filtro) {
+  var esc = function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   if (filtro !== undefined) incFiltroActivo = filtro;
   var grupoSel = document.getElementById('inc-filtro-grupo');
   var incFiltroGrupo = grupoSel ? grupoSel.value : '';
