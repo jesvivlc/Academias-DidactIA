@@ -180,7 +180,7 @@ async function _tutLoadCitasProfesor() {
     }
     pane.innerHTML = html;
   } catch (e) {
-    pane.innerHTML = '<div class="tut-empty">Error al cargar citas.</div>';
+    pane.innerHTML = '<div class="tut-empty">Error al cargar citas: ' + (e && e.message ? e.message : String(e)) + '</div>';
   }
 }
 
@@ -716,7 +716,7 @@ async function _tutFamLoadMisCitas() {
       </div>`;
     }).join('');
   } catch (e) {
-    pane.innerHTML = '<div class="tut-empty">Error al cargar citas.</div>';
+    pane.innerHTML = '<div class="tut-empty">Error al cargar citas: ' + (e && e.message ? e.message : String(e)) + '</div>';
   }
 }
 
@@ -772,6 +772,6 @@ async function _tutRenderAdmin(el) {
         </table>
       </div>`;
   } catch (e) {
-    pane.innerHTML = '<div class="tut-empty">Error al cargar citas.</div>';
+    pane.innerHTML = '<div class="tut-empty">Error al cargar citas: ' + (e && e.message ? e.message : String(e)) + '</div>';
   }
 }
