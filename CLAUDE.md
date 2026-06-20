@@ -377,6 +377,8 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-20 23:30` · `16bd4b5` — fix(bugs): incidencias esc crash + mensajes nueva conversación + encuestas null check
+- `2026-06-20 22:54` · `91d2ae5` — fix(prevision): filtrar horarios_grupo por curso_escolar en previsión de cobertura
 - `2026-06-20` — fix(prevision): **añadir filtro `curso_escolar` a la query de `horarios_grupo`** en `js/prevision.js`. La query de disponibilidad de profesores no filtraba por año escolar — en centros con datos de múltiples cursos podría mostrar profesores libres incorrectos. Ahora usa `window.cursoActivo || "2025-26"`.
 - `2026-06-20 21:54` · `b30f596` — docs(CLAUDE): sesión 2026-06-20 — migraciones prod + landing 25+ módulos
 - `2026-06-19 21:20` · `eb64b2f` — feat(landing): actualizar sección módulos — de 8 a 25+ módulos
