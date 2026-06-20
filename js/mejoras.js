@@ -573,12 +573,13 @@ async function _sustRefreshBadge() {
   try {
     var today = new Date().toISOString().split('T')[0];
     var r = await sb.from('sustituciones').select('id', { count: 'exact', head: true })
-      .eq('centro_id', ctrId).eq('fecha', today).eq('cubierta', false);
+      .eq('centro_id', ctrId).eq('fecha', today).or('cubierta.eq.false,cubierta.is.null');
     var n = r.count || 0;
     var tabSust = document.getElementById('tab-sust');
     if (tabSust) tabSust.textContent = n > 0 ? '🔄 Sustituciones (' + n + ')' : '🔄 Sustituciones';
   } catch(e) {}
 }
+window._sustRefreshBadge = _sustRefreshBadge;
 
 function showToast(msg) {
   var toast = document.createElement('div');

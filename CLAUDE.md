@@ -377,6 +377,10 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-21` — fix(sustituciones): **badge siempre preciso** (`js/mejoras.js` + `js/admin.js`). Tres bugs corregidos: (1) `_sustRefreshBadge` no estaba expuesto como `window._sustRefreshBadge` — solo podían llamarla los handlers Realtime de `mejoras.js`; (2) el filtro de la query usaba `eq('cubierta', false)` y omitía filas con `cubierta IS NULL` (también son pendientes); (3) cuando el admin estaba en filtro 'semana'/'todo', las acciones `registrarSustitucion`/`toggleCubierta`/`eliminarSustitucion` no refrescaban el badge. Ahora las tres acciones llaman `window._sustRefreshBadge()` cuando `sustFiltroActivo !== 'hoy'`.
+- `2026-06-21 00:57` · `0d54c88` — feat(realtime): badge sustituciones en tiempo real + SW v20
+- `2026-06-21 00:53` · `3216daf` — feat(mensajes): Realtime — mensajes nuevos en vivo sin recargar
+- `2026-06-21 00:51` · `867dba9` — feat(mensajes): badge de mensajes no leídos en el sidebar
 - `2026-06-21 00:44` · `b74b15a` — docs(tablas): añadir mensajes, personas_autorizadas y competenciales al schema doc
 - `2026-06-21 00:38` · `8545580` — feat(calificaciones): evaluación competencial LOMLOE completa — auto-comentario, boletín PDF, vista admin
 - `2026-06-21` — feat(calificaciones): **boletín PDF incluye sección competencial LOMLOE** (`_calBoletinPDF`). Si existe la tabla `comentarios_competenciales` y hay datos para el alumno, el PDF añade una tabla "Evaluación por competencias clave (LOMLOE)" tras las observaciones: asignatura × evaluación × niveles (texto) × comentario. Silencioso si la tabla no existe aún (try/catch).

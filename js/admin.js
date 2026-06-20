@@ -336,6 +336,7 @@ async function registrarSustitucion() {
     }
     setTimeout(() => { msg.style.display = "none"; }, 3000);
     await loadSustituciones(sustFiltroActivo);
+    if (sustFiltroActivo !== 'hoy' && window._sustRefreshBadge) window._sustRefreshBadge();
     if (typeof loadBolsaGuardias === "function") loadBolsaGuardias();
   }
 }
@@ -653,6 +654,7 @@ async function toggleCubierta(id, estadoActual) {
     }).catch(() => {});
   }
   await loadSustituciones(sustFiltroActivo);
+  if (sustFiltroActivo !== 'hoy' && window._sustRefreshBadge) window._sustRefreshBadge();
 }
 
 async function eliminarSustitucion(id) {
@@ -662,6 +664,7 @@ async function eliminarSustitucion(id) {
     alert("Error al eliminar: " + error.message);
   } else {
     await loadSustituciones(sustFiltroActivo);
+    if (sustFiltroActivo !== 'hoy' && window._sustRefreshBadge) window._sustRefreshBadge();
   }
 }
 
