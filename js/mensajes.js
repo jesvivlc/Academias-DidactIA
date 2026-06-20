@@ -1,5 +1,26 @@
 /* Módulo Mensajes — mensajería familia ↔ centro (sobre un alumno) */
 
+// Cuenta mensajes no leídos y actualiza la badge del nav de Mensajes.
+// Para familias: mensajes del centro sin leer (de_familia=false, leido=false).
+// Para staff: mensajes de familias sin leer (de_familia=true, leido=false).
+async function _msgCheckAndBadge() {
+  try {
+    if (!ctrId || !currentUser) return;
+    var q = sb.from("mensajes").select("id", { count: "exact", head: true })
+      .eq("centro_id", ctrId).eq("leido", false);
+    if (role === "familia") {
+      q = q.eq("familia_id", currentUser.id).eq("de_familia", false);
+    } else {
+      q = q.eq("de_familia", true);
+    }
+    var r = await q;
+    var n = r.count || 0;
+    var tab = document.getElementById("tab-mensajes");
+    if (tab) tab.textContent = n > 0 ? "💬 Mensajes (" + n + ")" : "💬 Mensajes";
+  } catch (e) {}
+}
+window._msgCheckAndBadge = _msgCheckAndBadge;
+
 function _msgEsc(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -111,7 +132,7 @@ async function _msgFamCargar() {
   var msgs = r.data || [];
   // Marcar como leídos los del centro
   var noLeidos = msgs.filter(function (m) { return !m.de_familia && !m.leido; }).map(function (m) { return m.id; });
-  if (noLeidos.length) sb.from("mensajes").update({ leido: true }).in("id", noLeidos).then(function () {}, function () {});
+  if (noLeidos.length) sb.from("mensajes").update({ leido: true }).in("id", noLeidos).then(function () { _msgCheckAndBadge(); }, function () {});
   if (!msgs.length) { scroll.innerHTML = '<div class="msg-empty">Aún no hay mensajes. Escribe el primero al centro 👇</div>'; return; }
   scroll.innerHTML = msgs.map(function (m) {
     var mine = m.de_familia;
@@ -314,6 +335,7 @@ async function _msgStaffCargarHilo() {
   if (noLeidos.length) {
     await sb.from("mensajes").update({ leido: true }).in("id", noLeidos);
     _msgStaffCargarLista();
+    _msgCheckAndBadge();
   }
   if (!msgs.length) { scroll.innerHTML = '<div class="msg-empty">Sin mensajes.</div>'; return; }
   scroll.innerHTML = msgs.map(function (m) {
