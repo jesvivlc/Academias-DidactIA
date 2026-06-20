@@ -23,6 +23,7 @@ async function loadBolsaGuardias() {
   const { data: hg } = await sb.from("horarios_grupo")
     .select("profesor_nombre")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
     .not("profesor_nombre", "is", null);
 
   const nombresSet = new Set();
@@ -112,7 +113,7 @@ async function exportarGuardiasExcel() {
   });
 
   const { data: hg } = await sb.from("horarios_grupo")
-    .select("profesor_nombre").eq("centro_id", ctrId).not("profesor_nombre", "is", null);
+    .select("profesor_nombre").eq("centro_id", ctrId).eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26").not("profesor_nombre", "is", null);
   const nombres = new Set();
   (hg || []).forEach(function(h) { if (h.profesor_nombre) nombres.add(h.profesor_nombre.trim()); });
   Object.keys(countByName).forEach(function(n) { nombres.add(n); });

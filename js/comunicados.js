@@ -193,7 +193,7 @@ function _comRenderLista(lista) {
 }
 
 function _escCom(v) {
-  return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function _comDestLabel(d) {

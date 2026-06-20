@@ -48,6 +48,7 @@ async function _detectarContextoProfesor(diaHG, ahoraMin) {
   const { data: misClases } = await sb.from("horarios_grupo")
     .select("grupo_horario,tramo,dia")
     .eq("centro_id", ctrId)
+    .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
     .ilike("profesor_nombre", `%${partNombre}%`);
 
   _comedorGruposProfesor = [...new Set(

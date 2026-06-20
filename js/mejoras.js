@@ -261,7 +261,7 @@ async function renderMiHorarioHoy(force) {
   var nombre = (typeof currentUserName !== "undefined" ? currentUserName : "") || "";
   var userTokens = _mhTokens(nombre);
 
-  var key = (ctrId || "") + "|" + dia + "|" + nombre;
+  var key = (ctrId || "") + "|" + dia + "|" + nombre + "|" + (cursoActivo || "2025-26");
   if (!force && _miHorarioKey === key) return; // evita recargas en cada cambio de tab
   _miHorarioKey = key;
 
@@ -277,7 +277,7 @@ async function renderMiHorarioHoy(force) {
   // Clases del día (filtro accent-safe en cliente; ilike es sensible a tildes y no sirve aquí)
   var r = await sb.from("horarios_grupo")
     .select("tramo,hora_inicio,hora_fin,grupo_horario,actividad_nombre,profesor_nombre,aula")
-    .eq("centro_id", ctrId).eq("dia", dia).limit(3000);
+    .eq("centro_id", ctrId).eq("dia", dia).eq("curso_escolar", cursoActivo || "2025-26").limit(3000);
 
   if (r.error) {
     setBodies('<div class="home-horario-empty">No se pudo cargar el horario.</div>');

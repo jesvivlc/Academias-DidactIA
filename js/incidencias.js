@@ -66,7 +66,7 @@ async function _incLoadAlumnosProfesor() {
   // Obtener los grupos del profesor desde horarios_grupo
   var parte = currentUserName.trim().split(/\s+/).find(function(p) { return p.length > 2; }) || '';
   var r = await sb.from('horarios_grupo').select('grupo_horario')
-    .eq('centro_id', ctrId).ilike('profesor_nombre', '%' + parte + '%');
+    .eq('centro_id', ctrId).eq('curso_escolar', typeof cursoActivo !== 'undefined' ? cursoActivo : '2025-26').ilike('profesor_nombre', '%' + parte + '%');
   var misGrupos = Array.from(new Set(
     (r.data || []).map(function(c) { return c.grupo_horario; }).filter(Boolean)
   ));

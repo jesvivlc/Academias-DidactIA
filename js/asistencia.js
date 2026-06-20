@@ -377,7 +377,7 @@
   // Rellena un <select> de grupos del centro (con horario)
   async function _asistPoblarGrupos(selId) {
     try {
-      var rg = await sb.from("horarios_grupo").select("grupo_horario").eq("centro_id", ctrId).limit(5000);
+      var rg = await sb.from("horarios_grupo").select("grupo_horario").eq("centro_id", ctrId).eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26").limit(5000);
       var grupos = [...new Set((rg.data || []).map(function (x) { return x.grupo_horario; }).filter(Boolean))]
         .sort(function (a, b) { return a.localeCompare(b, "es"); });
       var sel = document.getElementById(selId);
@@ -390,7 +390,7 @@
   async function _asistGruposDelProfesor() {
     var userTokens = _aTokens(typeof currentUserName !== "undefined" ? currentUserName : "");
     if (userTokens.length < 2) return [];
-    var r = await sb.from("horarios_grupo").select("grupo_horario,profesor_nombre").eq("centro_id", ctrId).limit(5000);
+    var r = await sb.from("horarios_grupo").select("grupo_horario,profesor_nombre").eq("centro_id", ctrId).eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26").limit(5000);
     var set = {};
     (r.data || []).forEach(function (x) {
       var pt = _aTokens(x.profesor_nombre);
@@ -600,7 +600,7 @@
     try {
       var r = await sb.from("horarios_grupo")
         .select("tramo,hora_inicio,hora_fin,grupo_horario,actividad_nombre,profesor_nombre,aula")
-        .eq("centro_id", ctrId).eq("dia", dia).limit(3000);
+        .eq("centro_id", ctrId).eq("dia", dia).eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26").limit(3000);
       var rows = r.data || [];
 
       if (esAdmin) {

@@ -66,9 +66,9 @@
       var queries = [
         sb.from("alumnos").select("id,nombre,curso,grupo_horario").eq("centro_id", ctrId).ilike("nombre", like).limit(6),
         sb.from("profesores").select("nombre,especialidad").eq("centro_id", ctrId).ilike("nombre", like).limit(6),
-        sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).ilike("profesor_nombre", like).limit(40),
+        sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", ctrId).eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26").ilike("profesor_nombre", like).limit(40),
         sb.from("espacios").select("nombre,capacidad").eq("centro_id", ctrId).ilike("nombre", like).limit(6),
-        sb.from("horarios_grupo").select("aula").eq("centro_id", ctrId).ilike("aula", like).limit(40)
+        sb.from("horarios_grupo").select("aula").eq("centro_id", ctrId).eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26").ilike("aula", like).limit(40)
       ].map(function (p) {
         return Promise.resolve(p).then(function (r) { return (r && r.data) || []; }).catch(function () { return []; });
       });
