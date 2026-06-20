@@ -377,6 +377,8 @@ Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLA
 ---
 
 ## Registro de cambios recientes
+- `2026-06-19 21:20` · `eb64b2f` — feat(landing): actualizar sección módulos — de 8 a 25+ módulos
+- `2026-06-19 21:05` · `738cd6b` — fix(migraciones): aplicar 4 migraciones pendientes del portátil en producción
 - `2026-06-19 21:01` · `70bed6f` — docs: migraciones laptop pendientes + módulos tabla (tutorias/mensajes/agentes/pasar lista)
 - `2026-06-19 20:55` · `5eab7eb` — docs(CLAUDE.md): añadir entrada changelog sesión docs 2026-06-19
 - `2026-06-19 19:38` · `c3232f7` — docs(CLAUDE): sesión 2026-06-19 — 11 módulos nuevos + recap laptop (agentes, mensajes, encuestas, menú, recursos, actas, documentos, plancobertura, prevision, participacion, + updates comedor/tutorias/rrhh/orientacion/calificaciones)
