@@ -523,6 +523,37 @@ function _calDetectarCompetencias(asig) {
   return ['CPSAA', 'CCL', 'STEM'];
 }
 
+// Genera un comentario de plantilla a partir de los niveles actuales del alumno idx.
+// Se llama automáticamente al cambiar un dot (salvo que el usuario haya editado el textarea).
+function _calCompAutoComment(idx) {
+  var comps = window._calCompComps || [];
+  var ns    = _calCompNiveles[idx] || {};
+  var vals  = comps.map(function (c) { return ns[c] || 2; });
+  var avg   = vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : 2;
+  var bajas = comps.filter(function (c) { return (ns[c] || 2) <= 2; });
+  var altas = comps.filter(function (c) { return (ns[c] || 2) >= 4; });
+  var frase;
+  if (avg >= 3.5) {
+    frase = 'Demuestra un nivel avanzado o adquirido en las competencias clave evaluadas';
+    if (altas.length) frase += ', con especial dominio en ' + altas.join(' y ');
+    if (bajas.length) frase += '. Puede reforzar ' + bajas.join(' y ');
+    frase += '.';
+  } else if (avg >= 2.5) {
+    frase = 'Ha adquirido satisfactoriamente las competencias clave evaluadas';
+    if (bajas.length) frase += ', aunque puede mejorar en ' + bajas.join(' y ');
+    frase += '.';
+  } else if (avg >= 1.5) {
+    frase = 'Se encuentra en proceso de adquisición de las competencias clave';
+    if (bajas.length) frase += ', con mayor necesidad de apoyo en ' + bajas.join(' y ');
+    frase += '. Progresa con esfuerzo.';
+  } else {
+    frase = 'Muestra un nivel inicial en las competencias clave evaluadas';
+    if (bajas.length) frase += ', especialmente en ' + bajas.join(' y ');
+    frase += '. Se recomienda refuerzo adicional.';
+  }
+  return frase;
+}
+
 function _calRenderNivelDots(idx, comp, curVal) {
   var html = '<div style="display:inline-flex;gap:1px;">';
   for (var n = 1; n <= 4; n++) {
@@ -648,7 +679,7 @@ function _calAbrirModalCompetencial(pend, resultados, savedData, asig, evalu, co
         '<span style="font-size:12px;color:var(--muted);">Nota: ' + _calEsc(p.nota) + '</span>' +
       '</div>' +
       '<div style="background:var(--paper-2);border-radius:8px;padding:8px 10px;margin-bottom:10px;">' + nivelRows + '</div>' +
-      '<textarea id="cal-comp-txt-' + i + '" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--txt);background:var(--paper-2);box-sizing:border-box;resize:vertical;font-family:var(--font-ui);">' +
+      '<textarea id="cal-comp-txt-' + i + '" rows="3" oninput="this.dataset.manualEdit=\'1\'" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--txt);background:var(--paper-2);box-sizing:border-box;resize:vertical;font-family:var(--font-ui);">' +
         _calEsc(comentario) +
       '</textarea>' +
       '<div style="text-align:right;margin-top:6px;">' +
@@ -691,7 +722,7 @@ function _calAbrirModalCompetencial(pend, resultados, savedData, asig, evalu, co
   window._calCompComps = comps;
 }
 
-// Actualiza los dots de nivel en el modal al hacer clic
+// Actualiza los dots de nivel en el modal al hacer clic y regenera el comentario de plantilla.
 window._calCompSetNivel = function (idx, comp, val) {
   if (!_calCompNiveles[idx]) _calCompNiveles[idx] = {};
   _calCompNiveles[idx][comp] = val;
@@ -702,6 +733,11 @@ window._calCompSetNivel = function (idx, comp, val) {
   });
   var lbl = document.getElementById('cal-nlbl-' + idx + '-' + comp);
   if (lbl) lbl.textContent = _COMP_NIVEL_LBL[val] || '';
+  // Actualiza el comentario solo si el usuario no ha editado manualmente el textarea
+  var txt = document.getElementById('cal-comp-txt-' + idx);
+  if (txt && txt.dataset.manualEdit !== '1') {
+    txt.value = _calCompAutoComment(idx);
+  }
 };
 
 window._calCompAplicarUno = function (i) {
