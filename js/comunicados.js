@@ -301,6 +301,21 @@ window._comTraducir = async function (id, lang) {
   _comTradCache[id] = _comTradCache[id] || {};
   if (_comTradCache[id][lang]) { aplicar(_comTradCache[id][lang], true); return; }
 
+  // Caché persistente en BD (comunicado_traducciones): otras familias reutilizan la
+  // traducción sin volver a llamar a Gemini. Si la tabla aún no existe, el catch deja
+  // continuar con el flujo de Gemini.
+  try {
+    var pre = await sb.from('comunicado_traducciones')
+      .select('titulo_traducido,cuerpo_traducido')
+      .eq('comunicado_id', id).eq('idioma', lang).maybeSingle();
+    if (pre && pre.data && pre.data.cuerpo_traducido) {
+      var co = { titulo: pre.data.titulo_traducido || com.titulo, cuerpo: pre.data.cuerpo_traducido };
+      _comTradCache[id][lang] = co;
+      aplicar(co, true);
+      return;
+    }
+  } catch (e) { /* tabla no disponible aún → seguir con Gemini */ }
+
   bodyEl.innerHTML = '<span style="color:var(--txt3);">⟳ Traduciendo…</span>';
   if (noteEl) noteEl.style.display = 'none';
 
@@ -320,6 +335,12 @@ window._comTraducir = async function (id, lang) {
     }
     if (!obj || (!obj.titulo && !obj.cuerpo)) { aplicar({ titulo: com.titulo, cuerpo: com.cuerpo }, false); if (typeof showToast === 'function') showToast('No se pudo interpretar la traducción.'); return; }
     _comTradCache[id][lang] = obj;
+    // Persistir en BD (fire-and-forget; si la tabla no existe o RLS lo impide, se ignora)
+    sb.from('comunicado_traducciones').upsert({
+      comunicado_id: id, idioma: lang,
+      titulo_traducido: obj.titulo || null,
+      cuerpo_traducido: obj.cuerpo || ''
+    }, { onConflict: 'comunicado_id,idioma' }).then(function () {}, function () {});
     aplicar(obj, true);
   } catch (e) {
     aplicar({ titulo: com.titulo, cuerpo: com.cuerpo }, false);

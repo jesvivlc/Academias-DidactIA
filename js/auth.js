@@ -614,9 +614,6 @@ async function loadUserProfile(user) {
   setTimeout(function() { if (typeof window._initPushButton === "function") window._initPushButton(); }, 1800);
 }
 
-function onCtrChange() {
-  // No longer used — center comes from profile
-}
 function updateUI() {
   const n = ctrName;
   // Update welcome center name
@@ -651,12 +648,6 @@ function resetChat() {
       <div class="quick-q" onclick="askQ('¿Cuál es el teléfono de secretaría?')">¿Cuál es el teléfono de secretaría?</div>
       <div class="quick-q" onclick="askQ('¿Qué actividades extraescolares hay?')">¿Qué actividades extraescolares hay?</div>
     </div></div>`;
-}
-function toggleRole() {
-  role = role === "familia" ? "profesional" : "familia";
-  const p = document.getElementById("role-pill");
-  p.textContent = role === "familia" ? "👨‍👩‍👧 Familia" : "👩‍🏫 Profesional";
-  p.className = "role-pill " + (role === "familia" ? "fam" : "pro");
 }
 function showTab(t) {
   document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));

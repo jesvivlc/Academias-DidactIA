@@ -69,28 +69,58 @@ function horaMatchesSlot(horaUsuario, horaInicio, horaFin) {
   return false;
 }
 
+// ── Cachés de sesión para reducir N+1 (TTL 5 min) ──
+// El chatbot consultaba horarios_grupo/alumnos en cada mensaje (y por cada palabra
+// dentro de un mensaje). Estos cachés cargan el dataset del centro una vez y filtran
+// en memoria. Se invalidan solos a los 5 min o al cambiar de centro/curso (la clave
+// incluye ctrId+curso, así que un cambio de centro usa otra entrada).
+const _chatHorariosCache = new Map(); // `${ctrId}_${curso}` → { t, rows }
+const _chatAlumnosCache  = new Map(); // `${ctrId}`          → { t, rows }
+const _CHAT_CACHE_TTL = 5 * 60 * 1000;
+function _chatCurso() { return typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26"; }
+
+async function _chatGetHorarios() {
+  if (!sb || !ctrId) return [];
+  const key = `${ctrId}_${_chatCurso()}`;
+  const hit = _chatHorariosCache.get(key);
+  if (hit && (Date.now() - hit.t) < _CHAT_CACHE_TTL) return hit.rows;
+  const { data, error } = await sb.from("horarios_grupo")
+    .select("grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
+    .eq("centro_id", ctrId)
+    .eq("curso_escolar", _chatCurso())
+    .limit(20000);
+  if (error) return hit ? hit.rows : [];
+  const rows = data || [];
+  _chatHorariosCache.set(key, { t: Date.now(), rows });
+  return rows;
+}
+
+async function _chatGetAlumnos() {
+  if (!sb || !ctrId) return [];
+  const hit = _chatAlumnosCache.get(ctrId);
+  if (hit && (Date.now() - hit.t) < _CHAT_CACHE_TTL) return hit.rows;
+  const { data, error } = await sb.from("alumnos")
+    .select("nombre,grupo_horario,curso")
+    .eq("centro_id", ctrId)
+    .limit(20000);
+  if (error) return hit ? hit.rows : [];
+  const rows = data || [];
+  _chatAlumnosCache.set(ctrId, { t: Date.now(), rows });
+  return rows;
+}
+
 async function getHorarioGrupo(grupoHorario) {
   if (!sb || !ctrId) return null;
-  const { data, error } = await sb.from("horarios_grupo")
-    .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
-    .eq("centro_id", ctrId)
-    .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
-    .eq("grupo_horario", grupoHorario)
-    .order("dia").order("tramo");
-  if (error) return null;
-  return data;
+  return (await _chatGetHorarios())
+    .filter(r => r.grupo_horario === grupoHorario)
+    .sort((a, b) => String(a.dia).localeCompare(String(b.dia)) || Number(a.tramo) - Number(b.tramo));
 }
 
 async function getClaseExactaGrupo(grupoHorario, dia, hora) {
   if (!sb || !ctrId || !grupoHorario || !dia || !hora) return null;
-  const { data, error } = await sb.from("horarios_grupo")
-    .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
-    .eq("centro_id", ctrId)
-    .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
-    .eq("grupo_horario", grupoHorario)
-    .eq("dia", dia);
-  if (error || !data || !data.length) return null;
-  return data.find(f => horaMatchesSlot(hora, f.hora_inicio, f.hora_fin)) || null;
+  const rows = (await _chatGetHorarios()).filter(r => r.grupo_horario === grupoHorario && r.dia === dia);
+  if (!rows.length) return null;
+  return rows.find(f => horaMatchesSlot(hora, f.hora_inicio, f.hora_fin)) || null;
 }
 
 function formatHorarioGrupo(rows, solodia) {
@@ -134,53 +164,33 @@ async function buscarGrupoAlumno(nombreBuscado) {
   const palabras = nombreBuscado.trim().split(/\s+/).filter(p => p.length >= 3);
   if (!palabras.length) return null;
 
-  // Verificar que no es un profesor (evita confundir Elisa Tarín profesora con alumna)
-  const { data: profCheck } = await sb.from("horarios")
-    .select("profesor").eq("centro_id", ctrId)
-    .ilike("profesor", `%${palabras[0]}%`).limit(5);
-  if (profCheck && profCheck.length > 0) {
-    const esProfesor = profCheck.some(p => _tokenMatch(p.profesor || "", palabras));
-    if (esProfesor) return null;
-  }
+  // Verificar que no es un profesor (evita confundir Elisa Tarín profesora con alumna).
+  // Antes consultaba la tabla `horarios` por cada palabra; ahora usa el nombre del
+  // profesorado ya cacheado en horarios_grupo.
+  const profesores = [...new Set((await _chatGetHorarios()).map(r => r.profesor_nombre).filter(Boolean))];
+  if (profesores.some(p => _tokenMatch(p, palabras))) return null;
 
-  // Traer candidatos con ilike para cada palabra (búsqueda amplia en BD)
-  let query = sb.from("alumnos")
-    .select("nombre,grupo_horario,curso")
-    .eq("centro_id", ctrId);
-  for (const p of palabras) {
-    query = query.ilike("nombre", `%${p}%`);
-  }
-  const { data, error } = await query.limit(20);
-  if (error || !data || !data.length) return null;
-
-  // Filtrar en JS exigiendo coincidencia exacta de tokens (evita elisa→elisabet)
-  const filtrados = data.filter(a => _tokenMatch(a.nombre, palabras));
+  // Filtrar en memoria sobre el caché de alumnos (coincidencia exacta de tokens,
+  // evita elisa→elisabet)
+  const filtrados = (await _chatGetAlumnos()).filter(a => _tokenMatch(a.nombre, palabras));
   if (!filtrados.length) return null;
-  return filtrados;
+  return filtrados.slice(0, 20);
 }
 
 async function getProfesoresLibres(dia, hora) {
   if (!sb || !ctrId) return null;
 
-  const _ca = typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26";
+  const all = await _chatGetHorarios();
   // Todos los profesores del centro
-  const { data: todos } = await sb.from("horarios_grupo")
-    .select("profesor_nombre")
-    .eq("centro_id", ctrId)
-    .eq("curso_escolar", _ca)
-    .not("profesor_nombre", "is", null);
-  if (!todos?.length) return null;
+  const todosProfes = [...new Set(all.map(r => r.profesor_nombre).filter(Boolean))].sort();
+  if (!todosProfes.length) return null;
 
-  const todosProfes = [...new Set(todos.map(r => r.profesor_nombre).filter(Boolean))].sort();
-
-  // Profesores con clase en este tramo
-  const { data: conClase } = await sb.from("horarios_grupo")
-    .select("profesor_nombre,actividad_nombre,grupo_horario,aula")
-    .eq("centro_id", ctrId)
-    .eq("curso_escolar", _ca)
-    .eq("dia", dia)
-    .filter("hora_inicio", "lte", hora + ":00")
-    .filter("hora_fin", "gt", hora + ":00");
+  // Profesores con clase en este tramo (comparación de horas como cadena "HH:MM…")
+  const hhmm = hora + ":00";
+  const conClase = all.filter(r =>
+    r.dia === dia &&
+    String(r.hora_inicio || "") <= hhmm &&
+    String(r.hora_fin || "") > hhmm);
 
   const ocupados = new Set((conClase || []).map(r => r.profesor_nombre).filter(Boolean));
   const libres = todosProfes.filter(p => !ocupados.has(p));
@@ -276,14 +286,11 @@ async function buildContext() {
     if (role === "profesional" && currentUserName) {
       const nameParts = currentUserName.split(" ").filter(p => p.length > 2);
       if (nameParts.length > 0) {
-        // Intentar primero horarios_grupo (tabla principal con datos importados)
-        const { data: hg } = await sb.from("horarios_grupo")
-          .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,grupo_horario")
-          .eq("centro_id", ctrId)
-          .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
-          .ilike("profesor_nombre", `%${nameParts[0]}%`)
-          .order("dia").order("tramo")
-          .limit(80);
+        // Intentar primero horarios_grupo (tabla principal con datos importados) — desde caché
+        const _np0 = nameParts[0].toLowerCase();
+        const hg = (await _chatGetHorarios())
+          .filter(r => (r.profesor_nombre || "").toLowerCase().includes(_np0))
+          .sort((a, b) => String(a.dia).localeCompare(String(b.dia)) || Number(a.tramo) - Number(b.tramo));
         if (hg?.length) {
           ctx += "MI HORARIO DE CLASES:\n";
           hg.forEach(h => {
@@ -346,7 +353,7 @@ function addMsg(r, html) {
 
 async function sendMsg() {
   if (busy) return;
-  let _sustData = null;
+  let _chatSustData = null;
   const inp = document.getElementById("chat-inp");
   const txt = inp.value.trim(); if (!txt) return;
   inp.value = ""; inp.style.height = "auto";
@@ -454,13 +461,10 @@ async function sendMsg() {
       // normalizeText elimina tildes → "qué"→"que", "cuál"→"cual", etc. quedan cubiertos por stopwords
       const palabrasProf = normalizeText(txt).replace(/[¿?¡!.,;:]/g,"").split(/\s+/)
         .filter(p => p.length >= 3 && !STOPWORDS_PROF.has(p));
+      const _hgAll = await _chatGetHorarios(); // una sola carga; antes era 1 query por palabra
       for (const palabra of palabrasProf) {
-        const { data: profRows } = await sb.from("horarios_grupo")
-          .select("profesor_nombre,grupo_horario,dia,tramo,hora_inicio,hora_fin,actividad_nombre,aula")
-          .eq("centro_id", ctrId)
-          .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
-          .ilike("profesor_nombre", `%${palabra}%`)
-          .limit(50);
+        const _pl = palabra.toLowerCase();
+        const profRows = _hgAll.filter(r => (r.profesor_nombre || "").toLowerCase().includes(_pl));
         if (!profRows?.length) continue;
         // Matching tolerante: normaliza + prefijos para diminutivos (Salva→Salvador, Pili→Pilar)
         const filasFiltradas = profRows.filter(r => {
@@ -482,7 +486,7 @@ async function sendMsg() {
             const _hoy = new Date(), _hd = _hoy.getDay() || 7;
             let _df = _t - _hd; if (_df <= 0) _df += 7;
             const _dd = new Date(_hoy); _dd.setDate(_hoy.getDate() + _df);
-            _sustData = {
+            _chatSustData = {
               profesor_ausente: profNombre,
               fecha: _dd.toISOString().split('T')[0],
               tramo: _ct.tramo,
@@ -598,14 +602,7 @@ async function sendMsg() {
 
     // 4. Resolver clase exacta (sin Gemini)
     if (grupoTarget && dia && hora) {
-      const filasDia = await (async () => {
-        const { data } = await sb.from("horarios_grupo")
-          .select("dia,tramo,hora_inicio,hora_fin,actividad_nombre,profesor_nombre,aula")
-          .eq("centro_id", ctrId)
-          .eq("curso_escolar", typeof cursoActivo !== "undefined" ? cursoActivo : "2025-26")
-          .eq("grupo_horario", grupoTarget).eq("dia", dia);
-        return data || [];
-      })();
+      const filasDia = (await _chatGetHorarios()).filter(r => r.grupo_horario === grupoTarget && r.dia === dia);
       // Filtrar por hora y tomar solo la primera coincidencia (evitar optativas duplicadas)
       const claseExacta = filasDia.find(f => horaMatchesSlot(hora, f.hora_inicio, f.hora_fin)) || null;
       if (claseExacta) {
@@ -713,9 +710,9 @@ async function sendMsg() {
     respuestaHorarioDirecta = null;
   }
 
-  if (_sustData) {
+  if (_chatSustData) {
     document.getElementById("typing").classList.remove("show");
-    _showToolCard("crear_sustitucion", _sustData, null);
+    _showToolCard("crear_sustitucion", _chatSustData, null);
     busy = false;
     document.getElementById("send-btn").disabled = false;
     document.getElementById("load-bar").classList.remove("show");

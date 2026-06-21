@@ -331,6 +331,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
 > - `supabase/migrations/calificaciones_competenciales.sql` — tabla `comentarios_competenciales` + RLS `comp_ley_centro` + índice `idx_comp_ley`. Requerida para que "💾 Guardar" del modal competencial funcione. Pegar en SQL Editor o ejecutar: `SUPABASE_ACCESS_TOKEN=sbp_xxx node scripts/aplicar-competenciales.mjs`
+> - `supabase/migrations/comunicado_traducciones.sql` — tabla caché de traducciones de comunicados (F1.4). Hasta aplicarla, `js/comunicados.js` sigue funcionando (traduce con Gemini en cada apertura, sin persistir); una vez aplicada, las traducciones se cachean y se reutilizan entre familias.
 >
 > El histórico de **migraciones ya ejecutadas** (decenas) se ha movido a `CLAUDE-ARCHIVE.md` para no consumir contexto. Al confirmar esta migración en producción, registrarla allí.
 

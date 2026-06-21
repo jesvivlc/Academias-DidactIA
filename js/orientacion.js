@@ -41,10 +41,17 @@ function _oriPush(userIds, title, body, tag) {
 }
 
 // IDs de personal del centro por rol (profiles.id = user_id = auth uid)
+// Memoizado por (centro+roles): _oriNotificarAlerta se llama en bucle al confirmar
+// varias alertas y antes repetía esta misma query en cada iteración (N+1).
+const _oriStaffIdsCache = {};
 async function _oriStaffIds(roles) {
   try {
+    const key = ctrId + "|" + [...roles].sort().join(",");
+    if (_oriStaffIdsCache[key]) return _oriStaffIdsCache[key];
     const { data } = await sb.from("profiles").select("id").eq("centro_id", ctrId).in("rol", roles);
-    return (data || []).map(p => p.id).filter(Boolean);
+    const ids = (data || []).map(p => p.id).filter(Boolean);
+    _oriStaffIdsCache[key] = ids;
+    return ids;
   } catch (e) { return []; }
 }
 
@@ -1361,7 +1368,7 @@ async function abrirModalNuevoExpediente() {
   // Alumnos del centro que NO tengan ya un expediente
   const { data: alumnos } = await sb.from("alumnos")
     .select("id,nombre,curso,grupo_horario")
-    .eq("centro_id", ctrId).order("curso").order("nombre");
+    .eq("centro_id", ctrId).order("curso").order("nombre").limit(5000);
   const conExpediente = new Set(_oriExpedientes.map(e => e.alumno_id));
   const disponibles = (alumnos || []).filter(a => !conExpediente.has(a.id));
 
@@ -1592,7 +1599,7 @@ window.oriCrearExpedientePara = oriCrearExpedientePara;
 // ── Alerta manual ────────────────────────────────────────────────────────────
 async function oriModalAlertaManual() {
   const { data: alumnos } = await sb.from("alumnos")
-    .select("id,nombre,curso,grupo_horario").eq("centro_id", ctrId).order("nombre");
+    .select("id,nombre,curso,grupo_horario").eq("centro_id", ctrId).order("nombre").limit(5000);
   const opts = (alumnos || []).map(a =>
     '<option value="' + a.id + '">' + _oriEsc(a.nombre) + ' (' + _oriEsc(a.grupo_horario || a.curso || "") + ')</option>'
   ).join("");

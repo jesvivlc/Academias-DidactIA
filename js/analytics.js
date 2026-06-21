@@ -121,7 +121,7 @@
     const hoy = _hoy(), hace28 = _hace(28);
 
     const [r1, r2] = await Promise.all([
-      sb.from('asistencia_comedor').select('alumno_id, fecha, se_queda').eq('centro_id', ctrId).gte('fecha', hace28).lte('fecha', hoy).order('fecha'),
+      sb.from('asistencia_comedor').select('alumno_id, fecha, se_queda').eq('centro_id', ctrId).gte('fecha', hace28).lte('fecha', hoy).order('fecha').limit(50000),
       sb.from('alumnos').select('id, nombre').eq('centro_id', ctrId),
     ]);
 
