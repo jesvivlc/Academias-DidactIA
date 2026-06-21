@@ -1,5 +1,12 @@
 let sustFiltroActivo = 'hoy';
 
+// Escape HTML para texto libre insertado vía innerHTML (XSS-safe)
+function _admEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // Cache de tramos del centro activo (invalida automáticamente al cambiar ctrId)
 let _tramosCache = null;
 let _tramosCacheCtrId = null;
@@ -1035,7 +1042,7 @@ async function loadMisAusenciasNotificadas() {
           ? '<span style="background:#fde8e8;color:#b83232;border-radius:12px;padding:1px 8px;font-size:10px;">✕ Rechazada</span>'
           : '<span style="background:#fff9c4;color:#f57f17;border-radius:12px;padding:1px 8px;font-size:10px;">⏳ Pendiente</span>';
         rrhhCell = `<span style="font-size:12px;display:block;">${tipoLbl}</span>${estadoBadge}`
-          + (aus.motivo_rechazo ? `<div style="font-size:11px;color:var(--red);margin-top:2px;">${aus.motivo_rechazo}</div>` : "");
+          + (aus.motivo_rechazo ? `<div style="font-size:11px;color:var(--red);margin-top:2px;">${_admEsc(aus.motivo_rechazo)}</div>` : "");
       }
 
       const tramoTxt = s.tramo ? `T${s.tramo}` : "Todo el día";

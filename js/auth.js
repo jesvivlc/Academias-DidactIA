@@ -1,4 +1,10 @@
 // ── AUTH UI ──
+// Escape HTML para texto/atributos insertados vía innerHTML (XSS-safe)
+function _authEsc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 function _hideAuthForms() {
   ["form-login", "form-register", "form-recovery", "form-reset-request"].forEach(function (id) {
     var el = document.getElementById(id);
@@ -203,8 +209,8 @@ async function doRegisterStep1() {
       <div class="alumno-card" id="ac-${a.id}" onclick="toggleAlumno('${a.id}')">
         <div class="chk" id="chk-${a.id}">✓</div>
         <div class="alumno-info">
-          <div class="alumno-nombre">${a.nombre}</div>
-          <div class="alumno-curso">${a.curso || ""}</div>
+          <div class="alumno-nombre">${_authEsc(a.nombre)}</div>
+          <div class="alumno-curso">${_authEsc(a.curso || "")}</div>
         </div>
       </div>`).join("");
   }
@@ -339,7 +345,7 @@ async function loadUserProfile(user) {
       const sel = document.createElement("select");
       sel.className = "ctr-sel";
       sel.id = "super-ctr-sel";
-      sel.innerHTML = allCentros.map(c => `<option value="${c.id}" data-n="${c.nombre}">${c.nombre}</option>`).join("");
+      sel.innerHTML = allCentros.map(c => `<option value="${c.id}" data-n="${_authEsc(c.nombre)}">${_authEsc(c.nombre)}</option>`).join("");
       const _applyCentro = async (id, name) => {
         ctrId = id;
         ctrName = name;
@@ -415,7 +421,7 @@ async function loadUserProfile(user) {
           sel.className = "ctr-sel";
           sel.id = "super-ctr-sel";
           sel.innerHTML = instCentros.map(c =>
-            `<option value="${c.id}" data-n="${c.nombre}" ${c.id === ctrId ? "selected" : ""}>${c.nombre}</option>`
+            `<option value="${c.id}" data-n="${_authEsc(c.nombre)}" ${c.id === ctrId ? "selected" : ""}>${_authEsc(c.nombre)}</option>`
           ).join("");
           const _applyInstCentro = async (id, name) => {
             ctrId = id; ctrName = name;

@@ -217,9 +217,15 @@ async function _calcularLibres(
 
   // Universo: Map<normalizado, display> — tabla profesores + horarios_grupo (muchos
   // centros solo tienen datos en horarios_grupo, no en la tabla profesores).
+  // Curso activo del centro (limit(1) evita el error de maybeSingle con múltiples filas).
+  const { data: cursoRows } = await sb.from("info_centro").select("curso_activo")
+    .eq("centro_id", centro_id).limit(1);
+  const cursoActivo = (cursoRows as { curso_activo?: string }[] | null)?.[0]?.curso_activo ?? "2025-26";
+
   const [profesRes, hgTodosRes] = await Promise.all([
     sb.from("profesores").select("nombre").eq("centro_id", centro_id),
     sb.from("horarios_grupo").select("profesor_nombre").eq("centro_id", centro_id)
+      .eq("curso_escolar", cursoActivo)
       .not("profesor_nombre", "is", null).limit(5000),
   ]);
   if (profesRes.error) throw new Error(`Error al leer profesores: ${profesRes.error.message}`);
@@ -242,11 +248,6 @@ async function _calcularLibres(
   }
 
   console.log(`[agent] _calcularLibres · fecha=${fecha} tramo=${tramo} dia=${dia} horaInicio=${horaInicio ?? "—"} centro=${centro_id} · universo=${universo.size} (profesores=${profesRes.data?.length ?? 0}, hg=${hgTodosRes.data?.length ?? 0})`);
-
-  // Curso activo del centro (limit(1) evita el error de maybeSingle con múltiples filas).
-  const { data: cursoRows } = await sb.from("info_centro").select("curso_activo")
-    .eq("centro_id", centro_id).limit(1);
-  const cursoActivo = (cursoRows as { curso_activo?: string }[] | null)?.[0]?.curso_activo ?? "2025-26";
 
   // Estrategia para identificar "ocupados":
   // 1ª opción — por hora_inicio (fiable: independiente de numeración de tramos)

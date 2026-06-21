@@ -447,10 +447,16 @@ async function executeTool(
       const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
       const dia = DIAS[new Date(fecha + "T12:00:00Z").getUTCDay()];
 
+      // Curso activo del centro: evita mezclar horarios de varios cursos cargados.
+      const { data: ciRows } = await sb.from("info_centro")
+        .select("curso_activo").eq("centro_id", centro_id).limit(1);
+      const cursoActivo = (ciRows as { curso_activo?: string }[] | null)?.[0]?.curso_activo ?? "2025-26";
+
       const { data: todos } = await sb
         .from("horarios_grupo")
         .select("profesor_nombre")
         .eq("centro_id", centro_id)
+        .eq("curso_escolar", cursoActivo)
         .not("profesor_nombre", "is", null);
 
       const todosProfes = [
@@ -465,6 +471,7 @@ async function executeTool(
         .from("horarios_grupo")
         .select("profesor_nombre")
         .eq("centro_id", centro_id)
+        .eq("curso_escolar", cursoActivo)
         .eq("dia", dia)
         .eq("tramo", String(tramoNum));
 
@@ -927,6 +934,28 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    /* ── Identidad real desde el JWT — NUNCA confiar en centro_id/role del body ── */
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "").trim();
+    let authUser: { id: string } | null = null;
+    if (token) {
+      const { data: uData } = await sb.auth.getUser(token);
+      authUser = uData?.user ?? null;
+    }
+    if (!authUser) return jsonRes({ error: "No autenticado" }, 401);
+
+    const { data: authProfile } = await sb
+      .from("profiles")
+      .select("centro_id, rol")
+      .eq("id", authUser.id)
+      .single();
+    if (!authProfile) return jsonRes({ error: "Perfil no encontrado" }, 401);
+
+    const isSuper = authProfile.rol === "superadmin";
+    // El superadmin puede operar sobre el centro indicado en el body; el resto, solo el suyo.
+    const effCentroId = (isSuper ? (centro_id ?? authProfile.centro_id) : authProfile.centro_id) ?? "";
+    const effRole = authProfile.rol ?? "familia";
+    const effUserId = authUser.id;
+
     /* ── Path A: tool confirmation ── */
     if (confirm_tool && confirm_args && pending_contents) {
       try {
@@ -934,8 +963,8 @@ serve(async (req) => {
           confirm_tool,
           confirm_args,
           sb,
-          centro_id ?? "",
-          user_id ?? "",
+          effCentroId,
+          effUserId,
           user_name ?? "",
         );
 
@@ -959,8 +988,12 @@ serve(async (req) => {
     /* ── Path B: normal chat ── */
     if (!contents) throw new Error("Falta contents");
 
+    // Autorización por el rol REAL (del perfil). El `role` del body solo puede
+    // REDUCIR capacidad (varios módulos envían role:"familia" para forzar texto),
+    // nunca ampliarla → un usuario no puede declararse admin para escribir.
     const canUseTool =
-      role === "admin" || role === "profesional" || role === "superadmin";
+      (effRole === "admin" || effRole === "profesional" || effRole === "superadmin") &&
+      role !== "familia";
 
     const geminiRes = await callGemini(apiKey, contents, canUseTool, system_prompt);
     if (!geminiRes.ok) {
@@ -987,7 +1020,7 @@ serve(async (req) => {
       /* Read-only: auto-execute without confirmation */
       if (READ_ONLY.has(name)) {
         const toolResult = await executeTool(
-          name, args, sb, centro_id ?? "", user_id ?? "", user_name ?? "",
+          name, args, sb, effCentroId, effUserId, user_name ?? "",
         );
         const contentsWithResult = [
           ...contents,

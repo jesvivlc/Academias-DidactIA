@@ -22,6 +22,14 @@ const CORS = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
+  // ── Protección de invocación: solo el cron (o un caller con el secreto compartido) ──
+  // Se activa en cuanto CRON_SECRET esté configurado en los secrets de Supabase; hasta
+  // entonces no bloquea (evita tumbar el cron antes de actualizar el job con la cabecera).
+  const _cronSecret = Deno.env.get("CRON_SECRET");
+  if (_cronSecret && req.headers.get("x-cron-secret") !== _cronSecret) {
+    return new Response("Unauthorized", { status: 401, headers: CORS });
+  }
+
   try {
     const body = await req.json().catch(() => ({})) as { centro_id?: string };
 

@@ -212,12 +212,12 @@ async function responderProfesoresLibres(txt) {
     html += "<p>Todos los profesores tienen clase en este momento.</p>";
   } else {
     html += "<ul>";
-    libres.forEach(p => { html += `<li>${p}</li>`; });
+    libres.forEach(p => { html += `<li>${_chatEsc(p)}</li>`; });
     html += "</ul>";
   }
 
   if (enClase.length > 0) {
-    html += `<p style="font-size:12px;color:var(--txt3);margin-top:8px;">Con clase ahora: ${enClase.map(c => c.profesor_nombre).join(", ")}</p>`;
+    html += `<p style="font-size:12px;color:var(--txt3);margin-top:8px;">Con clase ahora: ${enClase.map(c => _chatEsc(c.profesor_nombre)).join(", ")}</p>`;
   }
 
   return html;
@@ -317,6 +317,13 @@ function _sanitizeReply(html) {
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\bon\w+\s*=/gi, 'data-x=')
     .replace(/javascript\s*:/gi, '');
+}
+// Escape HTML para datos de BD/usuario insertados en las respuestas de
+// resolución directa (sin Gemini). Las respuestas de Gemini pasan por _sanitizeReply.
+function _chatEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight,120)+"px"; }
@@ -489,22 +496,22 @@ async function sendMsg() {
         if (diaFinal) {
           const clasesDia = filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
           if (clasesDia.length) {
-            let html = `<p><strong>${profNombre}</strong> — horario del ${diaFinal}:</p><ul>`;
+            let html = `<p><strong>${_chatEsc(profNombre)}</strong> — horario del ${diaFinal}:</p><ul>`;
             for (const c of clasesDia) {
               const hi = String(c.hora_inicio || "").slice(0,5);
               const hf = String(c.hora_fin || "").slice(0,5);
-              const aula = c.aula ? ` · aula ${c.aula}` : "";
-              html += `<li><strong>${hi}–${hf}:</strong> ${c.actividad_nombre} (${c.grupo_horario})${aula}</li>`;
+              const aula = c.aula ? ` · aula ${_chatEsc(c.aula)}` : "";
+              html += `<li><strong>${hi}–${hf}:</strong> ${_chatEsc(c.actividad_nombre)} (${_chatEsc(c.grupo_horario)})${aula}</li>`;
             }
             html += "</ul>";
             respuestaHorarioDirecta = html;
           } else {
-            respuestaHorarioDirecta = `<p><strong>${profNombre}</strong> no tiene clases programadas el ${diaFinal}.</p>`;
+            respuestaHorarioDirecta = `<p><strong>${_chatEsc(profNombre)}</strong> no tiene clases programadas el ${diaFinal}.</p>`;
           }
         } else {
           // Sin día → horario semanal del profesor
           const diasOrden = ["lunes","martes","miercoles","jueves","viernes"];
-          let html = `<p><strong>${profNombre}</strong> — horario semanal:</p>`;
+          let html = `<p><strong>${_chatEsc(profNombre)}</strong> — horario semanal:</p>`;
           for (const diaS of diasOrden) {
             const clasesDia = filasFiltradas.filter(r => r.dia === diaS).sort((a,b) => a.tramo - b.tramo);
             if (!clasesDia.length) continue;
@@ -512,7 +519,7 @@ async function sendMsg() {
             for (const c of clasesDia) {
               const hi = String(c.hora_inicio || "").slice(0,5);
               const hf = String(c.hora_fin || "").slice(0,5);
-              html += `<li>${hi}–${hf}: ${c.actividad_nombre} (${c.grupo_horario})</li>`;
+              html += `<li>${hi}–${hf}: ${_chatEsc(c.actividad_nombre)} (${_chatEsc(c.grupo_horario)})</li>`;
             }
             html += "</ul>";
           }
@@ -531,11 +538,11 @@ async function sendMsg() {
       if (diaFinal) {
         const clasesDia = filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
         if (clasesDia.length) {
-          let html = `<p><strong>${profNombre}</strong> — horario del ${diaFinal}:</p><ul>`;
+          let html = `<p><strong>${_chatEsc(profNombre)}</strong> — horario del ${diaFinal}:</p><ul>`;
           for (const c of clasesDia) {
             const hi = String(c.hora_inicio || "").slice(0,5);
             const hf = String(c.hora_fin || "").slice(0,5);
-            html += `<li><strong>${hi}–${hf}:</strong> ${c.actividad_nombre} (${c.grupo_horario})</li>`;
+            html += `<li><strong>${hi}–${hf}:</strong> ${_chatEsc(c.actividad_nombre)} (${_chatEsc(c.grupo_horario)})</li>`;
           }
           html += "</ul>";
           respuestaHorarioDirecta = html;
@@ -603,10 +610,10 @@ async function sendMsg() {
       const claseExacta = filasDia.find(f => horaMatchesSlot(hora, f.hora_inicio, f.hora_fin)) || null;
       if (claseExacta) {
         respuestaHorarioDirecta =
-          `<p><strong>${alumnoTarget || "El alumno"}</strong> (grupo ${grupoTarget}) el ${dia} a las ${hora} tiene:</p>` +
-          `<p><strong>${claseExacta.actividad_nombre || "clase"}</strong>` +
-          `${claseExacta.profesor_nombre ? ` con <strong>${claseExacta.profesor_nombre}</strong>` : ""}` +
-          `${claseExacta.aula ? ` en el aula <strong>${claseExacta.aula}</strong>` : ""}.</p>`;
+          `<p><strong>${_chatEsc(alumnoTarget || "El alumno")}</strong> (grupo ${_chatEsc(grupoTarget)}) el ${dia} a las ${hora} tiene:</p>` +
+          `<p><strong>${_chatEsc(claseExacta.actividad_nombre || "clase")}</strong>` +
+          `${claseExacta.profesor_nombre ? ` con <strong>${_chatEsc(claseExacta.profesor_nombre)}</strong>` : ""}` +
+          `${claseExacta.aula ? ` en el aula <strong>${_chatEsc(claseExacta.aula)}</strong>` : ""}.</p>`;
         horarioGrupoCtx =
           `\n\nCONSULTA RESUELTA:\n- Alumno: ${alumnoTarget}\n- Grupo: ${grupoTarget}\n` +
           `- ${dia} a las ${hora}: ${claseExacta.actividad_nombre}` +
@@ -625,13 +632,13 @@ async function sendMsg() {
           const clasDia = filas.filter(f => f.dia === diaFiltro).sort((a,b) => a.tramo - b.tramo);
           if (clasDia.length) {
             const nombreAlumno = alumnoTarget || `Grupo ${grupoTarget}`;
-            let html = `<p><strong>${nombreAlumno}</strong> — horario del ${diaFiltro}:</p><ul>`;
+            let html = `<p><strong>${_chatEsc(nombreAlumno)}</strong> — horario del ${diaFiltro}:</p><ul>`;
             for (const c of clasDia) {
               const hi = String(c.hora_inicio || "").slice(0,5);
               const hf = String(c.hora_fin || "").slice(0,5);
-              const prof = c.profesor_nombre ? ` <em>(${c.profesor_nombre})</em>` : "";
-              const aula = c.aula ? ` · aula ${c.aula}` : "";
-              html += `<li><strong>${hi}–${hf}:</strong> ${c.actividad_nombre}${prof}${aula}</li>`;
+              const prof = c.profesor_nombre ? ` <em>(${_chatEsc(c.profesor_nombre)})</em>` : "";
+              const aula = c.aula ? ` · aula ${_chatEsc(c.aula)}` : "";
+              html += `<li><strong>${hi}–${hf}:</strong> ${_chatEsc(c.actividad_nombre)}${prof}${aula}</li>`;
             }
             html += "</ul>";
             respuestaHorarioDirecta = html;

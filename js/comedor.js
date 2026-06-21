@@ -369,7 +369,7 @@ function printComedor() {
     <body><h1>Lista comedor — ${ctrName} — ${fechaStr}</h1>
     <div class="total">Total comensales: ${seQuedan.length}</div>
     <table><thead><tr><th>#</th><th>Nombre</th><th>Curso</th><th>Plaza</th><th>Alergias / Dieta</th></tr></thead>
-    <tbody>${seQuedan.map((a,i)=>`<tr><td>${i+1}</td><td>${a.nombre}</td><td>${a.curso||""}</td><td>${a.plaza_fija?"Fija":"Esporádica"}</td><td>${a.alergias?`<span class="badge">⚠️ ${a.alergias}</span>`:""}${a.dieta_especial?`<span class="badge" style="background:#fff3e0;color:#e65100;">🥗 ${a.dieta_especial}</span>`:""}</td></tr>`).join("")}
+    <tbody>${seQuedan.map((a,i)=>`<tr><td>${i+1}</td><td>${_cEsc(a.nombre)}</td><td>${_cEsc(a.curso||"")}</td><td>${a.plaza_fija?"Fija":"Esporádica"}</td><td>${a.alergias?`<span class="badge">⚠️ ${_cEsc(a.alergias)}</span>`:""}${a.dieta_especial?`<span class="badge" style="background:#fff3e0;color:#e65100;">🥗 ${_cEsc(a.dieta_especial)}</span>`:""}</td></tr>`).join("")}
     </tbody></table></body></html>`;
   const w = window.open("","_blank");
   w.document.write(html);

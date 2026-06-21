@@ -77,6 +77,23 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // ── Identidad real desde el JWT — el centro_id del body debe coincidir con el del perfil ──
+    const jsonHdr = { ...CORS, "Content-Type": "application/json" };
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "").trim();
+    let authUser: { id: string } | null = null;
+    if (token) { const { data: uData } = await sb.auth.getUser(token); authUser = uData?.user ?? null; }
+    if (!authUser) {
+      return new Response(JSON.stringify({ error: "No autenticado" }), { headers: jsonHdr, status: 401 });
+    }
+    const { data: authProfile } = await sb.from("profiles").select("centro_id, rol").eq("id", authUser.id).single();
+    if (!authProfile) {
+      return new Response(JSON.stringify({ error: "Perfil no encontrado" }), { headers: jsonHdr, status: 401 });
+    }
+    if (authProfile.rol !== "superadmin" && authProfile.centro_id !== centro_id) {
+      return new Response(JSON.stringify({ error: "No autorizado para este centro" }), { headers: jsonHdr, status: 403 });
+    }
+
     const resendKey = Deno.env.get("RESEND_API_KEY");
 
     const hoy = new Date().toISOString().slice(0, 10);

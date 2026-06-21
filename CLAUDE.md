@@ -324,6 +324,11 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 > **Nota Realtime:** Para que las notificaciones de sustituciones funcionen, activar Realtime en la tabla `sustituciones` desde el dashboard de Supabase → Database → Replication.
 
+> **🔐 Secret pendiente — `CRON_SECRET` (Fase 0 seguridad):** Las Edge Functions cron `agente-cobertura-diaria` y `notify-justificante` validan ahora la cabecera `x-cron-secret` contra el secret `CRON_SECRET`. La comprobación es *fail-open hasta configurarse* (no bloquea mientras `CRON_SECRET` no exista), por lo que el cron sigue funcionando hasta que se complete la configuración. Para activar la protección:
+> 1. Crear el secret: `SUPABASE_ACCESS_TOKEN=sbp_xxx npx supabase secrets set CRON_SECRET=<valor-aleatorio> --project-ref rflfsbrdmgaidhvbuvwb` (o desde el dashboard → Edge Functions → Secrets).
+> 2. Actualizar los jobs de `pg_cron` (`20260619_cron_agente_cobertura.sql`, `20260605_cron_notify_justificante.sql`) para que el `net.http_post` incluya la cabecera `'x-cron-secret': '<mismo-valor>'` en `headers`.
+> Hasta hacer (1), la protección permanece inactiva (sin bloqueo); en cuanto exista el secret, toda invocación sin la cabecera correcta devuelve 401.
+
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
 > - `supabase/migrations/calificaciones_competenciales.sql` — tabla `comentarios_competenciales` + RLS `comp_ley_centro` + índice `idx_comp_ley`. Requerida para que "💾 Guardar" del modal competencial funcione. Pegar en SQL Editor o ejecutar: `SUPABASE_ACCESS_TOKEN=sbp_xxx node scripts/aplicar-competenciales.mjs`
 >

@@ -226,13 +226,13 @@ function buscarAlumnoInc(q) {
 
   if (!results.length) { drop.style.display = 'none'; return; }
 
-  var esc = function(v) { return String(v || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); };
+  var esc = function(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   drop.innerHTML = results.map(function(a) {
     return '<div data-inc-id="' + esc(a.id) + '" data-inc-nombre="' + esc(a.nombre) + '" data-inc-grupo="' + esc(a.grupo_horario || '') + '"'
       + ' style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f5f5f5;"'
       + ' onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'\'">'
-      + '<strong>' + a.nombre + '</strong>'
-      + (a.grupo_horario ? ' <span style="color:var(--txt3);font-size:11px;margin-left:6px;">' + a.grupo_horario + '</span>' : '')
+      + '<strong>' + esc(a.nombre) + '</strong>'
+      + (a.grupo_horario ? ' <span style="color:var(--txt3);font-size:11px;margin-left:6px;">' + esc(a.grupo_horario) + '</span>' : '')
       + '</div>';
   }).join('');
   drop.style.display = 'block';
@@ -330,8 +330,8 @@ async function loadIncidencias(filtro) {
         + '<td>' + (i.fecha || '—') + '</td>'
         + '<td>' + (tipoLabels[i.tipo] || i.tipo || '—') + '</td>'
         + '<td>' + gravedadBadge(gravedad) + '</td>'
-        + '<td style="max-width:200px;white-space:normal;">' + (i.descripcion || '—') + '</td>'
-        + '<td>' + alumnoGrupo + '</td>'
+        + '<td style="max-width:200px;white-space:normal;">' + esc(i.descripcion || '—') + '</td>'
+        + '<td>' + esc(alumnoGrupo) + '</td>'
         + '<td>' + estado + '</td>'
         + '<td style="white-space:nowrap;">' + acciones + '</td>'
         + '</tr>';

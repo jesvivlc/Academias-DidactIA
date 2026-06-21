@@ -35,16 +35,51 @@ serve(async (req) => {
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
-    const sb = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+
+    // ── Filtrado por centro del llamante (anti envío cross-tenant) ──
+    // Reglas según la identidad del que llama:
+    //  - service_role (cron/n8n)      → backend de confianza, sin restricción
+    //  - usuario real (JWT)           → solo user_ids de su mismo centro (superadmin: sin restricción)
+    //  - solo anon key (sin usuario)  → no identificable; se mantiene el envío pero se avisa
+    //    (los clientes del navegador deberían reenviar el JWT del usuario para cerrar esto del todo)
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "").trim();
+    let targetIds: string[] = user_ids;
+    if (token && token === serviceKey) {
+      // backend de confianza → sin restricción
+    } else {
+      let caller: { id: string } | null = null;
+      if (token) { const { data: uData } = await sb.auth.getUser(token); caller = uData?.user ?? null; }
+      if (caller) {
+        const { data: cp } = await sb.from("profiles").select("centro_id, rol").eq("id", caller.id).single();
+        if (cp && cp.rol !== "superadmin") {
+          const { data: members } = await sb.from("profiles")
+            .select("user_id").eq("centro_id", cp.centro_id).in("user_id", user_ids);
+          const allowed = new Set((members ?? []).map((m: { user_id: string }) => m.user_id));
+          const discarded = user_ids.filter((id) => !allowed.has(id));
+          if (discarded.length) {
+            console.warn(`[send-push] ${discarded.length} user_ids descartados por no pertenecer al centro ${cp.centro_id}: ${discarded.join(", ")}`);
+          }
+          targetIds = user_ids.filter((id) => allowed.has(id));
+        }
+      } else {
+        console.warn("[send-push] llamante sin identidad de usuario (anon key): no se aplica filtro por centro. Los clientes deberían reenviar el JWT del usuario.");
+      }
+    }
+
+    if (!targetIds.length) {
+      return new Response(
+        JSON.stringify({ ok: true, sent: 0, total: 0, skipped: "sin destinatarios válidos para el centro del llamante" }),
+        { headers: { ...CORS, "Content-Type": "application/json" }, status: 200 },
+      );
+    }
 
     // Fetch subscriptions for the requested user IDs
     const { data: rows, error } = await sb
       .from("push_subscriptions")
       .select("id, user_id, subscription")
-      .in("user_id", user_ids);
+      .in("user_id", targetIds);
 
     if (error) throw new Error("Error fetching subscriptions: " + error.message);
 

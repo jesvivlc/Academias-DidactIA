@@ -180,11 +180,11 @@ async function _loadCasPanel() {
             : acts.map(act => `
                 <div style="border:1px solid var(--bdr);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;background:var(--bg);">
                   <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
-                    <span style="background:${tipoColor[act.tipo] || '#666'};color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;white-space:nowrap;">${act.tipo}</span>
+                    <span style="background:${tipoColor[act.tipo] || '#666'};color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;white-space:nowrap;">${_ibEsc(act.tipo)}</span>
                     <div style="flex:1;">
-                      <div style="font-size:13px;font-weight:600;color:var(--txt);">${act.titulo}</div>
-                      ${act.descripcion ? `<div style="font-size:12px;color:var(--txt3);margin-top:2px;">${act.descripcion}</div>` : ''}
-                      ${act.reflexion ? `<div style="font-size:12px;color:var(--txt2);margin-top:4px;font-style:italic;">"${act.reflexion}"</div>` : ''}
+                      <div style="font-size:13px;font-weight:600;color:var(--txt);">${_ibEsc(act.titulo)}</div>
+                      ${act.descripcion ? `<div style="font-size:12px;color:var(--txt3);margin-top:2px;">${_ibEsc(act.descripcion)}</div>` : ''}
+                      ${act.reflexion ? `<div style="font-size:12px;color:var(--txt2);margin-top:4px;font-style:italic;">"${_ibEsc(act.reflexion)}"</div>` : ''}
                     </div>
                     <div style="text-align:right;flex-shrink:0;">
                       ${estadoBadge(act.estado)}
