@@ -71,6 +71,7 @@
 > Migraciones PENDIENTES siguen en CLAUDE.md. Esto es solo el registro de las ya aplicadas y verificadas.
 
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/comunicado_traducciones.sql` — tabla caché de traducciones de comunicados + RLS `trad_read` (lee/escribe por centro). ✅ aplicado 2026-06-22
 > - `supabase/migrations/mensajes.sql` — tabla `mensajes` + RLS `msg_familia`/`msg_staff` + 2 índices (módulo Mensajería familia↔centro). ✅ aplicado 2026-06-19 vía Management API (`ejecutar-migraciones-laptop.mjs`)
 > - `supabase/migrations/personas_autorizadas.sql` — tabla `personas_autorizadas` + RLS `pa_familia`/`pa_staff` + índice (personas autorizadas a recoger al alumno, ficha Alumnos). ✅ aplicado 2026-06-19 vía Management API
 > - `supabase/migrations/profiles_idioma.sql` — `profiles.idioma text DEFAULT 'es'` (idioma preferido para traducción automática de comunicados). ✅ aplicado 2026-06-19 vía Management API

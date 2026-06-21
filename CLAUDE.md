@@ -62,6 +62,8 @@ app.html                        Aplicación: login, header, tabs, paneles
 css/styles.css          Tokens CSS + estilos globales
 js/
   config.js             SB_URL, SB_KEY, VAPID_PUBLIC_KEY, variables globales, boot DOMContentLoaded (llama themeLoginScreen pre-login)
+  utils.js              Helpers globales centralizados: escH (escape HTML/XSS), escAttr (string JS para onclick), hoyISO, fmtFecha, showToastGlobal, pushNotify. Cargado ANTES de auth.js
+  pdf-utils.js          Helpers PDF centralizados: pdfEnsureLibs (jsPDF+autotable on-demand), pdfCentroInfo, pdfHexToRgb, pdfHeader. Cargado ANTES de informes.js
   auth.js               doLogin, loadUserProfile, showTab, applyTheme, themeLoginScreen (marca centro pre-login), goHome
   chat.js               sendMsg, buildContext, horarios por grupo, Gemini fetch
   comedor.js            loadComedor, toggleAsistencia, histórico 30 días, export Excel
@@ -140,6 +142,8 @@ playwright.config.js            Config Playwright: chromium, baseURL didactia.eu
 | `parse-restricciones` | Analiza texto libre y/o audio con Gemini 2.5 Flash multimodal. Recibe `{ texto?, audio_base64?, mime_type?, centro_id }`. Devuelve `{ materias[], restricciones_profesor[], restricciones_materia[], necesidades[], preguntas[] }`. Contexto del centro (profesores y materias existentes) inyectado para matching exacto de nombres. |
 | `agent-sustituciones` | **Agente autónomo** (Gemini 2.5 Flash, function calling en bucle). Recibe `{centro_id, fecha}` + JWT del usuario (cliente con RLS por centro). 3 herramientas en secuencia: `obtener_ausencias_sin_cubrir` (siempre 1ª; si vacío → para), `buscar_profesores_libres`, `sugerir_sustituto` (equidad por guardias del trimestre, top 3). `centro_id` SIEMPRE el del body; `.eq("centro_id", …)` en las 3 queries. Devuelve `{type:"text", content}`. Código: `supabase/functions/agent-sustituciones/index.ts`. **Fix 2026-06-17 (✅ desplegado, v12):** `_calcularLibres` ahora excluye también a los profesores que figuran como `profesor_ausente` en alguna sustitución de esa fecha (antes, un profe ausente todo el día con un hueco libre podía sugerirse para cubrir a otro). |
 | `send-push` | Envía Web Push (web-push + VAPID) a `user_ids[]`. Lee suscripciones de `push_subscriptions` (service_role), payload `{title, body, tag}`. Auto-borra suscripciones `410/404`. Secrets `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` configurados |
+
+> **🔐 Seguridad EF (Fase 0, 2026-06-22):** `chat`, `alerta-psicosocial`, `send-push`, `invite-user` y `agent-sustituciones` derivan identidad/centro/rol del **JWT** (`auth.getUser`) + `profiles`, **nunca del body** (el `centro_id`/`role` del body se ignoran; el superadmin sí puede indicar centro). `agente-cobertura-diaria` y `notify-justificante` validan la cabecera `x-cron-secret` contra el secret `CRON_SECRET`. Regla: toda EF nueva deriva identidad del JWT, no del body.
 
 ---
 
@@ -252,6 +256,8 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 11. **Siempre** sanitizar respuestas de Gemini antes de insertar en `innerHTML` (`_sanitizeReply` en `chat.js`)
 12. En botones con `onclick` inline que incluyen nombres de usuario, usar `JSON.stringify` para escapar — nunca concatenar con comillas simples
 13. **Nunca** hardcodear credenciales en tests — usar siempre variables de entorno (`process.env.*`). Plantilla en `.env.example`; el `.env` real está en `.gitignore`
+14. **Escapar siempre** datos de BD/usuario antes de insertarlos vía `innerHTML`: usar `escH()` de `utils.js` para texto/atributos, y `escAttr()` para argumentos dentro de `onclick="f('…')"`. (Conviven aún escapers locales por módulo; migrar a `escH` al tocar cada archivo.)
+15. **Edge Functions:** derivar identidad/centro/rol del JWT (`auth.getUser`), nunca del body
 
 ### Convenciones UI / Design System
 13. **No tocar archivos JS** para cambios de UI — solo `app.html` e `css/styles.css`
@@ -331,7 +337,6 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
 > - `supabase/migrations/calificaciones_competenciales.sql` — tabla `comentarios_competenciales` + RLS `comp_ley_centro` + índice `idx_comp_ley`. Requerida para que "💾 Guardar" del modal competencial funcione. Pegar en SQL Editor o ejecutar: `SUPABASE_ACCESS_TOKEN=sbp_xxx node scripts/aplicar-competenciales.mjs`
-> - `supabase/migrations/comunicado_traducciones.sql` — tabla caché de traducciones de comunicados (F1.4). Hasta aplicarla, `js/comunicados.js` sigue funcionando (traduce con Gemini en cada apertura, sin persistir); una vez aplicada, las traducciones se cachean y se reutilizan entre familias.
 >
 > El histórico de **migraciones ya ejecutadas** (decenas) se ha movido a `CLAUDE-ARCHIVE.md` para no consumir contexto. Al confirmar esta migración en producción, registrarla allí.
 
