@@ -244,55 +244,7 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] **Fix flex panels** (`f78f661`, `c29d6b0`): `flex-direction:column` en `#panel-comedor`, `#panel-materiales`, `#panel-orientacion`, `#panel-calidad` — corrección del patrón de media pantalla vacía.
 - **App Familias**: el portal está consolidado; quedaría (opcional) una PWA/onboarding dedicado.
 
-### Completado ✅
-- [x] Chatbot con Gemini 2.5 Flash, contexto multi-rol, resolución directa de horarios
-- [x] Módulo comedor: asistencia diaria, histórico 30 días, CSV export
-- [x] Sustituciones: registro, toggle cubierta, filtros, CSV, contador de tab
-- [x] Bolsa de guardias con equidad (ranking trimestral, barra de progreso, selector ordenado)
-- [x] Dashboard por rol con contadores live y búsqueda rápida de alumno
-- [x] Gestión de usuarios: invitar, editar, desactivar, reenviar invitación, badges de estado
-- [x] Módulos siempre disponibles para todos los centros (excepto IB) — eliminados los toggles de módulos en Usuarios (`_conModulosBase` en config.js)
-- [x] Módulo incidencias: buscador de alumno en tiempo real (autorellena grupo), gravedad, filtro por grupo, CSV, contador en tab, notificación familia
-- [x] Módulo incidencias — tipificación IA: botón Tipificar con IA, modal con normativa CCAA (5 regiones), informe borrador editable, pre-relleno automático del formulario
-- [x] Módulo incidencias — flujo convivencia: guardar informe/normativa/medidas/PREVI en BD, notificación automática a jefatura (grave/muy_grave) vía Edge Function notify-jefatura
-- [x] Módulo comunicados: formulario admin con 3 plantillas, destinatarios por rol/grupo, envío email vía Resend, badge no leídos, Realtime toast, modal detalle
-- [x] Módulo espacios/salas: grid de disponibilidad, reservas, gestión de espacios
-- [x] RRHH: solicitud de ausencias, aprobación (genera sustituciones automáticas), rechazo
-- [x] RRHH: subida de justificantes a Storage, privacidad del sustituto, notificación via Edge Function
-- [x] PWA Service Worker (cache-first assets, pass-through Supabase)
-- [x] Notificaciones Realtime (sustituciones nuevas → toast)
-- [x] n8n Briefing matutino (L-V 8:15, email a admins)
-- [x] n8n Informe semanal (viernes 15:00, email a admins)
-- [x] n8n Alerta absentismo comedor (L-V 16:00, email a tutores)
-- [x] n8n Alertas plazos IB (L-V 9:00, email a admins con CC superadmin)
-- [x] Centro demo IES Demo con 80 alumnos, horarios, datos IB y 30 días comedor
-- [x] Design System v2: paleta editorial cálida (oklch), Newsreader serif, tokens CSS completos
-- [x] Layout shell v2: sidebar 248px con SVG brand (navy+D+spark ámbar), topbar con búsqueda+role switch+avatar, bottom nav móvil
-- [x] Inicio admin v2: stat2 tiles (barra lateral 3px, icono soft-tinted, Newsreader 38px, sparkline SVG), timeline, atajos 3×2, AI rail 360px
-- [x] Planner — generador de horarios: motor CSP backtracking + H-MRV-SA, tablero drag & drop, CRUD materias/necesidades, publicación en horarios_grupo (solo admin/superadmin)
-- [x] Planner V2: tooltip LOMLOE co-docencia, sistema de tramos configurables (`tramos_centro`), tab Dictar con IA multimodal (voz/texto/audio), Edge Function `parse-restricciones`
-- [x] Chatbot agente ejecutor: Gemini function calling con 7 herramientas (crear_sustitucion, crear_incidencia, consultar_profesor_libre, registrar_ausencia_profesor, avisar_comedor, listar_tramos_centro, crear_tramos_centro), tarjeta de confirmación UI, EF desplegada
-- [x] Analytics CMI: Cuadro de Mando Integral con 6 KPIs, gráficos Chart.js, alertas predictivas psicosociales via EF `alerta-psicosocial`
-- [x] Testing e2e con Playwright: test de aislamiento multi-tenant — login por UI como admin de Agora, extracción de JWT desde localStorage, petición REST directa a Supabase verificando que RLS devuelve 0 filas para IES Buñol y >0 filas para Agora (`npm run test:e2e`)
-- [x] Mobile responsive: 24 issues cubiertos — modales, formularios, safe-area toasts, iOS zoom (16px inputs), touch targets 44px, tabla overflow-x, bottom nav clearance
-- [x] Mobile nav: Planner en drawer Más móvil, selector de centro para superadmin en drawer Más
-- [x] Dashboard Classroom-style: banners por rol, métricas pill, grid de módulos con color por módulo, sidebar active con tint de color por módulo (`--nav-color`)
-- [x] Chatbot agente ejecutor — fix crítico: `systemInstruction` en Gemini API, `toolInstr` con instrucción de ejecución inmediata (sin pedir confirmación textual), `system_prompt` propagado al flujo de confirmación
-- [x] Auditoría técnica (`docs/auditoria-app.md`): 12 módulos, 11 EFs, 4 workflows n8n, deuda técnica P0/P1/P2, seguridad
-- [x] Fix banners dashboard: banner bienvenida siempre muestra el centro activo (`updateBentoDashboard` llamado desde `updateUI` en `auth.js`); aviso urgente ya se elimina correctamente (DELETE en `info_centro` + sync inmediato de `#banner-aviso`)
-- [x] Landing actualizada: planes Operativa €249/mes · Internacional €399/mes, 8 módulos (+RRHH, Incidencias, Comunicados), FUNDAE €2.988–4.788 bonificable, © 2026
-- [x] Registro con código de centro opcional (`codigo_acceso`): si el campo queda vacío el usuario se registra sin centro asignado; `codigo_acceso` añadido al bucle de matching en `doRegisterStep1`
-- [x] Chatbot agente ejecutor — nuevas herramientas de tramos: `crear_tramos_centro` y `listar_tramos_centro` implementadas en EF `chat` y desplegadas a producción
-- [x] Módulo Salidas Didácticas: lista, detalle 4 tabs (Dashboard/Cocina/Autobús/Administración), vista familia con autorización por hijo, push notifications, Excel 3 hojas, circular IA
-- [x] Roles `orientador` y `admin_institucional`: nuevas opciones en selectores de invitación/edición de usuarios; `admin_institucional` tiene selector multi-centro propio
-- [x] Módulo Calidad base: dashboard 5 KPIs, No Conformidades (lista+filtros+modal voz+IA+detalle+CAPA), Feedback Familias (lista+sentimiento+análisis IA asíncrono+respuesta IA); tablas `no_conformidades`/`acciones_capa`/`feedback_familias` (DDL pendiente ejecutar)
-- [x] Módulo Alumnos (`js/alumnos.js`): directorio del centro (buscar/filtrar por grupo/export Excel) + ficha individual (familias, horario, comedor, incidencias, calificaciones) + acciones (registrar incidencia prerrellenada, export PDF) + integración ⌘K. Staff only.
-- [x] Calificaciones para familias (solo lectura): vista pivote asignatura×evaluación de sus hijos (`_calRenderFamilia`)
-- [x] Control de asistencia de aula (`js/asistencia.js`): modal 📋 Pasar lista desde clase AHORA en Mi Horario de Hoy; toggle Presente/Retraso/Ausente; UPSERT en `asistencia_clase`; push familias (ausente=inmediato, retraso=al confirmar); métrica CMI Ausencias de aula hoy en Dimensión 1. **2026-06-16:** botón también en clases ya concluidas del día ("Pasar lista (atrasada)"); **vista "Pasar lista" por fecha** (`initAsistenciaVista`, tab/nav grupo Docencia, `#panel-pasarlista`): selector de día (incl. anteriores) + selector de grupo para dirección → lista de clases con resumen ✓/⚡/✗ y botón para pasar/corregir cualquier día; **toggle "Informe"** (`_asistInformeCargar`): rango de fechas + grupo → tabla por alumno (presente/retraso/ausente/total/% coloreado) + KPIs (registros, ausencias, retrasos, alumnos ≥3 ausencias) + export Excel. Fix bug `JSON.stringify` en `onclick="…"` en asistencia/mejoras/incidencias.
-- [x] Auditoría RLS + cierre de fuga RGPD (familias podían leer datos de todos los alumnos): calificaciones + fase 1 (7 tablas staff-only) + fase 2 (orientación/incidencias vía RPCs SECURITY DEFINER + feedback propio). Las 3 migraciones aplicadas y verificadas en producción
-- [x] Boletín PDF de calificaciones (`_calBoletinPDF`): familia → botón "⬇ Boletín PDF" (hijo activo); dirección → botón en cabecera del split detail (alumno seleccionado). Cabecera logo+color + tabla pivote asignatura×evaluación + profesor. jsPDF+autotable on-demand. Reutiliza helpers de `informes.js`.
-- [x] Push a familias al enviar comunicado (`_comPushFamilias`, `js/comunicados.js`): completa el suite push familias (comedor/asistencia/salidas/orientación/notas/incidencias/comunicados). `'grupo:XXXX'` → familias del grupo; `'todos'`/'`solo_familias`' → todas las familias del centro; `'solo_profesores'` → sin push.
-- [x] Push de nuevas notas a familias (`_calNotificarFamilias`, `calGuardar`): diff `data-nota-orig` → avisa solo si cambió, no incluye el valor. Push de incidencias a familias (`_incPushFamilia`, `notificarFamiliaIncidencia`): push genérico además del email ya existente.
+> 📦 Las listas históricas de **"Completado ✅"** y **"Backlog"** (decenas de ítems ya cerrados) se han movido a `CLAUDE-ARCHIVE.md` → sección 3. Aquí solo se mantiene el trabajo activo/en curso.
 
 ### En progreso — Redesign visual completo (design_handoff_didactia/)
 - [x] Design tokens v2 + layout shell
@@ -314,20 +266,6 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 - [x] **Onboarding de nuevo centro** (`js/users.js`, 2026-06-12): botón "+ Nuevo centro" en el panel de Usuarios (solo superadmin) → wizard modal (`nuevoCentroWizard`) con nombre, slug autogenerado/único, color, logo, módulos activos y **códigos de acceso autogenerados** (familia/profesional/general) → `INSERT centros` → modal de éxito que muestra los códigos y enlaza a "Invitar primer admin". Siguiente paso del onboarding (alumnos) ya cubierto por `scripts/importar_alumnos.mjs`
 - [x] **Módulo Tutorías** (`js/tutoria.js`, 2026-06-16): reserva de citas tutor-familia. Tablas `tutoria_disponibilidad` + `tutoria_citas` (UNIQUE(disp_id,fecha,hora_inicio) anti-doble reserva). Vista profesional: Mis citas (confirmar/cancelar/realizada/notas) + Mi disponibilidad (CRUD). Vista familia: selector hijo → disponibilidad del tutor → date picker → sub-slots en cliente → solicitar + Mis citas. Vista admin: tabla read-only. Push bidireccional. **⚠️ Migración pendiente:** ejecutar `supabase/migrations/tutorias.sql` en SQL Editor.
 - [x] **Agenda del Centro** (`js/agenda.js`, 2026-06-16): calendario mensual unificado — sustituciones, tutorías, salidas y ausencias en un solo lugar. Split-view (grilla mes 340px + panel del día). Visible para todos los roles; RLS filtra automáticamente. Sin tabla propia — vista agregada de datos existentes. Colores: danger/ok/tut/#7A5C9E/info/warning. Clic en evento navega al módulo origen.
-
-### Backlog
-- [x] **QA estática (2026-06-16):** `scripts/verify-columns.js` (`npm run verify:columns`) cruza las columnas usadas en las consultas Supabase de `js/` contra el esquema real (`scripts/schema-snapshot.json`, 58 tablas; ignora joins embebidos `tabla(col,col)`) → detecta la clase de bug "columna inexistente" (p.ej. `actividad` vs `actividad_nombre`, errores 400). Resultado actual: **0 mismatches**. Regenerar snapshot: `node scripts/verify-columns.js --refresh` (necesita `SUPABASE_MGMT_TOKEN`). `npm run verify:planner` agrupa las 3 suites del motor del Planner. Ambos + sintaxis de todo el JS corren en el job `static-checks` del workflow semanal (`.github/workflows/weekly-check.yml`, sin secretos).
-- [x] **P0 seguridad (cerrado):** `disponibilidad_profesor` no tiene columna `centro_id`. El aislamiento ya está garantizado por dos capas: (1) cliente filtra por `profesor_id IN (profIds)` donde `profIds` viene de `profesores` filtrado por `centro_id`; (2) RLS con policy `centro_isolation` aísla vía FK `profesor_id → profesores.centro_id`. No hay fuga cross-tenant. Sin cambios necesarios.
-- [x] **P0 deploy resuelto:** EF `chat` redesplegada el 2026-06-03 con 7 herramientas. Deploy vía `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy chat --project-ref rflfsbrdmgaidhvbuvwb`
-- [x] **P1 versionar EFs:** `invite-user` y `notify-role` extraídos del bundle ESZIP de producción y añadidos al repo (`c232c38`); `notify-sustitucion` deployada a producción (`2026-06-12`). Nota: `rapid-processor` y `cas-analyzer` están en prod sin versionar.
-- [x] `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI) **ya en producción** (verificado 2026-06-12: tabla + RLS `centro_isolation` + índice `idx_alertas_centro_activas` presentes; el SQL coincide con el esquema vivo). No requiere acción.
-- [x] Importación masiva de alumnos/familias via CSV (`scripts/importar_alumnos.mjs`, 2026-06-12): cabeceras flexibles (nombre/curso/grupo_horario/familia_email/relacion), dedupe por nombre normalizado, vínculos `familia_alumno` por email de perfil, `--dry-run`. **Seguridad:** los 3 importadores (`importar_alumnos.mjs`, `importar_horarios_profes.mjs`/`.py`, `importar_cargas_eso.mjs`) ya NO hardcodean la `service_role` key — la leen de `SUPABASE_SERVICE_ROLE_KEY` (0 JWTs literales en el repo)
-- [x] Estadísticas cross-centro para superadmin (`js/analytics.js`, 2026-06-12): vista multicentro ampliada en el Dashboard de Análisis (solo superadmin, `#cmi-mc-wrap`): tabla comparativa por centro (alumnos, sustituciones pendientes hoy, incidencias abiertas, comensales hoy, usuarios, alertas) con semáforo y fila de TOTALES. Fix: sustituciones sin cubrir ahora incluye `cubierta IS NULL`
-- [x] Limpiar `repomix-output.xml` y `edubot-supabase (1).html` del repo (añadidos a `.gitignore`; `edubot-supabase (1).html` quitado del index con `git rm --cached`) ✅ 2026-06-12
-- [x] Sustituir `TODO:VAPID_PUBLIC_KEY` en `config.js` con el valor real ✅ (par regenerado 2026-06-11, secrets actualizados vía Management API, EF `send-push` redesplegada)
-- [x] Bug menor `send-push` (cerrado 2026-06-12): el delete por 410/404 ahora borra **solo la fila fallida** (`.eq("id", row.id)`, con `id` añadido al select), no todas las del `user_id` — un usuario con varios dispositivos conserva sus suscripciones válidas. EF redesplegada.
-
----
 
 ## Propuesta comercial
 

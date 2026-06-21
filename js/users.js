@@ -7,8 +7,11 @@ let _editingAlumnoIds = new Set();
 let _invAlumnosSeleccionados = new Set();
 let _usersBusqueda = "";
 
-// Escape single quotes for inline onclick attrs
+// Escape single quotes for inline onclick attrs (JS-string context)
 function _esc(s) { return (s || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'"); }
+// Escape HTML for text content and attribute values (XSS-safe). Para argumentos
+// dentro de onclick="f('…')" combinar: _escH(_esc(valor)) (JS-string + atributo HTML).
+function _escH(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 
 async function loadUsersPanel() {
   const isSuperadmin = role === "superadmin";
@@ -20,7 +23,7 @@ async function loadUsersPanel() {
     const { data: centros } = await sb.from("centros").select("id,nombre,modulos_activos").order("nombre");
     _centrosData = centros || [];
     filterSel.innerHTML = "<option value=''>Todos los centros</option>" +
-      _centrosData.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+      _centrosData.map(c => `<option value="${c.id}">${_escH(c.nombre)}</option>`).join("");
     renderModulosLista(_centrosData);
   } else {
     _centrosData = [];
@@ -128,8 +131,9 @@ function renderUsersTable() {
 
   const rows = filtered.map(u => {
     const isSelf = u.user_id === currentUser?.id;
-    const name   = _esc(u.full_name || u.email);
-    const email  = _esc(u.email);
+    // Safe para onclick="f('…')": JS-escape + HTML-escape del atributo
+    const name   = _escH(_esc(u.full_name || u.email));
+    const email  = _escH(_esc(u.email));
 
     const editBtn   = `<button title="Editar" onclick="mostrarModalEditar('${u.id}')" style="${BTN}color:var(--txt2);">✏️</button>`;
     const resendBtn = !u.email_confirmed_at
@@ -144,11 +148,11 @@ function renderUsersTable() {
     const delBtn = isSelf || u.email_confirmed_at ? ""
       : `<button title="Eliminar invitación pendiente" onclick="deleteUser('${u.id}','${name}')" style="${BTN}color:var(--red);">🗑️</button>`;
 
-    const centroCel = isSuperadmin ? `<td style="font-size:12px;color:var(--txt3);">${u.centro_nombre || "—"}</td>` : "";
+    const centroCel = isSuperadmin ? `<td style="font-size:12px;color:var(--txt3);">${_escH(u.centro_nombre || "—")}</td>` : "";
 
     return `<tr>
-      <td style="font-weight:500;">${u.full_name || "—"}</td>
-      <td style="font-size:12px;color:var(--txt3);">${u.email || "—"}</td>
+      <td style="font-weight:500;">${_escH(u.full_name || "—")}</td>
+      <td style="font-size:12px;color:var(--txt3);">${_escH(u.email || "—")}</td>
       ${centroCel}
       <td>${rolBadge(u)}</td>
       <td>${statusBadge(u)}</td>
@@ -177,7 +181,7 @@ function renderModulosLista(centros) {
   container.innerHTML = centros.map(c =>
     `<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--bdr);">` +
       `<span style="font-size:18px;">🏫</span>` +
-      `<span style="font-size:14px;font-weight:600;color:var(--txt);">${(c.nombre || "").replace(/</g, "&lt;")}</span>` +
+      `<span style="font-size:14px;font-weight:600;color:var(--txt);">${_escH(c.nombre || "")}</span>` +
     `</div>`
   ).join("");
 }
@@ -202,7 +206,7 @@ async function mostrarModalInvitar() {
 
   if (role === "superadmin") {
     invCentroSel.innerHTML = "<option value=''>Selecciona un centro…</option>" +
-      _centrosData.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+      _centrosData.map(c => `<option value="${c.id}">${_escH(c.nombre)}</option>`).join("");
     invCentroWrap.style.display = "block";
     invRolSel.innerHTML = `
       <option value="familia">👨‍👩‍👧 Familia</option>
@@ -265,7 +269,7 @@ async function cargarAlumnosCentroInv() {
   lista.innerHTML = alumnos.map(a => `
     <div id="inv-al-${a.id}" onclick="toggleInvAlumno('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;background:var(--srf2);">
       <div id="inv-chk-${a.id}" style="width:16px;height:16px;border-radius:4px;border:2px solid var(--bdr);background:var(--srf);display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;">✓</div>
-      <div style="font-size:13px;">${a.nombre} <span style="color:var(--txt3);font-size:12px;">${a.curso || ""}</span></div>
+      <div style="font-size:13px;">${_escH(a.nombre)} <span style="color:var(--txt3);font-size:12px;">${_escH(a.curso || "")}</span></div>
     </div>`).join("");
 }
 
@@ -412,7 +416,7 @@ async function cargarAlumnosEditar() {
     const sel = _editingAlumnoIds.has(a.id);
     return `<div id="edit-al-${a.id}" onclick="toggleEditAlumno('${a.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;background:${sel ? "var(--ink-ll)" : "var(--srf2)"};">
       <div id="edit-chk-${a.id}" style="width:16px;height:16px;border-radius:4px;border:2px solid ${sel ? "var(--ink)" : "var(--bdr)"};background:${sel ? "var(--ink)" : "var(--srf)"};display:flex;align-items:center;justify-content:center;font-size:10px;color:${sel ? "#fff" : "transparent"};">✓</div>
-      <div style="font-size:13px;">${a.nombre} <span style="color:var(--txt3);font-size:12px;">${a.curso || ""}</span></div>
+      <div style="font-size:13px;">${_escH(a.nombre)} <span style="color:var(--txt3);font-size:12px;">${_escH(a.curso || "")}</span></div>
     </div>`;
   }).join("") +
   // Perfil alimentario (solo vinculados, solo admin/superadmin/director)
@@ -421,12 +425,12 @@ async function cargarAlumnosEditar() {
       <div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:8px;">🥗 Perfil alimentario</div>
       ${vinculados.map(a => `
         <div style="margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:500;margin-bottom:4px;">${a.nombre}</div>
+          <div style="font-size:12px;font-weight:500;margin-bottom:4px;">${_escH(a.nombre)}</div>
           <div style="display:flex;flex-direction:column;gap:4px;">
-            <input type="text" id="usr-aler-${a.id}" value="${_esc(a.alergias||"")}"
+            <input type="text" id="usr-aler-${a.id}" value="${_escH(a.alergias||"")}"
               placeholder="Alergias…"
               style="padding:6px 8px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;background:var(--bg);color:var(--txt);width:100%;box-sizing:border-box;">
-            <input type="text" id="usr-diet-${a.id}" value="${_esc(a.dieta_especial||"")}"
+            <input type="text" id="usr-diet-${a.id}" value="${_escH(a.dieta_especial||"")}"
               placeholder="Dieta especial…"
               style="padding:6px 8px;border:1px solid var(--bdr);border-radius:6px;font-size:12px;background:var(--bg);color:var(--txt);width:100%;box-sizing:border-box;">
           </div>

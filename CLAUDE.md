@@ -327,51 +327,39 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
 > - `supabase/migrations/calificaciones_competenciales.sql` — tabla `comentarios_competenciales` + RLS `comp_ley_centro` + índice `idx_comp_ley`. Requerida para que "💾 Guardar" del modal competencial funcione. Pegar en SQL Editor o ejecutar: `SUPABASE_ACCESS_TOKEN=sbp_xxx node scripts/aplicar-competenciales.mjs`
 >
-> **Migraciones ejecutadas** (ya en producción):
-> - `supabase/migrations/mensajes.sql` — tabla `mensajes` + RLS `msg_familia`/`msg_staff` + 2 índices (módulo Mensajería familia↔centro). ✅ aplicado 2026-06-19 vía Management API (`ejecutar-migraciones-laptop.mjs`)
-> - `supabase/migrations/personas_autorizadas.sql` — tabla `personas_autorizadas` + RLS `pa_familia`/`pa_staff` + índice (personas autorizadas a recoger al alumno, ficha Alumnos). ✅ aplicado 2026-06-19 vía Management API
-> - `supabase/migrations/profiles_idioma.sql` — `profiles.idioma text DEFAULT 'es'` (idioma preferido para traducción automática de comunicados). ✅ aplicado 2026-06-19 vía Management API
-> - `supabase/migrations/asistencia_comedor_tupper.sql` — `asistencia_comedor.tupper bool DEFAULT false` (toggle 3 estados del comedor: No / Tupper / Menú). ✅ aplicado 2026-06-19 vía Management API
-> - `supabase/migrations/20260619_cron_agente_cobertura.sql` — pg_cron `agente-cobertura-diaria` (`0 6 * * 1-5`) → EF `agente-cobertura-diaria` (plan de cobertura del día por email+push, modo preparar+avisar). Programado solo para Buñol. ✅ aplicado 2026-06-19 vía Management API. **Nota:** `ausencias_profesor.nota_resolucion` (mensaje de resolución al profesor) también añadida vía Management API el 2026-06-18.
-> - `supabase/migrations/comunicado_lecturas.sql` — tabla `comunicado_lecturas` (registro central de lectura de comunicados) + UNIQUE(comunicado_id,user_id) + RLS (propio rw + staff read) ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/documentos_centro.sql` — tabla `documentos_centro` (biblioteca de circulares/normativa/PGA) + RLS `docs_read`/`docs_manage` + bucket privado `documentos-centro` + 4 políticas de Storage por centro ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/tutoria_espera.sql` — tabla `tutoria_espera` (lista de espera de tutorías) + RLS (staff ALL + familia read/ins/del propio) + índice ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/eventos_centro.sql` — tabla `eventos_centro` (eventos generales de la Agenda) + RLS `ev_read`/`ev_manage` + índice ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/encuestas.sql` — tablas `encuestas` + `encuesta_respuestas` (encuestas a familias) + RLS por centro/rol + índices (incl. UNIQUE por familia anti-doble-respuesta) ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/menu_comedor.sql` — tabla `menu_comedor` (menú semanal del comedor) + RLS `menu_read`(todo el centro)/`menu_manage`(dirección) + UNIQUE(centro,fecha) ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/recursos.sql` — tablas `recursos` + `prestamos` (préstamo de material) + RLS staff-only + índices ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/actas_reunion.sql` — tabla `actas_reunion` (resumen IA de claustros) + RLS `actas_all` (dirección) + índice ✅ aplicado 2026-06-17 vía Management API
-> - `supabase/migrations/tutorias.sql` — 2 tablas (`tutoria_disponibilidad` + `tutoria_citas`) + RLS (5 políticas: staff ALL + familia read/CUD propio) + índices. ✅ aplicado y verificado 2026-06-17 vía Management API (tutoria_citas 4 políticas, tutoria_disponibilidad 2). El módulo `js/tutoria.js` ya estaba desplegado pero sus tablas no existían en prod → quedaba roto hasta aplicar esto.
-> - `supabase/migrations/bucket_documentos_justificantes.sql` — **fix bug pérdida de datos**: crea el bucket privado `documentos` + 4 políticas de Storage staff-only por centro (path `justificantes/{centro_id}/…`, `centro_id` = segmento `[2]`). `js/admin.js` subía justificantes a este bucket pero no existía → se perdían en silencio (`.catch(()=>{})`, ahora con `console.warn`). ✅ aplicado y verificado 2026-06-16 vía Management API (bucket privado + documentos_read/insert/update/delete)
-> - `supabase/migrations/rls_familia_lockdown_fase3.sql` — **fix privacidad RGPD (fase 3)**: restricciones para `sustituciones` (familia: SELECT solo grupos de sus hijos), `comunicados` (familia: SELECT sin `solo_profesores` y solo enviados), `salidas_didacticas` (familia: SELECT solo `estado='publicada'`), `participantes_salida` (familia: SELECT+UPDATE solo sus hijos), `notificaciones_salida` (staff-only). 10 políticas creadas. ✅ aplicado 2026-06-15 vía Management API
-> - `supabase/migrations/asistencia_clase.sql` — tabla `asistencia_clase` + RLS `asistencia_clase_centro` + índice `idx_asistencia_clase_fecha` ✅ ejecutado 2026-06-13 vía Management API
-> - `supabase/migrations/alergias_dietas.sql` — `alumnos.alergias` + `alumnos.dieta_especial` + `asistencia_comedor.nota_dia` ✅ ejecutado 2026-06-12 vía Management API
-> - `supabase/migrations/rls_familia_lockdown_fase2.sql` — **fix privacidad RGPD (fase 2)**: `expedientes_orientacion`, `tramites_orientacion`, `incidencias` → staff-only; las familias obtienen sus datos vía RPCs `SECURITY DEFINER` `familia_tramites_visibles()` (trámites `visible_familia` de sus hijos) y `familia_incidencias_hijos()` (incidencias de sus hijos, solo campos visibles — no `informe_borrador`/`normativa_ref`); `feedback_familias`: `cal_fb_read`/`cal_fb_update` restringidas a staff (familia conserva lo suyo vía `feedback_centro`). JS acoplado desplegado (`oriRenderTramitesFamilia` y bloque incidencias de `renderHomeFamilia` → RPC). ✅ aplicado y verificado 2026-06-12 vía Management API (políticas + RPCs SECURITY DEFINER con EXECUTE para `authenticated`, ejecutan sin error).
-> - `supabase/migrations/rls_familia_lockdown_fase1.sql` — **fix privacidad RGPD (fase 1)**: 7 tablas que ninguna vista de familia consume pasan a staff-only (`rol <> 'familia'`): `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `alertas_orientacion`, `alertas_predictivas`, `no_conformidades`, `acciones_capa`. Antes, cualquier cuenta `familia` (que tiene `centro_id`) podía leer por API datos psicopedagógicos y de riesgo de TODOS los alumnos. ✅ aplicado y verificado 2026-06-12 vía Management API (9 políticas, todas excluyen `familia`). Fase 2 (tablas con lectura legítima de familia) pendiente — ver migraciones pendientes.
-> - `supabase/migrations/calificaciones_familia_rls.sql` — **fix privacidad RGPD**: `cal_read` restringe a las familias a leer solo las notas de sus hijos (`familia_alumno.profile_id=auth.uid()`); staff lee su centro; superadmin todo. ✅ ejecutado y verificado 2026-06-12 vía Management API (qual incluye el subselect de `familia_alumno`)
-> - `supabase/migrations/ib_avanzado.sql` — IB avanzado: tablas `ib_tok`, `ee_borradores`, `ib_resultados` (+RLS por centro) + `extended_essay.nota` ✅ ejecutado 2026-06-12 vía Management API
-> - `supabase/migrations/horarios_curso_escolar.sql` — `horarios_grupo.curso_escolar` + `info_centro.curso_activo` + índice `idx_hg_curso` ✅ verificado en producción 2026-06-12 (columnas NOT NULL DEFAULT '2025-26', 2.733 filas pobladas)
-> - `sql/calidad-tables.sql` — 6 tablas del módulo Calidad (`no_conformidades`, `acciones_capa`, `feedback_familias`, `documentos_calidad`, `plantillas_calidad`, `evaluaciones_platinum`) + RLS + políticas por centro ✅ verificado en producción 2026-06-12
-> - `supabase/migrations/20260609_push_subscriptions.sql` — tabla `push_subscriptions` + RLS + índices ✅ 2026-06-09 vía Management API (confirmado)
-> - `supabase/migrations/orientacion_base.sql` — 6 tablas de Orientación (`expedientes_orientacion`, `informes_psicopedagogicos`, `medidas_atencion`, `cuestionarios_docentes`, `tramites_orientacion`, `alertas_orientacion`) + índices + RLS por centro ✅ ejecutado 2026-06-11 vía Management API
-> - `supabase/migrations/planner_inputs.sql` — 7 tablas de entrada del Planner (`planner_profesores/cargas/tramos/restricciones/disponibilidad/espacios/reglas`) + RLS por centro ✅ ejecutado 2026-06-09 vía Management API
-> - `supabase/migrations/materiales.sql` — tabla `materiales` + RLS + bucket privado `materiales` + RLS de Storage ✅ ejecutado 2026-06-09 vía Management API
-> - `supabase/migrations/planner_grupos.sql` — tabla `planner_grupos` (hoja "Grupos") + RLS ✅ ejecutado 2026-06-09 vía Management API
-> - `supabase/migrations/calificaciones.sql` — tabla `calificaciones` + RLS (4 políticas) + índices ✅ ejecutado 2026-06-09 vía Management API
-> - `supabase/migrations/20260605_cron_notify_justificante.sql` — pg_cron job `notify-justificante-daily` `0 8 * * *` + pg_net ✅ 2026-06-05
-> - `supabase/migrations/20260605002_sustituciones_sustituto_nullable.sql` — `sustituciones.profesor_sustituto DROP NOT NULL` ✅ 2026-06-05 vía Management API
-> - `sql/alertas-predictivas.sql` — tabla `alertas_predictivas` (Analytics CMI): tabla+RLS+policy ya existían; índice `idx_alertas_centro_activas` creado ✅ completado 2026-06-04 vía Management API
-> - `sql/horario-generado-profesor-nullable.sql` — `horario_generado.profesor_id DROP NOT NULL` (horarios sin profesor) ✅ ejecutado 2026-06-04 vía Management API
-> - `sql/fix-bugs-prod-2026-05-29.sql` — `ausencias_profesor.tramo DROP NOT NULL` + columnas IA incidencias ✅ ejecutado 2026-05-29
-> - `sql/planner-tables.sql` — tablas planner + RLS + índices ✅ ejecutado 2026-05-27
-> - `sql/add-incidencias-fields.sql` — campos IA en incidencias ✅ ejecutado 2026-05-29
-> - `sql/fix-ausencias-tramo-nullable.sql` — `ausencias_profesor.tramo DROP NOT NULL` ✅ ejecutado 2026-05-29
-> - Tabla `comunicados` + RLS ✅
-> - Tablas RRHH (`profesores`, `ausencias_profesor`, `guardias_realizadas`) ✅
+> El histórico de **migraciones ya ejecutadas** (decenas) se ha movido a `CLAUDE-ARCHIVE.md` para no consumir contexto. Al confirmar esta migración en producción, registrarla allí.
 
 ---
 
-Ver también: @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLAUDE-CHANGELOG.md
+## Mantenimiento de la documentación
+
+Esta documentación se carga **entera** en cada sesión de Claude Code vía los `@imports` del pie. Para que siga siendo útil (y no malgaste contexto), se mantiene bajo control de tamaño.
+
+**Límite duro: ningún archivo cargado debe superar 35 000 caracteres.** Comprobar con:
+```bash
+for f in CLAUDE*.md; do printf "%-22s %s\n" "$f" "$(wc -m < "$f")"; done
+```
+
+**Qué va en cada archivo:**
+| Archivo | Contenido | Cargado por Claude | Límite |
+|---------|-----------|:--:|:--:|
+| `CLAUDE.md` | Índice maestro: producto, stack, arquitectura, estructura, EFs, convenciones, flujo de arranque, migraciones **pendientes** | ✅ (`@`) | 35k |
+| `CLAUDE-MODULOS.md` | Resumen funcional por módulo (1 bloque/módulo) | ✅ (`@`) | 35k |
+| `CLAUDE-TABLAS.md` | Esquema de BD, buckets, RPCs, módulos por rol | ✅ (`@`) | 35k |
+| `CLAUDE-ROADMAP.md` | n8n, centro demo, roadmap **activo**, propuesta comercial | ✅ (`@`) | 35k |
+| `CLAUDE-CHANGELOG.md` | Solo entradas **recientes** (rotación) | ✅ (`@`) | 20k |
+| `CLAUDE-ARCHIVE.md` | Histórico: changelog viejo, migraciones aplicadas, roadmap completado | ❌ **(sin `@`)** | sin límite |
+
+**Reglas de rotación (revisar cada ~10 entradas de changelog o cuando un archivo se acerque a 30k):**
+1. **Changelog:** mantener ≤30 entradas o ≤20k chars. Al superarse, mover las más antiguas a la sección 1 de `CLAUDE-ARCHIVE.md`.
+2. **Roadmap:** cuando un ítem pasa a "Completado", mover la línea detallada a la sección 3 del archivo; en el roadmap dejar como mucho un resumen de una línea.
+3. **Migraciones:** al confirmarse en producción, mover de "pendientes" (en CLAUDE.md) a la sección 2 del archivo.
+4. **Nunca** añadir `@CLAUDE-ARCHIVE.md` al pie — su razón de ser es NO cargarse.
+
+---
+
+Ver también (cargados automáticamente): @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLAUDE-CHANGELOG.md
+Histórico (consulta manual, NO se carga): `CLAUDE-ARCHIVE.md`
 
 
 ---
