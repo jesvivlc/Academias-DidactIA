@@ -1,4 +1,6 @@
 // ── ORIENTACIÓN MODULE ──
+let _oriTramitesCache; // caché local (antes _oriTramitesCache)
+let _agoriList;        // caché local (antes _agoriList)
 // Vista principal: lista de expedientes de orientación del centro.
 // Sigue el patrón de comedor.js (estado de módulo + load/render) y admin.js
 // (tabla + filtros + export XLSX, igual que exportarSustituciones).
@@ -1311,7 +1313,7 @@ async function _oriTabTramites() {
     .select("*").eq("centro_id", ctrId).eq("expediente_id", e.id)
     .order("created_at", { ascending: false });
 
-  window._oriTramitesCache = tramites || [];
+  _oriTramitesCache = tramites || [];
   const tipos = ["todos", "dictamen", "escolarizacion", "alta_capacidades", "otro"];
   const filtro = '<select onchange="_oriSetTramiteFiltro(this.value)" style="padding:7px 10px;border:1px solid var(--bdr);border-radius:var(--r-sm);font-size:13px;background:var(--srf);color:var(--txt);">' +
     tipos.map(t => '<option value="' + t + '"' + (t === _oriTramiteFiltroTipo ? " selected" : "") + '>' + (t === "todos" ? "Todos los tipos" : t) + '</option>').join("") + '</select>';
@@ -1331,7 +1333,7 @@ function _oriSetTramiteFiltro(v) { _oriTramiteFiltroTipo = v; _oriRenderTab("tra
 window._oriSetTramiteFiltro = _oriSetTramiteFiltro;
 
 function oriModalEditTramite(id) {
-  const t = (window._oriTramitesCache || []).find(x => x.id === id);
+  const t = (_oriTramitesCache || []).find(x => x.id === id);
   if (!t) { alert("No se encontró el trámite."); return; }
   _oriShowModal(
     '<div style="font-size:16px;font-weight:600;color:var(--txt);margin-bottom:16px;">Editar trámite</div>' +
@@ -1969,7 +1971,7 @@ window.agenteOrientacion = async function () {
       if (body()) body().innerHTML = '<div style="color:var(--txt3);font-size:13px;">No se detectaron alumnos en riesgo con los datos de los últimos 30 días.</div>' + cerrar;
       return;
     }
-    window._agoriList = detect;
+    _agoriList = detect;
     // Redacción IA de borradores para los de mayor riesgo (con progreso)
     const sys = "Eres orientador/a de un centro educativo español. Redacta un BORRADOR breve (2-4 frases) de alerta de orientación para el equipo, a partir de señales OBJETIVAS del alumno. Tono profesional y prudente, sin juicios ni diagnósticos, centrado en los datos y en primeros pasos razonables (citar a la familia, seguimiento con el tutor, revisar asistencia/rendimiento). No inventes datos que no aparezcan. Devuelve solo el texto.";
     for (let i = 0; i < detect.length && i < _AGORI_MAX_IA; i++) {
@@ -2018,7 +2020,7 @@ window.agenteOrientacion = async function () {
 window._agoriCrear = async function () {
   const chks = Array.from(document.querySelectorAll(".agori-chk")).filter(ch => ch.checked);
   if (!chks.length) { alert("No has seleccionado ninguna alerta."); return; }
-  const lista = window._agoriList || [];
+  const lista = _agoriList || [];
   const rows = chks.map(ch => {
     const i = parseInt(ch.dataset.i, 10);
     const x = lista[i];

@@ -1,3 +1,4 @@
+let _lastSystemPrompt; // estado local del chat (antes _lastSystemPrompt)
 // ── HORARIOS POR GRUPO ──
 // ── HELPERS HORARIO ──
 
@@ -766,7 +767,7 @@ ${ctx}${horarioGrupoCtx}`;
   geminiContents.push({ role: "user", parts: [{ text: lastMsg.content }] });
 
   // Guardar para el flujo de confirmación de herramientas
-  window._lastSystemPrompt = sys;
+  _lastSystemPrompt = sys;
 
   try {
     const res = await fetch(API, {
@@ -856,7 +857,7 @@ function _showToolCard(tool, args, pendingContents) {
       '</div>' +
     '</div>';
 
-  window._pendingTool = { tool, args, pendingContents, systemPrompt: window._lastSystemPrompt };
+  window._pendingTool = { tool, args, pendingContents, systemPrompt: _lastSystemPrompt };
   addMsg("bot", cardHtml);
 }
 

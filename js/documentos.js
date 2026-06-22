@@ -1,4 +1,5 @@
 /* Módulo Documentos del centro — biblioteca de circulares, normativa, PGA, formularios… */
+let _docData; // caché local (antes _docData)
 
 function _docEsc(s) { return escH(s); } // delegado a utils.js
 function _docGestiona() {
@@ -35,7 +36,7 @@ async function _docCargar() {
     .select("id,titulo,categoria,descripcion,tipo,url,storage_path,visible_para,created_at")
     .eq("centro_id", window.ctrId).order("created_at", { ascending: false });
   var docs = r.data || [];
-  window._docData = docs;
+  _docData = docs;
 
   // Chips de categoría con conteo
   var cats = document.getElementById("doc-cats");
@@ -57,7 +58,7 @@ window._docFiltrar = function (c) { _docCatFiltro = c; _docCargar(); };
 function _docRender() {
   var box = document.getElementById("doc-list");
   if (!box) return;
-  var docs = (window._docData || []).filter(function (d) { return _docCatFiltro === "todas" || d.categoria === _docCatFiltro; });
+  var docs = (_docData || []).filter(function (d) { return _docCatFiltro === "todas" || d.categoria === _docCatFiltro; });
   if (!docs.length) {
     box.innerHTML = '<div class="doc-empty">No hay documentos' + (_docCatFiltro !== "todas" ? " en esta categoría" : " todavía") + '.</div>';
     return;
@@ -81,7 +82,7 @@ function _docRender() {
 }
 
 window._docAbrir = async function (id) {
-  var d = (window._docData || []).find(function (x) { return x.id === id; });
+  var d = (_docData || []).find(function (x) { return x.id === id; });
   if (!d) return;
   if (d.tipo === "enlace" && d.url) { window.open(d.url, "_blank", "noopener"); return; }
   if (!d.storage_path) { showToast("Documento no disponible"); return; }
@@ -92,7 +93,7 @@ window._docAbrir = async function (id) {
 
 window._docBorrar = async function (id) {
   if (!_docGestiona()) return;
-  var d = (window._docData || []).find(function (x) { return x.id === id; });
+  var d = (_docData || []).find(function (x) { return x.id === id; });
   if (!d) return;
   if (!confirm("¿Eliminar “" + d.titulo + "”?")) return;
   if (d.storage_path) { try { await window.sb.storage.from(_DOC_BUCKET).remove([d.storage_path]); } catch (e) {} }

@@ -6,6 +6,8 @@
 
 ## Registro de cambios recientes
 
+- `2026-06-22` — refactor(globals): **9 cachés `window.*` de un solo módulo movidos a scope local** (`_regData`, `_lastSystemPrompt`, `_docData`, `_encFamData`, `_oriTramitesCache`, `_agoriList`, `_recPrestamosCache`, `_tutCitasCache`, `_agSelFecha`). Reduce la contaminación del namespace global (item §4 del informe). Verificado: eran de un solo archivo, sin referencias en HTML/onclick; `node --check` OK.
+
 - `2026-06-22` — perf+refactor(IA/PDF): **caché de IA + resiliencia** (A8) y **cargador PDF unificado**. `cas-analyzer` cachea resultados (`ia_cache`, salida `{los}` pura) y añade timeout+reintento; `tipificar-incidencia` añade timeout+reintento (sin caché: su informe incrusta la fecha del día). `cas-analyzer`/`tipificar` **fail-open**. PDF: `_infEnsureLibs` delega en `pdfEnsureLibs` (pdf-utils, lógica/versiones idénticas a prod). ⚠️ Pendiente: aplicar `ia_cache.sql` + redeploy de las 2 EFs.
 
 - `2026-06-22` · `2273474` — refactor: **centralización completa de escapers** en `js/utils.js`. Los ~37 escapers HTML por módulo + arg-escapers delegan ahora en `escH`/`escAttr`/`escArg` (nuevo `escArg` para args de `onclick`); 0 cuerpos de escape duplicados fuera de utils.js. Fix de bugs latentes de apóstrofo en onclick (planner/calificaciones). Sin cambios en call sites; `node --check` OK.

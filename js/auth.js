@@ -1,4 +1,5 @@
 // ── AUTH UI ──
+let _regData; // estado local del registro (antes _regData)
 // Escape HTML para texto/atributos insertados vía innerHTML (XSS-safe)
 function _authEsc(s) { return escH(s); } // delegado a utils.js
 function _hideAuthForms() {
@@ -213,7 +214,7 @@ async function doRegisterStep1() {
 
   // Store name/email for step 2 — pass en variable de módulo, no en window
   _regPass = pass;
-  window._regData = { name, email };
+  _regData = { name, email };
 }
 
 function toggleAlumno(id) {
@@ -231,7 +232,7 @@ function toggleAlumno(id) {
 }
 
 async function doRegisterStep2(skip = false) {
-  const { name, email } = window._regData || {};
+  const { name, email } = _regData || {};
   const alumnosIds = skip ? [] : [...selectedAlumnos];
   await finishRegister(name, email, _regPass, alumnosIds);
   _regPass = null;

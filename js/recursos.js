@@ -1,4 +1,5 @@
 /* Módulo Préstamo de recursos — inventario prestable + registro de préstamos */
+let _recPrestamosCache; // caché local (antes _recPrestamosCache)
 
 function _recEsc(s) { return escH(s); } // delegado a utils.js
 function _recHoy() { return new Date().toISOString().split("T")[0]; }
@@ -121,7 +122,7 @@ async function _recLoadPrestamos() {
   var devueltos = ps.filter(function (p) { return p.fecha_devolucion; });
   var hoy = _recHoy();
 
-  window._recPrestamosCache = ps;
+  _recPrestamosCache = ps;
   var html = '<div class="rec-toolbar"><button class="rec-btn rec-btn-primary" onclick="window._recNuevoPrestamo()">+ Nuevo préstamo</button>' +
     '<span style="flex:1"></span>' +
     '<button class="rec-btn" onclick="window._recExportar()">📥 Exportar Excel</button>' +
@@ -204,7 +205,7 @@ window._recDevolver = async function (prestamoId, recursoId) {
 /* ── Exportación contable de préstamos ── */
 window._recExportar = function () {
   if (typeof XLSX === "undefined") { showToast("Librería de Excel no disponible"); return; }
-  var ps = window._recPrestamosCache || [];
+  var ps = _recPrestamosCache || [];
   if (!ps.length) { showToast("No hay préstamos para exportar"); return; }
   var hoy = _recHoy();
   var aoa = [["Recurso", "Código", "Categoría", "Prestado a", "Fecha préstamo", "Devolución prevista", "Devuelto", "Estado", "Notas"]];

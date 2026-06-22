@@ -1,4 +1,5 @@
 /* Módulo Tutorías — reserva de citas tutor-familia */
+let _tutCitasCache; // caché local (antes _tutCitasCache)
 
 window.initTutorias = function () {
   const el = document.getElementById('panel-tutorias');
@@ -162,8 +163,8 @@ async function _tutLoadCitasProfesor() {
       .limit(300);
     if (error) throw error;
     if (!data.length) { pane.innerHTML = '<div class="tut-empty">No tienes citas próximas.</div>'; return; }
-    window._tutCitasCache = {};
-    data.forEach(c => { window._tutCitasCache[c.id] = c; });
+    _tutCitasCache = {};
+    data.forEach(c => { _tutCitasCache[c.id] = c; });
     const today = new Date().toISOString().split('T')[0];
     const upcoming = data.filter(c => c.fecha >= today);
     const atrasadas = data.filter(c => c.fecha < today && c.estado !== 'realizada');
@@ -232,7 +233,7 @@ window._tutCancelarProf = async function (citaId, familiaId, alumnoNombre, fecha
   _tutToast('Cita cancelada');
   _tutPush([familiaId], '⚠️ Cita cancelada',
     `El tutor ha cancelado la cita de ${alumnoNombre} el ${_tutFechaLegible(fecha)} a las ${(horaIni || '').slice(0, 5)}.`);
-  const cTut = (window._tutCitasCache || {})[citaId];
+  const cTut = (_tutCitasCache || {})[citaId];
   _tutAvisarEspera((cTut && cTut.tutor_id) || window.currentUser.id, fecha);
   _tutLoadCitasProfesor();
 };
@@ -266,12 +267,12 @@ window._tutGuardarNotas = async function (citaId, notas) {
     .update({ notas_tutor: notas || null })
     .eq('id', citaId).eq('centro_id', window.ctrId);
   // Mantener la caché al día para el acta PDF
-  if (window._tutCitasCache && window._tutCitasCache[citaId]) window._tutCitasCache[citaId].notas_tutor = notas || null;
+  if (_tutCitasCache && _tutCitasCache[citaId]) _tutCitasCache[citaId].notas_tutor = notas || null;
 };
 
 // Acta de tutoría en PDF (cabecera logo+color del centro, reutiliza helpers de informes.js).
 window._tutActaPDF = async function (citaId) {
-  const c = (window._tutCitasCache || {})[citaId];
+  const c = (_tutCitasCache || {})[citaId];
   if (!c) { _tutToast('No se encontró la cita.', true); return; }
   if (typeof _infEnsureLibs !== 'function') { _tutToast('Exportación no disponible.', true); return; }
   try {

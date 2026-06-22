@@ -1,4 +1,5 @@
 /* Módulo Agenda del Centro — vista de calendario unificado */
+let _agSelFecha; // estado local (antes _agSelFecha)
 
 window.initAgenda = function () {
   const el = document.getElementById('panel-agenda');
@@ -9,7 +10,7 @@ window.initAgenda = function () {
   window._agYear   = now.getFullYear();
   window._agMonth  = now.getMonth();
   window._agEvents = [];
-  window._agSelFecha = now.toISOString().split('T')[0];
+  _agSelFecha = now.toISOString().split('T')[0];
 
   el.innerHTML = `
     <div class="ag-page">
@@ -83,7 +84,7 @@ async function _agLoadMonth() {
 
   // Auto-select today or previously selected date if in range
   const today = new Date().toISOString().split('T')[0];
-  const sel = (window._agSelFecha >= from && window._agSelFecha <= to) ? window._agSelFecha : (today >= from && today <= to ? today : null);
+  const sel = (_agSelFecha >= from && _agSelFecha <= to) ? _agSelFecha : (today >= from && today <= to ? today : null);
   if (sel) _agShowDay(sel, false);
 }
 
@@ -105,7 +106,7 @@ function _agBuildGrid(y, m, events) {
     const fecha = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const evs   = dayMap[fecha] || [];
     const isT   = fecha === today;
-    const isS   = fecha === window._agSelFecha;
+    const isS   = fecha === _agSelFecha;
     const dots  = evs.slice(0, 5).map(e => `<span class="ag-dot ag-c-${e.color}"></span>`).join('');
     const more  = evs.length > 5 ? `<span class="ag-more">+${evs.length - 5}</span>` : '';
     html += `<div class="ag-cal-cell${isT ? ' ag-today' : ''}${isS ? ' ag-sel' : ''}" onclick="window._agClickDay('${fecha}')">
@@ -123,7 +124,7 @@ function _agBuildGrid(y, m, events) {
 
 /* ── CLIC DÍA ── */
 window._agClickDay = function (fecha) {
-  window._agSelFecha = fecha;
+  _agSelFecha = fecha;
   document.querySelectorAll('.ag-cal-cell:not(.ag-cell-empty)').forEach(el => el.classList.remove('ag-sel'));
   const d = parseInt(fecha.split('-')[2]) - 1;
   const cells = document.querySelectorAll('.ag-cal-cell:not(.ag-cell-empty)');
@@ -134,7 +135,7 @@ window._agClickDay = function (fecha) {
 function _agShowDay(fecha, scrollToRight) {
   const right = document.getElementById('ag-right');
   if (!right) return;
-  window._agSelFecha = fecha;
+  _agSelFecha = fecha;
 
   const evs = (window._agEvents || []).filter(e => e.fecha === fecha);
   const [, mm, dd] = fecha.split('-');
@@ -334,7 +335,7 @@ function _agPuedeGestionar() {
 
 window._agNuevoEvento = function () {
   if (!_agPuedeGestionar()) return;
-  const fecha = window._agSelFecha || new Date().toISOString().split('T')[0];
+  const fecha = _agSelFecha || new Date().toISOString().split('T')[0];
   const old = document.getElementById('ag-evt-modal');
   if (old) old.remove();
   const wrap = document.createElement('div');
@@ -420,7 +421,7 @@ window._agGuardarEvento = async function (btn) {
   const modal = document.getElementById('ag-evt-modal');
   if (modal) modal.remove();
   if (typeof showToast === 'function') showToast('🗓️ Evento creado');
-  window._agSelFecha = fecha;
+  _agSelFecha = fecha;
   // Si el evento es de otro mes, navegar a él
   const d = new Date(fecha + 'T12:00:00');
   window._agYear = d.getFullYear();

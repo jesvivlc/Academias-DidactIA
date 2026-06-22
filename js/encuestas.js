@@ -1,4 +1,5 @@
 /* Módulo Encuestas a familias — dirección crea, familias responden, dirección ve resultados */
+let _encFamData; // caché local (antes _encFamData)
 
 function _encEsc(s) { return escH(s); } // delegado a utils.js
 function _encArg(s) { return escAttr(s); } // delegado a utils.js
@@ -315,8 +316,8 @@ async function _encRenderFamilia(el) {
   var mine = await window.sb.from("encuesta_respuestas").select("encuesta_id").eq("familia_id", window.currentUser.id);
   var done = {};
   (mine.data || []).forEach(function (x) { done[x.encuesta_id] = 1; });
-  window._encFamData = {};
-  encs.forEach(function (e) { window._encFamData[e.id] = e; });
+  _encFamData = {};
+  encs.forEach(function (e) { _encFamData[e.id] = e; });
 
   if (!encs.length) { box.innerHTML = '<div class="enc-empty">No hay encuestas abiertas ahora mismo.</div>'; return; }
   box.innerHTML = encs.map(function (e) {
@@ -332,7 +333,7 @@ async function _encRenderFamilia(el) {
 }
 
 window._encResponder = function (id) {
-  var enc = window._encFamData[id];
+  var enc = _encFamData[id];
   if (!enc) return;
   var old = document.getElementById("enc-modal");
   if (old) old.remove();
@@ -371,7 +372,7 @@ window._encResponder = function (id) {
 };
 
 window._encEnviarRespuesta = async function (id, btn) {
-  var enc = window._encFamData[id];
+  var enc = _encFamData[id];
   if (!enc) return;
   var bd = document.getElementById("enc-resp-bd");
   var out = {};
