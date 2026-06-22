@@ -4,16 +4,21 @@
 
 // Carga jsPDF + autotable on-demand
 window.pdfEnsureLibs = async function () {
-  if (window.jspdf) return;
-  // Secuencial: autotable depende de que jsPDF ya esté cargado. Versión de autotable
-  // alineada con la de producción (informes.js): 3.5.23 — NO cambiar sin verificar el
-  // render de las tablas en todos los módulos que generan PDF.
+  // Comprueba jsPDF y autotable por separado (no basta con que jsPDF exista: autotable
+  // puede faltar). Mismas URLs/versiones que producción (informes.js): jsPDF 2.5.1 +
+  // autotable 3.5.23 — NO cambiar sin verificar el render de tablas en todos los módulos.
   const load = (src) => new Promise((res, rej) => {
     const s = document.createElement('script');
     s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
   });
-  await load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  await load('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js');
+  if (typeof window.jspdf === 'undefined') {
+    await load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  }
+  const jsPDF = window.jspdf && window.jspdf.jsPDF;
+  if (!jsPDF) throw new Error('No se pudo cargar jsPDF.');
+  if (!(jsPDF.API && typeof jsPDF.API.autoTable === 'function')) {
+    await load('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js');
+  }
 };
 
 // Info del centro (logo, color, nombre) — cacheada por sesión

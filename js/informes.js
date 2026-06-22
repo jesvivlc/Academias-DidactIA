@@ -102,19 +102,7 @@ function _infImgToDataURL(url) {
     img.src = url;
   });
 }
-function _infLoadScript(src) {
-  return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
-}
-async function _infEnsureLibs() {
-  if (typeof window.jspdf === 'undefined') {
-    await _infLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  }
-  var jsPDF = window.jspdf && window.jspdf.jsPDF;
-  if (!jsPDF) throw new Error('No se pudo cargar jsPDF.');
-  if (!(jsPDF.API && typeof jsPDF.API.autoTable === 'function')) {
-    await _infLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js');
-  }
-}
+async function _infEnsureLibs() { return pdfEnsureLibs(); } // delegado a pdf-utils.js (lógica idéntica)
 
 // ── Queries por sección (centro_id + rango from/to; campo de fecha adaptado) ──
 async function _infQSustituciones(from, to) {
