@@ -6,14 +6,17 @@ const { runCsp, runSa } = require('./engines');
 const { verify, checkSoundness } = require('./verify');
 
 const ENV = process.env;
-const SEED0 = parseInt(ENV.SEED || '1', 10);
-const ITERS = ENV.ITERS ? parseInt(ENV.ITERS, 10) : null;
-const DURATION_MS = parseDuration(ENV.DURATION);
-const ENGINE = (ENV.ENGINE || 'both').toLowerCase();
-const PROFILE = ENV.PROFILE || 'mix';
+// Config: flags (--x=y) tienen prioridad sobre env (npm scripts en Windows/cmd no
+// admiten el prefijo VAR=…; los flags sí funcionan en cualquier shell).
+const flag = (name) => { const a = process.argv.find(x => x.startsWith('--' + name + '=')); return a ? a.split('=').slice(1).join('=') : null; };
+const SEED0 = parseInt(flag('seed') || ENV.SEED || '1', 10);
+const ITERS = (flag('iters') || ENV.ITERS) ? parseInt(flag('iters') || ENV.ITERS, 10) : null;
+const DURATION_MS = parseDuration(flag('duration') || ENV.DURATION);
+const ENGINE = (flag('engine') || ENV.ENGINE || 'both').toLowerCase();
+const PROFILE = flag('profile') || ENV.PROFILE || 'mix';
 const BAIL = process.argv.includes('--bail');
-const SLOW_MS = parseInt(ENV.SLOW_MS || '4000', 10);
-const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1];
+const SLOW_MS = parseInt(flag('slow-ms') || ENV.SLOW_MS || '4000', 10);
+const ONLY = flag('only');
 
 const OUT = path.join(__dirname, '_out');
 const FAILS = path.join(OUT, 'fails');

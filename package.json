@@ -8,7 +8,9 @@
     "test:demo": "playwright test tests/demo-check.spec.js",
     "setup:test-users": "node scripts/setup-test-users.js",
     "verify:columns": "node scripts/verify-columns.js",
-    "verify:planner": "node scripts/verify-hard-constraints.js && node scripts/verify-sin-profesor.js && node scripts/verify-tablero-dnd.js"
+    "verify:planner": "node scripts/verify-hard-constraints.js && node scripts/verify-sin-profesor.js && node scripts/verify-tablero-dnd.js",
+    "fuzz:planner": "node scripts/planner-fuzz/run.js",
+    "verify:planner-fuzz": "node scripts/planner-fuzz/selftest.js && node scripts/planner-fuzz/run.js --iters=600 --profile=realistic --bail"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.0",

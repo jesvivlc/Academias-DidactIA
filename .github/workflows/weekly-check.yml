@@ -43,6 +43,9 @@ jobs:
       - name: Invariantes del motor del Planner
         run: npm run verify:planner
 
+      - name: Fuzz acotado del Planner (selftest + 600 escenarios realistas)
+        run: npm run verify:planner-fuzz
+
   demo-check:
     name: demo-check (14 módulos)
     runs-on: ubuntu-latest

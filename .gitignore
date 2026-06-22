@@ -38,3 +38,6 @@ supabase/.temp/
 # Artefactos / volcados que no deben versionarse
 repomix-output.xml
 edubot-supabase (1).html
+
+# planner-fuzz: artefactos de runtime (informes y casos de fallo)
+scripts/planner-fuzz/_out/
