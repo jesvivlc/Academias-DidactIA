@@ -328,7 +328,7 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 
 > **Migraciones pendientes de ejecutar:** ninguna. (`ia_cache.sql` y `calificaciones_competenciales.sql` aplicadas el 2026-06-22.)
 >
-> ⚠️ **Redeploy de EFs pendiente** (para que la caché de IA A8 tenga efecto): `npx supabase functions deploy cas-analyzer tipificar-incidencia --project-ref rflfsbrdmgaidhvbuvwb`. Ambas son fail-open: sin redeploy siguen funcionando (sin caché).
+> Redeploy de EFs de IA: ✅ hecho 2026-06-22 (`cas-analyzer`, `tipificar-incidencia`). Caché A8 verificada en producción (cas-analyzer escribe en `ia_cache`).
 >
 > El histórico de **migraciones ya ejecutadas** se mantiene en `CLAUDE-ARCHIVE.md`.
 
