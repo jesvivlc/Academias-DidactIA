@@ -62,7 +62,7 @@ app.html                        Aplicación: login, header, tabs, paneles
 css/styles.css          Tokens CSS + estilos globales
 js/
   config.js             SB_URL, SB_KEY, VAPID_PUBLIC_KEY, variables globales, boot DOMContentLoaded (llama themeLoginScreen pre-login)
-  utils.js              Helpers globales centralizados: escH (escape HTML/XSS), escAttr (string JS para onclick), hoyISO, fmtFecha, showToastGlobal, pushNotify. Cargado ANTES de auth.js
+  utils.js              Helpers globales centralizados: escH (escape HTML/XSS), escAttr (string JS), escArg (arg seguro para onclick="f('…')": JS + &quot;), hoyISO, fmtFecha, showToastGlobal, pushNotify. ÚNICA fuente de lógica de escape. Cargado ANTES de auth.js
   pdf-utils.js          Helpers PDF centralizados: pdfEnsureLibs (jsPDF+autotable on-demand), pdfCentroInfo, pdfHexToRgb, pdfHeader. Cargado ANTES de informes.js
   auth.js               doLogin, loadUserProfile, showTab, applyTheme, themeLoginScreen (marca centro pre-login), goHome
   chat.js               sendMsg, buildContext, horarios por grupo, Gemini fetch
@@ -256,7 +256,7 @@ La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del
 11. **Siempre** sanitizar respuestas de Gemini antes de insertar en `innerHTML` (`_sanitizeReply` en `chat.js`)
 12. En botones con `onclick` inline que incluyen nombres de usuario, usar `JSON.stringify` para escapar — nunca concatenar con comillas simples
 13. **Nunca** hardcodear credenciales en tests — usar siempre variables de entorno (`process.env.*`). Plantilla en `.env.example`; el `.env` real está en `.gitignore`
-14. **Escapar siempre** datos de BD/usuario antes de insertarlos vía `innerHTML`: usar `escH()` de `utils.js` para texto/atributos, y `escAttr()` para argumentos dentro de `onclick="f('…')"`. (Conviven aún escapers locales por módulo; migrar a `escH` al tocar cada archivo.)
+14. **Escapar siempre** datos de BD/usuario antes de insertarlos vía `innerHTML`: usar `escH()` de `utils.js` para texto/atributos, y `escArg()` para argumentos dentro de `onclick="f('…')"`. Los escapers locales por módulo (`_xxEsc`, etc.) ya delegan en estos helpers — no recrear lógica de escape, usar siempre los de `utils.js`.
 15. **Edge Functions:** derivar identidad/centro/rol del JWT (`auth.getUser`), nunca del body
 
 ### Convenciones UI / Design System

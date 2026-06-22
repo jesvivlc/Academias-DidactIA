@@ -6,6 +6,7 @@
 
 ## Registro de cambios recientes
 
+- `2026-06-22` · `2273474` — refactor: **centralización completa de escapers** en `js/utils.js`. Los ~37 escapers HTML por módulo + arg-escapers delegan ahora en `escH`/`escAttr`/`escArg` (nuevo `escArg` para args de `onclick`); 0 cuerpos de escape duplicados fuera de utils.js. Fix de bugs latentes de apóstrofo en onclick (planner/calificaciones). Sin cambios en call sites; `node --check` OK.
 - `2026-06-22` — docs(auditoría): **auditoría arquitectural completa** → `CLAUDE-AUDITORIA.md` (2 dimensiones: documentación + técnica; issues por severidad, plan de acción, recomendaciones 6 meses).
 - `2026-06-22` · `6c7f15d` — security(fase 0): **identidad desde el JWT en 7 EFs** (`chat`/`alerta-psicosocial`/`send-push`/`invite-user`/`agent-sustituciones` derivan centro/rol del JWT+`profiles`, no del body; `agente-cobertura-diaria`/`notify-justificante` validan `x-cron-secret`) + **XSS escapado** en 6 JS (`chat`, `comedor`, `incidencias`, `ib`, `auth`, `admin`) + `curso_escolar` en queries de `horarios_grupo` de las EFs.
 - `2026-06-22` — deploy: **7 EFs desplegadas en producción** y verificadas con probes en vivo (401 sin JWT, filtrado por centro OK).
