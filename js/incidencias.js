@@ -226,7 +226,7 @@ function buscarAlumnoInc(q) {
 
   if (!results.length) { drop.style.display = 'none'; return; }
 
-  var esc = function(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var esc = escH; // delegado a utils.js
   drop.innerHTML = results.map(function(a) {
     return '<div data-inc-id="' + esc(a.id) + '" data-inc-nombre="' + esc(a.nombre) + '" data-inc-grupo="' + esc(a.grupo_horario || '') + '"'
       + ' style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f5f5f5;"'
@@ -262,7 +262,7 @@ async function _updateIncTabCount() {
 // ── Lista de incidencias ────────────────────────────────────────
 
 async function loadIncidencias(filtro) {
-  var esc = function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var esc = escH; // delegado a utils.js
   if (filtro !== undefined) incFiltroActivo = filtro;
   var grupoSel = document.getElementById('inc-filtro-grupo');
   var incFiltroGrupo = grupoSel ? grupoSel.value : '';
@@ -370,7 +370,7 @@ function _incAbrirDetalle(id) {
   if (!panel) return;
   panel.className = 'inc-detail-content';
 
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function esc(s) { return escH(s); } // delegado a utils.js
   var gravedadColor = i.gravedad === 'muy_grave' ? '#b71c1c' : i.gravedad === 'grave' ? '#e65100' : '#2e7d32';
   var gravedadBg    = i.gravedad === 'muy_grave' ? '#fce8e6' : i.gravedad === 'grave' ? '#fff3e0' : '#e8f5e9';
   var gravedadLabel = i.gravedad === 'muy_grave' ? '🔴 Muy grave' : i.gravedad === 'grave' ? '🟠 Grave' : '🟢 Leve';
@@ -604,9 +604,7 @@ function _incShowTipModal(data) {
   var existing = document.getElementById('inc-tip-modal');
   if (existing) existing.remove();
 
-  var esc = function(v) {
-    return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  };
+  var esc = escH; // delegado a utils.js
 
   var gravedadBadge = function(g) {
     if (g === 'muy_grave') return '<span style="background:#fce8e6;color:#b71c1c;border-radius:12px;padding:3px 10px;font-size:12px;font-weight:600;">🔴 Muy grave</span>';
@@ -692,7 +690,7 @@ function _incMostrarInformeEnForm(data) {
   if (existing) existing.remove();
   if (!data) return;
 
-  var esc = function(v) { return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var esc = escH; // delegado a utils.js
   var informe = (data.informe_borrador || '').replace(/\\n/g, '\n');
 
   var previrHtml = '';

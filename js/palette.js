@@ -4,10 +4,7 @@
   var _t = null;     // debounce timer
   var _seq = 0;      // descarta respuestas obsoletas
 
-  function esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function esc(s) { return escH(s); } // delegado a utils.js
 
   function _hint() {
     return '<div class="cmdp-empty">Escribe para buscar alumnos, profesores o aulas…</div>';
