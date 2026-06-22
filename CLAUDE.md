@@ -326,11 +326,11 @@ Al completar cualquier tarea o funcionalidad, seguir este orden **antes de conti
 > 2. Actualizar los jobs de `pg_cron` (`20260619_cron_agente_cobertura.sql`, `20260605_cron_notify_justificante.sql`) para que el `net.http_post` incluya la cabecera `'x-cron-secret': '<mismo-valor>'` en `headers`.
 > Hasta hacer (1), la protección permanece inactiva (sin bloqueo); en cuanto exista el secret, toda invocación sin la cabecera correcta devuelve 401.
 
-> **Migraciones pendientes de ejecutar manualmente** en Supabase SQL Editor:
-> - `supabase/migrations/calificaciones_competenciales.sql` — tabla `comentarios_competenciales` + RLS `comp_ley_centro` + índice `idx_comp_ley`. Requerida para que "💾 Guardar" del modal competencial funcione. Pegar en SQL Editor o ejecutar: `SUPABASE_ACCESS_TOKEN=sbp_xxx node scripts/aplicar-competenciales.mjs`
-> - `supabase/migrations/ia_cache.sql` — tabla caché de IA (A8). Necesaria para que `cas-analyzer` cachee resultados. **Además requiere redeploy de 2 EFs:** `cas-analyzer` (caché + timeout/reintento) y `tipificar-incidencia` (timeout/reintento). Ambas son **fail-open**: sin la tabla/redeploy siguen funcionando como antes. Deploy: `npx supabase functions deploy cas-analyzer tipificar-incidencia --project-ref rflfsbrdmgaidhvbuvwb`.
+> **Migraciones pendientes de ejecutar:** ninguna. (`ia_cache.sql` y `calificaciones_competenciales.sql` aplicadas el 2026-06-22.)
 >
-> El histórico de **migraciones ya ejecutadas** (decenas) se ha movido a `CLAUDE-ARCHIVE.md` para no consumir contexto. Al confirmar esta migración en producción, registrarla allí.
+> ⚠️ **Redeploy de EFs pendiente** (para que la caché de IA A8 tenga efecto): `npx supabase functions deploy cas-analyzer tipificar-incidencia --project-ref rflfsbrdmgaidhvbuvwb`. Ambas son fail-open: sin redeploy siguen funcionando (sin caché).
+>
+> El histórico de **migraciones ya ejecutadas** se mantiene en `CLAUDE-ARCHIVE.md`.
 
 ---
 

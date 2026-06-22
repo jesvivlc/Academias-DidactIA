@@ -71,6 +71,8 @@
 > Migraciones PENDIENTES siguen en CLAUDE.md. Esto es solo el registro de las ya aplicadas y verificadas.
 
 > **Migraciones ejecutadas** (ya en producción):
+> - `supabase/migrations/ia_cache.sql` — tabla caché de IA (A8); RLS on sin políticas (solo service_role). ✅ aplicado 2026-06-22 vía Management API
+> - `supabase/migrations/calificaciones_competenciales.sql` — tabla `comentarios_competenciales` + RLS `comp_ley_centro` + índice `idx_comp_ley`. ✅ aplicado 2026-06-22 vía Management API
 > - `supabase/migrations/comunicado_traducciones.sql` — tabla caché de traducciones de comunicados + RLS `trad_read` (lee/escribe por centro). ✅ aplicado 2026-06-22
 > - `supabase/migrations/mensajes.sql` — tabla `mensajes` + RLS `msg_familia`/`msg_staff` + 2 índices (módulo Mensajería familia↔centro). ✅ aplicado 2026-06-19 vía Management API (`ejecutar-migraciones-laptop.mjs`)
 > - `supabase/migrations/personas_autorizadas.sql` — tabla `personas_autorizadas` + RLS `pa_familia`/`pa_staff` + índice (personas autorizadas a recoger al alumno, ficha Alumnos). ✅ aplicado 2026-06-19 vía Management API
