@@ -281,6 +281,23 @@ function getNormativa(ccaa: string | null): NormativaEntry {
 
 // ── Edge Function ───────────────────────────────────────────────
 
+// fetch a Gemini con timeout (AbortController) + 1 reintento. No se cachea esta EF:
+// el informe_borrador incrusta la fecha del día, así que una caché serviría partes
+// con fecha obsoleta. Solo se añade resiliencia.
+async function _geminiFetch(url: string, body: unknown, timeoutMs = 25000): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < 2; i++) {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctrl.signal });
+      clearTimeout(to);
+      return r;
+    } catch (e) { clearTimeout(to); lastErr = e; }
+  }
+  throw lastErr;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -338,20 +355,16 @@ Devuelve ÚNICAMENTE un objeto JSON con este formato exacto, sin texto adicional
   "justificacion": "Explicación breve y fundamentada de la tipificación y las medidas propuestas, con referencia al artículo concreto de la normativa"
 }`;
 
-    const geminiRes = await fetch(
+    const geminiRes = await _geminiFetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 2000,
-            temperature: 0.2,
-            thinking_config: { thinking_budget: 0 },
-            responseMimeType: "application/json",
-          },
-        }),
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 2000,
+          temperature: 0.2,
+          thinking_config: { thinking_budget: 0 },
+          responseMimeType: "application/json",
+        },
       }
     );
 
