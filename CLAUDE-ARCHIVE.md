@@ -183,3 +183,20 @@
 
 ---
 
+
+---
+
+## 4. Home / Inicio — rediseño 2026-06-05 (detalle histórico)
+
+> Movido desde CLAUDE.md (2026-06-22) para aligerar. Detalle de la pantalla de Inicio.
+
+### Home rediseñada (2026-06-05)
+La pantalla de Inicio (`#panel-chat` en `app.html`) se reorganizó alrededor del horario del día y se eliminaron duplicaciones con el sidebar:
+- **Cabecera compacta** `.home-head` (sustituye la banda azul `.cls-banner`): saludo + "Jueves 5 de junio · Profesor".
+- **Buscador protagonista** `.home-search` (readonly) que abre el command palette; el buscador del topbar global se eliminó.
+- **Topbar minimalista**: logo (`#app-brand-logo`, tematizado por `applyTheme`) + nombre del centro (`#topbar-ctr-name`) + lupa (`#topbar-search-btn` → palette) + avatar. Sin role-switch/IA/campana.
+- **"Mi horario de hoy"** `.home-card` (`renderMiHorarioHoy` en `js/mejoras.js`): consulta `horarios_grupo` por centro+día (día en minúsculas sin tilde), cruza `full_name` vs `profesor_nombre` por tokens normalizados, resalta la clase AHORA por `hora_inicio/fin` reales.
+- **Métricas accionables** `.home-metric` (`renderHomeMetrics`): Sustituciones hoy / Comunicados nuevos (rojo si >0) / Incidencias abiertas, clicables a su sección.
+- **Home familia** (`renderHomeFamilia` en `js/mejoras.js`): render en `#familia-home-content` dentro de `#inicio-familia`. Estado `_homeFamiliaHijoIdx` (chip selector si hay >1 hijo). Es el **hub del portal familiar**: 7 bloques async fire-and-forget (cada uno con try/catch independiente), en orden: (0) **Avisos** (`#fh-avisos`) — aviso importante del centro (`info_centro.aviso_activo`, respeta `visible_para`) + **Cambios en clases hoy** (`sustituciones` del `grupo_horario` del hijo, hoy, con badge Cubierta/Pendiente); (1) Horario de hoy — `horarios_grupo` por `grupo_horario+dia+curso_escolar`; (2) **Comedor accionable** — estado de hoy + botón "📩 Avisar que no come mañana" (`window._fhAvisoManana` → upsert `asistencia_comedor` se_queda=false para mañana + `renderHomeFamilia(true)`), solo si módulo activo; (3) Incidencias recientes — RPC `familia_incidencias_hijos()` (SECURITY DEFINER; la tabla `incidencias` es staff-only por RLS), filtrado en cliente por el hijo, limit 3; (4) Próximas salidas — `participantes_salida` → `salidas_didacticas` estado publicada ≥ hoy, limit 3; (5) Comunicados no leídos — reutiliza `_comGetLeidos()`, limit 3. `window._fhSelectHijo(idx)` cambia el hijo activo y fuerza recarga. Los bloques (0) consolidan el contenido del antiguo panel `panel-avisos`/`loadAvisos` (huérfano: no tiene `nav-avisos` en el sidebar). El sidebar oculta los encabezados de grupo (`.sb-group-label`) cuyo grupo queda sin items visibles vía `syncGroupLabels()` (script inline de `app.html`), así la familia no ve "Administración" vacío.
+- **Grids "Módulos"/"Acceso rápido" eliminados** (redundantes con el sidebar).
+- **Command palette ⌘K** (`js/palette.js`): overlay global `#cmd-palette`, atajo ⌘K/Ctrl+K + lupa del topbar; busca alumnos, profesores y aulas (profesores/aulas se sacan de `profesores`/`espacios` **y** de `horarios_grupo`, deduplicados, porque muchos centros sólo tienen los datos en `horarios_grupo`).
