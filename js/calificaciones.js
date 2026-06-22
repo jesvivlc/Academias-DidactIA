@@ -13,10 +13,7 @@ let _calCentros       = [];   // centros (solo superadmin)
 let _calCentroSel     = null;  // centro activo en la vista admin
 let _calSelectedAlumno = null; // alumno seleccionado en vista split
 
-function _calEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function _calEsc(s) { return escH(s); } // delegado a utils.js
 
 function _calEsAdmin() { return ['admin', 'superadmin', 'jefatura', 'director'].includes(role); }
 function _calEsProfesor() { return role === 'profesional' || role === 'profesor'; }
@@ -595,7 +592,7 @@ function _calRenderNivelDots(idx, comp, curVal) {
   for (var n = 1; n <= 4; n++) {
     var filled = n <= curVal;
     html += '<button class="cal-ndot" data-idx="' + idx + '" data-comp="' + _calEsc(comp) + '" ' +
-      'onclick="window._calCompSetNivel(' + idx + ',\'' + _calEsc(comp) + '\',' + n + ')" ' +
+      'onclick="window._calCompSetNivel(' + idx + ',\'' + escArg(comp) + '\',' + n + ')" ' +
       'title="' + _calEsc(_COMP_NIVEL_LBL[n]) + '" ' +
       'style="background:none;border:none;cursor:pointer;padding:1px 2px;font-size:15px;line-height:1;color:' +
         (filled ? 'var(--ink)' : 'var(--muted-2)') + ';transition:color .12s;">' +
@@ -724,8 +721,8 @@ function _calAbrirModalCompetencial(pend, resultados, savedData, asig, evalu, co
     '</div>';
   }).join('');
 
-  var asigEsc  = _calEsc(asig).replace(/'/g, "\\'");
-  var evaluEsc = _calEsc(evalu).replace(/'/g, "\\'");
+  var asigEsc  = escArg(asig);
+  var evaluEsc = escArg(evalu);
 
   var modal = document.createElement('div');
   modal.id = 'cal-comp-modal';

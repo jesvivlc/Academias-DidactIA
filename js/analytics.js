@@ -12,9 +12,7 @@
     lastConv: null,
   };
 
-  function _esc(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+  function _esc(s) { return escH(s); } // delegado a utils.js
 
   const _hoy = () => new Date().toISOString().slice(0, 10);
 
@@ -404,8 +402,8 @@
           <div class="cmi-conds-wrap">${conds}</div>
         </div>
         <div class="cmi-alerta-btns">
-          <button class="btn btn-s" onclick="analyticsVerHistorial('${_esc(a.alumno.nombre)}')">Historial</button>
-          <button class="btn btn-s cmi-btn-resolve" onclick="analyticsResolverAlerta('${_esc(a.id)}', this)">✓ Resolver</button>
+          <button class="btn btn-s" onclick="analyticsVerHistorial('${escArg(a.alumno.nombre)}')">Historial</button>
+          <button class="btn btn-s cmi-btn-resolve" onclick="analyticsResolverAlerta('${escArg(a.id)}', this)">✓ Resolver</button>
         </div>
       </div>`;
     }).join('');

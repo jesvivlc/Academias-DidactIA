@@ -17,6 +17,13 @@ window.escAttr = function (s) {
   return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 };
 
+// Argumento seguro para onclick="f('${escArg(x)}')": escapa \ y ' (capa JS) y
+// " → &quot; (capa atributo HTML de comillas dobles). Maneja apóstrofos y comillas.
+window.escArg = function (s) {
+  if (s == null) return '';
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+};
+
 // Fecha ISO de hoy (YYYY-MM-DD)
 window.hoyISO = function () {
   return new Date().toISOString().split('T')[0];

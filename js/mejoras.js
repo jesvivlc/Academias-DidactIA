@@ -238,9 +238,7 @@ function buscarAlumnoRapido(q, resId) {
 // ── MI HORARIO DE HOY (Cambio 3) ──
 var _miHorarioKey = null;
 
-function _mhEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _mhEsc(s) { return escH(s); } // delegado a utils.js
 function _mhNorm(s) {
   return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
 }

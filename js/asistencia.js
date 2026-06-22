@@ -4,10 +4,7 @@
 (function () {
   "use strict";
 
-  function _aEsc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  function _aEsc(s) { return escH(s); } // delegado a utils.js
 
   // Estado del modal activo
   var _st = null;

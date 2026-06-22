@@ -8,10 +8,7 @@ let _matData    = [];
 let _matGrupos  = [];
 let _matVista   = 'mias';   // solo profesional: 'mias' = subidos por mí · 'todos' = del centro
 
-function _matEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function _matEsc(s) { return escH(s); } // delegado a utils.js
 function _matPuedeEditar() { return ['profesional', 'admin', 'director', 'jefatura', 'superadmin'].includes(role); }
 function _matEsAdmin()     { return ['admin', 'superadmin', 'director', 'jefatura'].includes(role); }
 function _matUuid() {
@@ -272,7 +269,7 @@ function _matRenderLista() {
     var ico = m.tipo === 'enlace' ? '🔗' : '📄';
     var meta = [m.grupo, m.asignatura].filter(Boolean).map(_matEsc).join(' · ');
     var delBtn = puedeBorrar(m)
-      ? '<button class="btn btn-s" style="color:var(--danger);" onclick="matEliminar(\'' + _matEsc(m.id) + '\')">Eliminar</button>'
+      ? '<button class="btn btn-s" style="color:var(--danger);" onclick="matEliminar(\'' + escArg(m.id) + '\')">Eliminar</button>'
       : '';
     return '<div class="card" style="display:flex;gap:14px;align-items:flex-start;">' +
       '<div style="font-size:24px;flex-shrink:0;">' + ico + '</div>' +
@@ -282,7 +279,7 @@ function _matRenderLista() {
         (m.descripcion ? '<div style="font-size:13px;color:var(--txt2);margin-top:6px;">' + _matEsc(m.descripcion) + '</div>' : '') +
       '</div>' +
       '<div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">' +
-        '<button class="btn btn-p" onclick="matAbrir(\'' + _matEsc(m.id) + '\')">' + (m.tipo === 'enlace' ? 'Abrir' : 'Descargar') + '</button>' +
+        '<button class="btn btn-p" onclick="matAbrir(\'' + escArg(m.id) + '\')">' + (m.tipo === 'enlace' ? 'Abrir' : 'Descargar') + '</button>' +
         delBtn +
       '</div>' +
     '</div>';

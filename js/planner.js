@@ -18,9 +18,7 @@
     { numero:7, hora_inicio:'13:30', hora_fin:'14:30', nombre:'', es_descanso:false },
   ];
 
-  function _esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+  function _esc(s) { return escH(s); } // delegado a utils.js
 
   /* ── Estado del módulo ── */
   const _s = {
@@ -1707,7 +1705,7 @@
       var h = horas[p] || 0;
       var pct = Math.min(100, Math.round(h / 25 * 100)); // 25h referencia jornada completa
       var col = h <= 15 ? 'var(--success)' : h <= 22 ? 'var(--ink)' : 'var(--warning)';
-      return '<tr onclick="plannerCambiarProf(\'' + _esc(p).replace(/'/g,"&#39;") + '\')" style="cursor:pointer' + (p === curProf ? ';background:color-mix(in srgb,var(--ink) 8%,var(--paper))' : '') + '">' +
+      return '<tr onclick="plannerCambiarProf(\'' + escArg(p) + '\')" style="cursor:pointer' + (p === curProf ? ';background:color-mix(in srgb,var(--ink) 8%,var(--paper))' : '') + '">' +
         '<td style="padding:7px 10px;font-size:13px">' + _esc(p) + '</td>' +
         '<td style="padding:7px 10px;text-align:right;font-size:13px;font-weight:600;color:' + col + '">' + h + 'h</td>' +
         '<td style="padding:7px 10px;width:120px">' +
@@ -1792,7 +1790,7 @@
             ? '<div class="class-card__prof" style="color:var(--warning);font-weight:600">⚠ Sin asignar</div>'
             : '<div class="class-card__prof">' + _esc(slot.profesor_nombre) + '</div>';
           var clickAttr = sinProf
-            ? ' onclick="plannerAbrirSelectorProfesor(\'' + _esc(dia) + '\',\'' + key + '\',\'' + _esc(g) + '\')"'
+            ? ' onclick="plannerAbrirSelectorProfesor(\'' + escArg(dia) + '\',\'' + key + '\',\'' + escArg(g) + '\')"'
             : '';
           card =
             '<div class="class-card' + (sinProf ? ' class-card--sin-prof' : '') + '" draggable="true"' +
@@ -1940,7 +1938,7 @@
         'Puntuación neuroeducativa: <span style="color:' + color + ';font-weight:700">' + score + '/100</span>' +
         ' <span style="color:var(--muted);font-size:12px">(' + label + ')</span>' +
       '</span>' +
-      '<button onclick="plannerVerExplicacion(\'' + _esc(grupo) + '\')"' +
+      '<button onclick="plannerVerExplicacion(\'' + escArg(grupo) + '\')"' +
       ' style="font-size:12px;padding:5px 12px;border:1px solid var(--line);border-radius:6px;' +
       'background:none;cursor:pointer;color:var(--muted);font-family:var(--font-ui);white-space:nowrap">' +
       '🔍 Ver explicación IA</button>';
@@ -2182,7 +2180,7 @@
           '<div style="font-size:10px;color:var(--muted);margin-bottom:10px">/ 100 puntos neuroeducativos</div>' +
           '<div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:12px">' + _esc(DESCS[v.id] || '') + '</div>' +
           '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">' + ((r.schedule || []).length) + ' sesiones generadas</div>' +
-          '<button class="btn-ink" style="width:100%" onclick="plannerElegirVariante(\'' + _esc(v.id) + '\')">Usar esta variante</button>' +
+          '<button class="btn-ink" style="width:100%" onclick="plannerElegirVariante(\'' + escArg(v.id) + '\')">Usar esta variante</button>' +
         '</div>' +
       '</div>';
     }).join('');
