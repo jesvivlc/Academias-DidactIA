@@ -192,9 +192,7 @@ function _comRenderLista(lista) {
     + '</div>';
 }
 
-function _escCom(v) {
-  return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function _escCom(v) { return escH(v); } // delegado a utils.js
 
 function _comDestLabel(d) {
   var map = { todos: '👥 Todos', solo_profesores: '👨‍🏫 Profesores', solo_familias: '👨‍👩‍👧 Familias' };

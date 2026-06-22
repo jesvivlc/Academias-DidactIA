@@ -1,8 +1,6 @@
 /* Módulo Préstamo de recursos — inventario prestable + registro de préstamos */
 
-function _recEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _recEsc(s) { return escH(s); } // delegado a utils.js
 function _recHoy() { return new Date().toISOString().split("T")[0]; }
 function _recFmtFecha(f) {
   if (!f) return "—";

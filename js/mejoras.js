@@ -594,9 +594,7 @@ function showToast(msg) {
 // (localStorage key didactia_onb_{userId}). 4 pasos: Bienvenida →
 // Tu hijo/a → Notificaciones → ¡Listo!
 
-function _onbEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
+function _onbEsc(s) { return escH(s); } // delegado a utils.js
 
 function initOnboardingFamilia() {
   if (role !== "familia") return;

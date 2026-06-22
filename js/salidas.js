@@ -15,10 +15,7 @@ var _salDetParts = [];     // participantes enriquecidos con alumno_nombre/grupo
 var _salDetTab   = 'dashboard';
 
 // ── HELPERS ─────────────────────────────────────────────────────
-function _salEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function _salEsc(s) { return escH(s); } // delegado a utils.js
 
 function _salidasToast(msg, color) {
   var t = document.createElement('div');

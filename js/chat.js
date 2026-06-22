@@ -327,11 +327,7 @@ function _sanitizeReply(html) {
 }
 // Escape HTML para datos de BD/usuario insertados en las respuestas de
 // resolución directa (sin Gemini). Las respuestas de Gemini pasan por _sanitizeReply.
-function _chatEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+function _chatEsc(s) { return escH(s); } // delegado a utils.js
 
 function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight,120)+"px"; }
 function handleKey(e) { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); } }

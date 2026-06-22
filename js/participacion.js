@@ -1,8 +1,6 @@
 /* Dashboard de participación familiar — % de familias que interactúan con el centro */
 
-function _partEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _partEsc(s) { return escH(s); } // delegado a utils.js
 function _partPct(n, d) { return d > 0 ? Math.round((n / d) * 100) : 0; }
 
 window.initParticipacion = function () {

@@ -21,9 +21,7 @@ async function _msgCheckAndBadge() {
 }
 window._msgCheckAndBadge = _msgCheckAndBadge;
 
-function _msgEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _msgEsc(s) { return escH(s); } // delegado a utils.js
 function _msgHora(iso) {
   try {
     var d = new Date(iso);
@@ -361,7 +359,7 @@ async function _msgStaffCargarLista() {
     '</div>';
   }).join("");
 }
-function _msgArg(s) { return String(s || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'"); }
+function _msgArg(s) { return escAttr(s); } // delegado a utils.js
 
 window._msgStaffAbrir = async function (alumnoId, familiaId, alumnoNombre) {
   _msgStaffSel = { alumno_id: alumnoId, familia_id: familiaId, alumno_nombre: alumnoNombre };

@@ -1,9 +1,7 @@
 /* Previsión de cobertura — anticipa las sustituciones sin cubrir de los próximos días
    y sugiere el sustituto más equitativo (profesor libre con menos guardias del trimestre). */
 
-function _prevEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _prevEsc(s) { return escH(s); } // delegado a utils.js
 function _prevNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 }

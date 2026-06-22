@@ -6,10 +6,7 @@ let historicoData = [];
 let _comedorTramoActual   = null;   // tramo activo en este momento
 let _comedorGruposProfesor = [];    // todos los grupos del profesor logueado
 
-function _cEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function _cEsc(s) { return escH(s); } // delegado a utils.js
 
 function changeComedorFecha(delta) {
   var d = new Date(comedorFecha);

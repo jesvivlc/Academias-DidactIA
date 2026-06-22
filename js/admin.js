@@ -1,11 +1,7 @@
 let sustFiltroActivo = 'hoy';
 
 // Escape HTML para texto libre insertado vía innerHTML (XSS-safe)
-function _admEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+function _admEsc(s) { return escH(s); } // delegado a utils.js
 
 // Cache de tramos del centro activo (invalida automáticamente al cambiar ctrId)
 let _tramosCache = null;

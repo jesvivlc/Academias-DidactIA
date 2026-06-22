@@ -89,9 +89,7 @@ window._agtLanzar = function (fn) {
   else if (typeof showToast === "function") showToast("Agente no disponible — recarga la página");
 };
 
-function _agtEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _agtEsc(s) { return escH(s); } // delegado a utils.js
 
 function _agtEnsureStyles() {
   if (document.getElementById("agt-styles")) return;

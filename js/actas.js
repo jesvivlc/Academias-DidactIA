@@ -1,8 +1,6 @@
 /* Módulo Actas — resumen IA de claustros y reuniones */
 
-function _actEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _actEsc(s) { return escH(s); } // delegado a utils.js
 function _actHoy() { return new Date().toISOString().split("T")[0]; }
 function _actFmt(f) { if (!f) return "—"; var p = f.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
 var _ACT_TIPOS = { claustro: "Claustro", ccp: "CCP", departamento: "Departamento", evaluacion: "Junta de evaluación", tutores: "Reunión de tutores", otro: "Otra reunión" };

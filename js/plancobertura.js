@@ -3,9 +3,7 @@
    Reutiliza helpers globales de admin.js (_sustCalcularLibres, _sustNombreNorm,
    _sustNombreCoincide, _sustDedupeNombres) y guardias.js (registrarGuardiaEnBD). */
 
-function _pcEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _pcEsc(s) { return escH(s); } // delegado a utils.js
 function _pcDiaLegible(f) {
   const DOW = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
   const d = new Date(f + "T12:00:00");

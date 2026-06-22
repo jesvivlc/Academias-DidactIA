@@ -438,9 +438,7 @@ window._agBorrarEvento = async function (id) {
 };
 
 /* ── HELPERS ── */
-function _agEsc(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function _agEsc(s) { return escH(s); } // delegado a utils.js
 
 /* ── CSS ── */
 function _agEnsureStyles() {

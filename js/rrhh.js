@@ -286,9 +286,7 @@ function _rrhhParseJson(txt) {
     return JSON.parse(c);
   } catch (e) { return null; }
 }
-function _rrhhEscH(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _rrhhEscH(s) { return escH(s); } // delegado a utils.js
 function _rrhhDias(a) {
   try {
     var d1 = new Date(a.fecha + "T12:00:00"), d2 = new Date((a.fecha_fin || a.fecha) + "T12:00:00");

@@ -1,8 +1,6 @@
 /* Módulo Menú del comedor — dirección publica el menú diario; familias lo consultan */
 
-function _menuEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _menuEsc(s) { return escH(s); } // delegado a utils.js
 function _menuGestiona() {
   return ["admin", "admin_institucional", "director", "jefatura", "superadmin"].includes(window.role);
 }

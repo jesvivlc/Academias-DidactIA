@@ -6,11 +6,7 @@ function _ibEsAlumnoReal(a) {
   return !/^total(es)?\b/i.test((a.nombre || '').trim());
 }
 
-function _ibEsc(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function _ibEsc(s) { return escH(s); } // delegado a utils.js
 
 // Carga alumnos IB reales del centro (1IB/2IB por defecto), ordenados.
 async function _ibLoadAlumnos(grupos) {

@@ -11,9 +11,7 @@ window.initTutorias = function () {
 };
 
 /* ── HELPERS ── */
-function _tutEsc(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function _tutEsc(s) { return escH(s); } // delegado a utils.js
 function _tutArg(s) {
   // Escapa para un string JS entre comillas simples dentro de un atributo on…="…"
   // (comillas dobles → &quot; para no romper el atributo; p.ej. nombres con ").

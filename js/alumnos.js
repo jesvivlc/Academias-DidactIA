@@ -9,11 +9,7 @@ var _alLoaded = false;
 var _alPendingFicha = null;
 var _alSelectedId = null;   // alumno activo en el drawer
 
-function _alEsc(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function _alEsc(s) { return escH(s); } // delegado a utils.js
 
 function _alArg(v) {
   return "'" + String(v == null ? "" : v)

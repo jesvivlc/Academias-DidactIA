@@ -1,9 +1,7 @@
 /* Módulo Encuestas a familias — dirección crea, familias responden, dirección ve resultados */
 
-function _encEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function _encArg(s) { return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/'/g, "\\'"); }
+function _encEsc(s) { return escH(s); } // delegado a utils.js
+function _encArg(s) { return escAttr(s); } // delegado a utils.js
 function _encGestiona() {
   return ["admin", "admin_institucional", "director", "jefatura", "superadmin"].includes(window.role);
 }

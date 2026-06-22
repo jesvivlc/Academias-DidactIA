@@ -10,11 +10,7 @@ let _calSR = null;
 
 // ── UTILIDADES ────────────────────────────────────────────────────────────────
 
-function _calEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+function _calEsc(s) { return escH(s); } // delegado a utils.js
 
 function _calToast(msg, color) {
   const t = document.createElement('div');

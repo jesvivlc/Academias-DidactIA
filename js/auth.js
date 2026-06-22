@@ -1,10 +1,6 @@
 // ── AUTH UI ──
 // Escape HTML para texto/atributos insertados vía innerHTML (XSS-safe)
-function _authEsc(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function _authEsc(s) { return escH(s); } // delegado a utils.js
 function _hideAuthForms() {
   ["form-login", "form-register", "form-recovery", "form-reset-request"].forEach(function (id) {
     var el = document.getElementById(id);

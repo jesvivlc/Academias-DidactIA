@@ -247,10 +247,7 @@ async function loadPerfilAlimentario() {
   panel.innerHTML = html;
 }
 
-function _famEsc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+function _famEsc(s) { return escH(s); } // delegado a utils.js
 
 async function _famGuardarPerfil(alumnoId) {
   var aler = ((document.getElementById('peral-aler-' + alumnoId) || {}).value || '').trim();

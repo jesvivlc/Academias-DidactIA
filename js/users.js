@@ -7,11 +7,10 @@ let _editingAlumnoIds = new Set();
 let _invAlumnosSeleccionados = new Set();
 let _usersBusqueda = "";
 
-// Escape single quotes for inline onclick attrs (JS-string context)
-function _esc(s) { return (s || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'"); }
-// Escape HTML for text content and attribute values (XSS-safe). Para argumentos
-// dentro de onclick="f('…')" combinar: _escH(_esc(valor)) (JS-string + atributo HTML).
-function _escH(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+// Delegados a utils.js: _esc=escAttr (JS-string para onclick), _escH=escH (HTML).
+// Para argumentos dentro de onclick="f('…')" combinar: _escH(_esc(valor)).
+function _esc(s) { return escAttr(s); }
+function _escH(s) { return escH(s); }
 
 async function loadUsersPanel() {
   const isSuperadmin = role === "superadmin";
@@ -567,10 +566,7 @@ function _centroGenCodigo(prefix) {
   for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return (prefix || "") + s;
 }
-function _centroEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function _centroEsc(s) { return escH(s); } // delegado a utils.js
 
 function nuevoCentroWizard() {
   if (role !== "superadmin") return;

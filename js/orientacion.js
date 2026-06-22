@@ -14,11 +14,7 @@ let _oriAlumnoSel   = null;        // alumno elegido en el modal "Nuevo expedien
 // Gravedad de medidas: a mayor índice, más prioritaria al mostrar la "medida activa"
 const _ORI_MEDIDA_ORDEN = ["otro", "PECAI", "NEAE", "NEE", "ACNS", "ACS"];
 
-function _oriEsc(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function _oriEsc(s) { return escH(s); } // delegado a utils.js
 
 // Toast — reutiliza el sistema existente (_calToast con tipo, o showToast global).
 function _oriToast(msg, tipo) {

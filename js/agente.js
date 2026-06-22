@@ -5,9 +5,7 @@
    la carga del día). Reutiliza helpers de admin.js (_sustCalcularLibres,
    _sustNombreNorm) y guardias.js (registrarGuardiaEnBD). Prefijo _asu (único). */
 
-function _asuEsc(s) {
-  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
+function _asuEsc(s) { return escH(s); } // delegado a utils.js
 function _asuDiaLegible(f) {
   const DOW = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
   const d = new Date(f + "T12:00:00");
