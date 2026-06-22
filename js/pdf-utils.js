@@ -5,10 +5,15 @@
 // Carga jsPDF + autotable on-demand
 window.pdfEnsureLibs = async function () {
   if (window.jspdf) return;
-  await Promise.all([
-    new Promise(r => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = r; document.head.appendChild(s); }),
-    new Promise(r => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'; s.onload = r; document.head.appendChild(s); })
-  ]);
+  // Secuencial: autotable depende de que jsPDF ya esté cargado. Versión de autotable
+  // alineada con la de producción (informes.js): 3.5.23 — NO cambiar sin verificar el
+  // render de las tablas en todos los módulos que generan PDF.
+  const load = (src) => new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+  await load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  await load('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js');
 };
 
 // Info del centro (logo, color, nombre) — cacheada por sesión
