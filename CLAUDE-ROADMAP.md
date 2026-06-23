@@ -241,6 +241,11 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 **Para arrancar la Fase 1 hace falta de Bruno:** (a) la CCAA de cada centro; (b) 1–2 documentos de prueba (PDF) — p. ej. el EBEP + el NOF de Buñol — para validar que cita bien.
 
+**Dónde dejar los PDFs:** carpeta **`docs/normativa/`** (creada, con README + `manifest.example.json`). Convención:
+- `docs/normativa/global/` → documentos compartidos (estatales y autonómicos). El **ámbito** (estatal o CCAA) NO va en el nombre del archivo sino en el `manifest.json` (junto con título, fecha, vigencia, fuente).
+- `docs/normativa/centro/<slug>/` → documentos de un centro (NOF, normativa interna). `<slug>` = slug del centro (p. ej. `ies-bunol`).
+- Cada carpeta lleva un `manifest.json` (ver `manifest.example.json`) que el futuro `scripts/ingestar_normativa.mjs` leerá para saber metadatos de cada PDF (no se puede inferir todo del nombre). Los PDF se pueden commitear (son públicos) o dejar solo en local; el ingestor lee de la carpeta.
+
 ### 📍 Punto de retomar — sesión 2026-06-12
 
 **Hecho hoy (todo en `main`, último commit `3388eeb`, desplegado en Vercel + Supabase):**

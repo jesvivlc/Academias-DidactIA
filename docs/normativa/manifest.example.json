@@ -1,0 +1,25 @@
+{
+  "_comment": "Ejemplo de manifest.json. Copia este formato a docs/normativa/global/manifest.json y a docs/normativa/centro/<slug>/manifest.json. El ingestor (scripts/ingestar_normativa.mjs, pendiente) lee 'documentos' para vectorizar cada PDF con sus metadatos.",
+  "scope": "global",
+  "centro_slug": null,
+  "documentos": [
+    {
+      "archivo": "EBEP_RDL_5-2015.pdf",
+      "titulo": "EBEP — Real Decreto Legislativo 5/2015, Texto Refundido del Estatuto Básico del Empleado Público",
+      "tipo": "ley",
+      "ambito": "estatal",
+      "fecha_doc": "2015-10-30",
+      "vigente": true,
+      "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11719"
+    },
+    {
+      "archivo": "decreto_convivencia_valenciana.pdf",
+      "titulo": "Decreto de convivencia e igualdad — Comunitat Valenciana",
+      "tipo": "decreto",
+      "ambito": "valenciana",
+      "fecha_doc": "2023-01-01",
+      "vigente": true,
+      "source_url": "https://dogv.gva.es/..."
+    }
+  ]
+}
