@@ -362,6 +362,8 @@ for f in CLAUDE*.md; do printf "%-22s %s\n" "$f" "$(wc -m < "$f")"; done
 ---
 
 Ver también (cargados automáticamente): @CLAUDE-MODULOS.md | @CLAUDE-TABLAS.md | @CLAUDE-ROADMAP.md | @CLAUDE-CHANGELOG.md
+
+> 🧠 **PRÓXIMO TRABAJO (idea aprobada 2026-06-23):** RAG / base de conocimiento normativo con **pgvector** — vectorizar normativa global (LOMLOE/EBEP/decretos CCAA…) + por centro (NOF/normativa interna) para que la IA **cite documentos reales** (copiloto RRHH, incidencias, "Consulta normativa"). Plan completo, arquitectura y matices (CCAA, vigencia) en **@CLAUDE-ROADMAP.md → sección "🧠 PRÓXIMO: RAG / Base de conocimiento normativo"**. Para arrancar la Fase 1 hace falta: CCAA de cada centro + 1-2 PDFs de prueba (EBEP + NOF Buñol).
 Histórico (consulta manual, NO se carga): `CLAUDE-ARCHIVE.md`
 
 

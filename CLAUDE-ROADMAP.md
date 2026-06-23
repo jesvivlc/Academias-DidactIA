@@ -210,6 +210,37 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ## Roadmap
 
+### 🧠 PRÓXIMO: RAG / Base de conocimiento normativo (idea aprobada — pendiente de construir)
+
+**Idea (sesión 2026-06-23):** vectorizar la normativa que consultan los centros y montar un RAG (Retrieval-Augmented Generation) para que la IA **cite documentos reales** en lugar de apoyarse en el conocimiento general de Gemini. Hoy el copiloto legal de RRHH, la tipificación de incidencias y orientación van "orientativos" precisamente porque no tienen las fuentes; con RAG pasan a citar el artículo/decreto real.
+
+**Dos niveles de corpus:**
+- **Global** (se ingesta una vez, lo usan todos): LOMLOE, EBEP, decretos autonómicos, instrucciones de inicio de curso, decreto de inclusión, ley/decreto de convivencia, etc.
+- **Por centro** (RLS por `centro_id`): NOF, normativa interna, PEC… El sitio natural de ingesta es el módulo **Documentos del centro** (`js/documentos.js` + bucket `documentos-centro`) → añadir acción "indexar para IA".
+- En consulta, el centro recupera de **global (estatal + su CCAA) + lo suyo**.
+
+**⚠️ Matices críticos (no olvidar):**
+1. **CCAA**: el corpus global NO es uniforme — hay normativa autonómica. Etiquetar cada documento por **ámbito (estatal / CCAA concreta)** y filtrar la búsqueda por la CCAA del centro + estatal. → **Pendiente: pedir a Bruno la CCAA de cada centro** (Agora Lledó = Comunitat Valenciana / Castelló; IES Buñol = Comunitat Valenciana). Nota: la columna `centros.ccaa` NO existe aún en prod (la EF `tipificar-incidencia` ya la lee y cae a fallback estatal) → habría que añadirla.
+2. **Vigencia/versionado**: guardar `fecha_doc` y estado de vigencia; citar un artículo derogado es peor que no citar. Proceso de actualización.
+3. **Fuente oficial** (BOE, DOGV…): basura entra → basura sale.
+4. **Siempre mostrar el fragmento fuente + enlace** y mantener marco "orientativo".
+
+**Arquitectura técnica (sin infraestructura nueva — todo en Supabase):**
+- `CREATE EXTENSION vector;` (pgvector ya viene en Supabase).
+- Tabla `kb_chunks`: `id, scope ('global'|'centro'), centro_id (nullable), ambito ('estatal'|CCAA), doc_titulo, doc_tipo, fecha_doc, vigente (bool), chunk_text, embedding vector(768), source_url, created_at` + índice ivfflat (cosine). RLS: global lo lee todo el mundo; `centro` solo su centro.
+- Embeddings con **Gemini `text-embedding-004`** (768 dims; ajustar el `vector(n)` a la dimensión real).
+- EF `kb-embed` (embeber texto — ingesta y consulta).
+- RPC `match_kb(query_embedding, p_centro_id, p_ambito, top_k)` SECURITY DEFINER: similitud coseno filtrando por scope (global del ámbito del centro + centro propio) y `vigente=true`.
+- EF `kb-ask` (o ampliar `chat`): embeber pregunta → `match_kb` → construir contexto → Gemini responde **citando** (título + artículo + enlace de cada chunk usado).
+- Ingesta: script que toma un PDF (del bucket o corpus global), extrae texto (mismo enfoque que `scripts/importar_guardias_pdf.py` con pdfplumber), trocea (~500–1000 tokens con solape), embebe e inserta.
+
+**Plan por fases:**
+- **Fase 1 (PoC):** pgvector + `kb_chunks` + RPC + EF embeddings + vista/modo **"Consulta normativa"** (chat que cita fuentes). Probar ingestando 1–2 documentos (EBEP estatal + NOF de Buñol).
+- **Fase 2:** conectar el RAG al **copiloto de RRHH** y a **incidencias** (que citen artículos reales).
+- **Fase 3:** ingesta cómoda desde el módulo Documentos ("indexar este documento") + corpus global por CCAA + control de vigencia.
+
+**Para arrancar la Fase 1 hace falta de Bruno:** (a) la CCAA de cada centro; (b) 1–2 documentos de prueba (PDF) — p. ej. el EBEP + el NOF de Buñol — para validar que cita bien.
+
 ### 📍 Punto de retomar — sesión 2026-06-12
 
 **Hecho hoy (todo en `main`, último commit `3388eeb`, desplegado en Vercel + Supabase):**
