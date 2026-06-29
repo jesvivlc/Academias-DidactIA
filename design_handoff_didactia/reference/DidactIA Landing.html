@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DidactIA — La inteligencia que hace hablar a tu centro</title>
+  <meta name="description" content="Plataforma educativa española con asistente IA, sustituciones, comedor y app móvil. Operativa en menos de una semana. Bonificable por FUNDAE." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="landing.css" />
+</head>
+<body class="lp">
+
+<!-- ============ NAV ============ -->
+<nav class="lp-nav">
+  <div class="lp-nav__inner">
+    <a href="#top" class="lp-brand lp-brand--lg">
+      <svg class="lp-brand__mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
+        <text x="50" y="58" text-anchor="middle" font-family="Geist, -apple-system, sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+        <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
+      </svg>
+      <span class="lp-brand__word">Didact<span class="lp-brand__word-ia">IA</span><svg class="lp-brand__word-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 L13.6 9.4 L21.5 11 L13.6 12.6 L12 20.5 L10.4 12.6 L2.5 11 L10.4 9.4 Z"/></svg></span>
+    </a>
+    <div class="lp-nav__links">
+      <a href="#modulos">Producto</a>
+      <a href="#como">Implementación</a>
+      <a href="#precios">Precios</a>
+      <a href="#contacto">Contacto</a>
+    </div>
+    <div class="lp-nav__cta">
+      <a href="https://www.didactia.eu/app.html" class="lp-btn lp-btn--ghost">Acceder</a>
+      <a href="#contacto" class="lp-btn lp-btn--primary">Solicitar demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="lp-hero" id="top">
+  <div class="lp-hero__grid">
+    <div class="lp-hero__text">
+      <div class="lp-eyebrow">Plataforma educativa española</div>
+      <h1 class="lp-h1">La inteligencia<br/>que hace <em>hablar</em><br/>a tu centro.</h1>
+      <p class="lp-lead">
+        Las plataformas de gestión organizan el centro. DidactIA lo hace hablar.
+        Cualquier miembro de tu comunidad obtiene la respuesta que necesita,
+        en segundos, desde cualquier dispositivo.
+      </p>
+      <div class="lp-hero__cta">
+        <a href="#contacto" class="lp-btn lp-btn--primary">
+          Solicitar demo
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a href="#modulos" class="lp-btn">Ver qué incluye</a>
+      </div>
+    </div>
+
+    <div class="lp-hero-vis">
+      <div class="lp-hero-vis__inner">
+        <div class="lp-mock">
+          <div class="lp-mock__topbar">
+            <div class="lp-mock__dots"><span></span><span></span><span></span></div>
+            <div class="lp-mock__title-bar">Didact<span style="color:var(--brand-blue);font-weight:600">IA</span> <small>· Ágora Lledó</small></div>
+          </div>
+          <div class="lp-mock__body">
+            <div class="lp-mock__greeting">Buenos días, <em style="color:var(--accent-ink)">Javier</em></div>
+            <div class="lp-mock__meta">Viernes, 16 de mayo · 08:52</div>
+
+            <div class="lp-msg lp-msg--user">
+              <div class="lp-msg__bubble">¿Qué profesores están libres ahora mismo?</div>
+            </div>
+            <div class="lp-msg">
+              <div class="lp-msg__bubble">
+                <strong>Profesores disponibles ahora (08:52):</strong>
+                <ul>
+                  <li>María González</li>
+                  <li>Carlos Serrano</li>
+                  <li>Ana Martínez</li>
+                </ul>
+              </div>
+            </div>
+            <div class="lp-msg lp-msg--user">
+              <div class="lp-msg__bubble">¿Cuándo tiene Matemáticas Marcos López?</div>
+            </div>
+            <div class="lp-msg">
+              <div class="lp-msg__bubble">
+                <strong>Marcos López</strong> (2ºESO B) tiene Matemáticas los <strong>martes de 10:40 a 11:35</strong> con Ana Martínez, aula 104.
+              </div>
+            </div>
+
+            <div class="lp-mock__composer">
+              Escribe una pregunta…
+              <span class="lp-mock__composer-send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 16-8-6 18-3-7-7-3z"/></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lp-chip lp-chip--tl lp-only-large">
+          <span class="lp-chip__dot"></span>
+          <div><strong>3 profesores</strong> <span>libres ahora</span></div>
+        </div>
+        <div class="lp-chip lp-chip--br lp-only-large">
+          <div><strong>1.8s</strong> <span>tiempo medio de respuesta</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRUST ============ -->
+<section class="lp-trust">
+  <div class="lp-trust__inner">
+    <div class="lp-trust__label">Activo en centros como</div>
+    <div class="lp-trust__logos">
+      <div class="lp-trust__logo"><span class="lp-trust__logo-dot"></span> Ágora Lledó International School</div>
+      <div class="lp-trust__logo"><span class="lp-trust__logo-dot" style="background:linear-gradient(135deg,oklch(0.7 0.09 155),oklch(0.5 0.1 175))"></span> IES Buñol</div>
+      <div class="lp-trust__logo" style="color:var(--muted-2)">+ tu centro aquí</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BIG QUOTE ============ -->
+<section class="lp-bigquote">
+  <p class="lp-bigquote__text">
+    <span class="muted-line">Las plataformas de gestión<br/>organizan el centro.</span><br/>
+    DidactIA lo hace <em>hablar</em>.
+  </p>
+  <p class="lp-bigquote__after">
+    Un chat inteligente que responde en lenguaje natural a directores,
+    profesores y familias. Sin formación. Sin manuales. Sin esperar a secretaría.
+  </p>
+</section>
+
+<!-- ============ PROBLEM ============ -->
+<section class="lp-section" id="problema">
+  <div class="lp-eyebrow">El problema</div>
+  <h2 class="lp-h2">Cada día, las mismas <em>interrupciones</em>.</h2>
+  <p class="lp-h2-sub">Los equipos directivos pierden horas resolviendo consultas que un sistema inteligente podría gestionar solo.</p>
+
+  <div class="lp-problems">
+    <div class="lp-problem">
+      <div class="lp-problem__num">01</div>
+      <h3 class="lp-problem__title">Guardias sin cubrir</h3>
+      <p class="lp-problem__body">Saber quién está libre ahora mismo requiere consultar horarios manualmente y llamar a varios profesores.</p>
+    </div>
+    <div class="lp-problem">
+      <div class="lp-problem__num">02</div>
+      <h3 class="lp-problem__title">Comedor desorganizado</h3>
+      <p class="lp-problem__body">El control de asistencia al comedor se hace a mano, con errores y sin datos históricos accesibles.</p>
+    </div>
+    <div class="lp-problem">
+      <div class="lp-problem__num">03</div>
+      <h3 class="lp-problem__title">Preguntas repetitivas</h3>
+      <p class="lp-problem__body">Familias y profesores interrumpen a secretaría con las mismas consultas sobre horarios y contactos.</p>
+    </div>
+    <div class="lp-problem">
+      <div class="lp-problem__num">04</div>
+      <h3 class="lp-problem__title">Información dispersa</h3>
+      <p class="lp-problem__body">Los datos del centro están repartidos entre Excel, email y sistemas que no se hablan entre sí.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MODULES ============ -->
+<section class="lp-section" id="modulos">
+  <div class="lp-eyebrow">Lo que incluye</div>
+  <h2 class="lp-h2">Cinco módulos.<br/><em>Un solo acceso.</em></h2>
+  <p class="lp-h2-sub">Diseñados para resolver los problemas más frecuentes en la gestión diaria de cualquier centro.</p>
+
+  <!-- 01 — Asistente IA -->
+  <div class="lp-feature">
+    <div class="lp-feature__text">
+      <div class="lp-feature__eyebrow">
+        <span class="lp-feature__num">01</span>
+        <span class="lp-feature__module-name">Asistente IA</span>
+      </div>
+      <span class="lp-feature__badge">Más utilizado</span>
+      <h3 class="lp-feature__title">Pregunta. Responde. Listo.</h3>
+      <p class="lp-feature__lead">Chat en lenguaje natural para toda la comunidad educativa. Sin manuales, sin formación, sin curva de aprendizaje. Cada respuesta cita la fuente.</p>
+      <ul class="lp-feature__list">
+        <li>Responde sobre horarios, contactos, menús, comunicados y normativa interna.</li>
+        <li>Personalizado por rol: dirección, profesorado y familias ven solo lo que les corresponde.</li>
+        <li>Funciona en navegador y como app instalable en cualquier móvil.</li>
+      </ul>
+    </div>
+    <div class="lp-feature__visual">
+      <div class="lp-visual">
+        <div class="lp-msg lp-msg--user"><div class="lp-msg__bubble">¿Qué profesores están libres ahora?</div></div>
+        <div class="lp-msg"><div class="lp-msg__bubble">
+          <strong>Libres ahora (10:42):</strong>
+          <ul><li>María González</li><li>Carlos Serrano</li><li>Ana Martínez</li></ul>
+        </div></div>
+        <div class="lp-msg lp-msg--user"><div class="lp-msg__bubble">¿Cuándo tiene Mates Marcos López?</div></div>
+        <div class="lp-msg"><div class="lp-msg__bubble">
+          Marcos López (2ºESO B) tiene Matemáticas los <strong>martes 10:40–11:35</strong> con Ana Martínez · Aula 104.
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 — Guardias / Sustituciones -->
+  <div class="lp-feature lp-feature--rev">
+    <div class="lp-feature__text">
+      <div class="lp-feature__eyebrow">
+        <span class="lp-feature__num">02</span>
+        <span class="lp-feature__module-name">Guardias y sustituciones</span>
+      </div>
+      <span class="lp-feature__badge">Ahorra 1h al día</span>
+      <h3 class="lp-feature__title">Quién está libre, ahora mismo.</h3>
+      <p class="lp-feature__lead">DidactIA cruza horarios, partes de baja y guardias previas para saber al instante quién puede cubrir. Asignación en un clic, historial automático.</p>
+      <ul class="lp-feature__list">
+        <li>Disponibilidad en tiempo real por tramo horario.</li>
+        <li>Sugerencias inteligentes priorizando departamento y equilibrio de carga.</li>
+        <li>Parte de guardias exportable para la dirección.</li>
+      </ul>
+    </div>
+    <div class="lp-feature__visual">
+      <div class="lp-visual">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+          <div style="font-family:var(--font-display);font-size:15px;font-weight:500">Sustituciones · Hoy</div>
+          <div style="font-size:11px;color:var(--muted)">Viernes 16 may</div>
+        </div>
+        <div class="lp-eyebrow" style="margin-bottom:8px">Profesores libres · tramo 3 (10:40–11:35)</div>
+        <div class="lp-list-rows" style="margin-bottom:16px">
+          <div class="lp-list-row">
+            <div class="lp-list-row__avatar" data-tone="sand">MG</div>
+            <div><div class="lp-list-row__name">María González</div><div class="lp-list-row__sub">Matemáticas · Secundaria</div></div>
+            <div class="lp-list-row__status">Libre</div>
+          </div>
+          <div class="lp-list-row">
+            <div class="lp-list-row__avatar" data-tone="cool">CS</div>
+            <div><div class="lp-list-row__name">Carlos Serrano</div><div class="lp-list-row__sub">Lengua · Bachillerato</div></div>
+            <div class="lp-list-row__status">Libre</div>
+          </div>
+          <div class="lp-list-row">
+            <div class="lp-list-row__avatar" data-tone="green">AM</div>
+            <div><div class="lp-list-row__name">Ana Martínez</div><div class="lp-list-row__sub">Inglés · ESO</div></div>
+            <div class="lp-list-row__status lp-list-row__status--busy">Con clase</div>
+          </div>
+        </div>
+        <div class="lp-eyebrow">Historial de hoy</div>
+        <table class="lp-table">
+          <thead><tr><th>Sustituto</th><th>Grupo</th><th>Tramo</th></tr></thead>
+          <tbody>
+            <tr><td>C. Serrano</td><td>3ºESO A</td><td>1</td></tr>
+            <tr><td>M. González</td><td>1BAC B</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 03 — Comedor -->
+  <div class="lp-feature">
+    <div class="lp-feature__text">
+      <div class="lp-feature__eyebrow">
+        <span class="lp-feature__num">03</span>
+        <span class="lp-feature__module-name">Comedor escolar</span>
+      </div>
+      <span class="lp-feature__badge">Sin papel</span>
+      <h3 class="lp-feature__title">Control de comedor sin Excel.</h3>
+      <p class="lp-feature__lead">Asistencia diaria, alérgenos, observaciones y exportación de datos. Adiós a la libreta — y a los errores que se descubren tarde.</p>
+      <ul class="lp-feature__list">
+        <li>Filtros por grupo, ruta, alérgenos o régimen especial.</li>
+        <li>Datos históricos accesibles desde el primer día.</li>
+        <li>Exportación CSV para cocina y administración.</li>
+      </ul>
+    </div>
+    <div class="lp-feature__visual">
+      <div class="lp-visual">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+          <div style="font-family:var(--font-display);font-size:15px;font-weight:500">Comedor · Viernes 16 may</div>
+          <div style="font-size:11px;color:var(--muted)">142 comensales</div>
+        </div>
+        <div class="lp-mini-stats">
+          <div class="lp-mini-stat"><div class="lp-mini-stat__num">142</div><div class="lp-mini-stat__label">Total hoy</div></div>
+          <div class="lp-mini-stat"><div class="lp-mini-stat__num">18</div><div class="lp-mini-stat__label">Grupos</div></div>
+          <div class="lp-mini-stat"><div class="lp-mini-stat__num">4</div><div class="lp-mini-stat__label">Sin confirmar</div></div>
+        </div>
+        <table class="lp-table">
+          <thead><tr><th>Grupo</th><th>Alumnos</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>1ºESO A</td><td>22</td><td><span class="lp-list-row__status">OK</span></td></tr>
+            <tr><td>1ºESO B</td><td>19</td><td><span class="lp-list-row__status">OK</span></td></tr>
+            <tr><td>2ºESO A</td><td>24</td><td><span class="lp-list-row__status">OK</span></td></tr>
+            <tr><td>1ºBAC A</td><td>18</td><td><span class="lp-list-row__status" style="background:var(--warning-soft);color:oklch(0.42 0.11 75)">Pendiente</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 — Panel admin -->
+  <div class="lp-feature lp-feature--rev">
+    <div class="lp-feature__text">
+      <div class="lp-feature__eyebrow">
+        <span class="lp-feature__num">04</span>
+        <span class="lp-feature__module-name">Panel de administración</span>
+      </div>
+      <span class="lp-feature__badge">Multicentro</span>
+      <h3 class="lp-feature__title">Cada centro, con su identidad.</h3>
+      <p class="lp-feature__lead">Gestión de usuarios, roles, módulos activos y tematización por centro. Pensado para grupos educativos con varios colegios.</p>
+      <ul class="lp-feature__list">
+        <li>Roles: dirección, profesional, familia, alumno.</li>
+        <li>Colores, logo y dominio personalizados por centro.</li>
+        <li>Permisos finos por módulo y grupo.</li>
+      </ul>
+    </div>
+    <div class="lp-feature__visual">
+      <div class="lp-visual">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <div style="font-family:var(--font-display);font-size:15px;font-weight:500">Usuarios</div>
+          <div style="font-size:11px;color:var(--muted)">12 usuarios</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <div class="lp-eyebrow" style="margin:0">Gestión de roles</div>
+          <span style="margin-left:auto;font-size:11.5px;color:var(--accent-ink);background:var(--accent-soft);padding:3px 9px;border-radius:999px;font-weight:500">+ Invitar</span>
+        </div>
+        <div class="lp-list-rows">
+          <div class="lp-list-row">
+            <div class="lp-list-row__avatar" data-tone="cool">JV</div>
+            <div><div class="lp-list-row__name">Javier V.</div><div class="lp-list-row__sub">javier@agora.es</div></div>
+            <div class="lp-list-row__status" style="background:var(--ink);color:var(--paper)">Admin</div>
+          </div>
+          <div class="lp-list-row">
+            <div class="lp-list-row__avatar" data-tone="sand">MG</div>
+            <div><div class="lp-list-row__name">María G.</div><div class="lp-list-row__sub">maria@agora.es</div></div>
+            <div class="lp-list-row__status">Profesional</div>
+          </div>
+          <div class="lp-list-row">
+            <div class="lp-list-row__avatar" data-tone="purple">LP</div>
+            <div><div class="lp-list-row__name">Laura P.</div><div class="lp-list-row__sub">laura@gmail.com</div></div>
+            <div class="lp-list-row__status" style="background:var(--info-soft);color:oklch(0.4 0.1 240)">Familia</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+          <div class="lp-eyebrow" style="margin-bottom:8px">Módulos activos</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="lp-list-row__status">Chat IA</span>
+            <span class="lp-list-row__status">Comedor</span>
+            <span class="lp-list-row__status">Sustituciones</span>
+            <span class="lp-list-row__status" style="background:var(--surface-sunk);color:var(--muted)">Espacios</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 — PWA -->
+  <div class="lp-feature">
+    <div class="lp-feature__text">
+      <div class="lp-feature__eyebrow">
+        <span class="lp-feature__num">05</span>
+        <span class="lp-feature__module-name">App móvil (PWA)</span>
+      </div>
+      <span class="lp-feature__badge">iOS y Android</span>
+      <h3 class="lp-feature__title">Instalable en cualquier móvil.</h3>
+      <p class="lp-feature__lead">Sin App Store ni Google Play. Se instala desde el navegador en iOS y Android en segundos, funciona offline y se actualiza sola.</p>
+      <ul class="lp-feature__list">
+        <li>Acceso directo desde la pantalla de inicio.</li>
+        <li>Funciona sin conexión para consultas frecuentes.</li>
+        <li>Siempre actualizada — sin pedir a usuarios que actualicen.</li>
+      </ul>
+    </div>
+    <div class="lp-feature__visual" style="display:grid;place-items:center">
+      <div class="lp-pwa">
+        <div class="lp-pwa__notch"></div>
+        <div class="lp-pwa__head">
+          <span class="lp-logo__mark" style="width:22px;height:22px;font-size:13px">D</span>
+          <div class="lp-pwa__head-brand">DidactIA</div>
+          <div class="lp-pwa__head-spacer"></div>
+          <div class="lp-pwa__head-avatar">JV</div>
+        </div>
+        <div class="lp-pwa__body">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Ágora Lledó · Admin</div>
+          <div class="lp-pwa__tabs">
+            <span class="lp-pwa__tab lp-pwa__tab--active">Chat</span>
+            <span class="lp-pwa__tab">Guardias</span>
+            <span class="lp-pwa__tab">Comedor</span>
+          </div>
+          <div class="lp-msg lp-msg--user" style="margin-bottom:6px"><div class="lp-msg__bubble" style="font-size:11.5px;padding:7px 10px">¿Libres en tramo 3?</div></div>
+          <div class="lp-msg" style="margin-bottom:6px"><div class="lp-msg__bubble" style="font-size:11.5px;padding:7px 10px">3 libres: M. González, C. Serrano, A. Martínez</div></div>
+          <div class="lp-msg lp-msg--user" style="margin-bottom:6px"><div class="lp-msg__bubble" style="font-size:11.5px;padding:7px 10px">Horario 2ºESO B hoy</div></div>
+          <div class="lp-msg" style="margin-bottom:10px"><div class="lp-msg__bubble" style="font-size:11.5px;padding:7px 10px"><strong>2ºESO B · Hoy</strong><br/>09:45 Lengua · 10:40 Mates · 12:00 Inglés</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);font-size:11px;color:var(--muted)">
+            Escribe…
+            <span style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:10px;height:10px"><path d="m4 12 16-8-6 18-3-7-7-3z"/></svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IMPLEMENTACIÓN — ink section ============ -->
+<section class="lp-section--ink" id="como">
+  <div class="lp-section--ink__inner">
+    <div class="lp-eyebrow">Implementación</div>
+    <h2 class="lp-h2">Operativo en<br/><em>menos de una semana</em>.</h2>
+    <p class="lp-h2-sub">Sin departamento técnico. Sin cambiar los sistemas que ya tienes. Sin formación extensa.</p>
+
+    <div class="lp-steps">
+      <div class="lp-step">
+        <div class="lp-step__num">Paso 1</div>
+        <h3 class="lp-step__title">Importamos tus datos</h3>
+        <p class="lp-step__body">Subimos el Excel con alumnos, horarios y grupos. Nos encargamos de la configuración inicial completa.</p>
+        <div class="lp-step__time">Día 1</div>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step__num">Paso 2</div>
+        <h3 class="lp-step__title">Personalizamos el centro</h3>
+        <p class="lp-step__body">Aplicamos colores e identidad del centro. Cada rol ve solo la información que le corresponde.</p>
+        <div class="lp-step__time">Día 2</div>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step__num">Paso 3</div>
+        <h3 class="lp-step__title">Formamos al equipo</h3>
+        <p class="lp-step__body">Sesión de dos horas con dirección y jefatura de estudios. Nada más que aprender.</p>
+        <div class="lp-step__time">Día 3–4</div>
+      </div>
+      <div class="lp-step">
+        <div class="lp-step__num">Paso 4</div>
+        <h3 class="lp-step__title">En marcha</h3>
+        <p class="lp-step__body">Acceso desde cualquier dispositivo. App instalable en el móvil, sin pasar por la App Store.</p>
+        <div class="lp-step__time">Día 5</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRECIOS ============ -->
+<section class="lp-section" id="precios">
+  <div class="lp-eyebrow">Precios</div>
+  <h2 class="lp-h2">Transparente<br/><em>desde el primer día</em>.</h2>
+  <p class="lp-h2-sub">Sin permanencia el primer año. Sin costes ocultos. Compatible con el crédito FUNDAE de tu centro.</p>
+
+  <div class="lp-pricing">
+    <!-- Plan 1: Suscripción -->
+    <div class="lp-plan">
+      <div class="lp-plan__name">Suscripción anual</div>
+      <div class="lp-plan__price">desde 600€</div>
+      <div class="lp-plan__price-meta">por centro y curso escolar</div>
+      <ul class="lp-plan__list">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Todos los módulos incluidos</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Hasta 500 alumnos</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Soporte por email</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Actualizaciones incluidas</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Configuración inicial incluida</li>
+      </ul>
+      <div class="lp-plan__cta">
+        <a href="#contacto" class="lp-btn">Más información</a>
+      </div>
+    </div>
+
+    <!-- Plan 2: FUNDAE featured -->
+    <div class="lp-plan lp-plan--featured">
+      <span class="lp-plan__tag">Recomendado</span>
+      <div class="lp-plan__name">FUNDAE · Centros concertados y privados</div>
+      <div class="lp-plan__price">desde 3.500€</div>
+      <div class="lp-plan__price-meta">bonificable al 100% por tu centro</div>
+      <ul class="lp-plan__list">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> 20 horas de formación certificada</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> IA aplicada en centros educativos</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Primer año de DidactIA incluido</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Implantación completa</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> El centro no paga de su bolsillo</li>
+      </ul>
+      <div class="lp-plan__cta">
+        <a href="#contacto" class="lp-btn lp-btn--accent">Solicitar información</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="lp-callout">
+    <div class="lp-callout__mark">€</div>
+    <div class="lp-callout__text">
+      Tu centro tiene un fondo de formación anual que, si no se usa, se pierde.
+      <small>Los centros privados y concertados disponen de crédito FUNDAE para formación de su plantilla. DidactIA puede ser la acción formativa con la que agotar ese crédito — y el centro se queda con la herramienta funcionando el curso siguiente.</small>
+    </div>
+    <a href="#contacto" class="lp-btn lp-btn--primary">Calcular mi crédito</a>
+  </div>
+</section>
+
+<!-- ============ CONTACTO ============ -->
+<section class="lp-section" id="contacto">
+  <div class="lp-eyebrow">Contacto</div>
+  <h2 class="lp-h2">Hablemos<br/><em>sin compromiso</em>.</h2>
+  <p class="lp-h2-sub">Te mostramos DidactIA funcionando en un centro real y resolvemos tus dudas. Sin presentación comercial. Sin presión.</p>
+
+  <div class="lp-contact">
+    <div>
+      <div class="lp-contact__info-item">
+        <div class="lp-contact__info-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 7 9-7"/></svg>
+        </div>
+        <div>
+          <div class="lp-contact__info-label">Email</div>
+          <div class="lp-contact__info-value">hola@didactia.eu</div>
+        </div>
+      </div>
+      <div class="lp-contact__info-item">
+        <div class="lp-contact__info-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        </div>
+        <div>
+          <div class="lp-contact__info-label">Plataforma</div>
+          <div class="lp-contact__info-value">didactia.eu</div>
+        </div>
+      </div>
+      <div class="lp-contact__info-item">
+        <div class="lp-contact__info-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-7-6.5-7-13a7 7 0 1 1 14 0c0 6.5-7 13-7 13z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        </div>
+        <div>
+          <div class="lp-contact__info-label">País</div>
+          <div class="lp-contact__info-value">España</div>
+        </div>
+      </div>
+      <div class="lp-contact__info-item">
+        <div class="lp-contact__info-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+        </div>
+        <div>
+          <div class="lp-contact__info-label">Tiempo de respuesta</div>
+          <div class="lp-contact__info-value">Menos de 24h laborables</div>
+        </div>
+      </div>
+    </div>
+
+    <form class="lp-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='¡Gracias! Te contactamos en menos de 24h.'; this.querySelector('button').disabled = true;">
+      <div class="lp-form__row">
+        <div class="lp-form__field">
+          <label class="lp-form__label">Nombre</label>
+          <input class="lp-form__input" type="text" required />
+        </div>
+        <div class="lp-form__field">
+          <label class="lp-form__label">Cargo</label>
+          <input class="lp-form__input" type="text" placeholder="Director, jefe de estudios…" />
+        </div>
+      </div>
+      <div class="lp-form__row">
+        <div class="lp-form__field">
+          <label class="lp-form__label">Email</label>
+          <input class="lp-form__input" type="email" required />
+        </div>
+        <div class="lp-form__field">
+          <label class="lp-form__label">Tipo de centro</label>
+          <select class="lp-form__input">
+            <option>Seleccionar…</option>
+            <option>Centro público</option>
+            <option>Centro concertado</option>
+            <option>Centro privado</option>
+            <option>Centro internacional</option>
+          </select>
+        </div>
+      </div>
+      <div class="lp-form__field">
+        <label class="lp-form__label">¿En qué podemos ayudarte?</label>
+        <textarea class="lp-form__input" placeholder="Cuéntanos brevemente tu situación o lo que te interesa de DidactIA."></textarea>
+      </div>
+      <button type="submit" class="lp-btn lp-btn--primary lp-form__submit">
+        Enviar mensaje
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="lp-footer">
+  <div class="lp-footer__inner">
+    <a href="#top" class="lp-brand">
+      <svg class="lp-brand__mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
+        <text x="50" y="58" text-anchor="middle" font-family="Geist, -apple-system, sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
+        <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
+      </svg>
+      <span class="lp-brand__word">Didact<span class="lp-brand__word-ia">IA</span><svg class="lp-brand__word-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 L13.6 9.4 L21.5 11 L13.6 12.6 L12 20.5 L10.4 12.6 L2.5 11 L10.4 9.4 Z"/></svg></span>
+    </a>
+    <div class="lp-footer__copy">© 2025 DidactIA · Hecho en España</div>
+    <div class="lp-footer__links">
+      <a href="#">Legal</a>
+      <a href="#">Privacidad</a>
+      <a href="mailto:hola@didactia.eu">hola@didactia.eu</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

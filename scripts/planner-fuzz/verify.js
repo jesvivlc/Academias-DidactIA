@@ -57,19 +57,23 @@ function verify(scenario, schedule, engine) {
     });
   });
 
-  if (schedule) Object.keys(required).forEach(k => {
+  // Cobertura SOLO cuando sabemos que el escenario es plenamente satisfacible
+  // (feasible-known). En escenarios de capacidad/azar, un horario incompleto no es bug.
+  const checkCoverage = schedule && scenario.meta && scenario.meta.expected === 'feasible-known';
+  if (checkCoverage) Object.keys(required).forEach(k => {
     if (required[k] !== (placedByGS[k] || 0)) add('coverage', `${k}: colocadas ${placedByGS[k] || 0} de ${required[k]}`);
   });
 
   return V;
 }
 
-/* soundness: expected solvability vs actual result */
+/* soundness: solo el caso fiable — un escenario satisfacible conocido NO debe dar null.
+   (No afirmamos "imposible→aceptó" porque los dos motores tienen reglas materia/día
+   distintas y un horario que viola una restricción ya lo caza verify() como corrección.) */
 function checkSoundness(scenario, schedule) {
   const V = [];
   const solved = schedule && Object.keys(schedule).length > 0;
   const exp = scenario.meta && scenario.meta.expected;
-  if (exp === 'impossible' && solved) V.push({ type: 'unsound-accept', detail: 'devolvió horario para un caso imposible' });
   if (exp === 'feasible-known' && !solved) V.push({ type: 'suspect-reject', detail: 'devolvió null para un caso satisfacible conocido' });
   return V;
 }

@@ -376,5 +376,7 @@ Histórico (consulta manual, NO se carga): `CLAUDE-ARCHIVE.md`
 ---
 
 ## Registro de cambios recientes
+- `2026-06-30` — chore(planner-fuzz): perfil `feasible-known` (oráculo trivialmente satisfacible) sustituye a `impossible` en el generador; ajustes en selftest/verify. Sincronización de trabajo pendiente para continuar desde el portátil (data/, demo-check, design_handoff, docs).
+- `2026-06-29 12:59` · `8d9acf6` — feat(rag): Fase 2 — citar normativa real en incidencias y copiloto RRHH
 
 - `2026-06-29 12:51` · `8415b62` — feat(rag): activar RAG normativo Fase 1 en producción + corpus inicial
