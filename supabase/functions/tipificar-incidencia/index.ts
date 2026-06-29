@@ -298,6 +298,41 @@ async function _geminiFetch(url: string, body: unknown, timeoutMs = 25000): Prom
   throw lastErr;
 }
 
+// ── RAG: recuperar normativa real (kb_chunks) para citar artículos vigentes ──
+// Embebe la descripción (gemini-embedding-001, 768d, RETRIEVAL_QUERY) y consulta
+// match_kb. Best-effort: si algo falla, devuelve [] y la tipificación sigue igual.
+const KB_MIN_SIMILARITY = 0.5;
+async function _embedQuery(apiKey: string, text: string): Promise<number[] | null> {
+  try {
+    const res = await _geminiFetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`,
+      { model: "models/gemini-embedding-001", content: { parts: [{ text }] }, outputDimensionality: 768, taskType: "RETRIEVAL_QUERY" },
+      15000,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const v = data?.embedding?.values;
+    return Array.isArray(v) ? v : null;
+  } catch { return null; }
+}
+interface KbFuente { titulo: string; tipo: string; fecha_doc: string | null; source_url: string | null; texto: string; similarity: number; }
+// deno-lint-ignore no-explicit-any
+async function _recuperarNormativa(sb: any, apiKey: string, descripcion: string, centroId: string, ambito: string): Promise<KbFuente[]> {
+  try {
+    const emb = await _embedQuery(apiKey, descripcion);
+    if (!emb) return [];
+    const { data, error } = await sb.rpc("match_kb", {
+      query_embedding: emb, p_centro_id: centroId, p_ambito: ambito, match_count: 6,
+    });
+    if (error || !Array.isArray(data)) return [];
+    // deno-lint-ignore no-explicit-any
+    return data.filter((m: any) => m.similarity >= KB_MIN_SIMILARITY).map((m: any) => ({
+      titulo: m.doc_titulo, tipo: m.doc_tipo, fecha_doc: m.fecha_doc,
+      source_url: m.source_url, texto: m.chunk_text, similarity: Math.round(m.similarity * 100) / 100,
+    }));
+  } catch { return []; }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -330,11 +365,18 @@ serve(async (req) => {
       year: "numeric", month: "long", day: "numeric",
     });
 
+    // RAG: fragmentos literales de la normativa vigente indexada (best-effort).
+    const fuentesRag = await _recuperarNormativa(sb, apiKey, String(descripcion).trim(), centro_id, ccaa || "estatal");
+    const ragBlock = fuentesRag.length
+      ? `\n\nNORMATIVA VIGENTE INDEXADA (fragmentos LITERALES recuperados de fuentes oficiales — PRIORÍZALOS sobre el marco general anterior y cita su título y artículo exacto cuando apliquen):\n` +
+        fuentesRag.map((f, i) => `[Fuente ${i + 1}] ${f.titulo}${f.fecha_doc ? ` (${f.fecha_doc})` : ""}\n${f.texto}`).join("\n---\n")
+      : "";
+
     const prompt = `Eres un experto en convivencia escolar y orientación educativa con profundo conocimiento de la normativa española vigente. Analiza la siguiente incidencia escolar y tipifícala rigurosamente según la normativa aplicable al centro.
 
 ${normativa.instrucciones}
 
-${normativa.texto}
+${normativa.texto}${ragBlock}
 
 CONTEXTO DEL INFORME:
 - Centro educativo: ${nombreCentro}
@@ -409,6 +451,12 @@ Devuelve ÚNICAMENTE un objeto JSON con este formato exacto, sin texto adicional
       ...parsed,
       normativa_ref: normativa.ref,
       paradigma: normativa.paradigma,
+      // Fuentes RAG citables (título, fecha, enlace oficial, fragmento) — vacío si no hubo match.
+      fuentes: fuentesRag.map((f) => ({
+        titulo: f.titulo, tipo: f.tipo, fecha_doc: f.fecha_doc, source_url: f.source_url,
+        fragmento: f.texto.length > 500 ? f.texto.slice(0, 500) + "…" : f.texto,
+        similarity: f.similarity,
+      })),
     };
 
     if (parsed.protocolo_previ) {

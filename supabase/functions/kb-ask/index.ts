@@ -73,11 +73,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const { pregunta, centro_id: bodyCentroId } = await req.json() as {
+    const { pregunta, centro_id: bodyCentroId, retrieve_only, match_count } = await req.json() as {
       pregunta?: string;
       centro_id?: string;
+      retrieve_only?: boolean;  // true → devuelve solo fragmentos (sin respuesta de Gemini)
+      match_count?: number;     // nº de fragmentos a recuperar (def. 6)
     };
     if (!pregunta || !pregunta.trim()) throw new Error("Falta el campo 'pregunta'");
+    const k = Math.min(Math.max(Number(match_count) || 6, 1), 12);
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) throw new Error("GEMINI_API_KEY no configurada");
@@ -118,11 +121,28 @@ serve(async (req) => {
       query_embedding: qEmbedding,
       p_centro_id: effCentroId,
       p_ambito: ambito,
-      match_count: 6,
+      match_count: k,
     });
     if (matchErr) throw new Error("match_kb: " + matchErr.message);
 
     const relevant = (matches ?? []).filter((m: { similarity: number }) => m.similarity >= MIN_SIMILARITY);
+
+    // Modo recuperación: devuelve los fragmentos (texto completo) para que otros
+    // copilotos (RRHH, incidencias) los inyecten en sus propios prompts y citen.
+    if (retrieve_only) {
+      const fuentes = relevant.map((m: {
+        doc_titulo: string; doc_tipo: string; fecha_doc: string | null;
+        chunk_text: string; source_url: string | null; similarity: number;
+      }) => ({
+        titulo: m.doc_titulo,
+        tipo: m.doc_tipo,
+        fecha_doc: m.fecha_doc,
+        source_url: m.source_url,
+        texto: m.chunk_text,
+        similarity: Math.round(m.similarity * 100) / 100,
+      }));
+      return jsonRes({ sources: fuentes });
+    }
 
     if (relevant.length === 0) {
       return jsonRes({

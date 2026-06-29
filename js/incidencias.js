@@ -631,6 +631,21 @@ function _incShowTipModal(data) {
 
   var informe = (data.informe_borrador || '').replace(/\\n/g, '\n');
 
+  var fuentesHtml = '';
+  if (Array.isArray(data.fuentes) && data.fuentes.length) {
+    fuentesHtml = '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📚 Normativa citada (fuentes reales)</div>'
+      + data.fuentes.slice(0, 4).map(function(f) {
+          var frag = esc((f.fragmento || '').slice(0, 240));
+          var link = f.source_url ? ' · <a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="color:var(--ink);">fuente oficial</a>' : '';
+          return '<div style="margin-bottom:8px;padding:8px 12px;background:var(--info-soft,#e3eafa);border-radius:8px;font-size:11px;line-height:1.5;">'
+            + '<strong>' + esc(f.titulo || '') + '</strong>'
+            + (f.similarity ? ' <span style="color:var(--txt3);">· ' + Math.round(f.similarity * 100) + '%</span>' : '') + link
+            + '<div style="color:#555;margin-top:3px;">' + frag + '</div></div>';
+        }).join('')
+      + '</div>';
+  }
+
   var modal = document.createElement('div');
   modal.id = 'inc-tip-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
@@ -659,10 +674,11 @@ function _incShowTipModal(data) {
     + '    <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Borrador del informe <span style="font-weight:400;text-transform:none;font-size:11px;">(editable)</span></div>'
     + '    <textarea id="inc-tip-informe" style="width:100%;min-height:180px;font-size:12px;font-family:monospace;padding:10px;border:1px solid #e0e0e0;border-radius:8px;resize:vertical;box-sizing:border-box;">' + esc(informe) + '</textarea>'
     + '  </div>'
-    + (data.justificacion ? '<div style="margin-bottom:4px;">'
+    + (data.justificacion ? '<div style="margin-bottom:16px;">'
     + '  <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Justificación</div>'
     + '  <div style="font-size:12px;color:#555;line-height:1.6;">' + esc(data.justificacion) + '</div>'
     + '</div>' : '')
+    + fuentesHtml
     + '  </div>'
     + '  <div style="padding:16px 24px;border-top:1px solid #e0e0e0;display:flex;gap:8px;justify-content:flex-end;">'
     + '    <button onclick="document.getElementById(\'inc-tip-modal\').remove()" style="padding:8px 18px;border:1px solid #e0e0e0;border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#555;">Cancelar</button>'

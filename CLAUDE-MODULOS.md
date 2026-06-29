@@ -61,6 +61,7 @@
 - `aprobarAusencia()`: `_crearSustituciones()` → filas por cada tramo del rango
 - `rechazarAusencia()`: prompt motivo → UPDATE estado+motivo_rechazo
 - Copiloto legal IA: `_rrhhEvaluarConIA()` → Gemini analiza contra EBEP/convenio → panel expandible antes de actuar
+- RAG (Fase 2): `_rrhhRetrieveNormativa()` llama a `kb-ask` (`retrieve_only`) con tipo+motivo+régimen → inyecta los fragmentos reales en el system prompt (`_rrhhSysConNormativa`) para citar el artículo exacto + muestra las fuentes (`_rrhhFuentesHtml`). Cablea evaluación individual y agente
 - `_rrhhAplicar(id, accion, mensaje)`: núcleo compartido por modal individual y agente RRHH
 - IMPORTANTE: `ausencias_profesor` NO tiene `trabajo_alumnos` ni `justificante_url`
 

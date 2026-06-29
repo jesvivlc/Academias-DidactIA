@@ -277,6 +277,42 @@ async function _rrhhGeminiLegal(systemPrompt, userMsg) {
     return j.type === "text" ? j.text : null;
   } catch (e) { return null; }
 }
+// RAG: recupera fragmentos de normativa real (kb-ask retrieve_only) para que el
+// copiloto cite artículos exactos (EBEP, etc.). Best-effort: devuelve [] si falla
+// o si no hay normativa indexada relevante (p.ej. convenios de concertada/privada).
+async function _rrhhRetrieveNormativa(a, regimen) {
+  try {
+    var ctx = regimen === "funcionario" ? "funcionario público docente EBEP"
+            : regimen === "concertada" ? "profesorado de centro concertado convenio colectivo"
+            : "profesorado de centro privado convenio colectivo";
+    var pregunta = "Permiso o licencia de " + (AUSENCIA_TIPOS[a.tipo] || a.tipo) +
+      (a.motivo ? " por " + a.motivo : "") + " para " + ctx +
+      ". ¿Qué días corresponden y si es retribuido?";
+    var r = await sb.functions.invoke("kb-ask", { body: { pregunta: pregunta, retrieve_only: true, match_count: 5 } });
+    if (r.error || !r.data || !Array.isArray(r.data.sources)) return [];
+    return r.data.sources;
+  } catch (e) { return []; }
+}
+// Construye el bloque de contexto + ajusta el system prompt para que cite los fragmentos.
+function _rrhhSysConNormativa(sysBase, fuentes) {
+  if (!fuentes || !fuentes.length) return sysBase;
+  var ctx = fuentes.map(function (f, i) {
+    return "[Fuente " + (i + 1) + "] " + f.titulo + (f.fecha_doc ? " (" + f.fecha_doc + ")" : "") + "\n" + (f.texto || "");
+  }).join("\n---\n");
+  return sysBase +
+    " FRAGMENTOS DE NORMATIVA VIGENTE INDEXADA (cita el artículo EXACTO en 'fundamento' cuando alguno responda; si ninguno responde, usa referencia genérica y márcalo en 'alerta'):\n" + ctx;
+}
+function _rrhhFuentesHtml(fuentes) {
+  if (!fuentes || !fuentes.length) return "";
+  var items = fuentes.slice(0, 4).map(function (f) {
+    var frag = (f.texto || "").slice(0, 220);
+    var link = f.source_url ? ' · <a href="' + escH(f.source_url) + '" target="_blank" rel="noopener" style="color:var(--ink);">fuente oficial</a>' : "";
+    return '<div style="margin-bottom:8px;padding:8px 10px;background:var(--info-soft,#e3eafa);border-radius:8px;font-size:11px;line-height:1.5;">' +
+      '<strong>' + escH(f.titulo) + '</strong>' + (f.similarity ? ' <span style="color:var(--txt3);">· ' + Math.round(f.similarity * 100) + '%</span>' : '') + link +
+      '<div style="color:#555;margin-top:3px;">' + escH(frag) + (frag.length >= 220 ? "…" : "") + '</div></div>';
+  }).join("");
+  return '<div style="margin-top:12px;"><div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📚 Normativa citada</div>' + items + '</div>';
+}
 function _rrhhParseJson(txt) {
   if (!txt) return null;
   try {
@@ -356,7 +392,8 @@ window._rrhhLanzarEval = async function (id) {
     ". Fechas: " + a.fecha + (a.fecha_fin && a.fecha_fin !== a.fecha ? " a " + a.fecha_fin : "") +
     " (" + dias + " día(s) naturales). Evalúa si procede conceder el permiso, su naturaleza (retribuido o no) y los requisitos.";
 
-  var resp = await _rrhhGeminiLegal(sys, userMsg);
+  var fuentes = await _rrhhRetrieveNormativa(a, regimen);
+  var resp = await _rrhhGeminiLegal(_rrhhSysConNormativa(sys, fuentes), userMsg);
   var j = _rrhhParseJson(resp);
   if (go) { go.disabled = false; go.textContent = "✨ Volver a analizar"; }
   if (!j) {
@@ -382,7 +419,8 @@ window._rrhhLanzarEval = async function (id) {
     '<div class="ria-actions">' +
       '<button class="ria-btn ria-btn-ok" onclick="window._rrhhResolver(\'' + id + '\',\'aprobar\')">✓ Aprobar y enviar</button>' +
       '<button class="ria-btn ria-btn-no" onclick="window._rrhhResolver(\'' + id + '\',\'rechazar\')">✕ Rechazar y enviar</button>' +
-    '</div>';
+    '</div>' +
+    _rrhhFuentesHtml(fuentes);
   if (out) out.innerHTML = html;
 };
 
@@ -558,8 +596,11 @@ async function _rrhhEvaluarUna(a, regimen) {
     "Responde SOLO con JSON: {\"recomendacion\":\"aprobar|denegar|revisar\",\"permiso_tipo\":\"retribuido|no_retribuido|deber_inexcusable|baja_it|otro\",\"fundamento\":\"referencia orientativa\",\"requisitos\":[\"...\"],\"dias\":\"cómputo aplicable\",\"explicacion\":\"1-2 frases\",\"alerta\":\"qué verificar o vacío\"}";
   var um = "Tipo: " + (AUSENCIA_TIPOS[a.tipo] || a.tipo) + ". Motivo: " + (a.motivo || "(no especificado)") +
     ". Fechas: " + a.fecha + (a.fecha_fin && a.fecha_fin !== a.fecha ? " a " + a.fecha_fin : "") + " (" + dias + " día(s)).";
-  var resp = await _rrhhGeminiLegal(sys, um);
-  return _rrhhParseJson(resp) || { recomendacion: "revisar", explicacion: "No se pudo evaluar automáticamente; revísala a mano.", alerta: "" };
+  var fuentes = await _rrhhRetrieveNormativa(a, regimen);
+  var resp = await _rrhhGeminiLegal(_rrhhSysConNormativa(sys, fuentes), um);
+  var j = _rrhhParseJson(resp) || { recomendacion: "revisar", explicacion: "No se pudo evaluar automáticamente; revísala a mano.", alerta: "" };
+  j._fuentes = fuentes;
+  return j;
 }
 
 function _ragRender(pend) {
@@ -584,6 +625,7 @@ function _ragRender(pend) {
       '</div>' +
       (j.explicacion ? '<div class="rag-exp">' + _rrhhEscH(j.explicacion) + (j.fundamento ? ' <span style="color:var(--muted,#888);">(' + _rrhhEscH(j.fundamento) + ')</span>' : '') + '</div>' : '') +
       (j.alerta ? '<div class="ria-alert" style="margin:6px 0;">⚠ ' + _rrhhEscH(j.alerta) + '</div>' : '') +
+      _rrhhFuentesHtml(j._fuentes) +
       '<textarea class="ria-sel rag-msg" id="rag-msg-' + a.id + '" rows="2" placeholder="Mensaje para el profesor…">' + _rrhhEscH(_rrhhComponerMensaje(j)) + '</textarea>' +
       '<div class="rag-actions">' +
         '<button class="ria-btn ria-btn-ok" style="flex:1;" onclick="window._ragResolver(\'' + a.id + '\',\'aprobar\')">✓ Aprobar y enviar</button>' +
