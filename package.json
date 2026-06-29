@@ -17,5 +17,8 @@
     "dotenv": "^16.4.5",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
+  },
+  "dependencies": {
+    "pdf-parse": "^2.4.5"
   }
 }

@@ -1,0 +1,70 @@
+{
+  "_comment": "Documentos GLOBALes (estatales + autonómicos). El 'ambito' de cada doc decide si lo ve cualquier centro (estatal) o solo los de esa CCAA (p.ej. 'valenciana'). Deja el PDF/TXT en esta carpeta y añádelo al array. Luego: node scripts/ingestar_normativa.mjs",
+  "scope": "global",
+  "centro_slug": null,
+  "documentos": [
+    {
+      "archivo": "EBEP_RDL_5-2015_art48_permisos.txt",
+      "titulo": "EBEP — Real Decreto Legislativo 5/2015 (extracto: Art. 48 permisos, Art. 50 vacaciones)",
+      "tipo": "ley",
+      "ambito": "estatal",
+      "fecha_doc": "2015-10-30",
+      "vigente": true,
+      "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11719"
+    },
+    {
+      "archivo": "Ley_15-2010_autoridad_profesorado_CV.txt",
+      "titulo": "Ley 15/2010, de 3 de diciembre, de la Generalitat, de Autoridad del Profesorado (CV)",
+      "tipo": "ley",
+      "ambito": "valenciana",
+      "fecha_doc": "2010-12-03",
+      "vigente": true,
+      "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2010-20015"
+    },
+    {
+      "archivo": "Ley_26-2018_infancia_adolescencia_CV.txt",
+      "titulo": "Ley 26/2018, de 21 de diciembre, de la Generalitat, de derechos y garantías de la Infancia y la Adolescencia (CV)",
+      "tipo": "ley",
+      "ambito": "valenciana",
+      "fecha_doc": "2018-12-21",
+      "vigente": true,
+      "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2019-1986"
+    },
+    {
+      "archivo": "LO_8-2021_LOPIVI.txt",
+      "titulo": "Ley Orgánica 8/2021, de 4 de junio, de protección integral a la infancia y la adolescencia frente a la violencia (LOPIVI)",
+      "tipo": "ley",
+      "ambito": "estatal",
+      "fecha_doc": "2021-06-04",
+      "vigente": true,
+      "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2021-9347"
+    },
+    {
+      "archivo": "LO_3-2018_LOPDGDD.txt",
+      "titulo": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales (LOPDGDD)",
+      "tipo": "ley",
+      "ambito": "estatal",
+      "fecha_doc": "2018-12-05",
+      "vigente": true,
+      "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673"
+    },
+    {
+      "archivo": "Decreto_233-2004_observatorio_convivencia_CV.pdf",
+      "titulo": "Decreto 233/2004, de 22 de octubre, del Consell, por el que se crea el Observatorio para la Convivencia Escolar en los Centros de la Comunitat Valenciana",
+      "tipo": "decreto",
+      "ambito": "valenciana",
+      "fecha_doc": "2004-10-22",
+      "vigente": true,
+      "source_url": "https://dogv.gva.es/datos/2004/10/27/pdf/2004_10896.pdf"
+    },
+    {
+      "archivo": "Decreto_193-2025_convivencia_CV.pdf",
+      "titulo": "Decreto 193/2025, de 12 de diciembre, del Consell, de la convivencia en el sistema educativo de la Comunitat Valenciana",
+      "tipo": "decreto",
+      "ambito": "valenciana",
+      "fecha_doc": "2025-12-12",
+      "vigente": true,
+      "source_url": "https://dogv.gva.es/datos/2025/12/17/pdf/2025_50344_es.pdf"
+    }
+  ]
+}

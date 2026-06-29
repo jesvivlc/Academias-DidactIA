@@ -543,6 +543,10 @@ async function loadUserProfile(user) {
   const tabAgentes = document.getElementById("tab-agentes");
   if (tabAgentes) tabAgentes.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
 
+  // Consulta normativa (RAG): personal del centro (no familia)
+  const tabConsNorm = document.getElementById("tab-consultanormativa");
+  if (tabConsNorm) tabConsNorm.style.display = (["profesional","admin","admin_institucional","director","jefatura","orientador","superadmin"].includes(role)) ? "block" : "none";
+
   const tabSust = document.getElementById("tab-sust");
   if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
 
@@ -677,6 +681,7 @@ function showTab(t) {
   if (t === "actas" && typeof initActas === "function") initActas();
   if (t === "documentos" && typeof initDocumentos === "function") initDocumentos();
   if (t === "agentes" && typeof initAgentesPanel === "function") initAgentesPanel();
+  if (t === "consultanormativa" && typeof initConsultaNormativa === "function") initConsultaNormativa();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {

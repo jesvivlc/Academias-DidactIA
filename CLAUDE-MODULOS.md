@@ -247,6 +247,15 @@
 - Gráfico barras por encuesta (Chart.js inline)
 - Tabla `comunicado_lecturas` UNIQUE(comunicado_id, user_id)
 
+## Consulta normativa — RAG (consulta-normativa.js + EF kb-ask)
+- Tab "⚖️ Consulta normativa" (staff, no familia), junto a Agentes
+- `initConsultaNormativa()`: textarea + chips de ejemplo → `sb.functions.invoke('kb-ask', {pregunta})`
+- Render: respuesta (cita `[Fuente N]`) + tarjetas de fuentes (título, tipo, fecha, % similitud, fragmento, enlace oficial)
+- EF `kb-ask`: identidad/ámbito por JWT+`centros.ccaa` → embebe pregunta (`gemini-embedding-001`, 768d) → RPC `match_kb` → Gemini cita
+- Corpus en `kb_chunks` (scope global/centro). Ingesta: `scripts/ingestar_normativa.mjs` desde `docs/normativa/`
+- `_knEnsureStyles()` idempotente, `escH`/`escArg` de utils.js
+- ✅ Fase 1 activa (2026-06-29): migración aplicada, `kb-ask` desplegada, corpus global ingestado (1644 fragmentos / 7 normas vigentes: EBEP, Ley 15/2010 y 26/2018 CV, Decreto 233/2004 y 193/2025 CV, LOPIVI, LOPDGDD), verificado end-to-end. Ingesta BOE vía XML consolidado (`scripts/_fetch_boe.mjs`); DOGV vía PDF (`pdf-parse` v2). Pendiente: NOF por centro
+
 ## Módulos IB (ib.js)
 - Plazos IB, CAS, Extended Essay
 - Tablas: `ib_tok`, `ee_borradores`, `ib_resultados`, `extended_essay.nota`
