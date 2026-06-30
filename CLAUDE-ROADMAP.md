@@ -210,7 +210,11 @@ El script elimina y regenera todos los datos demo en cada ejecución (DELETE en 
 
 ## Roadmap
 
-### 🧠 PRÓXIMO: RAG / Base de conocimiento normativo (idea aprobada — pendiente de construir)
+### 🧠 RAG / Base de conocimiento normativo (Fases 1+2 ✅ ACTIVAS EN PRODUCCIÓN 2026-06-29)
+
+> **Estado:** Fase 1 desplegada y verificada end-to-end. (1) Migración `kb_normativa.sql` aplicada (pgvector + `centros.ccaa=valenciana` + `kb_chunks` + RPC `match_kb`); (2) EF `kb-ask` desplegada; (3) **corpus global ingestado: 1644 fragmentos / 7 normas vigentes** — EBEP (extracto), Ley 15/2010 Autoridad del Profesorado (CV), Ley 26/2018 Infancia y Adolescencia (CV), Decreto 233/2004 Observatorio Convivencia (CV), Decreto 193/2025 Convivencia (CV), LO 8/2021 LOPIVI, LO 3/2018 LOPDGDD (fuentes BOE vía XML consolidado `scripts/_fetch_boe.mjs` + DOGV en PDF con `pdf-parse` v2); (4) tab "⚖️ Consulta normativa" funcionando. **Cambio clave:** embeddings con `gemini-embedding-001` (768d, Matryoshka; la clave Gemini no tenía `text-embedding-004`). **Fase 2 ✅ (2026-06-29):** el RAG está conectado a (a) **`tipificar-incidencia`** — embebe la descripción, recupera fragmentos reales (Decreto 193/2025, LOPIVI…) y cita el artículo exacto; devuelve `fuentes[]` que la UI muestra; y (b) **copiloto de RRHH** — `kb-ask` modo `retrieve_only` inyecta los artículos (EBEP) en el prompt de evaluación de permisos y muestra las fuentes (individual + agente). Verificado end-to-end (la tipificación de un ciberacoso citó "Art. 19.1.e) del Decreto 193/2025"). **Pendiente:** ampliar corpus (NOF por centro en `docs/normativa/centro/<slug>/`, EBEP/LOMLOE completos) y la **Fase 3** (ingesta desde el módulo Documentos + control de vigencia).
+
+
 
 **Idea (sesión 2026-06-23):** vectorizar la normativa que consultan los centros y montar un RAG (Retrieval-Augmented Generation) para que la IA **cite documentos reales** en lugar de apoyarse en el conocimiento general de Gemini. Hoy el copiloto legal de RRHH, la tipificación de incidencias y orientación van "orientativos" precisamente porque no tienen las fuentes; con RAG pasan a citar el artículo/decreto real.
 

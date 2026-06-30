@@ -1,0 +1,6 @@
+{
+  "_comment": "Documentos del CENTRO (NOF, PEC, normativa interna). Solo los ve el personal de este centro (RLS). 'centro_slug' debe coincidir con centros.slug. Deja el archivo en esta carpeta y añádelo al array.",
+  "scope": "centro",
+  "centro_slug": "ies-bunol",
+  "documentos": []
+}

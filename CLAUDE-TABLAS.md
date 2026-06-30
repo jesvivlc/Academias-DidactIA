@@ -67,6 +67,7 @@
 | `mensajes` | id, centro_id, alumno_id (CASCADE), alumno_nombre, familia_id (→profiles), remitente_id (→profiles), de_familia (bool: true=familia→centro/false=centro→familia), texto, leido (bool DEFAULT false), created_at | Mensajería familia ↔ centro, agrupada por alumno. RLS `msg_familia` (familia: solo su hilo, remitente=familia_id) + `msg_staff` (staff: todos los hilos del centro, excl. familia). Push en cada mensaje. Módulo `js/mensajes.js`. ✅ aplicado 2026-06-19 |
 | `personas_autorizadas` | id, centro_id, alumno_id (CASCADE), nombre, relacion, dni, telefono, creado_por (→profiles), created_at | Personas autorizadas a recoger al alumno. RLS `pa_familia` (familia: sus hijos) + `pa_staff` (staff del centro). CRUD en ficha Alumnos (admin/profesional). ✅ aplicado 2026-06-19 |
 | `comunicado_lecturas` | centro_id, comunicado_id (CASCADE), user_id (NOT NULL), created_at; UNIQUE(comunicado_id, user_id) | Registro central de lectura de comunicados (se inserta al abrir uno, `_comMarkLeido` en `js/comunicados.js`). RLS `comlec_own_rw` (propio) + `comlec_staff_read` (staff). Alimenta el dashboard de participación (`js/participacion.js`). |
+| `kb_chunks` | id, scope ('global'\|'centro'), centro_id (nullable; NULL si global), ambito ('estatal'\|'valenciana'\|…), doc_titulo, doc_tipo (ley/decreto/instruccion/convenio/nof/pec/otro), fecha_doc, vigente (bool), chunk_index, chunk_text, **embedding vector(768)**, source_url, created_at; CHECK coherencia scope↔centro_id; índice **HNSW** (vector_cosine_ops) | **RAG normativo (Fase 1).** Fragmentos de normativa vectorizados (Gemini `gemini-embedding-001`, 768d Matryoshka). RLS `kb_global_read` (authenticated lee global) + `kb_centro_read` (centro→su centro/superadmin); escritura solo service_role (ingesta). Búsqueda vía RPC `match_kb`. Ingesta: `scripts/ingestar_normativa.mjs` desde `docs/normativa/`. ✅ migración aplicada 2026-06-29 (`supabase/migrations/kb_normativa.sql`); corpus global ingestado (1644 fragmentos / 7 normas: EBEP, Ley 15/2010 y 26/2018 CV, Decreto 233/2004 y 193/2025 CV, LOPIVI, LOPDGDD). Módulo `js/consulta-normativa.js` + EF `kb-ask`. |
 | `comentarios_competenciales` | id, centro_id (NOT NULL→centros), alumno_id (→alumnos, nullable), alumno_nombre (NOT NULL), grupo, asignatura, evaluacion, **niveles** (jsonb `{CCL:1-4, STEM:1-4, …}`), comentario (text), generado_por (→auth.users), updated_at; UNIQUE(centro_id, alumno_nombre, asignatura, evaluacion) | Evaluación por competencias clave LOMLOE por alumno/asignatura/evaluación. 1=Iniciado, 2=En proceso, 3=Adquirido, 4=Avanzado. RLS `comp_ley_centro` (centro + superadmin). ⚠️ **Migración pendiente**: `supabase/migrations/calificaciones_competenciales.sql`. Módulo `js/calificaciones.js` (`_calGenCompetencial`, `_calGuardarCompetencialModal`, `_calLoadCompetencialAdmin`). |
 
 ---
@@ -117,6 +118,7 @@
 | `get_users_with_auth(p_centro_id)` | SECURITY DEFINER. JOIN profiles + auth.users + centros. Admin ve solo su centro; superadmin ve todos |
 | `_caller_rol()` | Helper SECURITY DEFINER para RLS policies sin recursión |
 | `_caller_centro()` | Helper SECURITY DEFINER para RLS policies sin recursión |
+| `match_kb(query_embedding, p_centro_id, p_ambito, match_count)` | SECURITY DEFINER. Similitud coseno sobre `kb_chunks`: filtra `vigente=true` + (global del ámbito `IN ('estatal',p_ambito)`) + (centro propio). Devuelve fragmentos + `similarity`. La invoca la EF `kb-ask`. ⚠️ creada en `kb_normativa.sql` (pendiente). |
 
 ### Módulos operativos por rol
 
@@ -148,6 +150,7 @@
 | Documentos del centro | ✅ (según visible_para) | ✅ | ✅ (+ subir) | ✅ |
 | Participación familiar (pill en Análisis) | — | — | ✅ | ✅ (+director/jefatura) |
 | Agentes IA (panel + 4 agentes asistidos) | — | — | ✅ | ✅ (+director/jefatura) |
+| Consulta normativa (RAG, EF `kb-ask`) | — | ✅ | ✅ | ✅ (+orientador/director/jefatura) |
 | Control asistencia aula (Pasar lista) | — | ✅ | ✅ | ✅ (+director/jefatura) |
 
 `(módulo)` = visible solo si `modulos_activos` del centro lo incluye.
@@ -190,5 +193,6 @@
 <script src="js/agente.js"></script>
 <script src="js/agentes.js"></script>
 <script src="js/agenda.js"></script>
+<script src="js/consulta-normativa.js"></script>
 ```
 > Nota: `js/actas.js` y `js/prevision.js` usan helpers de `informes.js` (`_infEnsureLibs`…) y `guardias.js`/`admin.js` respectivamente — ya cargados antes. `js/plancobertura.js` y `js/agente.js` requieren que `admin.js` y `guardias.js` estén cargados (reutilizan `_sustCalcularLibres`, `registrarGuardiaEnBD`). Módulos sin tab propio: `prevision.js` (botón en Sustituciones), `menu.js` (vista Menú en Comedor + home familia), `plancobertura.js` (botón en Sustituciones), `agente.js` (modal global, llamado desde Agentes + Sustituciones).

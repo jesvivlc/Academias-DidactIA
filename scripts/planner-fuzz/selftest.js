@@ -35,12 +35,14 @@ const dispScn = { grupos:['G1'], tramos, disponibilidad:{ p1:new Set(['lunes_1']
 has('disp', verify(dispScn, { G1:{lunes:{1:{materia_id:'M',profesor_ids:['p1']}}} }, 'sa'), 'disponibilidad');
 none('disp-csp-skips', verify(dispScn, { G1:{lunes:{1:{materia_id:'M',profesor_ids:['p1']}}} }, 'csp'));
 
-// coverage: falta 1 sesión de M (req 2, placed 1)
-has('coverage', verify(goodScn, { G1:{lunes:{1:{materia_id:'M',profesor_ids:['p1']}, 2:{materia_id:'L',profesor_ids:['p2']}}} }, 'csp'), 'coverage');
+// coverage: solo se comprueba en feasible-known. Falta 1 sesión de M (req 2, placed 1)
+const covScn = { grupos:['G1'], tramos, disponibilidad:{}, necesidades:[baseNec('G1','M','p1',2), baseNec('G1','L','p2',1)], meta:{ expected:'feasible-known' } };
+has('coverage', verify(covScn, { G1:{lunes:{1:{materia_id:'M',profesor_ids:['p1']}, 2:{materia_id:'L',profesor_ids:['p2']}}} }, 'csp'), 'coverage');
+none('coverage-no-gate', verify(goodScn, { G1:{lunes:{1:{materia_id:'M',profesor_ids:['p1']}}} }, 'csp')); // meta={} → no se exige cobertura
 
-// soundness
-has('unsound', checkSoundness({ meta:{expected:'impossible'} }, { G1:{ lunes:{ 1:{ materia_id:'M', profesor_ids:[] } } } }), 'unsound-accept');
-eq('feasible-null', checkSoundness({ meta:{expected:'feasible-known'} }, null).some(v=>v.type==='suspect-reject'), true);
+// soundness (solo dirección fiable: feasible-known + null → sospecha)
+eq('feasible-solved (sin suspect)', checkSoundness({ meta:{expected:'feasible-known'} }, { G1:{ lunes:{ 1:{} } } }).length, 0);
+eq('feasible-null → suspect', checkSoundness({ meta:{expected:'feasible-known'} }, null).some(v=>v.type==='suspect-reject'), true);
 
 if (fails) { console.error('\n❌ selftest: ' + fails + ' fallos'); process.exit(1); }
 console.log('\n🎉 selftest OK — el verificador detecta todas las violaciones');

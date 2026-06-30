@@ -61,6 +61,7 @@
 - `aprobarAusencia()`: `_crearSustituciones()` → filas por cada tramo del rango
 - `rechazarAusencia()`: prompt motivo → UPDATE estado+motivo_rechazo
 - Copiloto legal IA: `_rrhhEvaluarConIA()` → Gemini analiza contra EBEP/convenio → panel expandible antes de actuar
+- RAG (Fase 2): `_rrhhRetrieveNormativa()` llama a `kb-ask` (`retrieve_only`) con tipo+motivo+régimen → inyecta los fragmentos reales en el system prompt (`_rrhhSysConNormativa`) para citar el artículo exacto + muestra las fuentes (`_rrhhFuentesHtml`). Cablea evaluación individual y agente
 - `_rrhhAplicar(id, accion, mensaje)`: núcleo compartido por modal individual y agente RRHH
 - IMPORTANTE: `ausencias_profesor` NO tiene `trabajo_alumnos` ni `justificante_url`
 
@@ -246,6 +247,15 @@
 - 6 métricas: push activado / encuestas respondidas / tutorías / autorizaciones salidas / comunicados leídos / promedio global
 - Gráfico barras por encuesta (Chart.js inline)
 - Tabla `comunicado_lecturas` UNIQUE(comunicado_id, user_id)
+
+## Consulta normativa — RAG (consulta-normativa.js + EF kb-ask)
+- Tab "⚖️ Consulta normativa" (staff, no familia), junto a Agentes
+- `initConsultaNormativa()`: textarea + chips de ejemplo → `sb.functions.invoke('kb-ask', {pregunta})`
+- Render: respuesta (cita `[Fuente N]`) + tarjetas de fuentes (título, tipo, fecha, % similitud, fragmento, enlace oficial)
+- EF `kb-ask`: identidad/ámbito por JWT+`centros.ccaa` → embebe pregunta (`gemini-embedding-001`, 768d) → RPC `match_kb` → Gemini cita
+- Corpus en `kb_chunks` (scope global/centro). Ingesta: `scripts/ingestar_normativa.mjs` desde `docs/normativa/`
+- `_knEnsureStyles()` idempotente, `escH`/`escArg` de utils.js
+- ✅ Fase 1 activa (2026-06-29): migración aplicada, `kb-ask` desplegada, corpus global ingestado (1644 fragmentos / 7 normas vigentes: EBEP, Ley 15/2010 y 26/2018 CV, Decreto 233/2004 y 193/2025 CV, LOPIVI, LOPDGDD), verificado end-to-end. Ingesta BOE vía XML consolidado (`scripts/_fetch_boe.mjs`); DOGV vía PDF (`pdf-parse` v2). Pendiente: NOF por centro
 
 ## Módulos IB (ib.js)
 - Plazos IB, CAS, Extended Essay
