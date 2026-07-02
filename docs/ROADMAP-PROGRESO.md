@@ -6,7 +6,7 @@
 ## Estado por fases
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
-- **Fase 2 — Operación diaria:** EN CURSO (inc.1 Asistencia, inc.2 Incidencias, inc.3 Calificaciones/Tareas hechos).
+- **Fase 2 — Operación diaria:** COMPLETADA (Asistencia, Incidencias, Calificaciones/Tareas, Portal profesor, Calendario/Resumen semanal).
 - Fase 3 — Familias y comunicación: pendiente.
 - Fase 4 — Cobros y economía: pendiente.
 - Fase 5 — Inteligencia pedagógica: pendiente.
@@ -14,6 +14,12 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 2 · inc.5 — Calendario + resumen semanal.** SQL `sql/fase2-eventos.sql` (tabla
+  `eventos` + RLS staff read / dirección write). Módulo `js/calendario.js` (tab `calendario`):
+  **Resumen de la semana** determinista (junta eventos ≤7d + exámenes + tareas próximas,
+  agrupado por día tipo secretaría), lista de próximos eventos y alta (título/fecha/hora/tipo/
+  descripción). Nav "Gestión → Calendario". Verificado bajo RLS. **FASE 2 COMPLETA.**
+  Próximo: **Fase 3 · inc.1 — RLS de familia + Portal familia**.
 - **Fase 2 · inc.4 — Portal profesor ("Mi docencia").** Módulo `js/portalprof.js` (solo
   lectura, sin SQL). KPIs (grupos activos, clases hoy, exámenes 7d, ausencias 7d) + 4 paneles:
   **horario de hoy** (grupo_sesiones del día), **próximos exámenes** (tareas tipo examen ≤7d),

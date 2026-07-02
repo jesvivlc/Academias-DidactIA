@@ -228,6 +228,9 @@
         <button class="nav-item" id="nav-notas" data-tab="notas" onclick="showTab('notas')" style="display:none;--nav-color:#6A4C93">
           <i class="ti ti-clipboard-list"></i><span class="nav-item-label">Calificaciones</span>
         </button>
+        <button class="nav-item" id="nav-calendario" data-tab="calendario" onclick="showTab('calendario')" style="display:none;--nav-color:#5B7FA8">
+          <i class="ti ti-calendar"></i><span class="nav-item-label">Calendario</span>
+        </button>
 
         <div class="sb-group-label">Administración</div>
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
@@ -490,6 +493,8 @@
   <div class="panel" id="panel-incidencias2" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-notas" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
+  <div class="panel" id="panel-calendario" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-users" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
     <div class="pg-hdr">
@@ -785,6 +790,7 @@
 <script src="js/incidencias.js"></script>
 <script src="js/calificaciones.js"></script>
 <script src="js/portalprof.js"></script>
+<script src="js/calendario.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -800,7 +806,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', calendario:'Calendario', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -944,6 +950,7 @@
         if (t === 'asistencia' && typeof initAsistencia === 'function') initAsistencia();
         if (t === 'incidencias2' && typeof initIncidencias2 === 'function') initIncidencias2();
         if (t === 'notas' && typeof initNotas === 'function') initNotas();
+        if (t === 'calendario' && typeof initCalendario === 'function') initCalendario();
         if (t === 'pasarlista' && typeof initAsistenciaVista === 'function') initAsistenciaVista();
         if (t === 'agenda' && typeof initAgenda === 'function') initAgenda();
         if (t === 'encuestas' && typeof initEncuestas === 'function') initEncuestas();
