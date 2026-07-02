@@ -6,7 +6,7 @@
 ## Estado por fases
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
-- **Fase 2 — Operación diaria:** EN CURSO (inc.1 Asistencia, inc.2 Incidencias hechos).
+- **Fase 2 — Operación diaria:** EN CURSO (inc.1 Asistencia, inc.2 Incidencias, inc.3 Calificaciones/Tareas hechos).
 - Fase 3 — Familias y comunicación: pendiente.
 - Fase 4 — Cobros y economía: pendiente.
 - Fase 5 — Inteligencia pedagógica: pendiente.
@@ -14,6 +14,14 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 2 · inc.3 — Calificaciones + Tareas/Exámenes.** SQL `sql/fase2-calificaciones.sql`
+  (tablas `calificaciones` y `tareas` + RLS staff read/write). Módulo `js/calificaciones.js`
+  (tab key `notas`): pestaña **Notas** (grupo → alumnos → nota 0–10 + observación por alumno,
+  con etiqueta de evaluación/prueba y fecha → insert) y pestaña **Tareas y exámenes** (por
+  grupo: lista + alta de deber/examen/proyecto con fecha). Nav "Gestión → Calificaciones".
+  Verificado bajo RLS. Familias las leerán en Fase 3.
+  Próximo: **Fase 2 · inc.4 — Portal profesor** (sus grupos/horario + alumnos del día: próximos
+  exámenes, ausencias, notas bajas).
 - **Fase 2 · inc.2 — Incidencias.** SQL `sql/fase2-incidencias.sql` (tabla `incidencias` +
   RLS staff read/write). Módulo `js/incidencias.js` (ids `incidencias2` para no chocar con
   restos previos): KPIs (abiertas/en seguimiento/graves activas), filtros por estado y
