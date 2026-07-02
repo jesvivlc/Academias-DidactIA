@@ -5,7 +5,7 @@
 
 ## Estado por fases
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
-- **Fase 1 — Datos maestros:** EN CURSO.
+- **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
 - Fase 2 — Operación diaria: pendiente.
 - Fase 3 — Familias y comunicación: pendiente.
 - Fase 4 — Cobros y economía: pendiente.
@@ -14,6 +14,12 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 1 · inc.3 — Horario semanal.** Módulo `js/horario.js` (solo lectura). Parrilla
+  semanal (Lun–Vie, +finde si hay sesiones) cruzando `grupo_sesiones`+`grupos`+`profesores`,
+  chips coloreados por grupo con hora/profesor/aula, filtro por grupo o profesor, y
+  **detección de solapes de profesor y de aula** con panel de avisos. Nav "Gestión → Horario".
+  **Fase 1 COMPLETA.** Próximo: **Fase 2 · inc.1 — Control de asistencia** (registrar faltas
+  por sesión/día + aviso a familia + detección de ausencias repetidas + estadísticas).
 - **Fase 1 · inc.2 — Grupos + Profesores.** Módulo `js/grupos.js` (sin SQL nuevo; usa
   tablas de inc.1). Dos pestañas: **Grupos** (CRUD nombre/asignatura/nivel/profesor/aula/
   capacidad/cuota/color, **sesiones semanales** día+horario con validación de solape, y
