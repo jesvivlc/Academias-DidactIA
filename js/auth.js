@@ -505,6 +505,8 @@ async function loadUserProfile(user) {
   if (navCalendario) navCalendario.style.display = _staffAlm ? "flex" : "none";
   const navComunic = document.getElementById("nav-comunicaciones");
   if (navComunic) navComunic.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
+  const navCobros = document.getElementById("nav-cobros");
+  if (navCobros) navCobros.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   const grpGestion = document.getElementById("sb-grp-gestion");
   if (grpGestion) grpGestion.style.display = _staffAlm ? "" : "none";
 

@@ -8,12 +8,19 @@
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
 - **Fase 2 — Operación diaria:** COMPLETADA (Asistencia, Incidencias, Calificaciones/Tareas, Portal profesor, Calendario/Resumen semanal).
 - **Fase 3 — Familias y comunicación:** COMPLETADA (RLS familia + Portal familia + Comunicaciones; Chat IA 24h con hook pendiente de Gemini).
-- Fase 4 — Cobros y economía: pendiente.
+- **Fase 4 — Cobros y economía:** COMPLETADA (pagos, impagos, económico, factura PDF).
 - Fase 5 — Inteligencia pedagógica: pendiente.
 - Fase 6 — Crecimiento: pendiente.
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 4 — Cobros (completa en un incremento).** SQL `sql/fase4-cobros.sql` (tabla `pagos`
+  + RLS staff/dirección). Módulo `js/cobros.js` (tab `cobros`): KPIs (ingresos del mes, nº
+  pagos, impagos, previsión), registrar pago (alumno/concepto/importe/método/fecha/periodo),
+  **bloque IMPAGOS** (matrículas activas con cuota sin pago del mes → botón "Registrar cobro"),
+  **Economía** (ingresos, previsión=Σcuotas activas, bajas del mes, ingresos por método),
+  pagos recientes y **Factura PDF** por pago con jsPDF. Nav "Gestión → Cobros". Verificado
+  bajo RLS. **FASE 4 COMPLETA.** Próximo: **Fase 5 · Detección de riesgo (determinista)**.
 - **Fase 3 · inc.3 — Chat IA 24h (HOOK, no desplegable sin clave).** La carpeta
   `supabase/functions/chat` existe (heredada de Centros) y `js/chat.js` ya apunta a
   `/functions/v1/chat`. Para activar el asistente IA hay que: (1) tener el **CLI de Supabase**

@@ -239,6 +239,9 @@
         <button class="nav-item" id="nav-comunicaciones" data-tab="comunicaciones" onclick="showTab('comunicaciones')" style="display:none;--nav-color:#3B6D11">
           <i class="ti ti-speakerphone"></i><span class="nav-item-label">Comunicaciones</span>
         </button>
+        <button class="nav-item" id="nav-cobros" data-tab="cobros" onclick="showTab('cobros')" style="display:none;--nav-color:#B8860B">
+          <i class="ti ti-cash"></i><span class="nav-item-label">Cobros</span>
+        </button>
 
         <div class="sb-group-label">Administración</div>
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
@@ -507,6 +510,8 @@
   <div class="panel" id="panel-calendario" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-comunicaciones" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
+  <div class="panel" id="panel-cobros" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-users" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
     <div class="pg-hdr">
@@ -805,6 +810,7 @@
 <script src="js/calendario.js"></script>
 <script src="js/portalfam.js"></script>
 <script src="js/comunicaciones.js"></script>
+<script src="js/cobros.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -820,7 +826,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', calendario:'Calendario', comunicaciones:'Comunicaciones', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', calendario:'Calendario', comunicaciones:'Comunicaciones', cobros:'Cobros', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -967,6 +973,7 @@
         if (t === 'notas' && typeof initNotas === 'function') initNotas();
         if (t === 'calendario' && typeof initCalendario === 'function') initCalendario();
         if (t === 'comunicaciones' && typeof initComunicaciones === 'function') initComunicaciones();
+        if (t === 'cobros' && typeof initCobros === 'function') initCobros();
         if (t === 'pasarlista' && typeof initAsistenciaVista === 'function') initAsistenciaVista();
         if (t === 'agenda' && typeof initAgenda === 'function') initAgenda();
         if (t === 'encuestas' && typeof initEncuestas === 'function') initEncuestas();
