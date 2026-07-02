@@ -14,6 +14,13 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 2 · inc.4 — Portal profesor ("Mi docencia").** Módulo `js/portalprof.js` (solo
+  lectura, sin SQL). KPIs (grupos activos, clases hoy, exámenes 7d, ausencias 7d) + 4 paneles:
+  **horario de hoy** (grupo_sesiones del día), **próximos exámenes** (tareas tipo examen ≤7d),
+  **ausencias recientes** (asistencia ausente ≤7d) y **notas para reforzar** (calificaciones
+  <5 ≤30d). Nav "Gestión → Mi docencia" (tab `docencia`). Muestra todo el centro hasta que se
+  asocien cuentas de profesor a su ficha. Verificado bajo RLS.
+  Próximo: **Fase 2 · inc.5 — Calendario + recordatorios + resumen semanal** (cierra Fase 2).
 - **Fase 2 · inc.3 — Calificaciones + Tareas/Exámenes.** SQL `sql/fase2-calificaciones.sql`
   (tablas `calificaciones` y `tareas` + RLS staff read/write). Módulo `js/calificaciones.js`
   (tab key `notas`): pestaña **Notas** (grupo → alumnos → nota 0–10 + observación por alumno,

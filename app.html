@@ -207,6 +207,9 @@
         </button>
 
         <div class="sb-group-label" id="sb-grp-gestion" style="display:none">Gestión</div>
+        <button class="nav-item" id="nav-docencia" data-tab="docencia" onclick="showTab('docencia')" style="display:none;--nav-color:#4D6FA8">
+          <i class="ti ti-chalkboard"></i><span class="nav-item-label">Mi docencia</span>
+        </button>
         <button class="nav-item" id="nav-alumnos" data-tab="alumnos" onclick="showTab('alumnos')" style="display:none;--nav-color:#2A7DA3">
           <i class="ti ti-users-group"></i><span class="nav-item-label">Alumnos</span>
         </button>
@@ -474,6 +477,8 @@
   </div>
 
   <!-- USERS PANEL -->
+  <div class="panel" id="panel-docencia" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
   <div class="panel" id="panel-alumnos" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-grupos" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
@@ -779,6 +784,7 @@
 <script src="js/asistencia.js"></script>
 <script src="js/incidencias.js"></script>
 <script src="js/calificaciones.js"></script>
+<script src="js/portalprof.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -794,7 +800,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -931,6 +937,7 @@
         var titleEl = document.getElementById('topbar-title');
         if (titleEl) titleEl.textContent = TITLES[t] || t;
         closeMasDrawer();
+        if (t === 'docencia' && typeof initDocencia === 'function') initDocencia();
         if (t === 'alumnos' && typeof initAlumnos === 'function') initAlumnos();
         if (t === 'grupos' && typeof initGrupos === 'function') initGrupos();
         if (t === 'horario' && typeof initHorario === 'function') initHorario();

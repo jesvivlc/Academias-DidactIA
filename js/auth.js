@@ -480,6 +480,8 @@ async function loadUserProfile(user) {
 
   // Alumnos / Matrícula (Fase 1): personal de la academia (no familia)
   const _staffAlm = ["admin","admin_institucional","director","jefatura","profesional","orientador","superadmin"].includes(role);
+  const navDocencia = document.getElementById("nav-docencia");
+  if (navDocencia) navDocencia.style.display = _staffAlm ? "flex" : "none";
   const navAlumnos = document.getElementById("nav-alumnos");
   if (navAlumnos) navAlumnos.style.display = _staffAlm ? "flex" : "none";
   const navGrupos = document.getElementById("nav-grupos");
