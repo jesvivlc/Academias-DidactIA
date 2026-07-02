@@ -14,6 +14,12 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 3 · inc.2 — Comunicaciones (cola).** SQL `sql/fase3-comunicaciones.sql` (tabla
+  `comunicaciones` + RLS staff read / dirección write). Módulo `js/comunicaciones.js` (tab
+  `comunicaciones`): alta con destinatario (todos/grupo/alumno), canal (email/push/whatsapp),
+  título y cuerpo → INSERT estado «pendiente» + historial. Aviso en UI de "modo borrador".
+  ⚠️ **SIN envío real**: requiere Resend (email), VAPID (push) y WhatsApp Business API. Verificado
+  bajo RLS. Próximo: **Fase 3 · inc.3 — Chat IA 24h** (comprobar EF/Gemini).
 - **Fase 3 · inc.1 — RLS de familia + Portal familia.** SQL `sql/fase3-rls-familia.sql`:
   función `_mis_alumnos()` + políticas `*_fam_read` (SELECT) en asistencia/calificaciones/
   incidencias/matriculas (por alumno_id de sus hijos) y tareas/grupos/grupo_sesiones (por los
