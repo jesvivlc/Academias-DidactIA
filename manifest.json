@@ -1,8 +1,8 @@
 {
   "id": "/app.html",
-  "name": "DidactIA",
+  "name": "DidactIA Academias",
   "short_name": "DidactIA",
-  "description": "Tu ventana al día a día del centro: horario, comedor, comunicados y calificaciones.",
+  "description": "Gestión para academias: horarios, clases, comunicados y asistente con IA.",
   "start_url": "/app.html",
   "scope": "/",
   "display": "standalone",

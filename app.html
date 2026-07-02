@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DidactIA — Asistente de Centro Educativo</title>
+<title>DidactIA Academias — Gestión para academias</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -38,7 +38,7 @@
 <div id="setup">
   <div class="setup-card">
     <div class="setup-logo" id="brand-logo">D</div>
-    <div class="setup-title" id="auth-title">Bienvenido a DidactIA</div>
+    <div class="setup-title" id="auth-title">Bienvenido a DidactIA Academias</div>
     <div class="setup-sub" id="auth-sub">Accede con tu cuenta para continuar.</div>
 
     <!-- LOGIN FORM -->
@@ -51,7 +51,7 @@
         <label class="setup-label">Contraseña</label>
         <input class="setup-input" id="login-pass" type="password" placeholder="••••••••" />
       </div>
-      <button class="setup-btn" onclick="doLogin()">Entrar a DidactIA</button>
+      <button class="setup-btn" onclick="doLogin()">Entrar</button>
       <div class="setup-err" id="login-err"></div>
       <span class="setup-link" onclick="showResetRequest()">¿Olvidaste tu contraseña?</span>
       <span class="setup-link" onclick="showRegister()">¿No tienes cuenta? Regístrate</span>
@@ -103,8 +103,8 @@
         </div>
         <div class="setup-field">
           <label class="setup-label">Código de acceso</label>
-          <input class="setup-input" id="reg-codigo" type="text" placeholder="El código que te dio el centro" style="text-transform:uppercase;" />
-          <div class="setup-hint">El administrador del centro te lo proporciona. Hay un código para familias y otro para profesionales.</div>
+          <input class="setup-input" id="reg-codigo" type="text" placeholder="El código que te dio la academia" style="text-transform:uppercase;" />
+          <div class="setup-hint">La dirección de la academia te lo proporciona. Hay un código para familias y otro para profesionales.</div>
         </div>
         <button class="setup-btn" onclick="doRegisterStep1()">Siguiente →</button>
         <div class="setup-err" id="reg-err"></div>
@@ -116,7 +116,7 @@
         <div style="background:var(--ink-ll);border:1px solid var(--ink-l);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--ink);">
           ✅ Centro verificado: <strong id="centro-verificado">—</strong>
         </div>
-        <div class="setup-sub" style="margin-bottom:16px;">¿Tienes hijos matriculados en este centro? Vincúlalos a tu cuenta para acceder a su información.</div>
+        <div class="setup-sub" style="margin-bottom:16px;">¿Tienes hijos matriculados en esta academia? Vincúlalos a tu cuenta para acceder a su información.</div>
         <div id="alumnos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:200px;overflow-y:auto;"></div>
         <div id="alumnos-seleccionados" style="font-size:12px;color:var(--ink);margin-bottom:8px;display:none;">
           ✓ <span id="sel-count">0</span> alumno(s) seleccionado(s)
@@ -136,36 +136,9 @@
   <div class="brand"><div class="brand-logo">D</div></div>
 </header>
 <nav class="tabs" id="app-tabs" style="display:none">
-  <div class="tab active" id="tab-chat"        onclick="showTab('chat')">💬 Chatbot</div>
-  <div class="tab" id="tab-alumnos"            onclick="showTab('alumnos')"     style="display:none">🎓 Alumnos</div>
-  <div class="tab" id="tab-pasarlista"         onclick="showTab('pasarlista')"  style="display:none">📋 Pasar lista</div>
-  <div class="tab" id="tab-tutorias"           onclick="showTab('tutorias')"    style="display:none">📅 Tutorías</div>
-  <div class="tab" id="tab-mensajes"           onclick="showTab('mensajes')"   style="display:none">💬 Mensajes</div>
-  <div class="tab" id="tab-agenda"             onclick="showTab('agenda')"      style="display:none">🗓️ Agenda</div>
-  <div class="tab" id="tab-encuestas"          onclick="showTab('encuestas')"   style="display:none">📊 Encuestas</div>
-  <div class="tab" id="tab-recursos"           onclick="showTab('recursos')"    style="display:none">📦 Recursos</div>
-  <div class="tab" id="tab-actas"              onclick="showTab('actas')"       style="display:none">📝 Actas</div>
-  <div class="tab" id="tab-documentos"         onclick="showTab('documentos')"  style="display:none">📁 Documentos</div>
-  <div class="tab" id="tab-agentes"            onclick="showTab('agentes')"     style="display:none">🤖 Agentes</div>
-  <div class="tab" id="tab-consultanormativa"  onclick="showTab('consultanormativa')" style="display:none">⚖️ Consulta normativa</div>
-  <div class="tab" id="tab-comedor"            onclick="showTab('comedor')"     style="display:none">🍽️ Comedor</div>
-  <div class="tab" id="tab-admin"              onclick="showTab('admin')">⚙️ Administración</div>
-  <div class="tab" id="tab-sust"               onclick="showTab('sust')"        style="display:none">🔄 Sustituciones</div>
-  <div class="tab" id="tab-incidencias"        onclick="showTab('incidencias')" style="display:none">⚠️ Incidencias</div>
-  <div class="tab" id="tab-espacios"           onclick="showTab('espacios')"    style="display:none">🏫 Espacios</div>
+  <div class="tab active" id="tab-chat"        onclick="showTab('chat')">💬 Inicio</div>
   <div class="tab" id="tab-asistente" style="display:none"></div>
   <div class="tab" id="tab-users"              onclick="showTab('users')"       style="display:none">👥 Usuarios</div>
-  <div class="tab" id="tab-rrhh"               onclick="showTab('rrhh')"        style="display:none">👔 RRHH</div>
-  <div class="tab" id="tab-ib"                 onclick="showTab('ib')"          style="display:none">🎓 IB</div>
-  <div class="tab" id="tab-comunicados"        onclick="showTab('comunicados')" style="display:none">📢 Comunicados</div>
-  <div class="tab" id="tab-avisos"             onclick="showTab('avisos')"      style="display:none">🔔 Avisos</div>
-  <div class="tab" id="tab-planner"           onclick="showTab('planner')"     style="display:none">📅 Planner</div>
-  <div class="tab" id="tab-analisis"         onclick="showTab('analisis')"    style="display:none">📊 Análisis</div>
-  <div class="tab" id="tab-calificaciones"   onclick="showTab('calificaciones')" style="display:none">📝 Calificaciones</div>
-  <div class="tab" id="tab-materiales"        onclick="showTab('materiales')"     style="display:none">📎 Materiales</div>
-  <div class="tab" id="tab-orientacion"       onclick="showTab('orientacion')"    style="display:none">🧭 Orientación</div>
-  <div class="tab" id="tab-salidas"           onclick="showTab('salidas')"        style="display:none">🚌 Salidas</div>
-  <div class="tab" id="tab-calidad"           onclick="showTab('calidad')"         style="display:none">⭐ Calidad</div>
 </nav>
 
 <!-- APP SHELL -->
@@ -187,12 +160,6 @@
       <span class="topbar-ctr-name" id="topbar-ctr-name">—</span>
     </div>
     <div class="topbar-right">
-      <button class="topbar-icon-btn" id="topbar-search-btn" title="Buscar (⌘K)" onclick="openCommandPalette()">
-        <i class="ti ti-search"></i>
-      </button>
-      <button class="topbar-icon-btn" id="push-notif-btn" title="Activar notificaciones push" onclick="togglePushNotification()" style="display:none;">
-        <i class="ti ti-bell" id="push-notif-icon"></i>
-      </button>
       <div class="topbar-profile">
         <div class="topbar-avatar" id="topbar-avatar" title="">U</div>
         <div class="topbar-profile-meta">
@@ -238,98 +205,10 @@
           <i class="ti ti-sparkles"></i><span class="nav-item-label">Asistente IA</span>
           <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
         </button>
-        <button class="nav-item" id="nav-agentes" data-tab="agentes" onclick="showTab('agentes')" style="display:none;--nav-color:#C76B3D">
-          <i class="ti ti-robot"></i><span class="nav-item-label">Agentes</span>
-          <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
-        </button>
-        <button class="nav-item" id="nav-consultanormativa" data-tab="consultanormativa" onclick="showTab('consultanormativa')" style="display:none;--nav-color:#7b5e2a">
-          <i class="ti ti-scale"></i><span class="nav-item-label">Consulta normativa</span>
-          <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
-        </button>
-
-        <div class="sb-group-label">Docencia</div>
-        <button class="nav-item" id="nav-alumnos" data-tab="alumnos" onclick="showTab('alumnos')" style="display:none;--nav-color:#2A7DA3">
-          <i class="ti ti-users-group"></i><span class="nav-item-label">Alumnos</span>
-        </button>
-        <button class="nav-item" id="nav-pasarlista" data-tab="pasarlista" onclick="showTab('pasarlista')" style="display:none;--nav-color:#0F6E56">
-          <i class="ti ti-checkbox"></i><span class="nav-item-label">Pasar lista</span>
-        </button>
-        <button class="nav-item" id="nav-tutorias" data-tab="tutorias" onclick="showTab('tutorias')" style="display:none;--nav-color:#7A5C9E">
-          <i class="ti ti-calendar-user"></i><span class="nav-item-label">Tutorías</span>
-        </button>
-        <button class="nav-item" id="nav-mensajes" data-tab="mensajes" onclick="showTab('mensajes')" style="display:none;--nav-color:#2E8B7A">
-          <i class="ti ti-message-circle"></i><span class="nav-item-label">Mensajes</span>
-          <span class="nav-badge" id="sb-badge-msg" style="display:none">0</span>
-        </button>
-        <button class="nav-item" id="nav-sust" data-tab="sust" onclick="showTab('sust')" style="display:none;--nav-color:#185FA5">
-          <i class="ti ti-replace"></i><span class="nav-item-label">Sustituciones</span>
-          <span class="nav-badge" id="sb-badge-sust" style="display:none">0</span>
-        </button>
-        <button class="nav-item" id="nav-incidencias" data-tab="incidencias" onclick="showTab('incidencias')" style="display:none;--nav-color:#A32D2D">
-          <i class="ti ti-alert-triangle"></i><span class="nav-item-label">Incidencias</span>
-          <span class="nav-badge" id="sb-badge-inc" style="display:none">0</span>
-        </button>
-        <button class="nav-item" id="nav-comunicados" data-tab="comunicados" onclick="showTab('comunicados')" style="display:none;--nav-color:#3B6D11">
-          <i class="ti ti-speakerphone"></i><span class="nav-item-label">Comunicados</span>
-          <span class="nav-badge" id="sb-badge-com" style="display:none">0</span>
-        </button>
-        <button class="nav-item" id="nav-comedor" data-tab="comedor" onclick="showTab('comedor')" style="display:none;--nav-color:#0F6E56">
-          <i class="ti ti-tools-kitchen-2"></i><span class="nav-item-label">Comedor</span>
-        </button>
-        <button class="nav-item" id="nav-calificaciones" data-tab="calificaciones" onclick="showTab('calificaciones')" style="display:none;--nav-color:#6A4C93">
-          <i class="ti ti-clipboard-list"></i><span class="nav-item-label">Calificaciones</span>
-        </button>
-        <button class="nav-item" id="nav-materiales" data-tab="materiales" onclick="showTab('materiales')" style="display:none;--nav-color:#1F7A8C">
-          <i class="ti ti-paperclip"></i><span class="nav-item-label">Materiales</span>
-        </button>
-        <button class="nav-item" id="nav-salidas" data-tab="salidas" onclick="showTab('salidas')" style="display:none;--nav-color:#C76B3D">
-          <i class="ti ti-bus"></i><span class="nav-item-label">Salidas</span>
-        </button>
-
-        <div class="sb-group-label">Centro</div>
-        <button class="nav-item" id="nav-agenda" data-tab="agenda" onclick="showTab('agenda')" style="display:none;--nav-color:#5B7FA8">
-          <i class="ti ti-calendar"></i><span class="nav-item-label">Agenda</span>
-        </button>
-        <button class="nav-item" id="nav-encuestas" data-tab="encuestas" onclick="showTab('encuestas')" style="display:none;--nav-color:#1F7A8C">
-          <i class="ti ti-chart-bar"></i><span class="nav-item-label">Encuestas</span>
-        </button>
-        <button class="nav-item" id="nav-documentos" data-tab="documentos" onclick="showTab('documentos')" style="display:none;--nav-color:#3E6B8A">
-          <i class="ti ti-folder"></i><span class="nav-item-label">Documentos</span>
-        </button>
-        <button class="nav-item" id="nav-ib" data-tab="ib" onclick="showTab('ib')" style="display:none;--nav-color:#534AB7">
-          <i class="ti ti-school"></i><span class="nav-item-label">IB</span>
-        </button>
-        <button class="nav-item" id="nav-rrhh" data-tab="rrhh" onclick="showTab('rrhh')" style="display:none;--nav-color:#BA7517">
-          <i class="ti ti-briefcase"></i><span class="nav-item-label">RRHH</span>
-        </button>
-        <button class="nav-item" id="nav-espacios" data-tab="espacios" onclick="showTab('espacios')" style="display:none;--nav-color:#888780">
-          <i class="ti ti-door"></i><span class="nav-item-label">Espacios</span>
-        </button>
-        <button class="nav-item" id="nav-recursos" data-tab="recursos" onclick="showTab('recursos')" style="display:none;--nav-color:#9A6A3C">
-          <i class="ti ti-package"></i><span class="nav-item-label">Recursos</span>
-        </button>
-        <button class="nav-item" id="nav-orientacion" data-tab="orientacion" onclick="showTab('orientacion')" style="display:none;--nav-color:#0E7C7B">
-          <i class="ti ti-compass"></i><span class="nav-item-label">Orientación</span>
-        </button>
 
         <div class="sb-group-label">Administración</div>
-        <button class="nav-item" id="nav-analisis" data-tab="analisis" onclick="showTab('analisis')" style="display:none;--nav-color:#283593">
-          <i class="ti ti-chart-histogram"></i><span class="nav-item-label">Análisis</span>
-        </button>
-        <button class="nav-item" id="nav-calidad" data-tab="calidad" onclick="showTab('calidad')" style="display:none;--nav-color:#7b5e2a">
-          <i class="ti ti-award"></i><span class="nav-item-label">Calidad</span>
-        </button>
-        <button class="nav-item" id="nav-actas" data-tab="actas" onclick="showTab('actas')" style="display:none;--nav-color:#5a4a8a">
-          <i class="ti ti-notes"></i><span class="nav-item-label">Actas</span>
-        </button>
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
           <i class="ti ti-users"></i><span class="nav-item-label">Usuarios</span>
-        </button>
-        <button class="nav-item" id="nav-admin" data-tab="admin" onclick="showTab('admin')" style="--nav-color:#546e7a">
-          <i class="ti ti-settings"></i><span class="nav-item-label">Administración</span>
-        </button>
-        <button class="nav-item" id="nav-planner" data-tab="planner" onclick="showTab('planner')" style="display:none;--nav-color:#4527a0">
-          <i class="ti ti-calendar-event"></i><span class="nav-item-label">Planner</span>
         </button>
 
       </div><!-- /sb-nav -->
@@ -371,7 +250,7 @@
           <div class="home-search">
             <i class="ti ti-search home-search-ico"></i>
             <input class="home-search-inp" id="home-search-admin" placeholder="Buscar alumnos, profesores, aulas…"
-                   autocomplete="off" readonly onclick="openCommandPalette()">
+                   autocomplete="off" readonly>
             <span class="home-search-kbd">⌘K</span>
           </div>
         </div>
@@ -455,7 +334,7 @@
           <div class="home-search">
             <i class="ti ti-search home-search-ico"></i>
             <input class="home-search-inp" id="home-search-staff" placeholder="Buscar alumnos, profesores, aulas…"
-                   autocomplete="off" readonly onclick="openCommandPalette()">
+                   autocomplete="off" readonly>
             <span class="home-search-kbd">⌘K</span>
           </div>
         </div>
@@ -488,8 +367,8 @@
           </button>
         </div>
 
-        <!-- Estado del centro hoy (métricas accionables, rellenadas por renderHomeMetrics) -->
-        <div class="home-quick-label">Estado del centro hoy</div>
+        <!-- Estado de la academia hoy (métricas accionables, rellenadas por renderHomeMetrics) -->
+        <div class="home-quick-label">Estado de la academia hoy</div>
         <div class="home-metrics">
           <button class="home-metric" onclick="showTab('sust');setTimeout(function(){if(typeof loadSustituciones==='function')loadSustituciones('hoy');},150)">
             <div class="home-metric-main">
@@ -574,573 +453,6 @@
 
   </div>
 
-  <!-- ADMIN -->
-  <div class="panel" id="panel-admin">
-    <div class="pg-hdr">
-      <div><div class="pg-title">Administración</div><div class="pg-sub">Base de conocimiento de <span id="adm-ctr">—</span></div></div>
-      <button class="btn btn-p" onclick="loadAdmin()">↺ Recargar</button>
-    </div>
-    <div class="stats">
-      <div class="stat"><div class="stat-n" id="s-info">—</div><div class="stat-l">Configs en info_centro</div></div>
-      <div class="stat"><div class="stat-n" id="s-hor">—</div><div class="stat-l">Entradas de horario</div></div>
-      <div class="stat"><div class="stat-n">2</div><div class="stat-l">Roles activos</div></div>
-      <div class="stat"><div class="stat-n">✓</div><div class="stat-l">Multi-tenant activo</div><div class="stat-ch">Aislado por centro_id</div></div>
-    </div>
-    <div class="banner">ℹ️ &nbsp;Solo ves los datos de <strong id="bnr-ctr">este centro</strong>. Ningún otro centro puede acceder a esta información.</div>
-    <div class="grid2">
-
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico o">✏️</div><div><div class="card-title">Información del centro</div></div></div>
-        <div class="card-desc">Edita los datos de tu tabla <code>info_centro</code>. Estos se inyectan como contexto en cada respuesta del chatbot.</div>
-        <div id="info-fields"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando de Supabase…</div></div>
-        <button class="btn btn-p" onclick="saveInfo()">💾 Guardar en Supabase</button>
-        <div id="save-msg" style="font-size:12px;display:none;margin-top:-6px;"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico b">📅</div><div><div class="card-title">Horarios del centro</div></div></div>
-        <div class="card-desc">Datos en tiempo real de tu tabla <code>horarios</code>, filtrados por <code>centro_id</code>.</div>
-        <div id="hor-container" style="overflow-x:auto;"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:12px;"><span class="spin">⟳</span> Cargando…</div></div>
-        <button class="btn btn-s" onclick="loadHorarios()">↺ Actualizar</button>
-      </div>
-
-    </div>
-
-  </div>
-
-  <!-- SUSTITUCIONES PANEL -->
-  <div class="panel" id="panel-sust" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-
-    <!-- ── VISTA ADMIN / SUPERADMIN ── -->
-    <div id="sust-vista-admin" style="display:none;" class="sust-admin-view">
-
-      <!-- Page header -->
-      <div class="sust-page-hdr">
-        <div>
-          <div class="pg-eyebrow">OPERACIÓN · SUSTITUCIONES</div>
-          <h1 class="sust-page-title">Guardias de hoy</h1>
-          <div class="pg-sub" id="sust-sub-info">Gestión de guardias y sustituciones</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
-          <button class="btn btn-s" onclick="cargarProfesoresLibresEnSelect(); loadSustituciones()">↺ Actualizar</button>
-          <button class="btn btn-s" onclick="exportarSustituciones()"><i class="ti ti-download"></i> Exportar parte</button>
-          <button class="btn btn-s" onclick="window.preverCobertura && preverCobertura()"><i class="ti ti-calendar-stats"></i> Previsión</button>
-          <button class="btn btn-s" onclick="window.planCoberturaDia && planCoberturaDia()"><i class="ti ti-list-check"></i> Plan manual</button>
-          <button class="btn-ia" onclick="window.agenteSustituciones && agenteSustituciones()"><i class="ti ti-robot"></i> Agente: cubrir el día</button>
-        </div>
-      </div>
-
-      <!-- Filter row -->
-      <div class="sust-filter-row">
-        <div id="sust-filter-bar">
-          <button id="sust-btn-hoy"    onclick="loadSustituciones('hoy')">Hoy</button>
-          <button id="sust-btn-semana" onclick="loadSustituciones('semana')">Esta semana</button>
-          <button id="sust-btn-todo"   onclick="loadSustituciones('todo')">Solo pendientes</button>
-        </div>
-        <span class="sust-ts">Última actualización · <span id="sust-ts-now">ahora mismo</span></span>
-      </div>
-
-      <!-- Main table -->
-      <div id="sust-container" class="sust-table-wrap"></div>
-      <div id="agent-result" style="display:none;margin-top:12px;"></div>
-
-      <!-- IA Banner -->
-      <div class="sust-ia-banner">
-        <div class="sust-ia-logo">
-          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="38" height="38">
-            <rect width="100" height="100" rx="22" fill="#1F2C4F"/>
-            <text x="50" y="58" text-anchor="middle" font-family="Geist,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
-            <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#F4A847"/>
-          </svg>
-        </div>
-        <div class="sust-ia-copy">
-          <strong>DidactIA te sugiere quién cubre cada tramo sin cubrir.</strong>
-          <span>Cruza el horario del día, descarta a quien tiene clase o está ausente y propone al profesor libre con menos guardias. Tú confirmas antes de asignar.</span>
-        </div>
-        <button class="btn-ia" id="agent-buscar-btn" onclick="window.agenteSustituciones && agenteSustituciones()"><i class="ti ti-robot"></i> Lanzar agente</button>
-      </div>
-
-      <!-- Registration form (collapsible) -->
-      <details class="sust-form-details">
-        <summary><i class="ti ti-plus"></i> Registrar nueva sustitución</summary>
-        <div class="card" style="margin-top:12px;">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
-            <div>
-              <label class="lbl">Profesor ausente</label>
-              <select class="fi" id="sust-ausente"><option value="">Cargando…</option></select>
-            </div>
-            <div>
-              <label class="lbl">Profesor sustituto (libre ahora)</label>
-              <select class="fi" id="sust-sustituto"><option value="">Cargando…</option></select>
-            </div>
-            <div>
-              <label class="lbl">Grupo</label>
-              <input class="fi" id="sust-grupo" placeholder="Ej: 3ESOA" />
-            </div>
-            <div>
-              <label class="lbl">Tramo horario</label>
-              <select class="fi" id="sust-tramo" onchange="cargarProfesoresLibresEnSelect(parseInt(this.value))">
-                <option value="">Cargando tramos…</option>
-              </select>
-            </div>
-            <div>
-              <label class="lbl">Fecha</label>
-              <input class="fi" type="date" id="sust-fecha" />
-            </div>
-          </div>
-          <div>
-            <label class="lbl">Instrucciones / observaciones</label>
-            <input class="fi" id="sust-obs" placeholder="Instrucciones del profesor ausente o notas de jefatura" />
-          </div>
-          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button class="btn btn-p" onclick="registrarSustitucion()">✅ Registrar sustitución</button>
-            <div id="sust-msg" style="display:none;font-size:13px;"></div>
-          </div>
-        </div>
-      </details>
-
-      <!-- BOLSA DE GUARDIAS -->
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-ico g">⚖️</div>
-          <div>
-            <div class="card-title">Bolsa de guardias</div>
-            <div class="card-desc">Ranking de equidad — trimestre actual · menor a mayor número de guardias</div>
-          </div>
-        </div>
-        <div id="bolsa-container">
-          <div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;">Cargando bolsa…</div>
-        </div>
-      </div>
-    </div><!-- /sust-vista-admin -->
-
-    <!-- ── VISTA PROFESOR ── -->
-    <div id="sust-vista-profesor" style="display:none;flex-direction:column;gap:22px;">
-      <div class="pg-hdr">
-        <div>
-          <div class="pg-title">Notificar ausencia</div>
-          <div class="pg-sub">Registro unificado — cobertura operativa + expediente RRHH en un solo paso</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <!-- Fila 1: fechas + motivo + grupos -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px;">
-          <div>
-            <label class="lbl">Fecha inicio *</label>
-            <input class="fi" type="date" id="notif-fecha-ini" onchange="_sustFechaFinChange()" />
-          </div>
-          <div>
-            <label class="lbl">Fecha fin <span style="color:var(--txt3);font-weight:400;">(si es más de un día)</span></label>
-            <input class="fi" type="date" id="notif-fecha-fin" onchange="_sustFechaFinChange()" />
-          </div>
-          <div>
-            <label class="lbl">Motivo</label>
-            <select class="fi" id="notif-motivo">
-              <option value="baja_medica">🏥 Enfermedad / Baja médica</option>
-              <option value="permiso">🩺 Cita médica / Permiso</option>
-              <option value="formacion">📚 Formación</option>
-              <option value="asunto_propio" selected>🗂️ Asunto personal</option>
-              <option value="sindical">⚖️ Asunto sindical</option>
-              <option value="otros">📝 Otro</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Selector de tramos (solo días únicos) -->
-        <div id="notif-tipo-wrap" style="margin-bottom:16px;">
-          <label class="lbl">Tramos afectados</label>
-          <div style="display:flex;gap:20px;margin-top:8px;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer;">
-              <input type="radio" name="notif-tipo" value="dia" checked onchange="_sustTipoChange()" />
-              Todo el día
-            </label>
-            <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer;">
-              <input type="radio" name="notif-tipo" value="tramos" onchange="_sustTipoChange()" />
-              Tramos concretos
-            </label>
-          </div>
-        </div>
-
-        <div id="notif-tramos-section" style="display:none;margin-bottom:16px;">
-          <label class="lbl">Selecciona los tramos afectados</label>
-          <div id="notif-tramos-wrap" style="display:flex;flex-direction:column;gap:7px;margin-top:8px;"></div>
-        </div>
-
-        <!-- Instrucciones -->
-        <div style="margin-bottom:16px;">
-          <label class="lbl">Instrucciones para el sustituto</label>
-          <textarea class="fa" id="notif-instrucciones" rows="4"
-            placeholder="Qué debe hacer la clase, materiales, tareas, actividades, páginas del libro…"
-            style="min-height:100px;resize:vertical;"></textarea>
-        </div>
-
-        <!-- Justificante opcional -->
-        <div style="margin-bottom:16px;">
-          <label class="lbl">Justificante <span style="color:var(--txt3);font-weight:400;">(opcional — también puedes adjuntarlo después desde el historial)</span></label>
-          <input type="file" id="notif-justificante-file" accept="application/pdf,image/*"
-            style="font-size:13px;color:var(--txt2);width:100%;padding:4px 0;cursor:pointer;" />
-        </div>
-
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn btn-p" onclick="notificarAusenciaProfesor()">📨 Notificar</button>
-          <div id="notif-msg" style="display:none;font-size:13px;"></div>
-        </div>
-      </div>
-
-      <!-- Historial unificado -->
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-ico" style="background:var(--ink-ll);color:var(--ink);font-size:18px;">📋</div>
-          <div>
-            <div class="card-title">Mis ausencias</div>
-            <div class="card-desc">Estado operativo (cobertura) y administrativo (aprobación RRHH)</div>
-          </div>
-        </div>
-        <div id="mis-ausencias-container">
-          <div style="color:var(--txt3);font-size:13px;padding:8px 0;">Cargando…</div>
-        </div>
-      </div>
-    </div><!-- /sust-vista-profesor -->
-
-  </div>
-
-  <!-- INCIDENCIAS PANEL -->
-  <div class="panel" id="panel-incidencias" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-
-    <!-- ── VISTA ADMIN / SUPERADMIN ── -->
-    <div id="inc-vista-admin" style="display:none;" class="inc-split-view">
-
-      <!-- Left: list panel -->
-      <div class="inc-list-panel">
-        <div class="inc-list-topbar">
-          <div>
-            <div class="pg-eyebrow">OPERACIÓN · INCIDENCIAS</div>
-            <h2 class="inc-list-title">Incidencias</h2>
-          </div>
-          <button class="btn btn-p" onclick="document.getElementById('inc-form-details').open=true;document.getElementById('inc-form-details').scrollIntoView({behavior:'smooth'})">+ Abrir incidencia</button>
-        </div>
-        <div class="inc-filters">
-          <button id="inc-btn-abiertas" onclick="loadIncidencias('abiertas')">Abiertas</button>
-          <button id="inc-btn-cerradas" onclick="loadIncidencias('cerradas')">Cerradas</button>
-          <button id="inc-btn-todo"     onclick="loadIncidencias('todo')">Todas</button>
-          <select id="inc-filtro-grupo" onchange="loadIncidencias()" class="inc-grupo-sel">
-            <option value="">Todos los grupos</option>
-          </select>
-          <button onclick="exportarIncidenciasCSV()" class="inc-csv-btn">⬇ CSV</button>
-        </div>
-        <div id="inc-lista" class="inc-lista-wrap"></div>
-      </div>
-
-      <!-- Right: form + detail panel -->
-      <div class="inc-detail-panel">
-        <!-- Registration form (collapsible) -->
-        <details id="inc-form-details" class="inc-form-details">
-          <summary><i class="ti ti-plus"></i> Nueva incidencia</summary>
-          <div class="card" style="margin-top:12px;">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px;">
-              <div>
-                <label class="lbl">Tipo</label>
-                <select class="fi" id="inc-tipo">
-                  <option value="convivencia">👥 Convivencia</option>
-                  <option value="material">📦 Material</option>
-                  <option value="instalaciones">🏗️ Instalaciones</option>
-                  <option value="otro">📝 Otro</option>
-                </select>
-              </div>
-              <div>
-                <label class="lbl">Gravedad</label>
-                <select class="fi" id="inc-gravedad">
-                  <option value="leve">🟢 Leve</option>
-                  <option value="grave">🟠 Grave</option>
-                  <option value="muy_grave">🔴 Muy grave</option>
-                </select>
-              </div>
-              <div>
-                <label class="lbl">Fecha</label>
-                <input class="fi" type="date" id="inc-fecha" />
-              </div>
-              <div>
-                <label class="lbl">Alumno (opcional)</label>
-                <div style="position:relative;">
-                  <input class="fi" id="inc-alumno" placeholder="Buscar alumno…" autocomplete="off" oninput="buscarAlumnoInc(this.value)" onfocus="buscarAlumnoInc(this.value)" />
-                  <div id="inc-alumno-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;z-index:200;"></div>
-                </div>
-              </div>
-              <div>
-                <label class="lbl">Grupo (opcional)</label>
-                <input class="fi" id="inc-grupo" placeholder="Ej: 2ESOA" />
-              </div>
-            </div>
-            <div>
-              <label class="lbl">Descripción *</label>
-              <textarea class="fa" id="inc-desc" placeholder="Describe la incidencia…" style="min-height:80px;"></textarea>
-            </div>
-            <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <button class="btn btn-p" onclick="registrarIncidencia()">⚠️ Registrar</button>
-              <button id="inc-btn-tipificar" onclick="tipificarIncidenciaIA()" class="btn-ia-outline">✨ Tipificar con IA</button>
-              <div id="inc-msg" style="display:none;font-size:13px;"></div>
-            </div>
-          </div>
-        </details>
-
-        <!-- Detail placeholder -->
-        <div class="inc-detail-empty" id="inc-panel-der">
-          <i class="ti ti-alert-circle inc-empty-ico"></i>
-          <p class="inc-empty-txt">Selecciona una incidencia para ver el detalle</p>
-          <button class="btn btn-p" onclick="loadIncidencias()">↺ Actualizar lista</button>
-        </div>
-      </div>
-    </div><!-- /inc-vista-admin -->
-
-    <!-- ── VISTA PROFESOR ── -->
-    <div id="inc-vista-profesor" style="display:none;flex-direction:column;gap:22px;">
-      <div class="pg-hdr">
-        <div>
-          <div class="pg-title">Registrar incidencia</div>
-          <div class="pg-sub">La jefatura recibirá notificación y gestionará el seguimiento</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-hdr"><div class="card-ico o">⚠️</div><div><div class="card-title">Nueva incidencia</div></div></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
-          <div>
-            <label class="lbl">Alumno implicado</label>
-            <select class="fi" id="inc-prof-alumno-sel">
-              <option value="">Sin alumno concreto / incidencia general</option>
-            </select>
-          </div>
-          <div>
-            <label class="lbl">Grupo</label>
-            <input class="fi" id="inc-prof-grupo" placeholder="Se rellena al elegir alumno" />
-          </div>
-          <div>
-            <label class="lbl">Fecha</label>
-            <input class="fi" type="date" id="inc-prof-fecha" />
-          </div>
-        </div>
-        <div>
-          <label class="lbl">Descripción de lo ocurrido *</label>
-          <textarea class="fa" id="inc-prof-desc" placeholder="Describe la situación con detalle…" style="min-height:100px;resize:vertical;"></textarea>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn btn-p" onclick="registrarIncidenciaProfesor()">⚠️ Registrar incidencia</button>
-          <div id="inc-prof-msg" style="display:none;font-size:13px;"></div>
-        </div>
-      </div>
-
-      <!-- Historial propio (solo lectura) -->
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-ico" style="background:var(--ink-ll);color:var(--ink);font-size:18px;">📋</div>
-          <div>
-            <div class="card-title">Mis incidencias registradas</div>
-            <div class="card-desc">Solo lectura — el estado lo gestiona jefatura</div>
-          </div>
-        </div>
-        <div id="inc-prof-lista">
-          <div style="color:var(--txt3);font-size:13px;padding:8px 0;">Cargando…</div>
-        </div>
-      </div>
-    </div><!-- /inc-vista-profesor -->
-
-  </div>
-
-  <!-- ESPACIOS PANEL -->
-  <div class="panel" id="panel-espacios" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-    <div class="pg-hdr">
-      <div><div class="pg-title">Espacios y salas</div><div class="pg-sub">Reserva de aulas y espacios del centro — hoy</div></div>
-      <button class="btn btn-p" onclick="loadEspacios()">↺ Actualizar</button>
-    </div>
-    <div class="card">
-      <div class="card-hdr"><div class="card-ico b">🏫</div><div><div class="card-title">Disponibilidad de hoy</div><div class="card-desc">Haz clic en "Reservar" para ocupar un espacio en un tramo horario.</div></div></div>
-      <div id="espacios-container"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;"><span class="spin">⟳</span> Cargando…</div></div>
-    </div>
-  </div>
-
-  <!-- ALUMNOS PANEL -->
-  <div class="panel" id="panel-alumnos" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
-
-  <!-- PASAR LISTA PANEL -->
-  <div class="panel" id="panel-pasarlista" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
-
-  <!-- TUTORÍAS PANEL -->
-  <div class="panel" id="panel-tutorias" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
-
-  <!-- MENSAJES PANEL -->
-  <div class="panel" id="panel-mensajes" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
-
-  <!-- AGENDA PANEL -->
-  <div class="panel" id="panel-agenda" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
-
-  <!-- ENCUESTAS PANEL -->
-  <div class="panel" id="panel-encuestas" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
-
-  <!-- RECURSOS PANEL -->
-  <div class="panel" id="panel-recursos" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
-
-  <!-- ACTAS PANEL -->
-  <div class="panel" id="panel-actas" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
-
-  <!-- DOCUMENTOS PANEL -->
-  <div class="panel" id="panel-documentos" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
-
-  <!-- AGENTES PANEL -->
-  <div class="panel" id="panel-agentes" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
-
-  <!-- CONSULTA NORMATIVA PANEL -->
-  <div class="panel" id="panel-consultanormativa" style="flex-direction:column;overflow-y:auto;background:var(--bg);"></div>
-
-  <!-- COMEDOR PANEL -->
-  <div class="panel" id="panel-comedor" style="flex-direction:column;">
-    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;height:100%;background:var(--bg);">
-
-      <!-- Tabs de vista -->
-      <div style="display:flex;gap:8px;">
-        <button id="btn-vista-dia" onclick="showComedorVista('dia')" style="background:var(--ink);color:#fff;border:none;border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;font-weight:500;">Hoy / Fecha</button>
-        <button id="btn-vista-historico" onclick="showComedorVista('historico')" style="background:white;border:1px solid var(--bdr);border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;color:var(--txt2);">Histórico</button>
-        <button id="btn-vista-menu" onclick="showComedorVista('menu')" style="background:white;border:1px solid var(--bdr);border-radius:20px;padding:6px 18px;font-size:13px;cursor:pointer;color:var(--txt2);">📋 Menú</button>
-      </div>
-
-      <!-- Vista: menú semanal -->
-      <div id="comedor-vista-menu" style="display:none;">
-        <div class="pg-hdr" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-          <div><div class="pg-title">Menú del comedor</div><div class="pg-sub">Menú semanal publicado para las familias.</div></div>
-          <button id="btn-menu-editar" onclick="window.menuComedorEditor()" style="display:none;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-weight:600;">✏️ Editar menú</button>
-        </div>
-        <div id="menu-readonly"></div>
-      </div>
-
-      <!-- Vista: día -->
-      <div id="comedor-vista-dia">
-        <div class="pg-hdr">
-          <div>
-            <div class="pg-title">Comedor escolar</div>
-            <div id="comedor-date-nav" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-              <button onclick="changeComedorFecha(-1)" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">← Anterior</button>
-              <div id="comedor-fecha" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:#202124;"></div>
-              <button onclick="changeComedorFecha(1)" id="btn-comedor-sig" style="background:white;border:1px solid #e0e0e0;border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer;color:#3c4043;">Siguiente →</button>
-            </div>
-          </div>
-          <button class="btn btn-p" onclick="loadComedor()">↺ Actualizar</button>
-        </div>
-
-        <!-- Resumen del día -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin-top:6px;">
-          <div class="stat" style="background:var(--ink);color:#fff;">
-            <div class="stat-n" id="total-comensales" style="color:#fff;">—</div>
-            <div class="stat-l" style="color:rgba(255,255,255,0.7);">Total hoy</div>
-          </div>
-          <div class="stat">
-            <div class="stat-n" id="total-fijos">—</div>
-            <div class="stat-l">Plaza fija</div>
-          </div>
-          <div class="stat">
-            <div class="stat-n" id="total-esporadicos">—</div>
-            <div class="stat-l">Esporádicos</div>
-          </div>
-        </div>
-
-        <!-- Lista de alumnos -->
-        <div class="card" style="margin-top:6px;">
-          <div class="card-hdr">
-            <div class="card-ico g">📋</div>
-            <div>
-              <div class="card-title">Lista de asistencia</div>
-              <div class="card-desc" style="margin-top:2px;">Marca quién se queda hoy al comedor</div>
-            </div>
-          </div>
-          <div id="comedor-contexto-banner" style="display:none;"></div>
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-            <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('todos')">Todos</button>
-            <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('se_queda')">✅ Se quedan</button>
-            <button class="btn btn-s" style="font-size:12px;" onclick="filterComedor('no_se_queda')">❌ No se quedan</button>
-            <select class="fi" id="comedor-filtro-grupo" style="width:auto;font-size:12px;padding:4px 8px;height:36px;" onchange="filterComedor(comedorFilter)"><option value="">Todos los grupos</option></select>
-          </div>
-          <div id="comedor-list" style="display:flex;flex-direction:column;gap:8px;">
-            <div style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;"><span class="spin">⟳</span> Cargando lista…</div>
-          </div>
-        </div>
-
-        <!-- Imprimir lista -->
-        <div style="display:flex;gap:10px;margin-top:6px;">
-          <button class="btn btn-s" onclick="printComedor()">🖨️ Imprimir lista para cocina</button>
-        </div>
-      </div>
-
-      <!-- Vista: histórico -->
-      <div id="comedor-vista-historico" style="display:none;">
-        <div style="font-size:18px;font-weight:600;color:var(--txt);margin-bottom:16px;">Histórico de asistencia — últimos 30 días</div>
-        <div class="card" style="overflow-x:auto;">
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="border-bottom:2px solid var(--bdr);">
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Fecha</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Día semana</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Total comensales</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Fijos</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Esporádicos</th>
-                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);">Acción</th>
-              </tr>
-            </thead>
-            <tbody id="comedor-historico-body">
-              <tr><td colspan="6" style="text-align:center;color:var(--txt3);font-size:13px;padding:20px;">Cargando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center;">
-          <button class="btn btn-s" onclick="exportarHistoricoCSV()">📥 Exportar CSV</button>
-          <input id="comedor-mes-informe" type="month" style="padding:7px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:13px;font-family:inherit;">
-          <button class="btn btn-s" onclick="comedorInformeMensual()">📊 Informe mensual de facturación</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- CALIFICACIONES PANEL -->
-  <div class="panel" id="panel-calificaciones" style="flex-direction:column;overflow:hidden;background:var(--bg);">
-    <div id="cal-container" style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;">
-      <!-- calificaciones.js renderiza aquí (vista profesor o vista admin según rol) -->
-      <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
-    </div>
-  </div>
-
-  <!-- MATERIALES PANEL -->
-  <div class="panel" id="panel-materiales" style="flex-direction:column;">
-    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;flex:1;background:var(--bg);">
-      <div id="mat-container">
-        <!-- materiales.js renderiza aquí -->
-        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ORIENTACIÓN PANEL -->
-  <div class="panel" id="panel-orientacion" style="flex-direction:column;">
-    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;flex:1;background:var(--bg);">
-      <div id="ori-container">
-        <!-- orientacion.js renderiza aquí (lista de expedientes) -->
-        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- SALIDAS DIDÁCTICAS PANEL — content rendered dynamically by js/salidas.js -->
-  <div class="panel" id="panel-salidas" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);"></div><!-- /panel-salidas -->
-
-  <!-- CALIDAD PANEL -->
-  <div class="panel" id="panel-calidad" style="flex-direction:column;">
-    <div style="padding:28px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;flex:1;background:var(--bg);">
-      <div id="calidad-cont">
-        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- (panel-informes fusionado dentro de panel-analisis → pestaña "Informes PDF") -->
-
   <!-- USERS PANEL -->
   <div class="panel" id="panel-users" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
     <div class="pg-hdr">
@@ -1152,9 +464,9 @@
       <div class="card-hdr" style="align-items:center;">
         <div class="card-ico g">🏫</div>
         <div style="flex:1;"><div class="card-title">Centros</div></div>
-        <button class="btn btn-p" onclick="nuevoCentroWizard()" style="font-size:13px;">+ Nuevo centro</button>
+        <button class="btn btn-p" onclick="nuevoCentroWizard()" style="font-size:13px;">+ Nueva academia</button>
       </div>
-      <div class="card-desc">Todos los módulos (salvo IB) están disponibles para cualquier centro.</div>
+      <div class="card-desc">Los módulos se activan por academia según su plan.</div>
       <div id="centros-modulos-list"></div>
     </div>
     <!-- Filtros y lista -->
@@ -1165,106 +477,6 @@
       </div>
       <div id="users-filtros-rol" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
       <div id="users-list"><div style="text-align:center;color:var(--txt3);font-size:13px;padding:16px;"><span class="spin">⟳</span> Cargando…</div></div>
-    </div>
-  </div>
-
-  <!-- RRHH PANEL -->
-  <div class="panel" id="panel-rrhh" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-    <div id="rrhh-container"></div>
-  </div>
-
-  <!-- IB PANEL -->
-  <div class="panel" id="panel-ib" style="flex-direction:column;overflow-y:auto;padding:28px;gap:22px;background:var(--bg);">
-    <div id="ib-container"></div>
-  </div>
-
-  <!-- COMUNICADOS PANEL -->
-  <div class="panel" id="panel-comunicados" style="flex-direction:column;overflow-y:auto;padding:28px;gap:0;background:var(--bg);">
-    <div class="pg-hdr" style="margin-bottom:22px;">
-      <div><div class="pg-title">Comunicados</div><div class="pg-sub">Avisos y comunicaciones del centro</div></div>
-      <button class="btn btn-p" onclick="loadComunicados()">↺ Actualizar</button>
-    </div>
-    <div id="com-contenido"></div>
-  </div>
-
-  <!-- AVISOS PANEL (familia) -->
-  <div class="panel" id="panel-avisos" style="flex-direction:column;overflow-y:auto;background:var(--bg);">
-  </div>
-
-  <!-- ANÁLISIS PANEL (fusión Analytics Dashboard + Informes PDF) -->
-  <div class="panel" id="panel-analisis" style="flex-direction:column;overflow-y:auto;background:var(--paper);">
-    <!-- Page header -->
-    <div style="padding:28px 28px 0;flex-shrink:0;border-bottom:1px solid var(--line);">
-      <div class="sust-page-hdr" style="margin-bottom:16px;padding:0;">
-        <div>
-          <div class="pg-eyebrow">DIRECCIÓN · ANÁLISIS</div>
-          <h1 style="font-family:var(--font-display);font-size:30px;font-weight:400;margin:6px 0 4px;letter-spacing:-0.02em;color:var(--txt)">Cuadro de mando</h1>
-          <p class="pg-sub" style="margin:0">KPIs del centro en tiempo real, tendencias históricas e informes PDF</p>
-        </div>
-      </div>
-      <div class="planner-tabs tabs-in-hdr">
-        <button class="planner-tab active" id="analisis-tab-dash" onclick="analisisTab('dashboard')">📊 Dashboard</button>
-        <button class="planner-tab"        id="analisis-tab-inf"  onclick="analisisTab('informes')">📄 Informes PDF</button>
-        <button class="planner-tab"        id="analisis-tab-part" onclick="analisisTab('participacion')">👪 Participación familiar</button>
-      </div>
-    </div>
-    <!-- Dashboard → analytics.js renderiza en #analytics-container (sin cambios) -->
-    <div id="analisis-dashboard" style="flex:1;min-height:0;">
-      <div id="analytics-container"></div>
-    </div>
-    <!-- Informes PDF → informes.js renderiza en #inf-container (sin cambios) -->
-    <div id="analisis-informes" style="display:none;padding:28px;">
-      <div id="inf-container">
-        <div style="text-align:center;color:var(--txt3);font-size:13px;padding:40px;"><span class="spin">⟳</span> Cargando…</div>
-      </div>
-    </div>
-    <!-- Participación familiar → participacion.js renderiza en #part-container -->
-    <div id="analisis-participacion" style="display:none;flex:1;min-height:0;">
-      <div id="part-container"></div>
-    </div>
-  </div>
-
-  <!-- PLANNER PANEL -->
-  <div class="panel" id="panel-planner" style="flex-direction:column;overflow-y:auto;background:var(--paper);">
-    <!-- Page header fijo -->
-    <div style="padding:28px 28px 0;flex-shrink:0;border-bottom:1px solid var(--line);">
-      <div class="sust-page-hdr" style="margin-bottom:16px;padding:0;">
-        <div>
-          <div class="pg-eyebrow">DOCENCIA · HERRAMIENTAS</div>
-          <h1 style="font-family:var(--font-display);font-size:30px;font-weight:400;margin:6px 0 4px;letter-spacing:-0.02em;color:var(--txt)">Generador de horarios</h1>
-          <p class="pg-sub" style="margin:0">Diseña, verifica y publica el horario lectivo del centro</p>
-        </div>
-      </div>
-      <!-- Tramos warning — usa design tokens -->
-      <div id="planner-tramos-warn" style="display:none;align-items:center;gap:10px;background:var(--warning-soft);border-left:4px solid var(--warning);border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:var(--txt);">
-        <span style="font-size:16px;flex-shrink:0;color:var(--warning)">⚠</span>
-        <span>Este centro no tiene tramos configurados. Los horarios mostrados son genéricos y no corresponden a la jornada real.
-          <button onclick="showPTab('tramos')" style="margin-left:8px;background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;">
-            Ir a Tramos →
-          </button>
-        </span>
-      </div>
-      <div class="planner-tabs tabs-in-hdr">
-        <button class="planner-tab active" data-ptab="materias"    onclick="showPTab('materias')">Materias</button>
-        <button class="planner-tab"        data-ptab="necesidades" onclick="showPTab('necesidades')">Necesidades</button>
-        <button class="planner-tab"        data-ptab="tablero"     onclick="showPTab('tablero')">Tablero</button>
-        <button class="planner-tab"        data-ptab="publicar"    onclick="showPTab('publicar')">Publicar</button>
-        <button class="planner-tab"        data-ptab="tramos"      onclick="showPTab('tramos')">Tramos</button>
-        <button class="planner-tab"        data-ptab="dictar"      onclick="showPTab('dictar')">Dictar</button>
-        <button class="planner-tab"        data-ptab="importar"    onclick="showPTab('importar')">Importar</button>
-        <button class="planner-tab"        data-ptab="profe"       onclick="showPTab('profe')">👤 Profe</button>
-      </div>
-    </div>
-    <!-- Content scrollable -->
-    <div class="planner-wrap" style="flex:1;overflow-y:auto;height:auto;">
-      <div class="pt-panel" id="pt-materias"></div>
-      <div class="pt-panel" id="pt-necesidades"></div>
-      <div class="pt-panel" id="pt-tablero"></div>
-      <div class="pt-panel" id="pt-publicar"></div>
-      <div class="pt-panel" id="pt-tramos"></div>
-      <div class="pt-panel" id="pt-dictar"></div>
-      <div class="pt-panel" id="pt-importar"></div>
-      <div class="pt-panel" id="pt-profe"></div>
     </div>
   </div>
 
@@ -1293,7 +505,7 @@
         </div>
         <div style="flex:1;min-width:0;">
           <div class="chat-full-name">DidactIA</div>
-          <div class="chat-full-sub">Tu asistente para <span id="wlc-ctr">tu centro</span></div>
+          <div class="chat-full-sub">Tu asistente para <span id="wlc-ctr">tu academia</span></div>
         </div>
         <span class="chat-online-badge"><span class="chat-online-dot"></span>En línea</span>
       </div>
@@ -1302,7 +514,7 @@
         <div class="chat-msgs" id="chat-msgs">
           <div class="welcome" id="welcome">
             <div class="wlc-ico">D</div>
-            <div class="wlc-title">Hola, soy DidactIA. Soy tu asistente para <span id="wlc-centro-name">tu centro</span>. Puedo responder preguntas sobre horarios, alumnos, profesores, menús, reuniones, incidencias y mucho más. ¿Por dónde empezamos?</div>
+            <div class="wlc-title">Hola, soy DidactIA. Soy tu asistente para <span id="wlc-centro-name">tu academia</span>. Puedo responder preguntas sobre horarios, alumnos, profesores, menús, reuniones, incidencias y mucho más. ¿Por dónde empezamos?</div>
             <div class="chat-suggestions-label">EMPEZAR CON…</div>
             <div class="chat-suggestions">
               <div class="chat-suggestion" onclick="askQ('Dime el horario completo de esta semana.')">
@@ -1329,7 +541,6 @@
             <textarea class="chat-inp" id="chat-inp" placeholder="Pregunta a DidactIA..." rows="1"
               onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
           </div>
-          <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Dictado por voz">🎤</button>
           <button class="send-btn" id="send-btn" onclick="sendMsg()">
             <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
           </button>
@@ -1357,8 +568,8 @@
           <img id="onb-brand-logo" src="" alt="" class="onb-brand-logo" onerror="this.style.display='none'">
         </div>
         <div class="onb-icon">👋</div>
-        <h1 class="onb-title">Bienvenido/a a DidactIA</h1>
-        <p class="onb-desc">Tu ventana al día a día de tu hijo/a en el centro. Horario, comedor, comunicados y más — todo en un lugar.</p>
+        <h1 class="onb-title">Bienvenido/a a DidactIA Academias</h1>
+        <p class="onb-desc">Tu ventana al día a día de tu hijo/a en la academia. Horario, clases, comunicados y más — todo en un lugar.</p>
         <button class="onb-btn-primary" onclick="window._onbNext()">Empezar →</button>
       </div>
 
@@ -1366,7 +577,7 @@
       <div id="onb-step-2" class="onb-step" style="display:none;">
         <button class="onb-skip" onclick="window._onbNext()">Siguiente</button>
         <div class="onb-icon">🎓</div>
-        <h2 class="onb-title">Tu hijo/a en el centro</h2>
+        <h2 class="onb-title">Tu hijo/a en la academia</h2>
         <div id="onb-hijo-content" class="onb-hijo-card">…</div>
         <p class="onb-desc" style="margin-top:16px;">Desde aquí verás su horario, asistencia al comedor, comunicados y mucho más.</p>
         <button class="onb-btn-primary" onclick="window._onbNext()">Continuar →</button>
@@ -1377,10 +588,10 @@
         <button class="onb-skip" onclick="window._onbNext()">Ahora no</button>
         <div class="onb-icon">🔔</div>
         <h2 class="onb-title">No te pierdas nada</h2>
-        <p class="onb-desc">Activa las notificaciones para recibir alertas cuando haya cambios de horario, comunicados del centro o ausencias de tu hijo/a.</p>
+        <p class="onb-desc">Activa las notificaciones para recibir alertas cuando haya cambios de horario, comunicados de la academia o ausencias de tu hijo/a.</p>
         <div class="onb-notif-items">
           <div class="onb-notif-item">📅 Cambios de horario</div>
-          <div class="onb-notif-item">📢 Comunicados del centro</div>
+          <div class="onb-notif-item">📢 Comunicados de la academia</div>
           <div class="onb-notif-item">🍽️ Avisos de comedor</div>
         </div>
         <button class="onb-btn-primary" id="onb-push-btn" onclick="window._onbActivarPush()">Activar notificaciones</button>
@@ -1463,7 +674,7 @@
       <div><label class="lbl">Nombre completo *</label><input class="fi" id="inv-name" placeholder="Nombre del usuario" /></div>
       <div><label class="lbl">Email *</label><input class="fi" id="inv-email" type="email" placeholder="usuario@email.com" /></div>
       <div id="inv-centro-wrap">
-        <label class="lbl">Centro educativo *</label>
+        <label class="lbl">Academia *</label>
         <select class="fi" id="inv-centro" onchange="cargarAlumnosCentroInv()"><option value="">Selecciona un centro…</option></select>
       </div>
       <div>
@@ -1529,44 +740,7 @@
 <script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/users.js"></script>
-<script src="js/admin.js"></script>
 <script src="js/chat.js"></script>
-<script src="js/comedor.js"></script>
-<script src="js/mejoras.js"></script>
-<script src="js/palette.js"></script>
-<script src="js/incidencias.js"></script>
-<script src="js/espacios.js"></script>
-<script src="js/rrhh.js"></script>
-<script src="js/guardias.js"></script>
-<script src="js/ib.js"></script>
-<script src="js/comunicados.js"></script>
-<script src="js/familias.js"></script>
-<script src="js/planner.js"></script>
-<script src="js/analytics.js"></script>
-<script src="js/calificaciones.js"></script>
-<script src="js/materiales.js"></script>
-<script src="js/pdf-utils.js"></script>
-<script src="js/informes.js"></script>
-<script src="js/orientacion.js"></script>
-<script src="js/orientacion-export.js"></script>
-<script src="js/salidas.js"></script>
-<script src="js/calidad.js"></script>
-<script src="js/alumnos.js"></script>
-<script src="js/asistencia.js"></script>
-<script src="js/tutoria.js"></script>
-<script src="js/mensajes.js"></script>
-<script src="js/encuestas.js"></script>
-<script src="js/menu.js"></script>
-<script src="js/recursos.js"></script>
-<script src="js/actas.js"></script>
-<script src="js/prevision.js"></script>
-<script src="js/plancobertura.js"></script>
-<script src="js/agente.js"></script>
-<script src="js/documentos.js"></script>
-<script src="js/participacion.js"></script>
-<script src="js/agentes.js"></script>
-<script src="js/agenda.js"></script>
-<script src="js/consulta-normativa.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {

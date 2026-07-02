@@ -12,12 +12,12 @@ function showRegister() {
   _hideAuthForms();
   document.getElementById("form-register").style.display = "block";
   document.getElementById("auth-title").textContent = "Crear cuenta";
-  document.getElementById("auth-sub").textContent = "Regístrate para acceder a tu centro educativo.";
+  document.getElementById("auth-sub").textContent = "Regístrate para acceder a tu academia.";
 }
 function showLogin() {
   _hideAuthForms();
   document.getElementById("form-login").style.display = "block";
-  document.getElementById("auth-title").textContent = "Bienvenido a DidactIA";
+  document.getElementById("auth-title").textContent = "Bienvenido a DidactIA Academias";
   document.getElementById("auth-sub").textContent = "Accede con tu cuenta para continuar.";
 }
 
@@ -66,8 +66,8 @@ function showRecovery(type) {
   const isInvite = type === "invite";
   document.getElementById("auth-title").textContent = isInvite ? "Crea tu contraseña" : "Nueva contraseña";
   document.getElementById("auth-sub").textContent = isInvite
-    ? "Bienvenido a DidactIA. Elige una contraseña para activar tu cuenta."
-    : "Introduce tu nueva contraseña para acceder a DidactIA.";
+    ? "Bienvenido a DidactIA Academias. Elige una contraseña para activar tu cuenta."
+    : "Introduce tu nueva contraseña para acceder a DidactIA Academias.";
   window._authTokenType = type || "recovery";
 }
 
@@ -102,7 +102,7 @@ async function doLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) {
     errEl.textContent = /invalid login|invalid email|user not found/i.test(error.message)
-      ? "No encontramos este correo. Por favor, verifica que sea el mismo que diste en secretaría."
+      ? "No encontramos este correo. Por favor, verifica que sea el mismo que diste al registrarte en la academia."
       : error.message;
     errEl.style.display = "block";
     return;
@@ -171,7 +171,7 @@ async function doRegisterStep1() {
   }
 
   if (!matchedCentro) {
-    errEl.textContent = "Código de centro no válido.";
+    errEl.textContent = "Código de academia no válido.";
     errEl.style.display = "block"; return;
   }
 
@@ -190,7 +190,7 @@ async function doRegisterStep1() {
   document.getElementById("reg-step1").style.display = "none";
   document.getElementById("reg-step2").style.display = "block";
   document.getElementById("auth-title").textContent = "Vincular alumno/s";
-  document.getElementById("auth-sub").textContent = "Selecciona el alumno o alumnos que tienes en este centro.";
+  document.getElementById("auth-sub").textContent = "Selecciona el alumno o alumnos que tienes en esta academia.";
 
   // Load alumnos
   const { data: alumnos } = await sb
@@ -301,7 +301,7 @@ async function loadUserProfile(user) {
   if (error || !profile) {
     // Profile not found — show error
     const errMsg = document.getElementById("login-err");
-    errMsg.textContent = "Tu cuenta existe pero no tiene perfil asignado. Contacta con el administrador del centro o escribe a soporte@didactia.eu.";
+    errMsg.textContent = "Tu cuenta existe pero no tiene perfil asignado. Contacta con la dirección de la academia o escribe a soporte@didactia.eu.";
     errMsg.style.display = "block";
     await sb.auth.signOut();
     return;
@@ -313,7 +313,7 @@ async function loadUserProfile(user) {
 
   if (profile.activo === false) {
     const errEl = document.getElementById("login-err");
-    errEl.textContent = "Tu cuenta ha sido desactivada. Contacta con el administrador del centro.";
+    errEl.textContent = "Tu cuenta ha sido desactivada. Contacta con la dirección de la academia.";
     errEl.style.display = "block";
     await sb.auth.signOut();
     return;
@@ -328,7 +328,7 @@ async function loadUserProfile(user) {
       document.getElementById("app-hdr").style.display = "flex";
       document.getElementById("app-main").style.display = "flex";
       const main = document.getElementById("app-main");
-      if (main) main.innerHTML = '<div style="padding:60px 24px;text-align:center;color:var(--txt3);font-size:15px;">No hay centros configurados.<br>Crea el primer centro desde el panel de Supabase.</div>';
+      if (main) main.innerHTML = '<div style="padding:60px 24px;text-align:center;color:var(--txt3);font-size:15px;">No hay academias configuradas.<br>Crea la primera academia desde el panel de Supabase.</div>';
       return;
     }
 
@@ -353,16 +353,8 @@ async function loadUserProfile(user) {
         if (ms) ms.value = id;
         const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
         modulosActivos = _conModulosBase(ctr?.modulos_activos);
-        const cTab = document.getElementById("tab-comedor");
-        if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
-        const eTab = document.getElementById("tab-espacios");
-        if (eTab) eTab.style.display = modulosActivos.includes("espacios") ? "block" : "none";
-        history = []; resetChat(); updateUI(); loadAdmin();
+        history = []; resetChat(); updateUI();
         applyTheme(ctr?.color_primario, ctr?.logo_url);
-        const ibCont = document.getElementById("ib-container");
-        if (ibCont) ibCont.innerHTML = "";
-        const ibPanel = document.getElementById("panel-ib");
-        if (ibPanel && ibPanel.classList.contains("active")) loadIbPanel();
       };
       sel.onchange = function() { _applyCentro(this.value, this.options[this.selectedIndex].dataset.n); };
       hdrRight.replaceWith(sel);
@@ -387,7 +379,7 @@ async function loadUserProfile(user) {
       ctrId = profile.centro_id;
       if (ctrId) {
         const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
-        ctrName = ctr?.nombre || "Mi centro";
+        ctrName = ctr?.nombre || "Mi academia";
         modulosActivos = _conModulosBase(ctr?.modulos_activos);
         applyTheme(ctr?.color_primario, ctr?.logo_url);
         _cacheBrand(ctr?.color_primario, ctr?.logo_url);
@@ -401,7 +393,7 @@ async function loadUserProfile(user) {
         .order("nombre");
 
       if (!instCentros?.length) {
-        document.getElementById("ctr-name-hdr").textContent = "Sin centros";
+        document.getElementById("ctr-name-hdr").textContent = "Sin academias";
       } else {
         // Use existing centro_id if it belongs to the institution, else take first
         const match = instCentros.find(c => c.id === profile.centro_id);
@@ -430,16 +422,8 @@ async function loadUserProfile(user) {
             if (ms) ms.value = id;
             const { data: ctr } = await sb.from("centros").select("modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
             modulosActivos = _conModulosBase(ctr?.modulos_activos);
-            const cTab = document.getElementById("tab-comedor");
-            if (cTab) cTab.style.display = modulosActivos.includes("comedor") ? "block" : "none";
-            const eTab = document.getElementById("tab-espacios");
-            if (eTab) eTab.style.display = modulosActivos.includes("espacios") ? "block" : "none";
-            history = []; resetChat(); updateUI(); loadAdmin();
+            history = []; resetChat(); updateUI();
             applyTheme(ctr?.color_primario, ctr?.logo_url);
-            const ibCont = document.getElementById("ib-container");
-            if (ibCont) ibCont.innerHTML = "";
-            const ibPanel = document.getElementById("panel-ib");
-            if (ibPanel && ibPanel.classList.contains("active")) loadIbPanel();
           };
           sel.onchange = function() { _applyInstCentro(this.value, this.options[this.selectedIndex].dataset.n); };
           hdrRight.replaceWith(sel);
@@ -463,7 +447,7 @@ async function loadUserProfile(user) {
     // Load centro name and modulos
     if (ctrId) {
       const { data: ctr } = await sb.from("centros").select("nombre,modulos_activos,color_primario,logo_url").eq("id", ctrId).single();
-      ctrName = ctr?.nombre || "Mi centro";
+      ctrName = ctr?.nombre || "Mi academia";
       modulosActivos = _conModulosBase(ctr?.modulos_activos);
       applyTheme(ctr?.color_primario, ctr?.logo_url);
       _cacheBrand(ctr?.color_primario, ctr?.logo_url);
@@ -492,106 +476,13 @@ async function loadUserProfile(user) {
   pill.textContent = roleLabels[role] || role;
   pill.className = "role-pill " + (role === "familia" ? "fam" : "pro");
 
-  // Show/hide admin tab based on role
-  const adminTab = document.getElementById("tab-admin");
-  adminTab.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
+  // ── Base limpia (Fase 0): solo el núcleo. Gestión de usuarios para dirección. ──
 
-  // Show comedor tab only if module is active for this centro AND user has right role
-  const comedorTab = document.getElementById("tab-comedor");
-  const hasComedor = modulosActivos.includes("comedor");
-  if (comedorTab) comedorTab.style.display = (hasComedor && (role === "familia" || ["profesional","admin","admin_institucional","superadmin"].includes(role))) ? "block" : "none";
-
-  // Alumnos: directorio del centro — staff y dirección (no familia)
-  const tabAlumnos = document.getElementById("tab-alumnos");
-  if (tabAlumnos) tabAlumnos.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","orientador"].includes(role)) ? "block" : "none";
-
-  // Pasar lista (asistencia de aula por fecha) — profesores y dirección (no familia)
-  const tabPasarLista = document.getElementById("tab-pasarlista");
-  if (tabPasarLista) tabPasarLista.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura"].includes(role)) ? "block" : "none";
-
-  // Tutorías: tutores (profesional) y familias reservan citas; admin/dirección ven resumen
-  const tabTutorias = document.getElementById("tab-tutorias");
-  if (tabTutorias) tabTutorias.style.display = (["profesional","admin","admin_institucional","superadmin","director","jefatura","familia"].includes(role)) ? "block" : "none";
-
-  // Mensajes familia↔centro: visible para familia y staff (no superadmin sin centro)
-  const tabMensajes = document.getElementById("tab-mensajes");
-  if (tabMensajes) tabMensajes.style.display = (["familia","profesional","admin","admin_institucional","director","jefatura","orientador","superadmin"].includes(role)) ? "block" : "none";
-
-  // Agenda del Centro: visible para todos los roles autenticados
-  const navAgenda = document.getElementById("nav-agenda");
-  if (navAgenda) navAgenda.style.display = "flex";
-  const tabAgenda = document.getElementById("tab-agenda");
-  if (tabAgenda) tabAgenda.style.display = "block";
-
-  // Encuestas a familias: familia responde; dirección gestiona y ve resultados
-  const tabEnc = document.getElementById("tab-encuestas");
-  if (tabEnc) tabEnc.style.display = (["familia","admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
-
-  // Préstamo de recursos: personal del centro (no familia)
-  const tabRec = document.getElementById("tab-recursos");
-  if (tabRec) tabRec.style.display = (["profesional","admin","admin_institucional","director","jefatura","orientador","superadmin"].includes(role)) ? "block" : "none";
-
-  // Actas de reuniones (resumen IA): dirección/admin/jefatura
-  const tabActas = document.getElementById("tab-actas");
-  if (tabActas) tabActas.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
-
-  // Documentos del centro: visible para todos los roles (RLS filtra por visible_para)
-  const tabDocs = document.getElementById("tab-documentos");
-  if (tabDocs) tabDocs.style.display = "block";
-
-  // Panel de Agentes: dirección/admin/jefatura (los agentes son operativos de gestión)
-  const tabAgentes = document.getElementById("tab-agentes");
-  if (tabAgentes) tabAgentes.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "block" : "none";
-
-  // Consulta normativa (RAG): personal del centro (no familia)
-  const tabConsNorm = document.getElementById("tab-consultanormativa");
-  if (tabConsNorm) tabConsNorm.style.display = (["profesional","admin","admin_institucional","director","jefatura","orientador","superadmin"].includes(role)) ? "block" : "none";
-
-  const tabSust = document.getElementById("tab-sust");
-  if (tabSust) tabSust.style.display = (["admin","admin_institucional","profesional","superadmin"].includes(role)) ? "block" : "none";
-
-  const tabInc = document.getElementById("tab-incidencias");
-  if (tabInc) tabInc.style.display = (["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
-
-  const tabEsp = document.getElementById("tab-espacios");
-  if (tabEsp) tabEsp.style.display = (modulosActivos.includes("espacios") && ["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
-
-
-
-
-
+  // Usuarios: gestión de cuentas y roles — solo dirección de la academia
   const usersTab = document.getElementById("tab-users");
   if (usersTab) usersTab.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
-
-  const tabRrhh = document.getElementById("tab-rrhh");
-  if (tabRrhh) tabRrhh.style.display = (["profesional","admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
-
-  // Calificaciones: profesores, dirección y familias (familia = solo lectura de sus hijos)
-  const tabCal = document.getElementById("tab-calificaciones");
-  if (tabCal) tabCal.style.display = (["profesional","admin","admin_institucional","superadmin","jefatura","director","familia"].includes(role)) ? "block" : "none";
-
-  // Materiales: lectura para todos los roles del centro (incl. familia)
-  const tabMat = document.getElementById("tab-materiales");
-  if (tabMat) tabMat.style.display = "block";
-
-  // Salidas: visible para profesional, admin, superadmin y familia
-  const tabSal = document.getElementById("tab-salidas");
-  if (tabSal) tabSal.style.display = (["profesional","admin","admin_institucional","superadmin","familia"].includes(role)) ? "block" : "none";
-
-  const tabIb = document.getElementById("tab-ib");
-  if (tabIb) {
-    const isIbStaff = ["admin","admin_institucional","superadmin","profesional"].includes(role);
-    const isIbFamilia = role === "familia"
-      ? currentUserAlumnos.some(a => a.grupo_horario === "1IB" || a.grupo_horario === "2IB")
-      : false;
-    tabIb.style.display = (isIbStaff || isIbFamilia) ? "block" : "none";
-  }
-
-  const tabCom = document.getElementById("tab-comunicados");
-  if (tabCom) tabCom.style.display = "block";
-
-  const tabAvisos = document.getElementById("tab-avisos");
-  if (tabAvisos) tabAvisos.style.display = role === "familia" ? "block" : "none";
+  const navUsers = document.getElementById("nav-users");
+  if (navUsers) navUsers.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "flex" : "none";
 
   // Show app
   document.getElementById("setup").style.display = "none";
@@ -605,14 +496,6 @@ async function loadUserProfile(user) {
     .catch(function() {});
 
   updateUI();
-  loadAdmin();
-  setTimeout(initWelcomeExtras, 400);
-  if (role === "familia") setTimeout(initFamiliaView, 300);
-  setTimeout(initRealtimeNotifications, 800);
-  setTimeout(_comCheckAndBadge, 1200);
-  setTimeout(function() { if (typeof window._msgCheckAndBadge === "function") window._msgCheckAndBadge(); }, 1600);
-  setTimeout(function() { if (typeof window._msgInitRealtime === "function") window._msgInitRealtime(); }, 1700);
-  setTimeout(function() { if (typeof window._initPushButton === "function") window._initPushButton(); }, 1800);
 }
 
 function updateUI() {
@@ -643,7 +526,7 @@ function resetChat() {
   msgs.innerHTML = `<div class="welcome" id="welcome">
     <div class="wlc-ico">D</div>
     <div class="wlc-title">Hola, soy DidactIA</div>
-    <div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">${ctrName}</strong>. Respondo preguntas sobre horarios, menús, reuniones y más.</div>
+    <div class="wlc-sub">Tu asistente para <strong id="wlc-ctr">${ctrName}</strong>. Respondo preguntas sobre horarios, clases, reuniones y más.</div>
     <div class="quick-qs">
       <div class="quick-q" onclick="askQ('¿Cuándo es la próxima reunión de familias?')">¿Cuándo es la próxima reunión?</div>
       <div class="quick-q" onclick="askQ('¿Cuál es el teléfono de secretaría?')">¿Cuál es el teléfono de secretaría?</div>
@@ -657,31 +540,9 @@ function showTab(t) {
   if (_tabEl) _tabEl.classList.add("active");
   const _panelEl = document.getElementById("panel-"+t);
   if (_panelEl) _panelEl.classList.add("active");
-  if (t === "admin") loadAdmin();
-  if (t === "users") loadUsersPanel();
-  if (t === "comedor") { if (role === "familia") loadFamiliaComedor(); else loadComedor(); }
-  if (t === "avisos") loadAvisos();
-  if (t === "sust") {
-    initSustPanel();
-    var st = document.getElementById("tab-sust");
-    if (st) { st.style.outline = ""; st.style.outlineOffset = ""; }
-  }
-  if (t === "incidencias") initIncidenciasPanel();
-  if (t === "espacios") loadEspacios();
-  if (t === "rrhh") loadRrhhPanel();
-  if (t === "ib") loadIbPanel();
-  if (t === "comunicados") initComunicadosPanel();
-  if (t === "calificaciones") initCalificaciones();
-  if (t === "materiales") initMateriales();
-  if (t === "salidas") initSalidasPanel();
-  if (t === "tutorias") initTutorias();
-  if (t === "agenda") initAgenda();
-  if (t === "encuestas" && typeof initEncuestas === "function") initEncuestas();
-  if (t === "recursos" && typeof initRecursos === "function") initRecursos();
-  if (t === "actas" && typeof initActas === "function") initActas();
-  if (t === "documentos" && typeof initDocumentos === "function") initDocumentos();
-  if (t === "agentes" && typeof initAgentesPanel === "function") initAgentesPanel();
-  if (t === "consultanormativa" && typeof initConsultaNormativa === "function") initConsultaNormativa();
+  // Base limpia (Fase 0): solo el núcleo. Los init de módulos de academia se
+  // añadirán aquí a medida que se implementen.
+  if (t === "users" && typeof loadUsersPanel === "function") loadUsersPanel();
 }
 // ── NAVEGACIÓN: IR AL INICIO ──
 function applyTheme(colorPrimario, logoUrl) {
@@ -817,7 +678,7 @@ function goHome() {
     var title  = isFam ? "Bienvenido a tu portal familiar" : "Hola, soy DidactIA";
     var sub    = isFam
       ? "Toda la información escolar de tus hijos, al instante."
-      : "Tu asistente para <strong id=\"wlc-ctr\">" + ctrName + "</strong>. Puedo responder preguntas sobre horarios, menús, reuniones y mucho más.";
+      : "Tu asistente para <strong id=\"wlc-ctr\">" + ctrName + "</strong>. Puedo responder preguntas sobre horarios, clases, reuniones y mucho más.";
     var quickQs = isFam
       ? '<div class="quick-q" onclick="askQ(\'¿Cuándo es la próxima reunión de familias?\')">¿Cuándo es la próxima reunión?</div>' +
         '<div class="quick-q" onclick="askQ(\'¿Cómo justifico una ausencia de mi hijo?\')">¿Cómo justifico una falta?</div>' +
@@ -831,13 +692,8 @@ function goHome() {
       '<div class="wlc-sub">' + sub + '</div>' +
       '<div class="quick-qs">' + quickQs + '</div>' +
       '<div id="role-cards-container" style="display:none;"><div class="role-cards" id="role-cards"></div></div>' +
-      '<div id="ficha-centro-container" style="display:none;"><div id="ficha-centro-data" style="background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;"></div></div>' +
-      '<div id="comedor-hijos-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Comedor hoy</div><div id="comedor-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div></div>' +
-      '<div id="mis-hijos-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Mis hijos</div><div id="mis-hijos-list" style="display:flex;flex-direction:column;gap:6px;"></div></div>' +
-      '<div id="busqueda-alumno-container" style="display:none;"><div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:6px;text-align:left;">Búsqueda rápida de alumno</div><input class="chat-inp" id="busqueda-alumno-inp" placeholder="Buscar por nombre…" style="min-height:38px;font-size:13px;" oninput="buscarAlumnoRapido(this.value)" /><div id="busqueda-alumno-res"></div></div>' +
       '</div>';
     applyTheme(document.documentElement.style.getPropertyValue('--ink') || null,
       document.getElementById('app-brand-logo')?.querySelector('img')?.src || null);
-    setTimeout(initWelcomeExtras, 300);
   }
 }

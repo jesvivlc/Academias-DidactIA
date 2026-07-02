@@ -1,20 +1,24 @@
-// ── CONFIG ──
+// ── CONFIG — DidactIA Academias ──
 // var en lugar de const/let para que window.SB_URL, window.sb, window.ctrId, etc.
 // funcionen en los módulos que los referencian como window.X
-var SB_URL = "https://rflfsbrdmgaidhvbuvwb.supabase.co";
-var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbGZzYnJkbWdhaWRodmJ1dndiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTAxNDgsImV4cCI6MjA4Nzc2NjE0OH0.tJuFxAZCSxdukUvL9BbhdxtCbudCmmv2HLZr6qp7LPs";
+//
+// ⚠️ Backend nuevo: sustituye estos dos valores por los de tu proyecto de Supabase
+// (Project Settings → API → Project URL y anon/public key).
+var SB_URL = "<PEGA_AQUI_TU_URL>";
+var SB_KEY = "<PEGA_AQUI_TU_ANON_KEY>";
 var API = `${SB_URL}/functions/v1/chat`;
 var ANON_KEY = SB_KEY;
 // Clave pública VAPID para notificaciones push (es pública por diseño).
-var VAPID_PUBLIC_KEY = "BDwHDk1Kgkwg1F67IesUksYQhVJ6Zq5-nA6ZGruhfT3egNStIGj-TkbP8Zk-J4csMqf0kC09hi3cXYKWdhTie4c";
+// Rellenar solo cuando se active Web Push en el nuevo backend.
+var VAPID_PUBLIC_KEY = "";
 
 var sb = null, ctrId = null, ctrName = "", role = "familia", history = [], busy = false, cache = {};
 var currentUser = null, currentUserName = "", currentUserAlumnos = [], modulosActivos = [];
 var cursoActivo = '2025-26'; // se actualiza tras login leyendo info_centro.curso_activo
 
-// Todos los módulos (excepto IB) están disponibles para todos los centros: estos
-// siempre se consideran activos, independientemente de centros.modulos_activos.
-var MODULOS_BASE = ["comedor", "espacios", "incidencias"];
+// Base limpia (Fase 0): sin módulos operativos activados por defecto. Los módulos
+// específicos de academia se irán añadiendo aquí a medida que se implementen.
+var MODULOS_BASE = [];
 function _conModulosBase(arr) { return [...new Set([...(arr || []), ...MODULOS_BASE])]; }
 
 // ── BOOT ──

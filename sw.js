@@ -1,49 +1,15 @@
-// Service Worker DidactIA — network-first para assets propios.
+// Service Worker DidactIA Academias — network-first para assets propios.
 // Bump CACHE en cada cambio estructural para purgar cachés antiguas.
-const CACHE = 'didactia-v22';
+const CACHE = 'didactia-academias-v1';
 const PRECACHE = [
   '/app.html',
   '/index.html',
   '/css/styles.css',
   '/js/config.js',
+  '/js/utils.js',
   '/js/auth.js',
   '/js/users.js',
-  '/js/admin.js',
   '/js/chat.js',
-  '/js/comedor.js',
-  '/js/mejoras.js',
-  '/js/palette.js',
-  '/js/incidencias.js',
-  '/js/espacios.js',
-  '/js/rrhh.js',
-  '/js/guardias.js',
-  '/js/ib.js',
-  '/js/comunicados.js',
-  '/js/familias.js',
-  '/js/planner.js',
-  '/js/analytics.js',
-  '/js/calificaciones.js',
-  '/js/materiales.js',
-  '/js/informes.js',
-  '/js/orientacion.js',
-  '/js/salidas.js',
-  '/js/calidad.js',
-  '/js/alumnos.js',
-  '/js/asistencia.js',
-  '/js/mensajes.js',
-  '/js/tutoria.js',
-  '/js/agenda.js',
-  '/js/encuestas.js',
-  '/js/menu.js',
-  '/js/recursos.js',
-  '/js/actas.js',
-  '/js/prevision.js',
-  '/js/documentos.js',
-  '/js/participacion.js',
-  '/js/plancobertura.js',
-  '/js/agente.js',
-  '/js/agentes.js',
-  '/js/consulta-normativa.js',
   '/manifest.json'
 ];
 
@@ -92,7 +58,7 @@ self.addEventListener('push', function(e) {
   var d = {};
   try { d = e.data ? e.data.json() : {}; } catch(_) {}
   e.waitUntil(
-    self.registration.showNotification(d.title || 'DidactIA', {
+    self.registration.showNotification(d.title || 'DidactIA Academias', {
       body:  d.body  || '',
       icon:  NOTIF_ICON,
       badge: NOTIF_ICON,

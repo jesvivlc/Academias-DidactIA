@@ -21,7 +21,7 @@ async function loadUsersPanel() {
   if (isSuperadmin) {
     const { data: centros } = await sb.from("centros").select("id,nombre,modulos_activos").order("nombre");
     _centrosData = centros || [];
-    filterSel.innerHTML = "<option value=''>Todos los centros</option>" +
+    filterSel.innerHTML = "<option value=''>Todas las academias</option>" +
       _centrosData.map(c => `<option value="${c.id}">${_escH(c.nombre)}</option>`).join("");
     renderModulosLista(_centrosData);
   } else {
@@ -160,7 +160,7 @@ function renderUsersTable() {
     </tr>`;
   }).join("");
 
-  const centroTh = isSuperadmin ? "<th>Centro</th>" : "";
+  const centroTh = isSuperadmin ? "<th>Academia</th>" : "";
   container.innerHTML = `<div style="overflow-x:auto;"><table class="tbl">
     <thead><tr><th>Nombre</th><th>Email</th>${centroTh}<th>Rol</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr></thead>
     <tbody>${rows}</tbody>
@@ -174,7 +174,7 @@ function renderModulosLista(centros) {
   const container = document.getElementById("centros-modulos-list");
   if (!container) return;
   if (!centros || !centros.length) {
-    container.innerHTML = `<div style="font-size:13px;color:var(--txt3);padding:8px 0;">No hay centros.</div>`;
+    container.innerHTML = `<div style="font-size:13px;color:var(--txt3);padding:8px 0;">No hay academias.</div>`;
     return;
   }
   container.innerHTML = centros.map(c =>
@@ -204,7 +204,7 @@ async function mostrarModalInvitar() {
   invCentroSel.disabled = false;
 
   if (role === "superadmin") {
-    invCentroSel.innerHTML = "<option value=''>Selecciona un centro…</option>" +
+    invCentroSel.innerHTML = "<option value=''>Selecciona una academia…</option>" +
       _centrosData.map(c => `<option value="${c.id}">${_escH(c.nombre)}</option>`).join("");
     invCentroWrap.style.display = "block";
     invRolSel.innerHTML = `
@@ -254,7 +254,7 @@ async function cargarAlumnosCentroInv() {
   const lista    = document.getElementById("inv-alumnos-lista");
   if (!lista) return;
   if (!centroId) {
-    lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">Selecciona un centro primero.</div>';
+    lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">Selecciona una academia primero.</div>';
     return;
   }
   lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">Cargando…</div>';
@@ -262,7 +262,7 @@ async function cargarAlumnosCentroInv() {
     .eq("centro_id", centroId).order("curso").order("nombre");
   _invAlumnosSeleccionados = new Set();
   if (!alumnos?.length) {
-    lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">No hay alumnos en este centro.</div>';
+    lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">No hay alumnos en esta academia.</div>';
     return;
   }
   lista.innerHTML = alumnos.map(a => `
@@ -405,7 +405,7 @@ async function cargarAlumnosEditar() {
   _editingAlumnoIds = new Set((vinculos || []).map(v => v.alumno_id));
 
   if (!alumnos?.length) {
-    lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">No hay alumnos en este centro.</div>';
+    lista.innerHTML = '<div style="font-size:12px;color:var(--txt3);">No hay alumnos en esta academia.</div>';
     return;
   }
 
@@ -580,12 +580,12 @@ function nuevoCentroWizard() {
   ov.innerHTML =
     '<div style="background:var(--srf);border-radius:var(--r);max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;box-shadow:var(--sh-lg);">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
-        '<div><div style="font-size:18px;font-weight:600;color:var(--txt);">Nuevo centro</div>' +
-        '<div style="font-size:12px;color:var(--txt3);">Crea un centro educativo y sus códigos de acceso.</div></div>' +
+        '<div><div style="font-size:18px;font-weight:600;color:var(--txt);">Nueva academia</div>' +
+        '<div style="font-size:12px;color:var(--txt3);">Crea una academia y sus códigos de acceso.</div></div>' +
         '<button onclick="document.getElementById(\'nuevo-centro-modal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt3);">✕</button>' +
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:13px;margin-top:14px;">' +
-        '<div><label class="lbl">Nombre del centro *</label><input class="fi" id="nc-nombre" placeholder="IES Ejemplo" oninput="_ncAutoSlug()" /></div>' +
+        '<div><label class="lbl">Nombre de la academia *</label><input class="fi" id="nc-nombre" placeholder="Academia Ejemplo" oninput="_ncAutoSlug()" /></div>' +
         '<div><label class="lbl">Identificador (slug) *</label><input class="fi" id="nc-slug" placeholder="ies-ejemplo" /></div>' +
         '<div style="display:flex;gap:12px;">' +
           '<div style="flex:1;"><label class="lbl">Color primario</label><input class="fi" id="nc-color" type="color" value="#1a73e8" style="height:42px;padding:4px;" /></div>' +
@@ -600,7 +600,7 @@ function nuevoCentroWizard() {
         '<div id="nc-err" style="display:none;color:var(--red);font-size:12px;"></div>' +
         '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
           '<button class="btn" onclick="document.getElementById(\'nuevo-centro-modal\').remove()" style="border:1px solid var(--bdr);background:var(--srf);">Cancelar</button>' +
-          '<button class="btn btn-p" id="nc-guardar" onclick="guardarNuevoCentro()">Crear centro</button>' +
+          '<button class="btn btn-p" id="nc-guardar" onclick="guardarNuevoCentro()">Crear academia</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -632,7 +632,7 @@ async function guardarNuevoCentro() {
 
   const color = document.getElementById("nc-color")?.value || null;
   const logo = document.getElementById("nc-logo")?.value.trim() || null;
-  // Todos los centros tienen los módulos base disponibles (excepto IB, que se gestiona aparte).
+  // Todas las academias tienen los módulos base disponibles (excepto IB, que se gestiona aparte).
   const modulos = (typeof MODULOS_BASE !== "undefined") ? [...MODULOS_BASE] : ["comedor", "espacios", "incidencias"];
   const codFam = document.getElementById("nc-cod-fam")?.value.trim() || null;
   const codPro = document.getElementById("nc-cod-prof")?.value.trim() || null;
@@ -650,14 +650,14 @@ async function guardarNuevoCentro() {
       modulos_activos: modulos,
       codigo_familia: codFam, codigo_profesional: codPro, codigo_acceso: codAcc,
     }).select("id,nombre").single();
-    if (error) { showErr("Error al crear el centro: " + error.message); if (btn) { btn.disabled = false; btn.textContent = "Crear centro"; } return; }
+    if (error) { showErr("Error al crear la academia: " + error.message); if (btn) { btn.disabled = false; btn.textContent = "Crear academia"; } return; }
 
     document.getElementById("nuevo-centro-modal")?.remove();
     if (typeof loadUsersPanel === "function") loadUsersPanel(); // refresca lista de centros/módulos
     _centroCreadoExito(nuevo, { codFam, codPro, codAcc });
   } catch (e) {
     showErr("Error: " + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = "Crear centro"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Crear academia"; }
   }
 }
 
@@ -671,7 +671,7 @@ function _centroCreadoExito(centro, codigos) {
   ov.innerHTML =
     '<div style="background:var(--srf);border-radius:var(--r);max-width:440px;width:100%;padding:26px;box-shadow:var(--sh-lg);text-align:center;">' +
       '<div style="font-size:40px;margin-bottom:8px;">🏫</div>' +
-      '<div style="font-size:17px;font-weight:600;color:var(--txt);margin-bottom:4px;">Centro creado</div>' +
+      '<div style="font-size:17px;font-weight:600;color:var(--txt);margin-bottom:4px;">Academia creada</div>' +
       '<div style="font-size:13px;color:var(--txt3);margin-bottom:16px;">' + _centroEsc(centro.nombre) + ' ya está disponible. Comparte estos códigos para que el personal y las familias se registren:</div>' +
       '<div style="display:flex;flex-direction:column;gap:6px;text-align:left;margin-bottom:18px;">' +
         codRow("Familias", codigos.codFam) + codRow("Profesionales", codigos.codPro) + codRow("Acceso general", codigos.codAcc) +

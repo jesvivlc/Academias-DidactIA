@@ -178,62 +178,6 @@ async function buscarGrupoAlumno(nombreBuscado) {
   return filtrados.slice(0, 20);
 }
 
-async function getProfesoresLibres(dia, hora) {
-  if (!sb || !ctrId) return null;
-
-  const all = await _chatGetHorarios();
-  // Todos los profesores del centro
-  const todosProfes = [...new Set(all.map(r => r.profesor_nombre).filter(Boolean))].sort();
-  if (!todosProfes.length) return null;
-
-  // Profesores con clase en este tramo (comparación de horas como cadena "HH:MM…")
-  const hhmm = hora + ":00";
-  const conClase = all.filter(r =>
-    r.dia === dia &&
-    String(r.hora_inicio || "") <= hhmm &&
-    String(r.hora_fin || "") > hhmm);
-
-  const ocupados = new Set((conClase || []).map(r => r.profesor_nombre).filter(Boolean));
-  const libres = todosProfes.filter(p => !ocupados.has(p));
-  const enClase = (conClase || []).filter(r => r.profesor_nombre);
-
-  return { libres, enClase, total: todosProfes.length };
-}
-
-async function responderProfesoresLibres(txt) {
-  const ahora = new Date();
-  const diasNombre = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
-  const dia = diasNombre[ahora.getDay()];
-  const hora = String(ahora.getHours()).padStart(2,"0") + ":" + String(ahora.getMinutes()).padStart(2,"0");
-
-  if (dia === "sabado" || dia === "domingo") {
-    return "<p>Hoy es fin de semana, no hay clases programadas.</p>";
-  }
-
-  const resultado = await getProfesoresLibres(dia, hora);
-  if (!resultado) {
-    return "<p>No se han podido obtener los datos de horarios en este momento.</p>";
-  }
-
-  const { libres, enClase } = resultado;
-
-  let html = `<p><strong>Profesores disponibles ahora (${hora}):</strong></p>`;
-
-  if (libres.length === 0) {
-    html += "<p>Todos los profesores tienen clase en este momento.</p>";
-  } else {
-    html += "<ul>";
-    libres.forEach(p => { html += `<li>${_chatEsc(p)}</li>`; });
-    html += "</ul>";
-  }
-
-  if (enClase.length > 0) {
-    html += `<p style="font-size:12px;color:var(--txt3);margin-top:8px;">Con clase ahora: ${enClase.map(c => _chatEsc(c.profesor_nombre)).join(", ")}</p>`;
-  }
-
-  return html;
-}
-
 async function buildContext() {
   if (!sb || !ctrId) return "Sin información disponible.";
   let ctx = `Centro: ${ctrName}\n\n`;
@@ -350,7 +294,6 @@ function addMsg(r, html) {
 
 async function sendMsg() {
   if (busy) return;
-  let _chatSustData = null;
   const inp = document.getElementById("chat-inp");
   const txt = inp.value.trim(); if (!txt) return;
   inp.value = ""; inp.style.height = "auto";
@@ -378,22 +321,9 @@ async function sendMsg() {
 
   // Detectar consulta de horario: keywords explícitas O mensaje con día+hora
   const tieneDiaHora = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|ahora)\b/i.test(txt) && /\b(\d{1,2}[:.h]\d{2}|\d{1,2}\s*[ap]m|ahora)\b/i.test(txt);
-  const esConsultaHorario = !esCreacionTramos && (/horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene|sustituci[oó]n/i.test(txt) || tieneDiaHora);
-  const esConsultaSustitucion = /sustituci[oó]n/i.test(txt);
-
-  // Detectar consulta de guardias/profesores libres
-  const esConsultaGuardia = /libre|disponible|guardia|sin clase|no tiene clase|quién puede|quien puede|puede cubrir|puede sustituir/i.test(txt);
-  if (esConsultaGuardia && (role === "admin" || role === "profesional" || role === "superadmin")) {
-    const respGuardia = await responderProfesoresLibres(txt);
-    document.getElementById("typing").classList.remove("show");
-    history.push({ role:"assistant", content: respGuardia });
-    addMsg("bot", respGuardia);
-    busy = false;
-    document.getElementById("send-btn").disabled = false;
-    document.getElementById("load-bar").classList.remove("show");
-    document.getElementById("chat-inp").focus();
-    return;
-  }
+  const esConsultaHorario = !esCreacionTramos && (/horario|clase|asignatura|qu[eé] tiene|qu[eé] hay|profesor|qui[eé]n da|materia|qu[eé] le toca|cu[aá]ndo tiene|aula|d[oó]nde tiene/i.test(txt) || tieneDiaHora);
+  // Base limpia (Fase 0): sustituciones/comedor/guardias no forman parte del núcleo.
+  const esConsultaSustitucion = false;
 
   if (esConsultaHorario) {
     let grupoTarget = null;
@@ -473,27 +403,6 @@ async function sendMsg() {
         window._ultimoProfesor = { nombre: profNombre, filas: filasFiltradas };
         const { dia: diaProf, hora } = extractDiaHora(txt);
         const diaFinal = diaProf || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
-        if (esConsultaSustitucion && diaFinal) {
-          const _ct = filasFiltradas.find(r =>
-            r.dia === diaFinal && horaMatchesSlot(hora, r.hora_inicio, r.hora_fin)
-          ) || filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo)[0];
-          const _dm = {"lunes":1,"martes":2,"miercoles":3,"jueves":4,"viernes":5};
-          const _t = _dm[diaFinal];
-          if (_t && _ct) {
-            const _hoy = new Date(), _hd = _hoy.getDay() || 7;
-            let _df = _t - _hd; if (_df <= 0) _df += 7;
-            const _dd = new Date(_hoy); _dd.setDate(_hoy.getDate() + _df);
-            _chatSustData = {
-              profesor_ausente: profNombre,
-              fecha: _dd.toISOString().split('T')[0],
-              tramo: _ct.tramo,
-              grupo_horario: _ct.grupo_horario || "",
-              hora_inicio: String(_ct.hora_inicio || "").slice(0,5),
-              hora_fin: String(_ct.hora_fin || "").slice(0,5),
-              observaciones: ""
-            };
-          }
-        }
         if (diaFinal) {
           const clasesDia = filasFiltradas.filter(r => r.dia === diaFinal).sort((a,b) => a.tramo - b.tramo);
           if (clasesDia.length) {
@@ -661,55 +570,10 @@ async function sendMsg() {
   }
 
   // Respuesta directa sin Gemini si ya tenemos la clase exacta
-  if (respuestaHorarioDirecta && !esConsultaSustitucion) {
+  if (respuestaHorarioDirecta) {
     document.getElementById("typing").classList.remove("show");
     history.push({ role:"assistant", content: respuestaHorarioDirecta });
     addMsg("bot", respuestaHorarioDirecta);
-    busy = false;
-    document.getElementById("send-btn").disabled = false;
-    document.getElementById("load-bar").classList.remove("show");
-    document.getElementById("chat-inp").focus();
-    return;
-  } else if (respuestaHorarioDirecta && esConsultaSustitucion) {
-    // filasFiltradas y diaFinal son const dentro del for — se recuperan de window._ultimoProfesor
-    const _prof      = window._ultimoProfesor;
-    const _filas     = _prof ? _prof.filas : [];
-    const _nombre    = _prof ? _prof.nombre : "";
-    const { dia: _diaFinal, hora: _hora } = extractDiaHora(txt);
-    const diaFinalSust = _diaFinal || (window._ultimoDiaHora && window._ultimoDiaHora.dia) || null;
-
-    // Encontrar la clase exacta en el tramo indicado
-    const claseTarget = _filas.find(r =>
-      r.dia === diaFinalSust && horaMatchesSlot(_hora, r.hora_inicio, r.hora_fin)
-    ) || _filas.filter(r => r.dia === diaFinalSust).sort((a,b) => a.tramo - b.tramo)[0];
-
-    // Calcular fecha real del día indicado
-    const _daysMap = {"lunes":1,"martes":2,"miercoles":3,"jueves":4,"viernes":5};
-    const _target = _daysMap[diaFinalSust];
-    let fechaCalculada = null;
-    if (_target) {
-      const _hoy = new Date();
-      const _hoyDay = _hoy.getDay() || 7;
-      let _diff = _target - _hoyDay;
-      if (_diff <= 0) _diff += 7;
-      const _d = new Date(_hoy);
-      _d.setDate(_hoy.getDate() + _diff);
-      fechaCalculada = _d.toISOString().split('T')[0];
-    }
-
-    horarioGrupoCtx += `\n\nDATOS YA RESUELTOS PARA SUSTITUCIÓN — USA ESTOS DIRECTAMENTE EN crear_sustitucion:\n` +
-      `- profesor_ausente: ${_nombre}\n` +
-      `- fecha: ${fechaCalculada || diaFinalSust}\n` +
-      `- tramo: ${claseTarget ? claseTarget.tramo : ""}\n` +
-      `- grupo_horario: ${claseTarget ? (claseTarget.grupo_horario || "") : ""}\n` +
-      `- actividad: ${claseTarget ? claseTarget.actividad_nombre : ""}\n` +
-      `NO PIDAS MÁS DATOS AL USUARIO. Llama a crear_sustitucion inmediatamente con estos valores.`;
-    respuestaHorarioDirecta = null;
-  }
-
-  if (_chatSustData) {
-    document.getElementById("typing").classList.remove("show");
-    _showToolCard("crear_sustitucion", _chatSustData, null);
     busy = false;
     document.getElementById("send-btn").disabled = false;
     document.getElementById("load-bar").classList.remove("show");
@@ -726,29 +590,27 @@ async function sendMsg() {
   const diaManana = dias[(now.getDay() + 1) % 7];
 
   const rolDesc = {
-    familia: `familiar de alumnos del centro. Sus hijos son: ${currentUserAlumnos.map(a=>a.nombre+" ("+a.curso+")").join(", ") || "no vinculados aún"}`,
-    profesional: `profesional del centro educativo llamado ${currentUserName}`,
-    admin: `administrador del centro`,
+    familia: `familiar de alumnos de la academia. Sus hijos son: ${currentUserAlumnos.map(a=>a.nombre+" ("+a.curso+")").join(", ") || "no vinculados aún"}`,
+    profesional: `profesor/a de la academia llamado ${currentUserName}`,
+    admin: `administrador de la academia`,
     superadmin: `superadministrador de la plataforma`
   };
   const instruccionHorario = horarioGrupoCtx
     ? `\nCUANDO HAY UN HORARIO EN EL CONTEXTO: Debes listar TODAS las clases que aparecen, una por línea, con su hora y asignatura. No resumas, no omitas ninguna, no digas "entre otras". Si el contexto tiene 4 clases, muestra las 4.`
     : "";
 
-  const canUseTool = role === "admin" || role === "profesional" || role === "superadmin";
-  const toolInstr = canUseTool
-    ? `\nTienes herramientas activas para ejecutar acciones directas: crear_sustitucion, crear_incidencia, registrar_ausencia_profesor, consultar_profesor_libre, avisar_comedor, generar_tramos_horario, crear_tramos_centro, listar_tramos_centro. REGLAS CRÍTICAS: (1) Cuando el usuario pida una de estas acciones, LLAMA A LA HERRAMIENTA INMEDIATAMENTE — no preguntes si puedes, no pidas confirmación textual, no digas que no puedes hacerlo. (2) El sistema muestra automáticamente una tarjeta de confirmación al usuario antes de ejecutar — tú no necesitas confirmar nada. (3) Si faltan datos imprescindibles (fecha, grupo, nombre del profesor), haz UNA SOLA pregunta concisa para obtenerlos. (4) Nunca respondas "no tengo capacidad para" o "no puedo" si tienes la herramienta correspondiente. (5) REGLA ESPECIAL — tramos horarios del planner: cuando el usuario pida crear, generar o configurar los tramos horarios del centro o del planner (duración de clases, hora de inicio de la jornada, descansos, recreos), llama INMEDIATAMENTE a generar_tramos_horario. NO lo trates como una consulta de horario de alumno ni de grupo. Es una acción de configuración del centro, no una búsqueda de información.`
-    : "";
+  // Base limpia (Fase 0): el chat responde preguntas; sin herramientas de acción.
+  const toolInstr = "";
 
-  const sys = `Eres DidactIA, el asistente inteligente de ${ctrName}. Puedes responder preguntas sobre el centro Y realizar acciones directamente en el sistema.
+  const sys = `Eres DidactIA, el asistente inteligente de ${ctrName}. Respondes preguntas sobre la academia.
 Hoy es ${fechaHoy}. Mañana es ${diaManana}. Usa esta información para responder preguntas sobre fechas sin pedirle al usuario que las especifique.
 Conoces perfectamente al usuario con el que hablas: se llama ${currentUserName} y es ${rolDesc[role] || role}.
 NO le pidas que se identifique — ya sabes quién es. Dirígete a él por su nombre cuando sea natural.
 Si pregunta por su horario, el de su hijo, o información personal, responde directamente con los datos que tienes.
-Solo respondes con información de ESTE centro. Si no tienes algo, sugiere contactar con secretaría.
+Solo respondes con información de ESTA academia. Si no tienes algo, sugiere contactar con la secretaría de la academia.
 Responde en español, de forma amable y concisa. Usa HTML simple (<p>,<ul><li>,<strong>) cuando sea útil.${instruccionHorario}${toolInstr}
 ${role === "superadmin" || role === "admin"
-  ? "Este usuario es administrador del centro. Puede consultar listados de alumnos por nombre, grupo o curso, y datos académicos (horarios, grupos, asistencia). No compartas datos de contacto privados de familias (teléfonos, emails) a menos que el usuario los pida explícitamente para una gestión concreta."
+  ? "Este usuario es administrador de la academia. Puede consultar listados de alumnos por nombre, grupo o curso, y datos académicos (horarios, grupos, asistencia). No compartas datos de contacto privados de familias (teléfonos, emails) a menos que el usuario los pida explícitamente para una gestión concreta."
   : "No reveles información confidencial de otros alumnos o profesores a usuarios que no deban verla."}
 
 CONTEXTO EN TIEMPO REAL:
@@ -812,12 +674,9 @@ ${ctx}${horarioGrupoCtx}`;
    AGENTE — Tool confirmation UI
    ══════════════════════════════════════════════ */
 
-const _TOOL_META = {
-  crear_sustitucion:           { icon:"🔄", title:"Registrar sustitución" },
-  crear_incidencia:            { icon:"⚠️",  title:"Registrar incidencia" },
-  registrar_ausencia_profesor: { icon:"📋", title:"Solicitar ausencia" },
-  avisar_comedor:              { icon:"🍽️", title:"Avisar no comedor" },
-};
+// Base limpia (Fase 0): sin herramientas de acción. Se irán añadiendo aquí las
+// acciones específicas de academia a medida que se implementen sus módulos.
+const _TOOL_META = {};
 
 const _PARAM_META = {
   fecha:"Fecha", tramo:"Tramo", grupo_horario:"Grupo",
