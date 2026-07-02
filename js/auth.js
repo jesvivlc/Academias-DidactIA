@@ -486,6 +486,8 @@ async function loadUserProfile(user) {
   if (navGrupos) navGrupos.style.display = _staffAlm ? "flex" : "none";
   const navHorario = document.getElementById("nav-horario");
   if (navHorario) navHorario.style.display = _staffAlm ? "flex" : "none";
+  const navAsistencia = document.getElementById("nav-asistencia");
+  if (navAsistencia) navAsistencia.style.display = _staffAlm ? "flex" : "none";
   const grpGestion = document.getElementById("sb-grp-gestion");
   if (grpGestion) grpGestion.style.display = _staffAlm ? "" : "none";
 

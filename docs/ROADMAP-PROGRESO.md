@@ -6,7 +6,7 @@
 ## Estado por fases
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
-- Fase 2 — Operación diaria: pendiente.
+- **Fase 2 — Operación diaria:** EN CURSO (inc.1 Asistencia hecho).
 - Fase 3 — Familias y comunicación: pendiente.
 - Fase 4 — Cobros y economía: pendiente.
 - Fase 5 — Inteligencia pedagógica: pendiente.
@@ -14,6 +14,15 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 2 · inc.1 — Control de asistencia.** SQL `sql/fase2-asistencia.sql` (tabla
+  `asistencia` UNIQUE(centro_id,alumno_id,fecha,grupo_id) + RLS staff read / dirección+
+  profesorado write). Módulo `js/asistencia.js`: pestaña **Pasar lista** (grupo+fecha →
+  alumnos del grupo → estado presente/retraso/ausente/justificada por alumno + observación
+  → upsert) y pestaña **Informe** (rango de fechas → KPIs + tabla por alumno con %asistencia
+  coloreado y flag "seguimiento" si ≥3 ausencias). Nav "Gestión → Asistencia". Upsert
+  verificado bajo RLS. NOTA: aviso real a familias queda para Fase 3 (email/push); de momento
+  se registra el estado y `notificado_familia=false`.
+  Próximo: **Fase 2 · inc.2 — Incidencias**.
 - **Fase 1 · inc.3 — Horario semanal.** Módulo `js/horario.js` (solo lectura). Parrilla
   semanal (Lun–Vie, +finde si hay sesiones) cruzando `grupo_sesiones`+`grupos`+`profesores`,
   chips coloreados por grupo con hora/profesor/aula, filtro por grupo o profesor, y
