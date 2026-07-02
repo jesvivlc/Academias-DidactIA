@@ -4,8 +4,8 @@
 //
 // ⚠️ Backend nuevo: sustituye estos dos valores por los de tu proyecto de Supabase
 // (Project Settings → API → Project URL y anon/public key).
-var SB_URL = "<PEGA_AQUI_TU_URL>";
-var SB_KEY = "<PEGA_AQUI_TU_ANON_KEY>";
+var SB_URL = "https://izdqpsenrjcqtuhjhqxo.supabase.co";
+var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6ZHFwc2VucmpjcXR1aGpocXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMTYxNjksImV4cCI6MjA5ODU5MjE2OX0.psyWEO9aX88ZR1ZqrKzXROP7gYXSU8s34bhwPkHKF8Q";
 var API = `${SB_URL}/functions/v1/chat`;
 var ANON_KEY = SB_KEY;
 // Clave pública VAPID para notificaciones push (es pública por diseño).
