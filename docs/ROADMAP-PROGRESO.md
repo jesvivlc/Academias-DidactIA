@@ -3,17 +3,54 @@
 > La actualizo en cada incremento. Backend: Supabase `izdqpsenrjcqtuhjhqxo`.
 > Producción: https://didactia-academias.vercel.app · Login demo: jesvivlc@gmail.com / Academias2026!
 
+## ✅ RESUMEN FINAL DE LA NOCHE
+
+**Las 6 fases del roadmap están COMPLETAS y desplegadas en producción.** La app pasó de un núcleo limpio a una plataforma de gestión de academias con 14 módulos nuevos.
+
+**Fases:** 1 Datos maestros ✅ · 2 Operación diaria ✅ · 3 Familias y comunicación ✅ · 4 Cobros y economía ✅ · 5 Inteligencia pedagógica ✅ · 6 Crecimiento ✅
+
+**Módulos nuevos (14):** alumnos/matrícula, grupos+profesores, horario (con solapes), asistencia, incidencias, calificaciones+tareas, portal profesor (docencia), calendario+resumen semanal, portal familia, comunicaciones, cobros (+factura PDF), detección de riesgo, marketing. (Núcleo previo: auth multi-tenant, usuarios, chat base, PWA.)
+
+**Tablas nuevas (14):** alumnos (ampliada), profesores, grupos, grupo_sesiones, matriculas, matricula_grupo, asistencia, incidencias, calificaciones, tareas, eventos, comunicaciones, pagos + helper `_mis_alumnos()` y políticas RLS `*_fam_read` (familia lee solo lo de sus hijos, **verificado con cuenta familia real**).
+
+**Probado:** cada incremento con `node --check`, prueba de datos bajo RLS (login real) y smoke test HTTP 200 tras cada deploy. Multi-tenant y aislamiento de familia verificados.
+
+### 🔑 Claves pendientes para activar lo que quedó como HOOK
+- **`GEMINI_API_KEY`** (+ desplegar EF `chat` con el CLI de Supabase) → Chat IA 24h, tutor del alumno, planes de refuerzo y generación de recursos (botones ✨ de Detección de riesgo), redacción a medida de Marketing.
+- **`RESEND_API_KEY`** → envío real de Comunicaciones por email + avisos de asistencia a familias (hoy quedan en cola `pendiente` / `notificado_familia=false`).
+- **VAPID (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`)** → notificaciones push.
+- **WhatsApp Business API / Meta Graph API** → asistente de WhatsApp y autopublicación en Instagram/Facebook.
+- **Stripe** (opcional) → pasarela de pago online (hoy: cobros manuales + factura PDF).
+
+### ⚠️ Seguridad
+Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal Access Token** (`sbp_…`) compartidos en el chat, y cambiar la contraseña demo `Academias2026!`.
+
+### Próximos pasos sugeridos (cuando despiertes)
+1. Darme una `GEMINI_API_KEY` para activar toda la capa de IA.
+2. Crear el repo Git nuevo y conectarlo a Vercel para deploys automáticos (hoy despliego por CLI).
+3. Asociar cada cuenta de profesor a su ficha (`profesores.profile_id`) para acotar "Mi docencia" a sus grupos.
+
+---
+
+
 ## Estado por fases
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
 - **Fase 2 — Operación diaria:** COMPLETADA (Asistencia, Incidencias, Calificaciones/Tareas, Portal profesor, Calendario/Resumen semanal).
 - **Fase 3 — Familias y comunicación:** COMPLETADA (RLS familia + Portal familia + Comunicaciones; Chat IA 24h con hook pendiente de Gemini).
 - **Fase 4 — Cobros y economía:** COMPLETADA (pagos, impagos, económico, factura PDF).
-- Fase 5 — Inteligencia pedagógica: pendiente.
-- Fase 6 — Crecimiento: pendiente.
+- **Fase 5 — Inteligencia pedagógica:** COMPLETADA (detección de riesgo determinista; tutor/planes/recursos IA como hook Gemini).
+- **Fase 6 — Crecimiento:** COMPLETADA (marketing por plantillas; IA/WhatsApp/RRSS como hook).
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 5 — Detección de riesgo + Fase 6 — Marketing (ROADMAP COMPLETO).**
+  `js/riesgo.js` (tab `riesgo`): detección temprana DETERMINISTA cruzando asistencia<80%,
+  incidencias graves abiertas y media<5 (30d) → lista con semáforo, motivos y KPIs; botones
+  de IA (plan/recursos) como hook Gemini. `js/marketing.js` (tab `marketing`): generador de
+  posts para RRSS por plantillas locales personalizadas con el nombre de la academia + copiar;
+  IA/autopublicación como hook. Navs "Gestión → Detección de riesgo" y "→ Marketing".
+  Verificado bajo RLS. **FASES 5 y 6 COMPLETAS → todo el roadmap terminado.**
 - **Fase 4 — Cobros (completa en un incremento).** SQL `sql/fase4-cobros.sql` (tabla `pagos`
   + RLS staff/dirección). Módulo `js/cobros.js` (tab `cobros`): KPIs (ingresos del mes, nº
   pagos, impagos, previsión), registrar pago (alumno/concepto/importe/método/fecha/periodo),

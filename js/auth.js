@@ -507,6 +507,12 @@ async function loadUserProfile(user) {
   if (navComunic) navComunic.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   const navCobros = document.getElementById("nav-cobros");
   if (navCobros) navCobros.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
+  // Detección de riesgo: dirección + orientador + profesorado
+  const navRiesgo = document.getElementById("nav-riesgo");
+  if (navRiesgo) navRiesgo.style.display = (["admin","admin_institucional","director","jefatura","orientador","profesional","superadmin"].includes(role)) ? "flex" : "none";
+  // Marketing: dirección
+  const navMkt = document.getElementById("nav-marketing");
+  if (navMkt) navMkt.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   const grpGestion = document.getElementById("sb-grp-gestion");
   if (grpGestion) grpGestion.style.display = _staffAlm ? "" : "none";
 
