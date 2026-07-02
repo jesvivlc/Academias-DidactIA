@@ -6,7 +6,7 @@
 ## Estado por fases
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
-- **Fase 2 — Operación diaria:** EN CURSO (inc.1 Asistencia hecho).
+- **Fase 2 — Operación diaria:** EN CURSO (inc.1 Asistencia, inc.2 Incidencias hechos).
 - Fase 3 — Familias y comunicación: pendiente.
 - Fase 4 — Cobros y economía: pendiente.
 - Fase 5 — Inteligencia pedagógica: pendiente.
@@ -14,6 +14,13 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 2 · inc.2 — Incidencias.** SQL `sql/fase2-incidencias.sql` (tabla `incidencias` +
+  RLS staff read/write). Módulo `js/incidencias.js` (ids `incidencias2` para no chocar con
+  restos previos): KPIs (abiertas/en seguimiento/graves activas), filtros por estado y
+  gravedad, alta (alumno opcional, tipo, gravedad, descripción), tarjetas con cambio de
+  estado (en seguimiento/cerrar/reabrir) y borrado. Nav "Gestión → Incidencias". Verificado
+  bajo RLS incl. join a alumnos y on-delete-set-null.
+  Próximo: **Fase 2 · inc.3 — Calificaciones / deberes / exámenes**.
 - **Fase 2 · inc.1 — Control de asistencia.** SQL `sql/fase2-asistencia.sql` (tabla
   `asistencia` UNIQUE(centro_id,alumno_id,fecha,grupo_id) + RLS staff read / dirección+
   profesorado write). Módulo `js/asistencia.js`: pestaña **Pasar lista** (grupo+fecha →
