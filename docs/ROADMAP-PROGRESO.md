@@ -7,13 +7,20 @@
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
 - **Fase 2 — Operación diaria:** COMPLETADA (Asistencia, Incidencias, Calificaciones/Tareas, Portal profesor, Calendario/Resumen semanal).
-- **Fase 3 — Familias y comunicación:** EN CURSO (inc.1 RLS familia + Portal familia hecho).
+- **Fase 3 — Familias y comunicación:** COMPLETADA (RLS familia + Portal familia + Comunicaciones; Chat IA 24h con hook pendiente de Gemini).
 - Fase 4 — Cobros y economía: pendiente.
 - Fase 5 — Inteligencia pedagógica: pendiente.
 - Fase 6 — Crecimiento: pendiente.
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 3 · inc.3 — Chat IA 24h (HOOK, no desplegable sin clave).** La carpeta
+  `supabase/functions/chat` existe (heredada de Centros) y `js/chat.js` ya apunta a
+  `/functions/v1/chat`. Para activar el asistente IA hay que: (1) tener el **CLI de Supabase**
+  y (2) un secret **`GEMINI_API_KEY`**, y desplegar la EF (`supabase functions deploy chat`).
+  No disponibles en la ejecución autónoma → queda como hook. El resto del asistente (UI,
+  resolución de horarios en cliente) funciona. **FASE 3 COMPLETA** (con este hook pendiente).
+  Próximo: **Fase 4 · Cobros**.
 - **Fase 3 · inc.2 — Comunicaciones (cola).** SQL `sql/fase3-comunicaciones.sql` (tabla
   `comunicaciones` + RLS staff read / dirección write). Módulo `js/comunicaciones.js` (tab
   `comunicaciones`): alta con destinatario (todos/grupo/alumno), canal (email/push/whatsapp),
