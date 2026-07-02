@@ -14,6 +14,13 @@
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 1 · inc.2 — Grupos + Profesores.** Módulo `js/grupos.js` (sin SQL nuevo; usa
+  tablas de inc.1). Dos pestañas: **Grupos** (CRUD nombre/asignatura/nivel/profesor/aula/
+  capacidad/cuota/color, **sesiones semanales** día+horario con validación de solape, y
+  **asignar alumnos** activos vía `matricula_grupo` con creación de matrícula si falta) y
+  **Profesores** (alta/lista/baja). Nav "Gestión → Grupos" (staff). Verificado end-to-end
+  bajo RLS incl. join anidado matricula_grupo→matriculas→alumnos.
+  Próximo: **inc.3 — Horario semanal** (vista grupo/profesor cruzando grupo_sesiones + detección de solapes de profesor/aula).
 - **Fase 1 · inc.1 — Alumnos/Matrícula.** SQL `sql/fase1-datos-maestros.sql` aplicado
   (tablas `profesores`,`grupos`,`grupo_sesiones`,`matriculas`,`matricula_grupo` + campos
   nuevos en `alumnos`: apellidos, nivel, NEE, estado, RGPD, etc. + RLS). Módulo `js/alumnos.js`
