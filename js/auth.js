@@ -478,6 +478,13 @@ async function loadUserProfile(user) {
 
   // ── Base limpia (Fase 0): solo el núcleo. Gestión de usuarios para dirección. ──
 
+  // Alumnos / Matrícula (Fase 1): personal de la academia (no familia)
+  const _staffAlm = ["admin","admin_institucional","director","jefatura","profesional","orientador","superadmin"].includes(role);
+  const navAlumnos = document.getElementById("nav-alumnos");
+  if (navAlumnos) navAlumnos.style.display = _staffAlm ? "flex" : "none";
+  const grpGestion = document.getElementById("sb-grp-gestion");
+  if (grpGestion) grpGestion.style.display = _staffAlm ? "" : "none";
+
   // Usuarios: gestión de cuentas y roles — solo dirección de la academia
   const usersTab = document.getElementById("tab-users");
   if (usersTab) usersTab.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
