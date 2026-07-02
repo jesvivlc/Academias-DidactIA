@@ -7,13 +7,22 @@
 - **Fase 0.5 — Habilitadores:** pendiente (EF `chat` Gemini, email/push).
 - **Fase 1 — Datos maestros:** COMPLETADA (inc.1 Alumnos, inc.2 Grupos+Profesores, inc.3 Horario).
 - **Fase 2 — Operación diaria:** COMPLETADA (Asistencia, Incidencias, Calificaciones/Tareas, Portal profesor, Calendario/Resumen semanal).
-- Fase 3 — Familias y comunicación: pendiente.
+- **Fase 3 — Familias y comunicación:** EN CURSO (inc.1 RLS familia + Portal familia hecho).
 - Fase 4 — Cobros y economía: pendiente.
 - Fase 5 — Inteligencia pedagógica: pendiente.
 - Fase 6 — Crecimiento: pendiente.
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Fase 3 · inc.1 — RLS de familia + Portal familia.** SQL `sql/fase3-rls-familia.sql`:
+  función `_mis_alumnos()` + políticas `*_fam_read` (SELECT) en asistencia/calificaciones/
+  incidencias/matriculas (por alumno_id de sus hijos) y tareas/grupos/grupo_sesiones (por los
+  grupos de sus hijos), sin tocar las de staff. Módulo `js/portalfam.js` (tab `famportal`,
+  grupo nav "Familia", solo rol familia): selector de hijo + KPIs (%asistencia, nota media,
+  incidencias) + bloques tareas/notas/asistencia/incidencias, usando `currentUserAlumnos`.
+  **VERIFICADO con cuenta familia real**: ve solo los datos de su hijo, `[]` para otros; el
+  staff sigue leyendo todo.
+  Próximo: **Fase 3 · inc.2 — Comunicaciones** (cola sin envío real).
 - **Fase 2 · inc.5 — Calendario + resumen semanal.** SQL `sql/fase2-eventos.sql` (tabla
   `eventos` + RLS staff read / dirección write). Módulo `js/calendario.js` (tab `calendario`):
   **Resumen de la semana** determinista (junta eventos ≤7d + exámenes + tareas próximas,

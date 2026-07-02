@@ -476,6 +476,13 @@ async function loadUserProfile(user) {
   pill.textContent = roleLabels[role] || role;
   pill.className = "role-pill " + (role === "familia" ? "fam" : "pro");
 
+  // Portal familiar: solo rol familia
+  const _esFam = role === "familia";
+  const navFam = document.getElementById("nav-famportal");
+  if (navFam) navFam.style.display = _esFam ? "flex" : "none";
+  const grpFam = document.getElementById("sb-grp-familia");
+  if (grpFam) grpFam.style.display = _esFam ? "" : "none";
+
   // ── Base limpia (Fase 0): solo el núcleo. Gestión de usuarios para dirección. ──
 
   // Alumnos / Matrícula (Fase 1): personal de la academia (no familia)
