@@ -1,0 +1,20 @@
+# Artefactos de desarrollo del producto original — no forman parte del sitio.
+.taskmaster/
+tests/
+scripts/
+supabase/
+sql/
+docs/
+data/
+design_handoff_didactia/
+demo-screenshots/
+node_modules/
+CLAUDE*.md
+rrhh_migration.sql
+schema-fase0.sql
+demo-check.html
+playwright.config.js
+n8n-*.json
+package.json
+package-lock.json
+.env.example
