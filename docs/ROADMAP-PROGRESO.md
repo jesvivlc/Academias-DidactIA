@@ -44,6 +44,14 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **FIX — "email rate limit exceeded" al invitar.** El correo integrado de Supabase está muy
+  limitado. Solución sin depender de email: la EF `invite-user` ahora usa **`generateLink`**
+  (crea el usuario si es nuevo, o enlace de recuperación si ya existe) y **devuelve el enlace**;
+  NO envía correo → sin límite. El frontend (`js/users.js`) muestra el enlace con botón **Copiar**
+  (invitar) / `prompt` (reenviar) para compartirlo por WhatsApp/email/etc. Además `inviteUser`
+  envía ahora el **access_token del admin** (más seguro; fallback a caller_user_id). Verificado
+  end-to-end (devuelve action_link). Cuando se configure SMTP/Resend se puede volver al envío
+  automático por email.
 - **FIX — Invitar usuario ("Failed to fetch").** Causa: la Edge Function `invite-user` no
   estaba desplegada en el backend nuevo. Solución: **desplegada vía Management API** (multipart,
   `verify_jwt:false`, usa `SUPABASE_SERVICE_ROLE_KEY` autoinyectada; `inviteUserByEmail` +

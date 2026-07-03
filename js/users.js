@@ -304,9 +304,10 @@ async function inviteUser() {
   status.style.display = "block";
 
   try {
+    const { data: { session } } = await sb.auth.getSession();
     const res = await fetch(`${SB_URL}/functions/v1/invite-user`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token || ANON_KEY}`, "apikey": ANON_KEY },
       body: JSON.stringify({ email, full_name: name, centro_id: centroId, rol, caller_user_id: currentUser.id })
     });
     const data = await res.json();
@@ -318,8 +319,17 @@ async function inviteUser() {
       await sb.from("familia_alumno").insert(links);
     }
 
-    status.textContent = `✅ Invitación enviada a ${email}`;
     status.style.background = "var(--ink-ll)"; status.style.color = "var(--ink)";
+    if (data.invite_link) {
+      status.innerHTML = `✅ Cuenta creada para <strong>${escH(email)}</strong>.<br>`
+        + `<span style="font-size:12px;color:var(--txt2)">Comparte este enlace para que active su cuenta y ponga su contraseña:</span>`
+        + `<div style="display:flex;gap:6px;margin-top:6px">`
+        + `<input readonly value="${escAttr(data.invite_link)}" onclick="this.select()" style="flex:1;font-size:11px;padding:6px 8px;border:1px solid var(--bdr);border-radius:6px;background:var(--srf)">`
+        + `<button onclick="_usrCopiarEnlace(this,'${escArg(data.invite_link)}')" style="padding:6px 10px;border:1px solid var(--bdr);border-radius:6px;background:var(--ink);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Copiar</button>`
+        + `</div>`;
+    } else {
+      status.textContent = `✅ Invitación enviada a ${email}`;
+    }
     document.getElementById("inv-name").value = "";
     document.getElementById("inv-email").value = "";
     _invAlumnosSeleccionados = new Set();
@@ -517,20 +527,31 @@ async function reactivarUsuario(profileId) {
 }
 
 async function reenviarInvitacion(email, nombre, centroId, rol) {
-  if (!confirm(`¿Reenviar invitación a "${nombre}" (${email})?`)) return;
+  if (!confirm(`¿Regenerar el enlace de acceso de "${nombre}" (${email})?`)) return;
   try {
+    const { data: { session } } = await sb.auth.getSession();
     const res = await fetch(`${SB_URL}/functions/v1/invite-user`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}`, "apikey": ANON_KEY },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token || ANON_KEY}`, "apikey": ANON_KEY },
       body: JSON.stringify({ email, full_name: nombre, centro_id: centroId, rol: rol || "familia", caller_user_id: currentUser.id })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    alert(`✅ Invitación reenviada a ${email}`);
+    if (data.invite_link) window.prompt(`Enlace de acceso para ${email} (cópialo y compártelo):`, data.invite_link);
+    else alert(`✅ Invitación reenviada a ${email}`);
   } catch(e) {
     alert("Error al reenviar: " + e.message);
   }
 }
+
+// Copia un enlace de invitación al portapapeles (fallback a selección).
+function _usrCopiarEnlace(btn, link) {
+  const done = () => { if (btn) { const t = btn.textContent; btn.textContent = "¡Copiado!"; setTimeout(() => { if (btn) btn.textContent = t; }, 1800); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(done).catch(() => { window.prompt("Copia el enlace:", link); });
+  } else { window.prompt("Copia el enlace:", link); }
+}
+window._usrCopiarEnlace = _usrCopiarEnlace;
 
 async function deleteUser(profileId, name) {
   if (!confirm(`¿Eliminar la invitación pendiente de "${name}"?\nEl usuario nunca aceptó la invitación y no tiene sesión activa.`)) return;

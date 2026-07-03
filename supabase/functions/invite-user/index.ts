@@ -37,19 +37,44 @@ serve(async (req) => {
 
     const multiCentro = profile.rol === "superadmin" || profile.rol === "admin_institucional";
     const effCentroId = multiCentro ? centro_id : (profile.centro_id ?? centro_id);
+    const redirectTo = "https://didactia-academias.vercel.app/app.html";
 
-    const { data, error } = await sb.auth.admin.inviteUserByEmail(email, {
-      data: { full_name, centro_id: effCentroId, rol },
+    // generateLink NO envía email (evita el límite del correo integrado de Supabase):
+    // crea el usuario si es nuevo y devuelve el enlace para que la dirección lo comparta.
+    // Si el usuario ya existe (reinvitación), se genera un enlace de recuperación.
+    let userId: string | null = null;
+    let link: string | null = null;
+    let created = true;
+
+    let gen = await sb.auth.admin.generateLink({
+      type: "invite", email,
+      options: { data: { full_name, centro_id: effCentroId, rol }, redirectTo },
     });
-    if (error) throw error;
+    if (gen.error) {
+      const msg = (gen.error.message || "").toLowerCase();
+      if (msg.includes("already") || msg.includes("registered") || msg.includes("exist")) {
+        created = false;
+        gen = await sb.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo } });
+        if (gen.error) throw gen.error;
+      } else {
+        throw gen.error;
+      }
+    }
+    userId = gen.data?.user?.id ?? null;
+    link = gen.data?.properties?.action_link ?? null;
 
-    await sb.from("profiles").upsert(
-      { id: data.user.id, user_id: data.user.id, full_name, email, centro_id: effCentroId, rol },
-      { onConflict: "user_id" },
-    );
+    if (userId) {
+      await sb.from("profiles").upsert(
+        { id: userId, user_id: userId, full_name, email, centro_id: effCentroId, rol },
+        { onConflict: "user_id" },
+      );
+    }
 
     return new Response(
-      JSON.stringify({ success: true, user_id: data.user.id, message: `Invitacion enviada a ${email}` }),
+      JSON.stringify({
+        success: true, user_id: userId, invite_link: link, created,
+        message: created ? `Cuenta creada para ${email}` : `Enlace regenerado para ${email}`,
+      }),
       { headers: { ...CORS, "Content-Type": "application/json" }, status: 200 },
     );
   } catch (err) {
