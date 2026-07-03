@@ -44,6 +44,15 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **FIX — Invitar usuario ("Failed to fetch").** Causa: la Edge Function `invite-user` no
+  estaba desplegada en el backend nuevo. Solución: **desplegada vía Management API** (multipart,
+  `verify_jwt:false`, usa `SUPABASE_SERVICE_ROLE_KEY` autoinyectada; `inviteUserByEmail` +
+  pre-crea perfil; ahora devuelve `user_id`). **Verificado end-to-end** (success + perfil creado
+  con rol correcto). Además configurada la **Auth Site URL / allowlist** →
+  `https://didactia-academias.vercel.app/app.html` para que los enlaces de invitación/recuperación
+  caigan en la app. `notify-role` ya estaba en try/catch (no rompe). ⚠️ El **email de invitación**
+  usa el servicio integrado de Supabase (muy limitado); para envío fiable configurar **SMTP/Resend**
+  en Auth. `send-comunicado`/`notify-*` siguen sin desplegar (no bloquean).
 - **Fase 5 — Detección de riesgo + Fase 6 — Marketing (ROADMAP COMPLETO).**
   `js/riesgo.js` (tab `riesgo`): detección temprana DETERMINISTA cruzando asistencia<80%,
   incidencias graves abiertas y media<5 (30d) → lista con semáforo, motivos y KPIs; botones
