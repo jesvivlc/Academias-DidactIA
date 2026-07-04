@@ -154,3 +154,5 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
   + cuota). Nav "Gestión → Alumnos" (staff). Flujo alumno+matrícula verificado end-to-end bajo RLS.
   Próximo: **inc.2 — Grupos** (CRUD grupos + sesiones semanales + asignar alumnos a grupos).
 - (inicio) Base limpia desplegada; esquema fase-0 aplicado; login verificado.
+
+> **CI/CD:** repo conectado a Vercel (rama `main` → producción). Cada `git push` despliega solo.
