@@ -44,6 +44,10 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #4 — Económico por profesor/aula/asignatura.** `js/cobros.js`: bloque **Ingresos
+  estimados** = cuota_mensual del grupo × nº alumnos asignados (matricula_grupo), agrupado en 3
+  tablas (por profesor, por aula, por asignatura) + total mensual. Solo lectura; verificado bajo
+  RLS. Próximo: **#5 Secretaría IA (resumen semanal con IA)**.
 - **Backlog #3 — Facturación desde matrícula.** `js/cobros.js`: botón **🧾 Generar recibos del
   mes** (crea un pago `pendiente` con la cuota por cada matrícula activa con cuota que no tenga
   recibo del periodo actual, sin duplicar) + columna **Estado** y botón **Marcar pagado** en los

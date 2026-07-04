@@ -2,6 +2,7 @@
 // Pagos, impagos, KPIs, factura PDF (jsPDF) y bloque económico. Filtra por ctrId; RLS.
 
 let _cbPagos = [], _cbMatriculas = [], _cbAlumnos = [], _cbNuevo = false;
+let _cbGrupos = [], _cbProfes = [], _cbMG = [];
 function _cbEsc(s){ return escH(s); }
 function _cbHoy(){ return new Date().toISOString().slice(0,10); }
 function _cbPeriodo(){ return new Date().toISOString().slice(0,7); } // YYYY-MM
@@ -46,12 +47,16 @@ async function initCobros(){
   _cbEnsureStyles();
   const panel=document.getElementById("panel-cobros"); if(!panel) return;
   panel.innerHTML=`<div class="cb-wrap"><div class="cb-sub">Cargando…</div></div>`;
-  const [p,m,a]=await Promise.all([
+  const [p,m,a,g,pr,mg]=await Promise.all([
     sb.from("pagos").select("*,alumnos(nombre,apellidos)").eq("centro_id",ctrId).order("fecha",{ascending:false}).limit(200),
     sb.from("matriculas").select("id,alumno_id,cuota_mensual,estado,fecha_baja,alumnos(nombre,apellidos,estado,fecha_baja)").eq("centro_id",ctrId),
     sb.from("alumnos").select("id,nombre,apellidos,estado,fecha_baja").eq("centro_id",ctrId).order("nombre"),
+    sb.from("grupos").select("id,nombre,cuota_mensual,profesor_id,aula,asignatura").eq("centro_id",ctrId).eq("activo",true),
+    sb.from("profesores").select("id,nombre,apellidos").eq("centro_id",ctrId),
+    sb.from("matricula_grupo").select("grupo_id").eq("centro_id",ctrId),
   ]);
   _cbPagos=p.data||[]; _cbMatriculas=m.data||[]; _cbAlumnos=a.data||[];
+  _cbGrupos=g.data||[]; _cbProfes=pr.data||[]; _cbMG=mg.data||[];
   _cbRender();
 }
 
@@ -112,6 +117,9 @@ function _cbRender(){
         <div class="cb-eco-box"><div class="cb-kpi-l">Por método</div>${Object.keys(porMetodo).length?Object.entries(porMetodo).map(([k,v])=>`<div style="font-size:13px;display:flex;justify-content:space-between"><span>${_cbEsc(k)}</span><strong>${_cbEur(v)}</strong></div>`).join(""):`<div class="cb-empty">Sin cobros aún.</div>`}</div>
       </div>
 
+      <div class="cb-sec">Ingresos estimados (por cuota de grupo)</div>
+      ${_cbIngresosHtml()}
+
       <div class="cb-sec">Pagos y recibos</div>
       ${_cbPagos.length?`<table class="cb-tbl"><thead><tr><th>Fecha</th><th>Alumno</th><th>Concepto</th><th>Método</th><th>Importe</th><th>Estado</th><th></th></tr></thead><tbody>
         ${_cbPagos.slice(0,60).map(x=>`<tr><td>${_cbEsc(x.fecha)}</td><td>${_cbEsc(_cbNombre(x.alumnos))}</td><td>${_cbEsc(x.concepto||"—")}</td><td>${_cbEsc(x.metodo)}</td><td>${_cbEur(x.importe)}</td>
@@ -119,6 +127,30 @@ function _cbRender(){
           <td>${x.estado==="pendiente"?`<button class="cb-btn cb-btn-sm" onclick="_cbMarcarPagado('${escArg(x.id)}')">Marcar pagado</button> `:""}<button class="cb-btn cb-btn-sm" onclick="_cbFactura('${escArg(x.id)}')">Factura PDF</button></td></tr>`).join("")}
       </tbody></table>`:`<div class="cb-empty">Sin pagos registrados.</div>`}
     </div>`;
+}
+
+function _cbIngresosHtml(){
+  if(!_cbGrupos.length) return `<div class="cb-empty">Crea grupos con cuota y alumnos para ver ingresos estimados.</div>`;
+  const cnt={}; _cbMG.forEach(r=>{ cnt[r.grupo_id]=(cnt[r.grupo_id]||0)+1; });
+  const profName={}; _cbProfes.forEach(p=>{ profName[p.id]=[p.nombre,p.apellidos].filter(Boolean).join(" "); });
+  const byProf={}, byAula={}, byAsig={};
+  _cbGrupos.forEach(g=>{
+    const ing=Number(g.cuota_mensual||0)*(cnt[g.id]||0);
+    if(!ing) return;
+    const pk=g.profesor_id?(profName[g.profesor_id]||"—"):"Sin profesor";
+    byProf[pk]=(byProf[pk]||0)+ing;
+    const ak=g.aula||"Sin aula"; byAula[ak]=(byAula[ak]||0)+ing;
+    const sk=g.asignatura||"Sin asignatura"; byAsig[sk]=(byAsig[sk]||0)+ing;
+  });
+  const tbl=(titulo,obj)=>{
+    const rows=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+    if(!rows.length) return "";
+    return `<div class="cb-eco-box"><div class="cb-kpi-l" style="margin-bottom:6px">${titulo}</div>`+
+      rows.map(([k,v])=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>${_cbEsc(k)}</span><strong>${_cbEur(v)}/mes</strong></div>`).join("")+`</div>`;
+  };
+  const total=Object.values(byProf).reduce((s,v)=>s+v,0);
+  return `<div class="cb-sub" style="margin:-4px 0 8px">Estimación mensual = cuota del grupo × nº de alumnos asignados. Total: <strong>${_cbEur(total)}/mes</strong>.</div>
+    <div class="cb-eco">${tbl("Por profesor",byProf)}${tbl("Por aula",byAula)}${tbl("Por asignatura",byAsig)}</div>`;
 }
 
 function _cbToggle(){ _cbNuevo=!_cbNuevo; _cbRender(); }
