@@ -44,6 +44,10 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #6 — Informe de evolución del alumno con IA.** `js/portalfam.js`: botón **✨ Informe
+  de evolución** (por hijo) → junta últimas notas + %asistencia(30d) + incidencias → `iaChat`
+  (rol orientador: fortalezas, aspectos a reforzar, recomendaciones, objetivos) → `iaModal`.
+  Próximo: **#7 Renovación de curso en lote**.
 - **Backlog #5 — Secretaría IA.** `js/calendario.js`: botón **✨ Resumen con IA** → junta
   eventos+exámenes+tareas (7d) e impagos del mes → `iaChat` (rol secretaria) → `iaModal` con el
   parte de la semana en lenguaje natural. Verificado IA. Próximo: **#6 Informe de evolución del

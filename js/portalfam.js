@@ -53,8 +53,10 @@ async function initPortalFam(){
   }
   if(!_pfHijo || !hijos.find(h=>h.id===_pfHijo)) _pfHijo=hijos[0].id;
   panel.innerHTML=`<div class="pf-wrap">
-    <h1 class="pf-h">Portal familiar</h1>
-    <div class="pf-sub">Seguimiento de tus hijos en la academia</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <div><h1 class="pf-h">Portal familiar</h1><div class="pf-sub">Seguimiento de tus hijos en la academia</div></div>
+      <button class="pf-hijo" style="cursor:pointer" onclick="_pfInforme(this)">✨ Informe de evolución</button>
+    </div>
     <div class="pf-hijos">${hijos.map(h=>`<span class="pf-hijo ${h.id===_pfHijo?"on":""}" onclick="_pfSel('${escArg(h.id)}')">${_pfEsc(h.nombre||"Hijo/a")}</span>`).join("")}</div>
     <div id="pf-body"><div class="pf-empty">Cargando…</div></div>
   </div>`;
@@ -138,4 +140,30 @@ async function _pfMsgEnviar(btn){
 }
 window._pfMsgEnviar=_pfMsgEnviar;
 
-window.initPortalFam=initPortalFam; window._pfSel=_pfSel;
+async function _pfInforme(btn){
+  if(!_pfHijo){ return; }
+  const hijo=_pfHijos().find(h=>h.id===_pfHijo);
+  const nombre=hijo?(hijo.nombre||"Alumno/a"):"Alumno/a";
+  const orig=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
+  try{
+    const hace30=_pfHace(30);
+    const [notas, asis, inc] = await Promise.all([
+      sb.from("calificaciones").select("nota,evaluacion,fecha").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(15),
+      sb.from("asistencia").select("estado").eq("alumno_id",_pfHijo).gte("fecha",hace30),
+      sb.from("incidencias").select("tipo,gravedad,estado,descripcion").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(10),
+    ]);
+    const A=asis.data||[]; const tot=A.length; const okp=A.filter(r=>r.estado==="presente"||r.estado==="retraso").length;
+    const pct=tot?Math.round(okp/tot*100):null;
+    const N=notas.data||[]; const media=N.length?(N.reduce((s,r)=>s+Number(r.nota||0),0)/N.length):null;
+    const notasTxt=N.length?N.map(r=>`- ${r.evaluacion||"Nota"}: ${r.nota}`).join("\n"):"(sin notas)";
+    const incTxt=(inc.data||[]).length?(inc.data).map(i=>`- ${i.tipo} (${i.gravedad}): ${i.descripcion||""}`).join("\n"):"(sin incidencias)";
+    const sys="Eres orientador pedagógico de una academia. Con estos datos redacta un informe para la familia con secciones: Fortalezas, Aspectos a reforzar, Recomendaciones de estudio y Objetivos. Español, cercano y constructivo, sin inventar datos.";
+    const user=`Alumno/a: ${nombre}\nNota media (últimas): ${media==null?"s/d":media.toFixed(1)}\nAsistencia 30 días: ${pct==null?"s/d":pct+"%"}\nNOTAS:\n${notasTxt}\nINCIDENCIAS:\n${incTxt}`;
+    const txt=await iaChat(sys,user);
+    iaModal("Informe de evolución · "+nombre, txt||"Sin respuesta.");
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error IA: "+e.message,"error"); else alert("Error IA: "+e.message);
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
+}
+
+window.initPortalFam=initPortalFam; window._pfSel=_pfSel; window._pfInforme=_pfInforme;
