@@ -3,7 +3,29 @@
 > La actualizo en cada incremento. Backend: Supabase `izdqpsenrjcqtuhjhqxo`.
 > Producción: https://didactia-academias.vercel.app · Login demo: jesvivlc@gmail.com / Academias2026!
 
-## ✅ RESUMEN FINAL DE LA NOCHE
+## ✅ RESUMEN FINAL — BACKLOG DE FEATURES COMPLETO (Fases 1–6 + backlog #1–#12)
+
+**Todo el backlog de la lista del usuario está construido y en producción** (https://didactia-academias.vercel.app · login demo jesvivlc@gmail.com / Academias2026!).
+
+**Módulos (19):** alumnos/matrícula(+renovación de curso en lote), grupos+profesores, horario(+solapes), asistencia(+aviso de ausencia por email), incidencias, calificaciones+tareas, **portal profesor** (Mi docencia, se acota a los grupos del profesor vinculado), **calendario**(+resumen semanal con IA "secretaría"), **portal familia** (asistencia/notas/incidencias/tareas/recibos/calendario/mensajes + informe de evolución con IA), **comunicaciones** (email real vía Resend), **cobros** (pagos, generar recibos del mes, marcar pagado, factura PDF, ingresos por profesor/aula/asignatura, recordatorio de impagos por email), **detección de riesgo** (+planes IA), **marketing** (posts por plantilla + versión IA + IA comercial), **tutor IA** (alumno), **mensajería** familia↔centro, **planificador** (propuesta de grupos por nivel/NEE + huecos de la parrilla).
+
+**IA (Gemini 2.5 Flash):** Asistente, Tutor del alumno, planes de refuerzo (riesgo), secretaría (resumen semanal), informe de evolución del alumno, marketing (post + guion comercial). Helper `window.iaChat` + EF `chat`.
+
+**Email (Resend):** comunicaciones a familias, aviso de ausencia, recordatorio de impagos.
+
+**Edge Functions desplegadas (7):** `chat`, `send-comunicacion`, `invite-user`, `notify-ausencia`, `recordar-impagos` (+ heredadas sin usar). **Secrets:** GEMINI_API_KEY, RESEND_API_KEY. Todas verificadas end-to-end.
+
+**Tablas:** centros, profiles, alumnos(ampliada), familia_alumno, info_centro, horarios_grupo, horarios, tramos_centro, profesores, grupos, grupo_sesiones, matriculas, matricula_grupo, asistencia, incidencias, calificaciones, tareas, eventos, comunicaciones, pagos, mensajes. RLS multi-tenant + políticas de familia `*_fam_read` (verificadas con cuenta familia real).
+
+### 🔑 PASOS PENDIENTES DEL USUARIO (para activar del todo lo que quedó como hook)
+1. **Resend — verificar un dominio** (Resend → Domains → añadir p.ej. `didactia.eu` + registros DNS) y fijar el secret **`MAIL_FROM`** (p.ej. `no-reply@didactia.eu`). **Hoy los emails solo se entregan al email de la cuenta de Resend** (jesvivlc@gmail.com); con dominio verificado llegarán a las familias reales.
+2. **WhatsApp / Instagram / Facebook**: asistente de WhatsApp y autopublicación en RRSS requieren **WhatsApp Business API / Meta Graph API** (cuentas + aprobación de Meta) → pendiente, dejado como hook.
+3. **Seguridad**: rotar las claves compartidas en el chat (**Gemini**, **Resend**, **PAT `sbp_…`**) y cambiar la **contraseña demo** `Academias2026!`.
+4. **Pasarela de pago online** (Stripe) opcional: hoy cobros manuales + recibos/factura PDF.
+
+---
+
+## ✅ RESUMEN (histórico) — construcción inicial (Fases 1–6)
 
 **Las 6 fases del roadmap están COMPLETAS y desplegadas en producción.** La app pasó de un núcleo limpio a una plataforma de gestión de academias con 14 módulos nuevos.
 
@@ -44,6 +66,13 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #11 y #12 — Planificador + IA comercial (BACKLOG COMPLETO).** `js/planificador.js`
+  (tab `planificador`, nav "Gestión → Planificador", dirección): propuesta DETERMINISTA de grupos
+  por nivel educativo (NEE en grupos aparte más pequeños) con tamaño objetivo configurable, +
+  "Carga por día" que marca los días con menos sesiones como huecos sugeridos (solo propone, no
+  crea). `js/marketing.js`: apartado **🎯 IA comercial** (objetivo → guion de captación +
+  secuencia de seguimiento con `iaChat`). Verificado. **BACKLOG #1–#12 COMPLETO.** WhatsApp/IG/FB
+  autopublicación = hook (requiere WhatsApp Business API / Meta Graph API).
 - **Backlog #10 — Recordatorios de pago por email.** EF **`recordar-impagos`** desplegada
   (service role → calcula matrículas activas sin pago del periodo → emails de sus familias →
   Resend). `js/cobros.js`: botón **📧 Recordar por email** en la sección de Impagos → invoca la

@@ -71,6 +71,13 @@ function initMarketing(){
         <span class="mk-msg" id="mk-msg"></span>
       </div>
       <div class="mk-note">Plantillas listas para Instagram / Facebook. Con <strong>✨ Versión con IA</strong> (Gemini) reescribe el post a medida. La <strong>autopublicación</strong> en IG/FB/WhatsApp requiere las APIs de Meta / WhatsApp Business (pendiente).</div>
+
+      <div style="margin-top:22px;border-top:1px solid var(--line,var(--bdr));padding-top:16px">
+        <div style="font-family:var(--font-display,serif);font-size:18px;margin-bottom:4px">🎯 IA comercial</div>
+        <div class="mk-note" style="margin:0 0 8px;border:none;padding:0">Genera un guion de captación y una secuencia de seguimiento a partir de tu objetivo.</div>
+        <textarea class="mk-ta" id="mk-com" style="min-height:70px" placeholder="Objetivo/oferta: ej. captar alumnos de bachillerato para septiembre"></textarea>
+        <div style="margin-top:8px"><button class="mk-btn mk-btn-p" onclick="_mkComercial(this)">✨ Generar guion</button></div>
+      </div>
     </div>`;
 }
 
@@ -97,4 +104,16 @@ async function _mkIA(btn){
   }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
 }
 
-window.initMarketing=initMarketing; window._mkSel=_mkSel; window._mkCopiar=_mkCopiar; window._mkIA=_mkIA;
+async function _mkComercial(btn){
+  const v=(document.getElementById("mk-com")?.value||"").trim(); if(!v) return;
+  const orig=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
+  try{
+    const sys="Eres experto en captación de alumnos para una academia. A partir del objetivo, genera: (1) un guion de captación breve para el primer contacto, y (2) una secuencia de 3 mensajes de seguimiento. Español, práctico y cercano.";
+    const txt=await iaChat(sys,v);
+    iaModal("Guion comercial", txt||"Sin respuesta.");
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error IA: "+e.message,"error"); else alert("Error IA: "+e.message);
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
+}
+
+window.initMarketing=initMarketing; window._mkSel=_mkSel; window._mkCopiar=_mkCopiar; window._mkIA=_mkIA; window._mkComercial=_mkComercial;
