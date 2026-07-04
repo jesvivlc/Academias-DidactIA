@@ -87,7 +87,8 @@ async function initAlumnos() {
           </div>
         </div>
         <div class="alm-items" id="alm-items"><div class="alm-sub" style="padding:12px">Cargando…</div></div>
-        <div style="padding:12px"><button class="alm-btn alm-btn-p" style="width:100%" onclick="_almNuevo()">+ Nuevo alumno</button></div>
+        <div style="padding:12px;display:flex;flex-direction:column;gap:8px"><button class="alm-btn alm-btn-p" style="width:100%" onclick="_almNuevo()">+ Nuevo alumno</button>
+        ${["admin","admin_institucional","director","jefatura","superadmin"].includes(role)?`<button class="alm-btn" style="width:100%" onclick="_almRenovarCurso(this)">🔁 Renovar curso</button>`:""}</div>
       </div>
       <div class="alm-detail" id="alm-detail"><div class="alm-empty">Selecciona un alumno o crea uno nuevo.</div></div>
     </div>`;
@@ -275,6 +276,30 @@ async function _almReactivar(id) {
   if (typeof showToastGlobal === "function") showToastGlobal(error?("Error: "+error.message):"Alumno reactivado", error?"error":"success");
   await _almLoad(); const a = _almData.find(x => x.id === id); if (a) _almRenderFicha(a);
 }
+
+async function _almRenovarCurso(btn){
+  const actual = (typeof cursoActivo!=="undefined" && cursoActivo) ? cursoActivo : "2025-26";
+  // sugerencia de curso siguiente (2025-26 -> 2026-27)
+  let sug=actual; const m=actual.match(/^(\d{4})-(\d{2})$/);
+  if(m){ const a=parseInt(m[1],10)+1; sug=a+"-"+String((a+1)%100).padStart(2,"0"); }
+  const nuevo=(window.prompt("Nuevo curso escolar para la renovación (ej "+sug+"):", sug)||"").trim();
+  if(!nuevo) return;
+  const { data:mats, error:e1 } = await sb.from("matriculas").select("id,alumno_id,cuota_mensual,forma_pago,descuento").eq("centro_id",ctrId).eq("estado","activa");
+  if(e1){ if(typeof showToastGlobal==="function") showToastGlobal("Error: "+e1.message,"error"); return; }
+  const lista=mats||[];
+  if(!lista.length){ if(typeof showToastGlobal==="function") showToastGlobal("No hay matrículas activas que renovar","info"); return; }
+  if(!confirm("¿Renovar "+lista.length+" matrícula(s) activa(s) al curso "+nuevo+"?\nLas actuales pasarán a 'renovada' y se crearán nuevas matrículas activas.")) return;
+  if(btn){ btn.disabled=true; btn.textContent="Renovando…"; }
+  try{
+    const nuevas=lista.map(x=>({ centro_id:ctrId, alumno_id:x.alumno_id, estado:"activa", cuota_mensual:x.cuota_mensual, forma_pago:x.forma_pago, descuento:x.descuento||0, curso_escolar:nuevo }));
+    const { error:e2 } = await sb.from("matriculas").insert(nuevas); if(e2) throw e2;
+    const { error:e3 } = await sb.from("matriculas").update({ estado:"renovada" }).in("id", lista.map(x=>x.id)); if(e3) throw e3;
+    if(typeof showToastGlobal==="function") showToastGlobal(lista.length+" matrícula(s) renovadas al curso "+nuevo,"success");
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error al renovar: "+(e.message||e),"error");
+  }finally{ if(btn){ btn.disabled=false; btn.textContent="🔁 Renovar curso"; } await _almLoad(); }
+}
+window._almRenovarCurso=_almRenovarCurso;
 
 window.initAlumnos = initAlumnos;
 window._almSelect = _almSelect;

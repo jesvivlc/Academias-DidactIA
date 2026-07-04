@@ -44,6 +44,10 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #7 — Renovación de curso en lote.** `js/alumnos.js`: botón **🔁 Renovar curso**
+  (dirección) → pide el nuevo curso (sugiere el siguiente), confirma, marca las matrículas
+  activas como `renovada` y crea nuevas `activa` con la cuota/forma de pago copiadas al nuevo
+  curso. Verificado. Próximo: **#8 Profesor↔cuenta**.
 - **Backlog #6 — Informe de evolución del alumno con IA.** `js/portalfam.js`: botón **✨ Informe
   de evolución** (por hijo) → junta últimas notas + %asistencia(30d) + incidencias → `iaChat`
   (rol orientador: fortalezas, aspectos a reforzar, recomendaciones, objetivos) → `iaModal`.
