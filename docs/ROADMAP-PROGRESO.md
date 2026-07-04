@@ -44,6 +44,13 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **EMAIL activado (Resend) + Comunicaciones envía de verdad.** Secret `RESEND_API_KEY`
+  configurado. EF **`send-comunicacion`** desplegada (resuelve emails de familias server-side
+  según destinatario todos/grupo/alumno, envía vía Resend con bcc, marca estado `enviada`).
+  `js/comunicaciones.js`: al crear envía automáticamente + botón "📧 Enviar ahora" en pendientes.
+  Verificado end-to-end (sent:0 sin familias). ⚠️ **Resend sin dominio verificado** → hasta que
+  el usuario verifique un dominio (DNS) solo entrega al email de la cuenta; `from` configurable
+  vía secret `MAIL_FROM` (default onboarding@resend.dev).
 - **Tutor IA (alumno/familia).** Módulo `js/tutor.js` (tab `tutor`, nav "Tutor IA" visible a
   todos, junto a Asistente IA). Mini-chat pedagógico **multivuelta** sobre la EF `chat`/Gemini:
   resuelve dudas, explica conceptos con ejemplos, genera ejercicios con soluciones, prepara

@@ -55,7 +55,7 @@ function _cmuRender(){
     <div class="cmu-wrap">
       <h1 class="cmu-h">Comunicaciones</h1>
       <div class="cmu-sub">Avisos a familias: horarios, pagos, vacaciones, cambios…</div>
-      <div class="cmu-note">✋ <strong>Modo borrador:</strong> las comunicaciones se guardan en cola (estado «pendiente»). El envío real por email/push/WhatsApp se activará al configurar Resend, VAPID y WhatsApp.</div>
+      <div class="cmu-note">📧 Las comunicaciones por <strong>email</strong> se envían a las familias destinatarias vía Resend. <em>Nota: hasta verificar un dominio en Resend, la entrega real solo llega al email de la cuenta.</em> Push/WhatsApp aún pendientes.</div>
       <div class="cmu-form">
         <div class="cmu-grid">
           <div><label class="cmu-lbl">Destinatario</label>
@@ -107,7 +107,21 @@ function _cmuCard(c){
       <span class="cmu-est cmu-e-${c.estado}">${_cmuEsc(c.estado)}</span>
     </div>
     ${c.cuerpo?`<div class="cmu-body">${_cmuEsc(c.cuerpo)}</div>`:""}
+    ${c.estado==="pendiente"&&c.canal==="email"?`<div style="margin-top:8px"><button class="cmu-btn cmu-btn-p" style="padding:5px 12px;font-size:12px" onclick="_cmuEnviar('${escArg(c.id)}',this)">📧 Enviar ahora</button></div>`:""}
   </div>`;
+}
+
+async function _cmuEnviar(id, btn){
+  if(btn){ btn.disabled=true; btn.textContent="Enviando…"; }
+  try{
+    const { data, error } = await sb.functions.invoke("send-comunicacion", { body:{ comunicacion_id:id } });
+    if(error) throw error;
+    if(data?.error) throw new Error(data.error);
+    if(typeof showToastGlobal==="function") showToastGlobal("Enviada a "+(data?.sent??0)+" familia(s)","success");
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error al enviar: "+(e.message||e),"error");
+  }
+  await initComunicaciones();
 }
 
 async function _cmuCrear(){
@@ -118,14 +132,22 @@ async function _cmuCrear(){
   if(!titulo){ if(msg){msg.textContent="Pon un título.";msg.style.color="var(--danger)";} return; }
   if(dest!=="todos"&&!ref){ if(msg){msg.textContent="Elige el destinatario.";msg.style.color="var(--danger)";} return; }
   const uid=(typeof currentUser!=="undefined"&&currentUser)?currentUser.id:null;
-  const { error } = await sb.from("comunicaciones").insert({
+  const { data:ins, error } = await sb.from("comunicaciones").insert({
     centro_id:ctrId, titulo, cuerpo:(document.getElementById("cmu-cuerpo")?.value||"").trim()||null,
     destinatario:dest, destinatario_ref:ref, canal:document.getElementById("cmu-canal")?.value||"email",
     estado:"pendiente", created_by:uid,
-  });
+  }).select("id").single();
   if(error){ if(msg){msg.textContent="Error: "+error.message;msg.style.color="var(--danger)";} return; }
-  if(typeof showToastGlobal==="function") showToastGlobal("Comunicación guardada en cola","success");
+  // Enviar por email inmediatamente (canal email)
+  let enviada=false, sent=0;
+  if((document.getElementById("cmu-canal")?.value||"email")==="email" && ins?.id){
+    try{
+      const { data:sd, error:se } = await sb.functions.invoke("send-comunicacion", { body:{ comunicacion_id:ins.id } });
+      if(!se && !sd?.error){ enviada=true; sent=sd?.sent??0; }
+    }catch(_){}
+  }
+  if(typeof showToastGlobal==="function") showToastGlobal(enviada?("Comunicación enviada a "+sent+" familia(s)"):"Comunicación guardada (pendiente de envío)","success");
   await initComunicaciones();
 }
 
-window.initComunicaciones=initComunicaciones; window._cmuDestChange=_cmuDestChange; window._cmuCrear=_cmuCrear;
+window.initComunicaciones=initComunicaciones; window._cmuDestChange=_cmuDestChange; window._cmuCrear=_cmuCrear; window._cmuEnviar=_cmuEnviar;
