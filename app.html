@@ -797,6 +797,11 @@
         <label class="lbl">Alumnos vinculados</label>
         <div id="edit-alumnos-lista" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;border:1px solid var(--bdr);border-radius:var(--r-sm);padding:8px;"></div>
       </div>
+      <div id="edit-prof-wrap" style="display:none;">
+        <label class="lbl">Vincular a ficha de profesor</label>
+        <select class="fi" id="edit-prof-link"><option value="">— Sin vincular —</option></select>
+        <div style="font-size:11px;color:var(--txt3);margin-top:3px">Al vincular, "Mi docencia" mostrará solo sus grupos.</div>
+      </div>
       <div id="edit-status" style="display:none;font-size:13px;padding:8px 12px;border-radius:var(--r-sm);"></div>
       <button class="btn btn-p" onclick="guardarCambiosUsuario()">💾 Guardar cambios</button>
     </div>

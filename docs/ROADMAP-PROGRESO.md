@@ -44,6 +44,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #8 — Profesor↔cuenta.** En el modal Editar usuario (`app.html`+`js/users.js`), si el
+  rol es profesional, selector **Vincular a ficha de profesor** (setea `profesores.profile_id`).
+  `js/portalprof.js` (Mi docencia): si el usuario profesional está vinculado, acota grupos/
+  sesiones/exámenes/ausencias/notas a **sus** grupos (`profesor_id`); si no, muestra todo con
+  aviso. Verificado el vínculo por `profile_id`. Próximo: **#9 Aviso de ausencia por email**.
 - **Backlog #7 — Renovación de curso en lote.** `js/alumnos.js`: botón **🔁 Renovar curso**
   (dirección) → pide el nuevo curso (sugiere el siguiente), confirma, marca las matrículas
   activas como `renovada` y crea nuevas `activa` con la cuota/forma de pago copiadas al nuevo

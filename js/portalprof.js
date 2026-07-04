@@ -48,12 +48,23 @@ async function initDocencia(){
   const hace30=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
   const en7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
 
+  // Si el usuario es profesor vinculado a una ficha, acotar a SUS grupos.
+  let pid=null, misGrupos=null;
+  if(typeof role!=="undefined" && role==="profesional" && typeof currentUser!=="undefined" && currentUser){
+    const { data:pf } = await sb.from("profesores").select("id").eq("profile_id",currentUser.id).eq("centro_id",ctrId).limit(1);
+    pid=(pf&&pf[0])?pf[0].id:null;
+    if(pid){ const { data:gs } = await sb.from("grupos").select("id").eq("centro_id",ctrId).eq("profesor_id",pid); misGrupos=(gs||[]).map(g=>g.id); }
+  }
+  window._docFiltrado = !!pid;
+  const _byGrupo=(qb)=> misGrupos!==null ? qb.in("grupo_id", misGrupos.length?misGrupos:["00000000-0000-0000-0000-000000000000"]) : qb;
+  let gq=sb.from("grupos").select("id,nombre,color,aula").eq("centro_id",ctrId).eq("activo",true);
+  if(pid) gq=gq.eq("profesor_id",pid);
   const [grupos, ses, exams, aus, notas] = await Promise.all([
-    sb.from("grupos").select("id,nombre,color,aula").eq("centro_id",ctrId).eq("activo",true),
-    sb.from("grupo_sesiones").select("grupo_id,dia_semana,hora_inicio,hora_fin,aula").eq("centro_id",ctrId).eq("dia_semana",dia),
-    sb.from("tareas").select("titulo,tipo,fecha_entrega,grupo_id").eq("centro_id",ctrId).eq("tipo","examen").gte("fecha_entrega",hoy).lte("fecha_entrega",en7).order("fecha_entrega"),
-    sb.from("asistencia").select("fecha,alumnos(nombre,apellidos)").eq("centro_id",ctrId).eq("estado","ausente").gte("fecha",hace7).order("fecha",{ascending:false}).limit(30),
-    sb.from("calificaciones").select("nota,evaluacion,fecha,alumnos(nombre,apellidos)").eq("centro_id",ctrId).lt("nota",5).gte("fecha",hace30).order("fecha",{ascending:false}).limit(30),
+    gq,
+    _byGrupo(sb.from("grupo_sesiones").select("grupo_id,dia_semana,hora_inicio,hora_fin,aula").eq("centro_id",ctrId).eq("dia_semana",dia)),
+    _byGrupo(sb.from("tareas").select("titulo,tipo,fecha_entrega,grupo_id").eq("centro_id",ctrId).eq("tipo","examen").gte("fecha_entrega",hoy).lte("fecha_entrega",en7).order("fecha_entrega")),
+    _byGrupo(sb.from("asistencia").select("fecha,alumnos(nombre,apellidos)").eq("centro_id",ctrId).eq("estado","ausente").gte("fecha",hace7).order("fecha",{ascending:false}).limit(30)),
+    _byGrupo(sb.from("calificaciones").select("nota,evaluacion,fecha,alumnos(nombre,apellidos)").eq("centro_id",ctrId).lt("nota",5).gte("fecha",hace30).order("fecha",{ascending:false}).limit(30)),
   ]);
   const gById=Object.fromEntries((grupos.data||[]).map(g=>[g.id,g]));
   const sesiones=(ses.data||[]).map(s=>({...s,g:gById[s.grupo_id]||{}})).sort((a,b)=>String(a.hora_inicio).localeCompare(String(b.hora_inicio)));
@@ -97,7 +108,7 @@ async function initDocencia(){
         <div class="doc-sec"><h3>⚠ Ausencias recientes</h3>${panelAus}</div>
         <div class="doc-sec"><h3>📉 Notas para reforzar</h3>${panelNotas}</div>
       </div>
-      <div class="doc-sub" style="margin-top:14px">Muestra la docencia de todo el centro. Al asociar cada cuenta de profesor a su ficha se acotará a sus grupos.</div>
+      <div class="doc-sub" style="margin-top:14px">${window._docFiltrado?"Mostrando solo tus grupos (cuenta vinculada a tu ficha de profesor).":"Muestra la docencia de todo el centro. Vincula cada cuenta de profesor a su ficha (Usuarios → Editar) para acotarla a sus grupos."}</div>
     </div>`;
 }
 

@@ -379,6 +379,12 @@ async function mostrarModalEditar(profileId) {
     editAlumnosWrap.style.display = "none";
   }
 
+  const editProfWrap = document.getElementById("edit-prof-wrap");
+  if (editProfWrap) {
+    if (_editingProfile.rol === "profesional") { editProfWrap.style.display = "block"; await cargarProfesoresEditar(); }
+    else editProfWrap.style.display = "none";
+  }
+
   document.getElementById("modal-editar").style.display = "flex";
 }
 
@@ -392,13 +398,23 @@ function cerrarModalEditar() {
 function onEditRolChange() {
   const rol  = document.getElementById("edit-rol").value;
   const wrap = document.getElementById("edit-alumnos-wrap");
-  if (!wrap) return;
-  if (rol === "familia") {
-    wrap.style.display = "block";
-    cargarAlumnosEditar();
-  } else {
-    wrap.style.display = "none";
+  if (wrap) {
+    if (rol === "familia") { wrap.style.display = "block"; cargarAlumnosEditar(); }
+    else wrap.style.display = "none";
   }
+  const pw = document.getElementById("edit-prof-wrap");
+  if (pw) { pw.style.display = rol === "profesional" ? "block" : "none"; if (rol === "profesional") cargarProfesoresEditar(); }
+}
+
+async function cargarProfesoresEditar() {
+  if (!_editingProfile) return;
+  const sel = document.getElementById("edit-prof-link");
+  if (!sel) return;
+  const { data: profes } = await sb.from("profesores").select("id,nombre,apellidos,profile_id")
+    .eq("centro_id", _editingProfile.centro_id || ctrId).order("nombre");
+  const linked = (profes || []).find(p => p.profile_id === _editingProfile.user_id);
+  sel.innerHTML = '<option value="">— Sin vincular —</option>' + (profes || []).map(p =>
+    `<option value="${p.id}" ${linked && linked.id === p.id ? "selected" : ""}>${escH([p.nombre, p.apellidos].filter(Boolean).join(" "))}</option>`).join("");
 }
 
 async function cargarAlumnosEditar() {
@@ -503,6 +519,17 @@ async function guardarCambiosUsuario() {
       const links = [..._editingAlumnoIds].map(aid => ({ profile_id: _editingProfile.id, alumno_id: aid }));
       await sb.from("familia_alumno").insert(links);
     }
+  }
+
+  // Vínculo profesor <-> ficha de profesores (solo si rol profesional)
+  const rolFinal = document.getElementById("edit-rol")?.value || _editingProfile.rol;
+  const profSel = document.getElementById("edit-prof-link");
+  if (rolFinal === "profesional" && profSel) {
+    const uid = _editingProfile.user_id;
+    try {
+      await sb.from("profesores").update({ profile_id: null }).eq("profile_id", uid).eq("centro_id", _editingProfile.centro_id || ctrId);
+      if (profSel.value) await sb.from("profesores").update({ profile_id: uid }).eq("id", profSel.value);
+    } catch (e) { console.warn("vincular profesor falló:", e); }
   }
 
   status.textContent = "✅ Cambios guardados.";
