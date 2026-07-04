@@ -44,6 +44,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Tutor IA (alumno/familia).** Módulo `js/tutor.js` (tab `tutor`, nav "Tutor IA" visible a
+  todos, junto a Asistente IA). Mini-chat pedagógico **multivuelta** sobre la EF `chat`/Gemini:
+  resuelve dudas, explica conceptos con ejemplos, genera ejercicios con soluciones, prepara
+  exámenes, técnicas de estudio, organización del tiempo. Chips de acción rápida; system prompt
+  de tutor paciente en texto plano (sin LaTeX). Verificado multivuelta end-to-end.
 - **IA ACTIVADA (Gemini).** `GEMINI_API_KEY` (formato nuevo `AQ.…`, validada contra la API,
   gemini-2.5-flash) guardada como **secret** en Supabase. Desplegada la EF **`chat`** (proxy
   limpio a Gemini, `{contents, system_prompt}` → `{type:"text", text}`, `verify_jwt:true`) →

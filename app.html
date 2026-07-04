@@ -205,6 +205,10 @@
           <i class="ti ti-sparkles"></i><span class="nav-item-label">Asistente IA</span>
           <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
         </button>
+        <button class="nav-item" id="nav-tutor" data-tab="tutor" onclick="showTab('tutor')" style="--nav-color:#7A5C9E">
+          <i class="ti ti-school"></i><span class="nav-item-label">Tutor IA</span>
+          <span class="nav-badge" style="background:var(--accent-soft);color:var(--accent-ink)">NEW</span>
+        </button>
 
         <div class="sb-group-label" id="sb-grp-familia" style="display:none">Familia</div>
         <button class="nav-item" id="nav-famportal" data-tab="famportal" onclick="showTab('famportal')" style="display:none;--nav-color:#2E8B7A">
@@ -497,6 +501,8 @@
   </div>
 
   <!-- USERS PANEL -->
+  <div class="panel" id="panel-tutor" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
   <div class="panel" id="panel-famportal" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-docencia" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
@@ -823,6 +829,7 @@
 <script src="js/cobros.js"></script>
 <script src="js/riesgo.js"></script>
 <script src="js/marketing.js"></script>
+<script src="js/tutor.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -838,7 +845,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', calendario:'Calendario', comunicaciones:'Comunicaciones', cobros:'Cobros', riesgo:'Detección de riesgo', marketing:'Marketing', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', tutor:'Tutor IA', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', calendario:'Calendario', comunicaciones:'Comunicaciones', cobros:'Cobros', riesgo:'Detección de riesgo', marketing:'Marketing', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -975,6 +982,7 @@
         var titleEl = document.getElementById('topbar-title');
         if (titleEl) titleEl.textContent = TITLES[t] || t;
         closeMasDrawer();
+        if (t === 'tutor' && typeof initTutor === 'function') initTutor();
         if (t === 'famportal' && typeof initPortalFam === 'function') initPortalFam();
         if (t === 'docencia' && typeof initDocencia === 'function') initDocencia();
         if (t === 'alumnos' && typeof initAlumnos === 'function') initAlumnos();
