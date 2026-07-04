@@ -65,11 +65,13 @@ function _pfSel(id){ _pfHijo=id; initPortalFam(); }
 async function _pfRender(){
   const body=document.getElementById("pf-body"); if(!body) return;
   const hoy=_pfHoy(), en7=_pfMasDias(7), hace30=_pfHace(30);
-  const [notas, asis, inc, tareas] = await Promise.all([
+  const [notas, asis, inc, tareas, pagos, eventos] = await Promise.all([
     sb.from("calificaciones").select("nota,evaluacion,fecha").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(10),
     sb.from("asistencia").select("estado,fecha").eq("alumno_id",_pfHijo).gte("fecha",hace30).order("fecha",{ascending:false}),
     sb.from("incidencias").select("tipo,gravedad,estado,fecha,descripcion").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(10),
     sb.from("tareas").select("titulo,tipo,fecha_entrega").gte("fecha_entrega",hoy).lte("fecha_entrega",en7).order("fecha_entrega"),
+    sb.from("pagos").select("concepto,importe,fecha,estado,metodo").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(8),
+    sb.from("eventos").select("titulo,fecha,hora,tipo").gte("fecha",hoy).order("fecha").limit(8),
   ]);
   const A=asis.data||[]; const tot=A.length;
   const asistio=A.filter(r=>r.estado==="presente"||r.estado==="retraso").length;
@@ -85,6 +87,12 @@ async function _pfRender(){
     <span class="pf-badge ${r.estado==="presente"?"pf-b-ok":r.estado==="ausente"?"pf-b-bad":"pf-b-warn"}">${_pfEsc(r.estado)}</span></div>`).join(""):`<div class="pf-empty">Sin registros de asistencia.</div>`;
   const bInc=(inc.data||[]).length?(inc.data).map(i=>`<div class="pf-item"><span>${_pfEsc(i.tipo)}${i.descripcion?" · "+_pfEsc(i.descripcion.slice(0,40)):""}</span>
     <span class="pf-badge ${i.gravedad==="grave"?"pf-b-bad":"pf-b-warn"}">${_pfEsc(i.gravedad)}</span></div>`).join(""):`<div class="pf-empty">Sin incidencias.</div>`;
+  const _eur=n=>(Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+  const bPagos=(pagos.data||[]).length?(pagos.data).map(p=>`<div class="pf-item"><span>${_pfEsc(p.concepto||"Cuota")}</span><span class="pf-sub">${_pfEsc(p.fecha)}</span>
+    <span class="pf-badge ${p.estado==="pagado"?"pf-b-ok":"pf-b-warn"}">${_eur(p.importe)} · ${_pfEsc(p.estado)}</span></div>`).join(""):`<div class="pf-empty">Sin recibos registrados.</div>`;
+  const _EVI={reunion:"👥",pago:"💶",vacaciones:"🏖️",inicio_trimestre:"📚",renovacion:"🔁",recordatorio:"⏰",otro:"📌"};
+  const bEventos=(eventos.data||[]).length?(eventos.data).map(e=>`<div class="pf-item"><span>${_EVI[e.tipo]||"📌"} ${_pfEsc(e.titulo)}</span>
+    <span class="pf-badge pf-b-info">${_pfEsc(e.fecha)}${e.hora?" · "+_pfEsc(String(e.hora).slice(0,5)):""}</span></div>`).join(""):`<div class="pf-empty">Sin eventos próximos.</div>`;
 
   body.innerHTML=`
     <div class="pf-kpis">
@@ -97,6 +105,8 @@ async function _pfRender(){
       <div class="pf-sec"><h3>📊 Últimas notas</h3>${bNotas}</div>
       <div class="pf-sec"><h3>🗓️ Asistencia reciente</h3>${bAsis}</div>
       <div class="pf-sec"><h3>⚠ Incidencias</h3>${bInc}</div>
+      <div class="pf-sec"><h3>💶 Recibos</h3>${bPagos}</div>
+      <div class="pf-sec"><h3>📅 Calendario del centro</h3>${bEventos}</div>
     </div>`;
 }
 

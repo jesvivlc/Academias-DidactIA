@@ -44,6 +44,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #1 — Portal familia: recibos + calendario.** SQL `sql/fase7-portalfam-rls.sql`
+  (políticas `pagos_fam_read` y `eventos_fam_read`). `js/portalfam.js`: dos bloques nuevos
+  **💶 Recibos** (pagos del hijo) y **📅 Calendario del centro** (próximos eventos). Verificado
+  con cuenta familia real (ve su recibo y los eventos del centro). Próximo: **#2 Mensajería
+  familia↔centro**.
 - **EMAIL activado (Resend) + Comunicaciones envía de verdad.** Secret `RESEND_API_KEY`
   configurado. EF **`send-comunicacion`** desplegada (resuelve emails de familias server-side
   según destinatario todos/grupo/alumno, envía vía Resend con bcc, marca estado `enviada`).
