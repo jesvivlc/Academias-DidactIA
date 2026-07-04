@@ -44,6 +44,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #10 — Recordatorios de pago por email.** EF **`recordar-impagos`** desplegada
+  (service role → calcula matrículas activas sin pago del periodo → emails de sus familias →
+  Resend). `js/cobros.js`: botón **📧 Recordar por email** en la sección de Impagos → invoca la
+  EF y muestra cuántas familias avisó. **Verificado** (`sent:1, impagos:1`). Próximo: **#11
+  Motor de horarios (planificador)**.
 - **Backlog #9 — Aviso de ausencia por email.** EF **`notify-ausencia`** desplegada (service
   role → resuelve emails de familias del alumno → Resend). `js/asistencia.js`: al guardar la
   lista, por cada ausente invoca la EF (fire-and-forget) y marca `notificado_familia=true`.

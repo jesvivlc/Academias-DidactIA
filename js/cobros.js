@@ -103,7 +103,7 @@ function _cbRender(){
         <div style="display:flex;gap:10px;align-items:center"><button class="cb-btn cb-btn-p" onclick="_cbCrear()">Guardar pago</button><span class="cb-sub" id="cb-msg"></span></div>
       </div>`:""}
 
-      <div class="cb-sec">Impagos del mes</div>
+      <div class="cb-sec">Impagos del mes ${impagos.length?`<button class="cb-btn" onclick="_cbRecordarImpagos(this)">📧 Recordar por email</button>`:""}</div>
       ${impagos.length?`<div class="cb-imp"><h4>${impagos.length} alumno(s) sin pago registrado en ${_cbEsc(per)}</h4>
         ${impagos.map(m=>`<div class="cb-imp-row"><span>${_cbEsc(_cbNombre(m.alumnos))}</span><span class="cb-sub">cuota ${_cbEur(m.cuota_mensual)}</span>
           <button class="cb-btn cb-btn-sm" style="margin-left:auto" onclick="_cbCobrar('${escArg(m.alumno_id)}','${escArg(m.id)}',${Number(m.cuota_mensual||0)})">Registrar cobro</button></div>`).join("")}
@@ -224,5 +224,16 @@ async function _cbMarcarPagado(id){
   await initCobros();
 }
 
-window.initCobros=initCobros; window._cbToggle=_cbToggle; window._cbCrear=_cbCrear;
+async function _cbRecordarImpagos(btn){
+  const orig=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Enviando…"; }
+  try{
+    const { data, error } = await sb.functions.invoke("recordar-impagos",{ body:{ centro_id:ctrId, periodo:_cbPeriodo() } });
+    if(error) throw error; if(data?.error) throw new Error(data.error);
+    if(typeof showToastGlobal==="function") showToastGlobal("Recordatorio enviado a "+(data?.sent??0)+" familia(s) · "+(data?.impagos??0)+" impago(s)","success");
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error: "+(e.message||e),"error");
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
+}
+
+window.initCobros=initCobros; window._cbToggle=_cbToggle; window._cbCrear=_cbCrear; window._cbRecordarImpagos=_cbRecordarImpagos;
 window._cbCobrar=_cbCobrar; window._cbFactura=_cbFactura; window._cbGenerarRecibos=_cbGenerarRecibos; window._cbMarcarPagado=_cbMarcarPagado;
