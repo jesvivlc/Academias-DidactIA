@@ -65,14 +65,16 @@ function _pfSel(id){ _pfHijo=id; initPortalFam(); }
 async function _pfRender(){
   const body=document.getElementById("pf-body"); if(!body) return;
   const hoy=_pfHoy(), en7=_pfMasDias(7), hace30=_pfHace(30);
-  const [notas, asis, inc, tareas, pagos, eventos] = await Promise.all([
+  const [notas, asis, inc, tareas, pagos, eventos, mensajes] = await Promise.all([
     sb.from("calificaciones").select("nota,evaluacion,fecha").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(10),
     sb.from("asistencia").select("estado,fecha").eq("alumno_id",_pfHijo).gte("fecha",hace30).order("fecha",{ascending:false}),
     sb.from("incidencias").select("tipo,gravedad,estado,fecha,descripcion").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(10),
     sb.from("tareas").select("titulo,tipo,fecha_entrega").gte("fecha_entrega",hoy).lte("fecha_entrega",en7).order("fecha_entrega"),
     sb.from("pagos").select("concepto,importe,fecha,estado,metodo").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(8),
     sb.from("eventos").select("titulo,fecha,hora,tipo").gte("fecha",hoy).order("fecha").limit(8),
+    sb.from("mensajes").select("*").eq("alumno_id",_pfHijo).order("created_at",{ascending:true}),
   ]);
+  window._pfMsgs = mensajes.data||[];
   const A=asis.data||[]; const tot=A.length;
   const asistio=A.filter(r=>r.estado==="presente"||r.estado==="retraso").length;
   const pct=tot?Math.round(asistio/tot*100):null;
@@ -107,7 +109,33 @@ async function _pfRender(){
       <div class="pf-sec"><h3>⚠ Incidencias</h3>${bInc}</div>
       <div class="pf-sec"><h3>💶 Recibos</h3>${bPagos}</div>
       <div class="pf-sec"><h3>📅 Calendario del centro</h3>${bEventos}</div>
+    </div>
+    <div class="pf-sec" style="margin-top:16px">
+      <h3>✉️ Mensajes con el centro</h3>
+      <div id="pf-msgs" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;max-height:260px;overflow-y:auto">${_pfMsgsHtml()}</div>
+      <div style="display:flex;gap:8px">
+        <textarea id="pf-msg-txt" rows="1" placeholder="Escribe al centro sobre tu hijo/a…" style="flex:1;padding:9px 11px;border:1px solid var(--line,var(--bdr));border-radius:9px;font-size:14px;background:var(--srf);resize:none;font-family:inherit"></textarea>
+        <button onclick="_pfMsgEnviar(this)" style="padding:9px 16px;border:none;border-radius:9px;background:var(--ink,#1F2C4F);color:#fff;font-weight:600;cursor:pointer">Enviar</button>
+      </div>
     </div>`;
 }
+
+function _pfMsgsHtml(){
+  const ms=window._pfMsgs||[];
+  if(!ms.length) return `<div class="pf-empty">Aún no hay mensajes. Escribe al centro cuando lo necesites.</div>`;
+  return ms.map(m=>`<div style="align-self:${m.de_familia?"flex-end":"flex-start"};max-width:80%;padding:8px 11px;border-radius:11px;font-size:13.5px;white-space:pre-wrap;${m.de_familia?"background:var(--ink,#1F2C4F);color:#fff":"background:var(--paper-2,var(--srf2));border:1px solid var(--line,var(--bdr))"}">${_pfEsc(m.texto)}</div>`).join("");
+}
+
+async function _pfMsgEnviar(btn){
+  const ta=document.getElementById("pf-msg-txt"); const txt=(ta?.value||"").trim(); if(!txt||!_pfHijo) return;
+  const uid=(typeof currentUser!=="undefined"&&currentUser)?currentUser.id:null;
+  if(btn){ btn.disabled=true; }
+  const { data, error } = await sb.from("mensajes").insert({ centro_id:ctrId, alumno_id:_pfHijo, remitente_id:uid, de_familia:true, texto:txt }).select("*").single();
+  if(btn){ btn.disabled=false; }
+  if(error){ if(typeof showToastGlobal==="function") showToastGlobal("Error: "+error.message,"error"); return; }
+  (window._pfMsgs=window._pfMsgs||[]).push(data); if(ta) ta.value="";
+  const cont=document.getElementById("pf-msgs"); if(cont){ cont.innerHTML=_pfMsgsHtml(); cont.scrollTop=cont.scrollHeight; }
+}
+window._pfMsgEnviar=_pfMsgEnviar;
 
 window.initPortalFam=initPortalFam; window._pfSel=_pfSel;

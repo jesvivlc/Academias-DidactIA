@@ -501,6 +501,8 @@ async function loadUserProfile(user) {
   if (navInc2) navInc2.style.display = _staffAlm ? "flex" : "none";
   const navNotas = document.getElementById("nav-notas");
   if (navNotas) navNotas.style.display = _staffAlm ? "flex" : "none";
+  const navMsg2 = document.getElementById("nav-mensajes2");
+  if (navMsg2) navMsg2.style.display = _staffAlm ? "flex" : "none";
   const navCalendario = document.getElementById("nav-calendario");
   if (navCalendario) navCalendario.style.display = _staffAlm ? "flex" : "none";
   const navComunic = document.getElementById("nav-comunicaciones");

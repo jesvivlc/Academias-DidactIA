@@ -237,6 +237,9 @@
         <button class="nav-item" id="nav-notas" data-tab="notas" onclick="showTab('notas')" style="display:none;--nav-color:#6A4C93">
           <i class="ti ti-clipboard-list"></i><span class="nav-item-label">Calificaciones</span>
         </button>
+        <button class="nav-item" id="nav-mensajes2" data-tab="mensajes2" onclick="showTab('mensajes2')" style="display:none;--nav-color:#2E8B7A">
+          <i class="ti ti-message-circle"></i><span class="nav-item-label">Mensajes</span>
+        </button>
         <button class="nav-item" id="nav-calendario" data-tab="calendario" onclick="showTab('calendario')" style="display:none;--nav-color:#5B7FA8">
           <i class="ti ti-calendar"></i><span class="nav-item-label">Calendario</span>
         </button>
@@ -518,6 +521,8 @@
   <div class="panel" id="panel-incidencias2" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-notas" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
+  <div class="panel" id="panel-mensajes2" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-calendario" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
@@ -830,6 +835,7 @@
 <script src="js/riesgo.js"></script>
 <script src="js/marketing.js"></script>
 <script src="js/tutor.js"></script>
+<script src="js/mensajes.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -845,7 +851,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', tutor:'Tutor IA', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', calendario:'Calendario', comunicaciones:'Comunicaciones', cobros:'Cobros', riesgo:'Detección de riesgo', marketing:'Marketing', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', tutor:'Tutor IA', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', mensajes2:'Mensajes', calendario:'Calendario', comunicaciones:'Comunicaciones', cobros:'Cobros', riesgo:'Detección de riesgo', marketing:'Marketing', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -991,6 +997,7 @@
         if (t === 'asistencia' && typeof initAsistencia === 'function') initAsistencia();
         if (t === 'incidencias2' && typeof initIncidencias2 === 'function') initIncidencias2();
         if (t === 'notas' && typeof initNotas === 'function') initNotas();
+        if (t === 'mensajes2' && typeof initMensajes2 === 'function') initMensajes2();
         if (t === 'calendario' && typeof initCalendario === 'function') initCalendario();
         if (t === 'comunicaciones' && typeof initComunicaciones === 'function') initComunicaciones();
         if (t === 'cobros' && typeof initCobros === 'function') initCobros();

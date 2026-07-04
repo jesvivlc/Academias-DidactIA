@@ -44,6 +44,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #2 — Mensajería familia↔centro.** SQL `sql/fase7-mensajes.sql` (tabla `mensajes`
+  por alumno + RLS: familia sus hijos/remitente propio, staff todo el centro). Módulo
+  `js/mensajes.js` (tab `mensajes2`, nav "Gestión → Mensajes"): hilos por alumno + responder +
+  marca leídos. Bloque **✉️ Mensajes con el centro** en `js/portalfam.js` (la familia escribe y
+  ve respuestas). Verificado bidireccional bajo RLS. Próximo: **#3 Facturación desde matrícula**.
 - **Backlog #1 — Portal familia: recibos + calendario.** SQL `sql/fase7-portalfam-rls.sql`
   (políticas `pagos_fam_read` y `eventos_fam_read`). `js/portalfam.js`: dos bloques nuevos
   **💶 Recibos** (pagos del hijo) y **📅 Calendario del centro** (próximos eventos). Verificado
