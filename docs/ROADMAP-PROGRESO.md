@@ -44,6 +44,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #3 — Facturación desde matrícula.** `js/cobros.js`: botón **🧾 Generar recibos del
+  mes** (crea un pago `pendiente` con la cuota por cada matrícula activa con cuota que no tenga
+  recibo del periodo actual, sin duplicar) + columna **Estado** y botón **Marcar pagado** en los
+  recibos pendientes (la factura PDF ya existía). Verificado ciclo pendiente→pagado bajo RLS.
+  Próximo: **#4 Económico por profesor/aula/asignatura**.
 - **Backlog #2 — Mensajería familia↔centro.** SQL `sql/fase7-mensajes.sql` (tabla `mensajes`
   por alumno + RLS: familia sus hijos/remitente propio, staff todo el centro). Módulo
   `js/mensajes.js` (tab `mensajes2`, nav "Gestión → Mensajes"): hilos por alumno + responder +

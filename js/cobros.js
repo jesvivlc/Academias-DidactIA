@@ -85,7 +85,7 @@ function _cbRender(){
       <div class="cb-sub">Pagos, impagos y economía · periodo ${_cbEsc(per)}</div>
       <div class="cb-kpis">${kpis.map(k=>`<div class="cb-kpi"><div class="cb-kpi-n">${k.n}</div><div class="cb-kpi-l">${k.l}</div></div>`).join("")}</div>
 
-      <div class="cb-sec">Registrar pago <button class="cb-btn cb-btn-p" onclick="_cbToggle()">${_cbNuevo?"Cancelar":"+ Nuevo pago"}</button></div>
+      <div class="cb-sec">Registrar pago <span style="display:flex;gap:8px"><button class="cb-btn" onclick="_cbGenerarRecibos(this)">🧾 Generar recibos del mes</button><button class="cb-btn cb-btn-p" onclick="_cbToggle()">${_cbNuevo?"Cancelar":"+ Nuevo pago"}</button></span></div>
       ${_cbNuevo?`<div class="cb-form">
         <div class="cb-grid">
           <div><label class="cb-lbl">Alumno</label><select class="cb-sel" id="cb-alumno">${alumnosActivos.map(a=>`<option value="${a.id}">${_cbEsc(_cbNombre(a))}</option>`).join("")||`<option value="">(sin alumnos activos)</option>`}</select></div>
@@ -112,10 +112,11 @@ function _cbRender(){
         <div class="cb-eco-box"><div class="cb-kpi-l">Por método</div>${Object.keys(porMetodo).length?Object.entries(porMetodo).map(([k,v])=>`<div style="font-size:13px;display:flex;justify-content:space-between"><span>${_cbEsc(k)}</span><strong>${_cbEur(v)}</strong></div>`).join(""):`<div class="cb-empty">Sin cobros aún.</div>`}</div>
       </div>
 
-      <div class="cb-sec">Pagos recientes</div>
-      ${_cbPagos.length?`<table class="cb-tbl"><thead><tr><th>Fecha</th><th>Alumno</th><th>Concepto</th><th>Método</th><th>Importe</th><th></th></tr></thead><tbody>
-        ${_cbPagos.slice(0,40).map(x=>`<tr><td>${_cbEsc(x.fecha)}</td><td>${_cbEsc(_cbNombre(x.alumnos))}</td><td>${_cbEsc(x.concepto||"—")}</td><td>${_cbEsc(x.metodo)}</td><td>${_cbEur(x.importe)}</td>
-          <td><button class="cb-btn cb-btn-sm" onclick="_cbFactura('${escArg(x.id)}')">Factura PDF</button></td></tr>`).join("")}
+      <div class="cb-sec">Pagos y recibos</div>
+      ${_cbPagos.length?`<table class="cb-tbl"><thead><tr><th>Fecha</th><th>Alumno</th><th>Concepto</th><th>Método</th><th>Importe</th><th>Estado</th><th></th></tr></thead><tbody>
+        ${_cbPagos.slice(0,60).map(x=>`<tr><td>${_cbEsc(x.fecha)}</td><td>${_cbEsc(_cbNombre(x.alumnos))}</td><td>${_cbEsc(x.concepto||"—")}</td><td>${_cbEsc(x.metodo)}</td><td>${_cbEur(x.importe)}</td>
+          <td><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${x.estado==="pagado"?"var(--success-soft,#e3f2ec);color:var(--success,#2e7d32)":"var(--warning-soft,#fbf0dc);color:var(--warning,#b8860b)"}">${_cbEsc(x.estado)}</span></td>
+          <td>${x.estado==="pendiente"?`<button class="cb-btn cb-btn-sm" onclick="_cbMarcarPagado('${escArg(x.id)}')">Marcar pagado</button> `:""}<button class="cb-btn cb-btn-sm" onclick="_cbFactura('${escArg(x.id)}')">Factura PDF</button></td></tr>`).join("")}
       </tbody></table>`:`<div class="cb-empty">Sin pagos registrados.</div>`}
     </div>`;
 }
@@ -170,5 +171,26 @@ function _cbFactura(id){
   doc.save("factura-"+num+".pdf");
 }
 
+async function _cbGenerarRecibos(btn){
+  const per=_cbPeriodo(); const uid=(typeof currentUser!=="undefined"&&currentUser)?currentUser.id:null;
+  // alumnos que YA tienen un pago de este periodo (cualquier estado)
+  const conPago=new Set(_cbPagos.filter(p=>p.periodo===per||String(p.fecha).slice(0,7)===per).map(p=>p.alumno_id));
+  const nuevos=_cbMatriculas.filter(m=>m.estado==="activa" && Number(m.cuota_mensual||0)>0 && (m.alumnos?.estado||"activo")!=="baja" && !conPago.has(m.alumno_id))
+    .map(m=>({ centro_id:ctrId, alumno_id:m.alumno_id, matricula_id:m.id, concepto:"Cuota "+per, importe:Number(m.cuota_mensual), estado:"pendiente", periodo:per, fecha:_cbHoy(), created_by:uid }));
+  if(!nuevos.length){ if(typeof showToastGlobal==="function") showToastGlobal("No hay recibos que generar (todos tienen recibo del mes o sin cuota)","info"); return; }
+  if(!confirm("¿Generar "+nuevos.length+" recibo(s) pendiente(s) de la cuota de "+per+"?")) return;
+  if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
+  const { error } = await sb.from("pagos").insert(nuevos);
+  if(error){ if(typeof showToastGlobal==="function") showToastGlobal("Error: "+error.message,"error"); if(btn){btn.disabled=false;} return; }
+  if(typeof showToastGlobal==="function") showToastGlobal(nuevos.length+" recibo(s) generados","success");
+  await initCobros();
+}
+async function _cbMarcarPagado(id){
+  const { error } = await sb.from("pagos").update({ estado:"pagado", fecha:_cbHoy() }).eq("id",id).eq("centro_id",ctrId);
+  if(error){ if(typeof showToastGlobal==="function") showToastGlobal("Error: "+error.message,"error"); return; }
+  if(typeof showToastGlobal==="function") showToastGlobal("Marcado como pagado","success");
+  await initCobros();
+}
+
 window.initCobros=initCobros; window._cbToggle=_cbToggle; window._cbCrear=_cbCrear;
-window._cbCobrar=_cbCobrar; window._cbFactura=_cbFactura;
+window._cbCobrar=_cbCobrar; window._cbFactura=_cbFactura; window._cbGenerarRecibos=_cbGenerarRecibos; window._cbMarcarPagado=_cbMarcarPagado;
