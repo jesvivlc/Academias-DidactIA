@@ -44,6 +44,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #9 — Aviso de ausencia por email.** EF **`notify-ausencia`** desplegada (service
+  role → resuelve emails de familias del alumno → Resend). `js/asistencia.js`: al guardar la
+  lista, por cada ausente invoca la EF (fire-and-forget) y marca `notificado_familia=true`.
+  **Verificado end-to-end** (`sent:1`, Resend aceptó el envío). Próximo: **#10 Recordatorios de
+  pago por email**.
 - **Backlog #8 — Profesor↔cuenta.** En el modal Editar usuario (`app.html`+`js/users.js`), si el
   rol es profesional, selector **Vincular a ficha de profesor** (setea `profesores.profile_id`).
   `js/portalprof.js` (Mi docencia): si el usuario profesional está vinculado, acota grupos/

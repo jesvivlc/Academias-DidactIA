@@ -135,8 +135,12 @@ async function _asiGuardar(){
   const { error } = await sb.from("asistencia").upsert(rows,{ onConflict:"centro_id,alumno_id,fecha,grupo_id" });
   if(error){ if(msg){msg.textContent="Error: "+error.message;msg.style.color="var(--danger)";} return; }
   const aus=rows.filter(r=>r.estado==="ausente").length;
-  if(typeof showToastGlobal==="function") showToastGlobal("Asistencia guardada"+(aus?` · ${aus} ausencia(s)`:""),"success");
-  if(msg){msg.textContent="Guardado ✓"+(aus?` (${aus} ausencias)`:"");msg.style.color="var(--success,#2e7d32)";}
+  // Aviso a familias de los ausentes (email vía EF, fire-and-forget) + marca notificado
+  const ausentes=_asiAlumnos.filter(a=>_asiEstados[a.id]==="ausente");
+  ausentes.forEach(a=>{ try{ sb.functions.invoke("notify-ausencia",{ body:{ alumno_id:a.id, fecha } }); }catch(_){} });
+  if(ausentes.length){ try{ await sb.from("asistencia").update({ notificado_familia:true }).eq("centro_id",ctrId).eq("grupo_id",grupoId).eq("fecha",fecha).eq("estado","ausente"); }catch(_){} }
+  if(typeof showToastGlobal==="function") showToastGlobal("Asistencia guardada"+(aus?` · ${aus} ausencia(s) · familias avisadas`:""),"success");
+  if(msg){msg.textContent="Guardado ✓"+(aus?` (${aus} ausencias, familias avisadas)`:"");msg.style.color="var(--success,#2e7d32)";}
 }
 
 /* ── Informe ── */
