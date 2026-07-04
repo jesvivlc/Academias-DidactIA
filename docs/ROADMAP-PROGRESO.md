@@ -44,6 +44,14 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **IA ACTIVADA (Gemini).** `GEMINI_API_KEY` (formato nuevo `AQ.…`, validada contra la API,
+  gemini-2.5-flash) guardada como **secret** en Supabase. Desplegada la EF **`chat`** (proxy
+  limpio a Gemini, `{contents, system_prompt}` → `{type:"text", text}`, `verify_jwt:true`) →
+  **Asistente IA de la app funciona con Gemini real** (sin tocar `js/chat.js`). Verificado
+  end-to-end. Añadidos helpers `window.iaChat()` + `window.iaModal()` en `utils.js` y cableados:
+  **Detección de riesgo** (✨ Plan de refuerzo / Recursos genera un plan real por alumno) y
+  **Marketing** (✨ Versión con IA reescribe el post). Pendiente aún: RESEND (email), VAPID
+  (push), WhatsApp/Meta. ⚠️ Rotar la GEMINI_API_KEY compartida en chat cuando convenga.
 - **FIX — "email rate limit exceeded" al invitar.** El correo integrado de Supabase está muy
   limitado. Solución sin depender de email: la EF `invite-user` ahora usa **`generateLink`**
   (crea el usuario si es nuevo, o enlace de recuperación si ya existe) y **devuelve el enlace**;

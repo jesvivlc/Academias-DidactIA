@@ -97,16 +97,37 @@ function _rgCard(f){
       <div class="rg-data">${f.pct!=null?`Asistencia ${f.pct}% · `:""}${f.media!=null?`Nota media ${f.media.toFixed(1)} · `:""}${f.nInc} incidencia(s) grave(s) abierta(s)</div>
     </div>
     <div class="rg-acts">
-      <button class="rg-btn" onclick="_rgIA()">✨ Plan de refuerzo IA</button>
-      <button class="rg-btn" onclick="_rgIA()">✨ Generar recursos</button>
+      <button class="rg-btn" onclick="_rgIA('plan','${escArg(_rgNombre(f.a))}','${escArg(_rgResumen(f))}',this)">✨ Plan de refuerzo IA</button>
+      <button class="rg-btn" onclick="_rgIA('recursos','${escArg(_rgNombre(f.a))}','${escArg(_rgResumen(f))}',this)">✨ Generar recursos</button>
     </div>
   </div>`;
 }
 
-function _rgIA(){
-  const msg="Función con IA (Gemini): genera un plan de refuerzo / recursos personalizados a partir de los datos del alumno.\n\nRequiere configurar GEMINI_API_KEY y desplegar la Edge Function correspondiente. Queda como hook listo para enchufar.";
-  if(typeof showToastGlobal==="function") showToastGlobal("Requiere GEMINI_API_KEY (hook)","info");
-  alert(msg);
+function _rgResumen(f){
+  const p=[];
+  if(f.pct!=null) p.push("asistencia "+f.pct+"%");
+  if(f.media!=null) p.push("nota media "+f.media.toFixed(1));
+  if(f.nInc) p.push(f.nInc+" incidencia(s) grave(s) abierta(s)");
+  return p.join(", ")||"sin datos";
+}
+
+async function _rgIA(tipo, nombre, resumen, btn){
+  const orig = btn ? btn.textContent : "";
+  if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
+  const acad = (typeof ctrName!=="undefined" && ctrName) ? ctrName : "la academia";
+  const sys = "Eres un orientador pedagógico de "+acad+". Responde en español, concreto y accionable, en un tono cercano para el profesorado. No inventes datos que no te den.";
+  const user = tipo==="plan"
+    ? `El alumno ${nombre} presenta señales de riesgo (${resumen}). Redacta un PLAN DE REFUERZO breve: 3-4 objetivos, acciones concretas semanales y cómo hacer seguimiento. Máximo 180 palabras.`
+    : `Para el alumno ${nombre} con estas dificultades (${resumen}), propón RECURSOS y ACTIVIDADES concretas (ejercicios, técnicas de estudio, materiales) para la próxima clase. Lista breve y práctica. Máximo 180 palabras.`;
+  try{
+    const txt = await iaChat(sys, user);
+    iaModal((tipo==="plan"?"Plan de refuerzo · ":"Recursos · ")+nombre, txt || "Sin respuesta.");
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error IA: "+e.message,"error");
+    else alert("Error IA: "+e.message);
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=orig; }
+  }
 }
 
 window.initRiesgo=initRiesgo; window._rgIA=_rgIA;

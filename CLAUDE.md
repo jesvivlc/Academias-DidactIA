@@ -45,7 +45,8 @@ Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_au
 
 ## Edge Functions
 - **`invite-user`** ✅ desplegada (Management API). Usa `generateLink` (NO envía email → sin rate limit): crea el usuario y **devuelve el enlace** que la app muestra para copiar/compartir. `verify_jwt:false`, usa `SUPABASE_SERVICE_ROLE_KEY` autoinyectada.
-- El resto de EFs heredadas viven en `supabase/functions/` pero **NO están desplegadas** ni aplican del todo a academias.
+- **`chat`** ✅ desplegada. Proxy limpio a **Gemini 2.5 Flash** (secret `GEMINI_API_KEY` configurado). Recibe `{contents, system_prompt}` → devuelve `{type:"text", text}`. La usa `js/chat.js` (Asistente IA) y el helper `window.iaChat(systemPrompt, userText)` de `utils.js` (botones ✨ de riesgo/marketing). `verify_jwt:true`.
+- El resto de EFs heredadas viven en `supabase/functions/` pero **NO están desplegadas**.
 
 ## Convenciones críticas
 - Nunca hardcodear `centro_id` → usar `ctrId`. Nunca la URL de Supabase → usar `SB_URL`.
@@ -53,9 +54,9 @@ Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_au
 - Toda tabla nueva con RLS por academia. Toda EF nueva deriva identidad del JWT (no del body).
 - Textos de UI: "academia" (no "centro"). Producto: "DidactIA Academias".
 
-## Pendiente (requiere claves que hoy no tenemos → construido como HOOK)
-- **`GEMINI_API_KEY`** (+ desplegar EF `chat`) → Chat IA 24h, tutor del alumno, planes/recursos IA (botones ✨ en Riesgo), marketing IA.
-- **`RESEND_API_KEY`** (SMTP en Supabase Auth) → email real de invitaciones y comunicaciones a familias.
+## Estado IA / claves
+- **`GEMINI_API_KEY`** ✅ configurada + EF `chat` desplegada → **Asistente IA, planes de refuerzo (Riesgo) y marketing IA ACTIVOS**. (Tutor del alumno y generación avanzada de recursos: se pueden ampliar con el mismo `iaChat`.)
+- **`RESEND_API_KEY`** (SMTP en Supabase Auth) → pendiente: email real de invitaciones y comunicaciones a familias.
 - **VAPID** → push. **WhatsApp Business API / Meta** → asistente WhatsApp + IG/FB. **Stripe** (opcional) → pasarela de pago.
 
 ## Cómo aplicar SQL / desplegar EFs sin CLI (lo usado en este proyecto)

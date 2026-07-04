@@ -67,9 +67,10 @@ function initMarketing(){
       <div class="mk-row">
         <button class="mk-btn mk-btn-p" onclick="_mkCopiar()">📋 Copiar texto</button>
         <button class="mk-btn" onclick="_mkSel('${_mkTema}')">↻ Regenerar</button>
+        <button class="mk-btn" onclick="_mkIA(this)">✨ Versión con IA</button>
         <span class="mk-msg" id="mk-msg"></span>
       </div>
-      <div class="mk-note">Plantillas listas para Instagram / Facebook. La <strong>redacción a medida con IA</strong> requiere GEMINI_API_KEY. La <strong>autopublicación</strong> en IG/FB/WhatsApp requiere las APIs de Meta / WhatsApp Business (pendiente).</div>
+      <div class="mk-note">Plantillas listas para Instagram / Facebook. Con <strong>✨ Versión con IA</strong> (Gemini) reescribe el post a medida. La <strong>autopublicación</strong> en IG/FB/WhatsApp requiere las APIs de Meta / WhatsApp Business (pendiente).</div>
     </div>`;
 }
 
@@ -81,4 +82,19 @@ function _mkCopiar(){
   else { ta.select(); try{ document.execCommand("copy"); }catch(e){} done(); }
 }
 
-window.initMarketing=initMarketing; window._mkSel=_mkSel; window._mkCopiar=_mkCopiar;
+async function _mkIA(btn){
+  const ta=document.getElementById("mk-text"); if(!ta) return;
+  const orig=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
+  const tema=_MK_TEMAS[_mkTema]?_MK_TEMAS[_mkTema].label:"promoción";
+  const sys="Eres community manager de "+_mkAcademia()+", una academia. Escribes posts breves, cercanos y persuasivos para Instagram/Facebook, en español, con 2-4 emojis y 2-3 hashtags al final. Devuelve SOLO el texto del post.";
+  const user="Escribe un post sobre: "+tema+". Personalízalo para "+_mkAcademia()+". Máximo 60 palabras.";
+  try{
+    const txt=await iaChat(sys,user);
+    if(txt) ta.value=txt.trim();
+    const m=document.getElementById("mk-msg"); if(m){ m.textContent="Generado con IA ✓"; setTimeout(()=>{ if(m)m.textContent=""; },2500); }
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error IA: "+e.message,"error"); else alert("Error IA: "+e.message);
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
+}
+
+window.initMarketing=initMarketing; window._mkSel=_mkSel; window._mkCopiar=_mkCopiar; window._mkIA=_mkIA;
