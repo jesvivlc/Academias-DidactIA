@@ -88,8 +88,10 @@ function _cevRender(tareas){
 
   panel.innerHTML=`
     <div class="cev-wrap">
-      <h1 class="cev-h">Calendario</h1>
-      <div class="cev-sub">Eventos, recordatorios y resumen de la semana</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div><h1 class="cev-h">Calendario</h1><div class="cev-sub">Eventos, recordatorios y resumen de la semana</div></div>
+        <button class="cev-btn" onclick="_cevResumenIA(this)">✨ Resumen con IA</button>
+      </div>
       <div class="cev-week"><h3>🗓️ Resumen de la semana</h3>${week}</div>
       <div class="cev-sec">Próximos eventos
         <button class="cev-btn cev-btn-p" onclick="_cevToggle()">${_cevNuevo?"Cancelar":"+ Nuevo evento"}</button></div>
@@ -130,4 +132,29 @@ async function _cevBorrar(id){
   _cevEventos=_cevEventos.filter(e=>e.id!==id); initCalendario();
 }
 
-window.initCalendario=initCalendario; window._cevToggle=_cevToggle; window._cevCrear=_cevCrear; window._cevBorrar=_cevBorrar;
+async function _cevResumenIA(btn){
+  const orig=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
+  try{
+    const hoy=_cevHoy(), en7=_cevMasDias(7), per=hoy.slice(0,7);
+    const [ev, tar, mats, pagos] = await Promise.all([
+      sb.from("eventos").select("titulo,fecha,tipo").eq("centro_id",ctrId).gte("fecha",hoy).lte("fecha",en7).order("fecha"),
+      sb.from("tareas").select("titulo,tipo,fecha_entrega").eq("centro_id",ctrId).gte("fecha_entrega",hoy).lte("fecha_entrega",en7).order("fecha_entrega"),
+      sb.from("matriculas").select("alumno_id,cuota_mensual,estado").eq("centro_id",ctrId).eq("estado","activa"),
+      sb.from("pagos").select("alumno_id,estado,periodo,fecha").eq("centro_id",ctrId),
+    ]);
+    const pagados=new Set((pagos.data||[]).filter(p=>p.estado==="pagado"&&(p.periodo===per||String(p.fecha).slice(0,7)===per)).map(p=>p.alumno_id));
+    const impagos=(mats.data||[]).filter(m=>Number(m.cuota_mensual||0)>0 && !pagados.has(m.alumno_id)).length;
+    const evs=(ev.data||[]).map(e=>`- ${e.fecha}: ${e.titulo} (${e.tipo})`).join("\n")||"(ninguno)";
+    const exs=(tar.data||[]).filter(t=>t.tipo==="examen").map(t=>`- ${t.fecha_entrega}: ${t.titulo}`).join("\n")||"(ninguno)";
+    const tas=(tar.data||[]).filter(t=>t.tipo!=="examen").map(t=>`- ${t.fecha_entrega}: ${t.titulo} (${t.tipo})`).join("\n")||"(ninguna)";
+    const acad=(typeof ctrName!=="undefined"&&ctrName)?ctrName:"la academia";
+    const sys="Eres la secretaria de "+acad+". Redacta el parte de la semana claro, breve y accionable, con secciones (Eventos, Exámenes, Tareas, Cobros) y bullets. Español, tono profesional y cercano. No inventes datos.";
+    const user=`Datos de los próximos 7 días:\nEVENTOS:\n${evs}\nEXÁMENES:\n${exs}\nTAREAS:\n${tas}\nCOBROS: ${impagos} matrícula(s) con la cuota del mes pendiente de pago.`;
+    const txt=await iaChat(sys,user);
+    iaModal("Resumen de la semana", txt||"Sin respuesta.");
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error IA: "+e.message,"error"); else alert("Error IA: "+e.message);
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
+}
+
+window.initCalendario=initCalendario; window._cevToggle=_cevToggle; window._cevCrear=_cevCrear; window._cevBorrar=_cevBorrar; window._cevResumenIA=_cevResumenIA;

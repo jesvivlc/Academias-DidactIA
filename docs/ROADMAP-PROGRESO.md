@@ -44,6 +44,10 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **Backlog #5 — Secretaría IA.** `js/calendario.js`: botón **✨ Resumen con IA** → junta
+  eventos+exámenes+tareas (7d) e impagos del mes → `iaChat` (rol secretaria) → `iaModal` con el
+  parte de la semana en lenguaje natural. Verificado IA. Próximo: **#6 Informe de evolución del
+  alumno con IA (portal familia)**.
 - **Backlog #4 — Económico por profesor/aula/asignatura.** `js/cobros.js`: bloque **Ingresos
   estimados** = cuota_mensual del grupo × nº alumnos asignados (matricula_grupo), agrupado en 3
   tablas (por profesor, por aula, por asignatura) + total mensual. Solo lectura; verificado bajo
