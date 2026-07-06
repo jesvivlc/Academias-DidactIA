@@ -57,20 +57,20 @@ async function generarBoletin(alumnoId, btn){
     const doc=new window.jspdf.jsPDF(); const ink=_blInk(); const W=210;
     // Cabecera con marca
     doc.setFillColor(ink[0],ink[1],ink[2]); doc.rect(0,0,W,32,"F");
-    doc.setTextColor(255); doc.setFontSize(17); doc.setFont(undefined,"bold");
+    doc.setTextColor(255); doc.setFontSize(17); doc.setFont("helvetica","bold");
     doc.text(String(ctrName||"Academia"),16,15);
-    doc.setFontSize(11); doc.setFont(undefined,"normal");
+    doc.setFontSize(11); doc.setFont("helvetica","normal");
     doc.text("Boletín de seguimiento · "+label,16,24);
     doc.setTextColor(30,30,30);
     // Alumno
-    let y=44; doc.setFontSize(15); doc.setFont(undefined,"bold"); doc.text(_blNombre(d.alumno),16,y);
-    doc.setFontSize(10.5); doc.setFont(undefined,"normal"); doc.setTextColor(110);
+    let y=44; doc.setFontSize(15); doc.setFont("helvetica","bold"); doc.text(_blNombre(d.alumno),16,y);
+    doc.setFontSize(10.5); doc.setFont("helvetica","normal"); doc.setTextColor(110);
     y+=7; doc.text([d.alumno?.nivel_educativo,d.alumno?.centro_escolar].filter(Boolean).join(" · ")||"—",16,y);
     if(d.grupos.length){ y+=6; doc.text("Grupos: "+d.grupos.map(g=>g.nombre||g.asignatura).join(", "),16,y); }
     doc.setTextColor(30,30,30);
     // Asistencia
-    y+=14; doc.setFontSize(12.5); doc.setFont(undefined,"bold"); doc.text("Asistencia del mes",16,y);
-    doc.setFont(undefined,"normal"); doc.setFontSize(10.5); y+=8;
+    y+=14; doc.setFontSize(12.5); doc.setFont("helvetica","bold"); doc.text("Asistencia del mes",16,y);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10.5); y+=8;
     const asisLine=d.tot?`Sesiones: ${d.tot}   ·   Asistencia: ${d.pct}%   ·   Faltas: ${d.cont.ausente}   ·   Retrasos: ${d.cont.retraso}`:"Sin registros de asistencia este mes.";
     doc.text(asisLine,16,y);
     // barra
@@ -78,8 +78,8 @@ async function generarBoletin(alumnoId, btn){
       const c=d.pct>=85?[63,147,103]:d.pct>=70?[214,149,64]:[194,77,47];
       doc.setFillColor(c[0],c[1],c[2]); doc.roundedRect(16,y,Math.max(3,bw*d.pct/100),5,2,2,"F"); }
     // Notas
-    y+=16; doc.setFontSize(12.5); doc.setFont(undefined,"bold"); doc.text("Calificaciones recientes",16,y);
-    doc.setFont(undefined,"normal"); doc.setFontSize(10.5); y+=8;
+    y+=16; doc.setFontSize(12.5); doc.setFont("helvetica","bold"); doc.text("Calificaciones recientes",16,y);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10.5); y+=8;
     if(d.notas.length){
       doc.setTextColor(120); doc.text("Asignatura",16,y); doc.text("Prueba",96,y); doc.text("Fecha",150,y); doc.text("Nota",186,y,{align:"right"}); doc.setTextColor(30,30,30);
       y+=3; doc.setDrawColor(220); doc.line(16,y,194,y); y+=6;
@@ -88,14 +88,14 @@ async function generarBoletin(alumnoId, btn){
         doc.text(String(n.evaluacion||"—").slice(0,26),96,y);
         doc.text(String(n.fecha||"").slice(0,10),150,y);
         const nota=Number(n.nota); const nc=nota>=5?[40,120,60]:[194,77,47]; doc.setTextColor(nc[0],nc[1],nc[2]);
-        doc.setFont(undefined,"bold"); doc.text(nota.toFixed(1),186,y,{align:"right"}); doc.setFont(undefined,"normal"); doc.setTextColor(30,30,30);
+        doc.setFont("helvetica","bold"); doc.text(nota.toFixed(1),186,y,{align:"right"}); doc.setFont("helvetica","normal"); doc.setTextColor(30,30,30);
         y+=7; });
-      if(d.media!=null){ y+=1; doc.setFont(undefined,"bold"); doc.text("Media",16,y); doc.text(d.media.toFixed(1),186,y,{align:"right"}); doc.setFont(undefined,"normal"); }
+      if(d.media!=null){ y+=1; doc.setFont("helvetica","bold"); doc.text("Media",16,y); doc.text(d.media.toFixed(1),186,y,{align:"right"}); doc.setFont("helvetica","normal"); }
     } else { doc.setTextColor(120); doc.text("Sin calificaciones registradas en los últimos meses.",16,y); doc.setTextColor(30,30,30); }
     // Comentario IA
     y+=16; if(y>250){ doc.addPage(); y=20; }
-    doc.setFontSize(12.5); doc.setFont(undefined,"bold"); doc.text("Comentario de evolución",16,y);
-    doc.setFont(undefined,"normal"); doc.setFontSize(10.5); y+=8;
+    doc.setFontSize(12.5); doc.setFont("helvetica","bold"); doc.text("Comentario de evolución",16,y);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10.5); y+=8;
     const lines=doc.splitTextToSize(comentario,178); lines.forEach(l=>{ if(y>278){ doc.addPage(); y=20; } doc.text(l,16,y); y+=6; });
     // Pie
     doc.setFontSize(8.5); doc.setTextColor(150);
