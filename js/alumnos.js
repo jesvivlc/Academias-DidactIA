@@ -206,6 +206,7 @@ async function _almRenderFicha(a) {
 
     <div class="alm-actions">
       <button class="alm-btn alm-btn-p" onclick="_almGuardar()">${nuevo?"Crear alumno":"Guardar cambios"}</button>
+      ${!nuevo ? `<button class="alm-btn" onclick="generarBoletin('${escArg(a.id)}',this)">📄 Boletín PDF</button>` : ""}
       ${!nuevo && a.estado!=="baja" ? `<button class="alm-btn alm-btn-d" onclick="_almBaja('${escArg(a.id)}')">Dar de baja</button>` : ""}
       ${!nuevo && a.estado==="baja" ? `<button class="alm-btn" onclick="_almReactivar('${escArg(a.id)}')">Reactivar</button>` : ""}
       <span class="alm-msg" id="alm-msg"></span>
