@@ -18,7 +18,10 @@
 **Tablas:** centros, profiles, alumnos(ampliada), familia_alumno, info_centro, horarios_grupo, horarios, tramos_centro, profesores, grupos, grupo_sesiones, matriculas, matricula_grupo, asistencia, incidencias, calificaciones, tareas, eventos, comunicaciones, pagos, mensajes. RLS multi-tenant + políticas de familia `*_fam_read` (verificadas con cuenta familia real).
 
 ### 🔑 PASOS PENDIENTES DEL USUARIO (para activar del todo lo que quedó como hook)
-1. **Resend — verificar un dominio** (Resend → Domains → añadir p.ej. `didactia.eu` + registros DNS) y fijar el secret **`MAIL_FROM`** (p.ej. `no-reply@didactia.eu`). **Hoy los emails solo se entregan al email de la cuenta de Resend** (jesvivlc@gmail.com); con dominio verificado llegarán a las familias reales.
+1. ~~Resend — verificar un dominio y fijar MAIL_FROM~~ ✅ **HECHO (2026-07-06):** dominio
+   `didactia.eu` verificado en Resend; secret **`MAIL_FROM = "DidactIA Academias <no-reply@didactia.eu>"`**
+   configurado; EFs de email redesplegadas. **Verificado: los emails ya llegan a familias reales**
+   (comunicaciones, avisos de ausencia, recordatorios de impago).
 2. **WhatsApp / Instagram / Facebook**: asistente de WhatsApp y autopublicación en RRSS requieren **WhatsApp Business API / Meta Graph API** (cuentas + aprobación de Meta) → pendiente, dejado como hook.
 3. **Seguridad**: rotar las claves compartidas en el chat (**Gemini**, **Resend**, **PAT `sbp_…`**) y cambiar la **contraseña demo** `Academias2026!`.
 4. **Pasarela de pago online** (Stripe) opcional: hoy cobros manuales + recibos/factura PDF.
@@ -66,6 +69,11 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **EMAIL A FAMILIAS REALES ACTIVADO.** Dominio `didactia.eu` verificado en Resend; secret
+  `MAIL_FROM="DidactIA Academias <no-reply@didactia.eu>"` configurado; EFs `send-comunicacion`,
+  `notify-ausencia`, `recordar-impagos` redesplegadas para tomarlo. Verificado envío real a un
+  destinatario cualquiera (no solo la cuenta). Comunicaciones, avisos de ausencia y recordatorios
+  de pago **llegan ya a las familias**.
 - **Backlog #11 y #12 — Planificador + IA comercial (BACKLOG COMPLETO).** `js/planificador.js`
   (tab `planificador`, nav "Gestión → Planificador", dirección): propuesta DETERMINISTA de grupos
   por nivel educativo (NEE en grupos aparte más pequeños) con tamaño objetivo configurable, +
