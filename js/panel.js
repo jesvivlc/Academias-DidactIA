@@ -260,10 +260,18 @@ async function _pnRecordar(el){
 
 // ───────────────────────── HOOKS DEL HOME ─────────────────────────
 // El inline de app.html llama a renderHomeMetrics()/renderMiHorarioHoy() para staff/admin.
+let _pnLastRun=0;
 function renderHomeMetrics(){
   const r=(typeof role!=="undefined"?role:"")||"";
   const isAdmin=r==="admin"||r==="superadmin"||r==="admin_institucional";
-  if(isAdmin){ try{ initNegocio(); }catch(e){} return; }
+  if(isAdmin){
+    // throttle: el MutationObserver del home puede disparar esto muchas veces
+    const now=Date.now();
+    if(document.getElementById("negocio-root") && now-_pnLastRun<4000) return;
+    _pnLastRun=now;
+    try{ initNegocio(); }catch(e){}
+    return;
+  }
   // profesor: métricas simples reutilizando los data-metric del home staff
   _pnStaffMetrics();
 }
