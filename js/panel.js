@@ -131,7 +131,9 @@ function _pnCompute(){
   const cobrado=pagMes.filter(p=>p.estado==="pagado").reduce((s,p)=>s+Number(p.importe||0),0);
   const pendientes=pagMes.filter(p=>p.estado==="pendiente");
   const pendImporte=pendientes.reduce((s,p)=>s+Number(p.importe||0),0);
-  const prevision=d.mat.filter(m=>m.estado==="activa").reduce((s,m)=>s+Number(m.cuota_mensual||0)*(1-Number(m.descuento||0)/100),0);
+  const prevision=d.mat.filter(m=>m.estado==="activa").reduce((s,m)=>s+Math.max(0,Number(m.cuota_mensual||0)-Number(m.descuento||0)),0);
+  // Deuda acumulada: recibos pendientes de cualquier mes (dentro de la ventana cargada)
+  const deudaTotal=d.pagos.filter(p=>p.estado==="pendiente").reduce((s,p)=>s+Number(p.importe||0),0);
   // Ingresos 6 meses
   const serie=[]; const now=new Date();
   for(let i=5;i>=0;i--){ const dt=new Date(now.getFullYear(),now.getMonth()-i,1); const pk=dt.toISOString().slice(0,7);
@@ -161,7 +163,7 @@ function _pnCompute(){
   const asisAll=d.asis.length?d.asis.filter(r=>r.estado==="presente"||r.estado==="retraso").length/d.asis.length:1;
   const retenRate=activos.length?1-Math.min(1,riesgo.length/activos.length):1;
   const health=Math.round((cobroRate*0.4 + asisAll*0.3 + retenRate*0.3)*100);
-  return { per,activos,cobrado,pendientes,pendImporte,prevision,serie,ocupPct,ocupTot,capTot,
+  return { per,activos,cobrado,pendientes,pendImporte,deudaTotal,prevision,serie,ocupPct,ocupTot,capTot,
     grupos:d.grupos,cnt,riesgo,incAbiertas:d.inc.length,eventos:d.eventos,nombreById,
     asisPct:Math.round(asisAll*100),health };
 }
@@ -189,7 +191,7 @@ function _pnRender(root){
       ${kpi("💶","var(--success-soft,#e3f2ec)",_pnEur(c.cobrado),"Cobrado este mes",
         "de "+_pnEur(c.prevision)+" previsto","var(--muted)","showTab('cobros')")}
       ${kpi("⚠️","var(--danger-soft,#fae6e0)",c.pendientes.length,"Impagos del mes",
-        c.pendientes.length?_pnEur(c.pendImporte)+" pendiente":"Todo al día",c.pendientes.length?"var(--danger,#C24D2F)":"var(--success,#3F9367)","showTab('cobros')")}
+        c.deudaTotal>0?_pnEur(c.deudaTotal)+" de deuda total":"Todo al día",c.deudaTotal>0?"var(--danger,#C24D2F)":"var(--success,#3F9367)","showTab('cobros')")}
       ${kpi("🎓","var(--info-soft,#e3eafa)",c.activos.length,"Alumnos activos",
         "","","showTab('alumnos')")}
       ${kpi("📊","var(--accent-soft,#f3e1d5)",c.ocupPct+"%","Ocupación de grupos",
@@ -391,6 +393,7 @@ async function _cpContext(){
   L.push("Alumnos activos: "+c.activos.length);
   L.push("Cobrado este mes: "+Math.round(c.cobrado)+" € de "+Math.round(c.prevision)+" € previstos");
   L.push("Impagos del mes: "+c.pendientes.length+" ("+Math.round(c.pendImporte)+" € pendientes)");
+  L.push("Deuda acumulada total (recibos pendientes de cualquier mes): "+Math.round(c.deudaTotal)+" €");
   L.push("Ocupación media de grupos: "+c.ocupPct+"% ("+c.ocupTot+"/"+c.capTot+" plazas)");
   L.push("Asistencia media (30 días): "+c.asisPct+"%");
   L.push("Incidencias abiertas: "+c.incAbiertas);

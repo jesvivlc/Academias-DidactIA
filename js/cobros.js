@@ -2,12 +2,14 @@
 // Pagos, impagos, KPIs, factura PDF (jsPDF) y bloque económico. Filtra por ctrId; RLS.
 
 let _cbPagos = [], _cbMatriculas = [], _cbAlumnos = [], _cbNuevo = false;
-let _cbGrupos = [], _cbProfes = [], _cbMG = [];
+let _cbGrupos = [], _cbProfes = [], _cbMG = [], _cbPend = [];
 function _cbEsc(s){ return escH(s); }
 function _cbHoy(){ return new Date().toISOString().slice(0,10); }
 function _cbPeriodo(){ return new Date().toISOString().slice(0,7); } // YYYY-MM
 function _cbNombre(a){ return a?([a.nombre,a.apellidos].filter(Boolean).join(" ")||"(alumno)"):"—"; }
 function _cbEur(n){ return (Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"; }
+// Cuota neta de una matrícula: cuota mensual menos descuento (ambos en €)
+function _cbCuotaNeta(m){ return Math.max(0, Number(m.cuota_mensual||0) - Number(m.descuento||0)); }
 
 function _cbEnsureStyles(){
   if (document.getElementById("cb-styles")) return;
@@ -47,16 +49,18 @@ async function initCobros(){
   _cbEnsureStyles();
   const panel=document.getElementById("panel-cobros"); if(!panel) return;
   panel.innerHTML=`<div class="cb-wrap"><div class="cb-sub">Cargando…</div></div>`;
-  const [p,m,a,g,pr,mg]=await Promise.all([
+  const [p,m,a,g,pr,mg,pd]=await Promise.all([
     sb.from("pagos").select("*,alumnos(nombre,apellidos)").eq("centro_id",ctrId).order("fecha",{ascending:false}).limit(200),
-    sb.from("matriculas").select("id,alumno_id,cuota_mensual,estado,fecha_baja,alumnos(nombre,apellidos,estado,fecha_baja)").eq("centro_id",ctrId),
+    sb.from("matriculas").select("id,alumno_id,cuota_mensual,descuento,estado,fecha_baja,alumnos(nombre,apellidos,estado,fecha_baja)").eq("centro_id",ctrId),
     sb.from("alumnos").select("id,nombre,apellidos,estado,fecha_baja").eq("centro_id",ctrId).order("nombre"),
     sb.from("grupos").select("id,nombre,cuota_mensual,profesor_id,aula,asignatura").eq("centro_id",ctrId).eq("activo",true),
     sb.from("profesores").select("id,nombre,apellidos").eq("centro_id",ctrId),
     sb.from("matricula_grupo").select("grupo_id").eq("centro_id",ctrId),
+    // TODOS los recibos pendientes (cualquier mes) → deuda acumulada real, sin el límite de 200
+    sb.from("pagos").select("id,alumno_id,importe,periodo,fecha,concepto,alumnos(nombre,apellidos)").eq("centro_id",ctrId).eq("estado","pendiente").order("fecha"),
   ]);
   _cbPagos=p.data||[]; _cbMatriculas=m.data||[]; _cbAlumnos=a.data||[];
-  _cbGrupos=g.data||[]; _cbProfes=pr.data||[]; _cbMG=mg.data||[];
+  _cbGrupos=g.data||[]; _cbProfes=pr.data||[]; _cbMG=mg.data||[]; _cbPend=pd.data||[];
   _cbRender();
 }
 
@@ -70,8 +74,17 @@ function _cbRender(){
   const pagadoSet=new Set(pagadosMes.map(x=>x.alumno_id));
   const impagos=_cbMatriculas.filter(m=>m.estado==="activa" && Number(m.cuota_mensual||0)>0 && (m.alumnos?.estado||"activo")!=="baja" && !pagadoSet.has(m.alumno_id));
 
-  // Economía
-  const previsionMes=_cbMatriculas.filter(m=>m.estado==="activa").reduce((s,m)=>s+Number(m.cuota_mensual||0),0);
+  // Deuda acumulada: recibos pendientes de cualquier mes, agrupados por alumno
+  const deuda={};
+  _cbPend.forEach(r=>{
+    const d=deuda[r.alumno_id]=deuda[r.alumno_id]||{ alumno:r.alumnos, total:0, recibos:[] };
+    d.total+=Number(r.importe||0); d.recibos.push(r);
+  });
+  const deudaRows=Object.entries(deuda).map(([id,d])=>({id,...d})).sort((a,b)=>b.total-a.total);
+  const deudaTotal=deudaRows.reduce((s,d)=>s+d.total,0);
+
+  // Economía (previsión = cuota neta de descuento)
+  const previsionMes=_cbMatriculas.filter(m=>m.estado==="activa").reduce((s,m)=>s+_cbCuotaNeta(m),0);
   const bajasMes=_cbAlumnos.filter(a=>a.estado==="baja" && String(a.fecha_baja||"").slice(0,7)===per).length;
   const porMetodo={};
   pagadosMes.forEach(x=>{ porMetodo[x.metodo]=(porMetodo[x.metodo]||0)+Number(x.importe||0); });
@@ -81,6 +94,7 @@ function _cbRender(){
     { n:_cbEur(ingresosMes), l:"Ingresos del mes" },
     { n:pagadosMes.length, l:"Pagos este mes" },
     { n:impagos.length, l:"Impagos del mes" },
+    { n:_cbEur(deudaTotal), l:"Deuda acumulada" },
     { n:_cbEur(previsionMes), l:"Previsión mensual" },
   ];
 
@@ -105,9 +119,18 @@ function _cbRender(){
 
       <div class="cb-sec">Impagos del mes ${impagos.length?`<button class="cb-btn" onclick="_cbRecordarImpagos(this)">📧 Recordar por email</button>`:""}</div>
       ${impagos.length?`<div class="cb-imp"><h4>${impagos.length} alumno(s) sin pago registrado en ${_cbEsc(per)}</h4>
-        ${impagos.map(m=>`<div class="cb-imp-row"><span>${_cbEsc(_cbNombre(m.alumnos))}</span><span class="cb-sub">cuota ${_cbEur(m.cuota_mensual)}</span>
-          <button class="cb-btn cb-btn-sm" style="margin-left:auto" onclick="_cbCobrar('${escArg(m.alumno_id)}','${escArg(m.id)}',${Number(m.cuota_mensual||0)})">Registrar cobro</button></div>`).join("")}
+        ${impagos.map(m=>`<div class="cb-imp-row"><span>${_cbEsc(_cbNombre(m.alumnos))}</span><span class="cb-sub">cuota ${_cbEur(_cbCuotaNeta(m))}</span>
+          <button class="cb-btn cb-btn-sm" style="margin-left:auto" onclick="_cbCobrar('${escArg(m.alumno_id)}','${escArg(m.id)}',${_cbCuotaNeta(m)})">Registrar cobro</button></div>`).join("")}
       </div>`:`<div class="cb-empty">✓ Todas las matrículas activas con cuota están al día este mes.</div>`}
+
+      <div class="cb-sec">Deuda acumulada por alumno</div>
+      ${deudaRows.length?`<div class="cb-sub" style="margin:-4px 0 8px">Recibos pendientes de cualquier mes (incluye meses anteriores). Total: <strong>${_cbEur(deudaTotal)}</strong>.</div>
+      <table class="cb-tbl"><thead><tr><th>Alumno</th><th>Meses pendientes</th><th>Recibos</th><th>Deuda</th><th></th></tr></thead><tbody>
+        ${deudaRows.map(d=>`<tr><td>${_cbEsc(_cbNombre(d.alumno))}</td>
+          <td>${_cbEsc(d.recibos.map(r=>r.periodo||String(r.fecha).slice(0,7)).join(", "))}</td>
+          <td>${d.recibos.length}</td><td><strong>${_cbEur(d.total)}</strong></td>
+          <td><button class="cb-btn cb-btn-sm" onclick="_cbCobrarDeuda('${escArg(d.id)}')">💶 Cobrar todo</button></td></tr>`).join("")}
+      </tbody></table>`:`<div class="cb-empty">✓ Sin recibos pendientes de ningún mes.</div>`}
 
       <div class="cb-sec">Economía del mes</div>
       <div class="cb-eco">
@@ -166,14 +189,20 @@ async function _cbCrear(){
   if(!alumnoId){ if(msg){msg.textContent="Selecciona un alumno.";msg.style.color="var(--danger)";} return; }
   if(importe===""||importe==null){ if(msg){msg.textContent="Pon el importe.";msg.style.color="var(--danger)";} return; }
   const uid=(typeof currentUser!=="undefined"&&currentUser)?currentUser.id:null;
-  const { error } = await sb.from("pagos").insert({
+  const periodo=(document.getElementById("cb-periodo")?.value||"").trim()||_cbPeriodo();
+  const pago={
     centro_id:ctrId, alumno_id:alumnoId, concepto:(document.getElementById("cb-concepto")?.value||"").trim()||null,
     importe:Number(importe), metodo:document.getElementById("cb-metodo")?.value||"transferencia",
-    fecha:document.getElementById("cb-fecha")?.value||_cbHoy(), periodo:(document.getElementById("cb-periodo")?.value||"").trim()||_cbPeriodo(),
+    fecha:document.getElementById("cb-fecha")?.value||_cbHoy(), periodo,
     estado:"pagado", created_by:uid,
-  });
+  };
+  // Si ya existe un recibo pendiente de ese alumno+periodo, se liquida (no se duplica)
+  const recibo=_cbPend.find(r=>r.alumno_id===alumnoId && (r.periodo||String(r.fecha).slice(0,7))===periodo);
+  const { error } = recibo
+    ? await sb.from("pagos").update({ importe:pago.importe, metodo:pago.metodo, fecha:pago.fecha, estado:"pagado" }).eq("id",recibo.id).eq("centro_id",ctrId)
+    : await sb.from("pagos").insert(pago);
   if(error){ if(msg){msg.textContent="Error: "+error.message;msg.style.color="var(--danger)";} return; }
-  if(typeof showToastGlobal==="function") showToastGlobal("Pago registrado","success");
+  if(typeof showToastGlobal==="function") showToastGlobal(recibo?"Recibo pendiente cobrado":"Pago registrado","success");
   _cbNuevo=false; await initCobros();
 }
 
@@ -207,8 +236,8 @@ async function _cbGenerarRecibos(btn){
   const per=_cbPeriodo(); const uid=(typeof currentUser!=="undefined"&&currentUser)?currentUser.id:null;
   // alumnos que YA tienen un pago de este periodo (cualquier estado)
   const conPago=new Set(_cbPagos.filter(p=>p.periodo===per||String(p.fecha).slice(0,7)===per).map(p=>p.alumno_id));
-  const nuevos=_cbMatriculas.filter(m=>m.estado==="activa" && Number(m.cuota_mensual||0)>0 && (m.alumnos?.estado||"activo")!=="baja" && !conPago.has(m.alumno_id))
-    .map(m=>({ centro_id:ctrId, alumno_id:m.alumno_id, matricula_id:m.id, concepto:"Cuota "+per, importe:Number(m.cuota_mensual), estado:"pendiente", periodo:per, fecha:_cbHoy(), created_by:uid }));
+  const nuevos=_cbMatriculas.filter(m=>m.estado==="activa" && _cbCuotaNeta(m)>0 && (m.alumnos?.estado||"activo")!=="baja" && !conPago.has(m.alumno_id))
+    .map(m=>({ centro_id:ctrId, alumno_id:m.alumno_id, matricula_id:m.id, concepto:"Cuota "+per, importe:_cbCuotaNeta(m), estado:"pendiente", periodo:per, fecha:_cbHoy(), created_by:uid }));
   if(!nuevos.length){ if(typeof showToastGlobal==="function") showToastGlobal("No hay recibos que generar (todos tienen recibo del mes o sin cuota)","info"); return; }
   if(!confirm("¿Generar "+nuevos.length+" recibo(s) pendiente(s) de la cuota de "+per+"?")) return;
   if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
@@ -217,6 +246,18 @@ async function _cbGenerarRecibos(btn){
   if(typeof showToastGlobal==="function") showToastGlobal(nuevos.length+" recibo(s) generados","success");
   await initCobros();
 }
+async function _cbCobrarDeuda(alumnoId){
+  const recibos=_cbPend.filter(r=>r.alumno_id===alumnoId);
+  if(!recibos.length) return;
+  const total=recibos.reduce((s,r)=>s+Number(r.importe||0),0);
+  const nombre=_cbNombre(recibos[0].alumnos);
+  if(!confirm("¿Marcar como cobrados los "+recibos.length+" recibo(s) pendiente(s) de "+nombre+" por un total de "+_cbEur(total)+"?")) return;
+  const { error } = await sb.from("pagos").update({ estado:"pagado", fecha:_cbHoy() }).in("id",recibos.map(r=>r.id)).eq("centro_id",ctrId);
+  if(error){ if(typeof showToastGlobal==="function") showToastGlobal("Error: "+error.message,"error"); return; }
+  if(typeof showToastGlobal==="function") showToastGlobal("Deuda de "+nombre+" cobrada ("+_cbEur(total)+")","success");
+  await initCobros();
+}
+
 async function _cbMarcarPagado(id){
   const { error } = await sb.from("pagos").update({ estado:"pagado", fecha:_cbHoy() }).eq("id",id).eq("centro_id",ctrId);
   if(error){ if(typeof showToastGlobal==="function") showToastGlobal("Error: "+error.message,"error"); return; }
@@ -237,3 +278,4 @@ async function _cbRecordarImpagos(btn){
 
 window.initCobros=initCobros; window._cbToggle=_cbToggle; window._cbCrear=_cbCrear; window._cbRecordarImpagos=_cbRecordarImpagos;
 window._cbCobrar=_cbCobrar; window._cbFactura=_cbFactura; window._cbGenerarRecibos=_cbGenerarRecibos; window._cbMarcarPagado=_cbMarcarPagado;
+window._cbCobrarDeuda=_cbCobrarDeuda;
