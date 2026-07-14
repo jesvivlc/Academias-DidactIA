@@ -145,28 +145,37 @@ async function doRegisterStep1() {
     return;
   }
 
-  // Check code against codigo_familia, codigo_profesional and codigo_acceso
-  const { data: centros, error: cErr } = await sb
-    .from("centros")
-    .select("id,nombre,codigo_familia,codigo_profesional,codigo_acceso");
-
-  if (cErr || !centros?.length) {
-    errEl.textContent = "Error al verificar el código. Inténtalo de nuevo.";
-    errEl.style.display = "block"; return;
-  }
-
+  // Check code via RPC (SECURITY DEFINER: los códigos ya no son legibles como anon)
   let matchedCentro = null;
   regRol = null;
 
-  for (const c of centros) {
-    if (c.codigo_familia?.toUpperCase() === codigo) {
-      matchedCentro = c; regRol = "familia"; break;
+  const { data: rpcMatch, error: rpcErr } = await sb
+    .rpc("verificar_codigo_registro", { p_codigo: codigo });
+
+  if (!rpcErr) {
+    const row = rpcMatch?.[0];
+    if (row) { matchedCentro = { id: row.centro_id, nombre: row.nombre }; regRol = row.rol; }
+  } else {
+    // Fallback mientras no esté aplicada sql/fix-rls-alumnos-registro.sql
+    const { data: centros, error: cErr } = await sb
+      .from("centros")
+      .select("id,nombre,codigo_familia,codigo_profesional,codigo_acceso");
+
+    if (cErr || !centros?.length) {
+      errEl.textContent = "Error al verificar el código. Inténtalo de nuevo.";
+      errEl.style.display = "block"; return;
     }
-    if (c.codigo_profesional?.toUpperCase() === codigo) {
-      matchedCentro = c; regRol = "profesional"; break;
-    }
-    if (c.codigo_acceso?.toUpperCase() === codigo) {
-      matchedCentro = c; regRol = "profesional"; break;
+
+    for (const c of centros) {
+      if (c.codigo_familia?.toUpperCase() === codigo) {
+        matchedCentro = c; regRol = "familia"; break;
+      }
+      if (c.codigo_profesional?.toUpperCase() === codigo) {
+        matchedCentro = c; regRol = "profesional"; break;
+      }
+      if (c.codigo_acceso?.toUpperCase() === codigo) {
+        matchedCentro = c; regRol = "profesional"; break;
+      }
     }
   }
 
@@ -192,11 +201,20 @@ async function doRegisterStep1() {
   document.getElementById("auth-title").textContent = "Vincular alumno/s";
   document.getElementById("auth-sub").textContent = "Selecciona el alumno o alumnos que tienes en esta academia.";
 
-  // Load alumnos
-  const { data: alumnos } = await sb
-    .from("alumnos").select("id,nombre,curso")
-    .eq("centro_id", regCentroId)
-    .order("curso").order("nombre");
+  // Load alumnos vía RPC (gated por el código de familia; la tabla ya no es legible como anon)
+  let alumnos = null;
+  const { data: rpcAlumnos, error: alErr } = await sb
+    .rpc("alumnos_para_registro", { p_codigo: codigo });
+  if (!alErr) {
+    alumnos = rpcAlumnos;
+  } else {
+    // Fallback mientras no esté aplicada sql/fix-rls-alumnos-registro.sql
+    const { data } = await sb
+      .from("alumnos").select("id,nombre,curso")
+      .eq("centro_id", regCentroId)
+      .order("curso").order("nombre");
+    alumnos = data;
+  }
 
   const lista = document.getElementById("alumnos-lista");
   if (!alumnos?.length) {
@@ -688,13 +706,19 @@ async function themeLoginScreen() {
         ctr = r1 && r1.data;
       } else {
         var code = hint.toUpperCase();
-        var r2 = await sb.from("centros")
-          .select("color_primario,logo_url,codigo_familia,codigo_profesional,codigo_acceso");
-        ctr = (r2 && r2.data || []).find(function (c) {
-          return (c.codigo_familia && c.codigo_familia.toUpperCase() === code)
-            || (c.codigo_profesional && c.codigo_profesional.toUpperCase() === code)
-            || (c.codigo_acceso && c.codigo_acceso.toUpperCase() === code);
-        }) || null;
+        var r2 = await sb.rpc("verificar_codigo_registro", { p_codigo: code });
+        if (!r2.error) {
+          ctr = (r2.data && r2.data[0]) || null;
+        } else {
+          // Fallback mientras no esté aplicada sql/fix-rls-alumnos-registro.sql
+          var r3 = await sb.from("centros")
+            .select("color_primario,logo_url,codigo_familia,codigo_profesional,codigo_acceso");
+          ctr = (r3 && r3.data || []).find(function (c) {
+            return (c.codigo_familia && c.codigo_familia.toUpperCase() === code)
+              || (c.codigo_profesional && c.codigo_profesional.toUpperCase() === code)
+              || (c.codigo_acceso && c.codigo_acceso.toUpperCase() === code);
+          }) || null;
+        }
       }
       if (ctr && (ctr.color_primario || ctr.logo_url)) {
         applyTheme(ctr.color_primario, ctr.logo_url);

@@ -29,7 +29,7 @@
 **Núcleo:** `config.js` (SB_URL/SB_KEY, globals, boot) · `utils.js` (**escH/escAttr/escArg**, hoyISO, showToastGlobal…) · `auth.js` (login/registro/recovery/invitación, `loadUserProfile`, `applyTheme` tematización por academia, `showTab`, visibilidad de nav por rol) · `users.js` (gestión usuarios/roles + invitar + crear academia) · `chat.js` (asistente base; resuelve horarios en cliente).
 
 **Módulos de academia (Fases 1–6, todos construidos):**
-`alumnos.js` (matrícula/ficha/altas-bajas/NEE/RGPD + **📄 Boletín PDF**) · `grupos.js` (grupos+sesiones semanales+profesores+asignar alumnos) · `horario.js` (parrilla semanal + solapes) · `asistencia.js` (pasar lista + informe %) · `incidencias.js` (`initIncidencias2`, tab `incidencias2`) · `calificaciones.js` (`initNotas`, tab `notas`: notas + tareas/exámenes) · `portalprof.js` (`initDocencia`, tab `docencia`) · `calendario.js` (eventos + resumen semanal) · `portalfam.js` (`initPortalFam`, tab `famportal`, solo rol familia) · `comunicaciones.js` (cola, sin envío real) · `cobros.js` (pagos/impagos/económico/factura PDF) · `riesgo.js` (**predicción de bajas/retención**: asistencia+notas+impagos+conducta+antigüedad + ✨ planes IA de refuerzo/retención) · `marketing.js` (posts RRSS por plantillas + ✨ IA) · `tutor.js` (`initTutor`, tab `tutor`: tutor IA multivuelta para alumno/familia).
+`alumnos.js` (matrícula/ficha/altas-bajas/NEE/RGPD + **📄 Boletín PDF**) · `grupos.js` (grupos+sesiones semanales+profesores+asignar alumnos) · `horario.js` (parrilla semanal + solapes) · `asistencia.js` (pasar lista + informe % + aviso de ausencia por email) · `incidencias.js` (`initIncidencias2`, tab `incidencias2`) · `calificaciones.js` (`initNotas`, tab `notas`: notas + tareas/exámenes) · `portalprof.js` (`initDocencia`, tab `docencia`) · `calendario.js` (eventos + resumen semanal) · `portalfam.js` (`initPortalFam`, tab `famportal`, solo rol familia) · `comunicaciones.js` (**email real vía Resend**, EF `send-comunicacion`) · `cobros.js` (pagos/impagos/económico/factura PDF + recordatorio de impagos por email) · `riesgo.js` (**predicción de bajas/retención**: asistencia+notas+impagos+conducta+antigüedad + ✨ planes IA de refuerzo/retención) · `marketing.js` (posts RRSS por plantillas + ✨ IA) · `tutor.js` (`initTutor`, tab `tutor`: tutor IA multivuelta para alumno/familia) · `mensajes.js` (mensajería familia↔centro) · `planificador.js` (propuesta de grupos por nivel/NEE + huecos de parrilla, dirección).
 
 **Comerciales / dirección (sesión 2026-07):**
 - `panel.js` — **Panel del negocio** (home del dueño): sobrescribe `renderHomeMetrics`/`renderMiHorarioHoy`; para admin renderiza en `#negocio-root` (dentro de `#inicio-admin`) KPIs económicos (cobrado vs previsto, impagos), ocupación, alumnos activos, asistencia, alumnos en riesgo, health score, gráfico de ingresos 6 meses, próximos eventos e impagos con acción "recordar". + **Copiloto de dirección ⌘K** (`_cpOpen`): barra de comandos en lenguaje natural que responde (IA `iaChat` con snapshot de datos del centro) y actúa (recordar impagos, navegar). Atajo global Ctrl/⌘+K y clic en el buscador del home. Solo staff/dirección.
@@ -39,9 +39,9 @@
 
 ## Tablas (Supabase). Migraciones en `sql/`
 Núcleo: `centros`, `profiles`, `alumnos` (ampliada: apellidos, nivel, NEE, estado, RGPD…), `familia_alumno`, `info_centro`, `horarios_grupo`, `horarios`, `tramos_centro`.
-Academia: `profesores`, `grupos`, `grupo_sesiones`, `matriculas`, `matricula_grupo`, `asistencia`, `incidencias`, `calificaciones`, `tareas`, `eventos`, `comunicaciones`, `pagos`.
-Seed demo: `sql/demo-seed-academias.sql` (no crea tablas; solo puebla EducaMentes de forma idempotente).
-Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_auth`), `sql/fase1-datos-maestros.sql`, `sql/fase2-asistencia.sql`, `sql/fase2-incidencias.sql`, `sql/fase2-calificaciones.sql`, `sql/fase2-eventos.sql`, `sql/fase3-rls-familia.sql`, `sql/fase3-comunicaciones.sql`, `sql/fase4-cobros.sql`.
+Academia: `profesores`, `grupos`, `grupo_sesiones`, `matriculas`, `matricula_grupo`, `asistencia`, `incidencias`, `calificaciones`, `tareas`, `eventos`, `comunicaciones`, `pagos`, `mensajes`.
+Seed demo: `sql/demo-seed-academias.sql` (no crea tablas; solo puebla EducaMentes de forma idempotente). Para poner al día la asistencia demo sin re-ejecutar el seed: `DEMO_PASS='...' node scripts/refrescar-asistencia-demo.mjs`.
+Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_auth`), `sql/fase1-datos-maestros.sql`, `sql/fase2-asistencia.sql`, `sql/fase2-incidencias.sql`, `sql/fase2-calificaciones.sql`, `sql/fase2-eventos.sql`, `sql/fase3-rls-familia.sql`, `sql/fase3-comunicaciones.sql`, `sql/fase4-cobros.sql`, `sql/fase7-mensajes.sql`, `sql/fase7-portalfam-rls.sql`, `sql/planner-tables.sql`, `sql/fix-rls-alumnos-registro.sql` (⚠ ver "Seguridad RLS" abajo).
 
 ## Cómo añadir un módulo (patrón establecido)
 1. SQL (si hace falta) en `sql/`, RLS por centro con `_caller_rol()`/`_caller_centro()` (staff read + dirección write). Aplicar en Supabase → SQL Editor (o Management API).
@@ -50,9 +50,10 @@ Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_au
 4. Visibilidad del nav en `auth.js` (junto a los `nav-*` de Gestión, variable `_staffAlm`).
 5. `node --check js/<modulo>.js` + prueba de datos bajo RLS + commit (archivos concretos, **nunca `git add .`**) + deploy + smoke test HTTP 200.
 
-## Edge Functions
-- **`invite-user`** ✅ desplegada (Management API). Usa `generateLink` (NO envía email → sin rate limit): crea el usuario y **devuelve el enlace** que la app muestra para copiar/compartir. `verify_jwt:false`, usa `SUPABASE_SERVICE_ROLE_KEY` autoinyectada.
-- **`chat`** ✅ desplegada. Proxy limpio a **Gemini 2.5 Flash** (secret `GEMINI_API_KEY` configurado). Recibe `{contents, system_prompt}` → devuelve `{type:"text", text}`. La usa `js/chat.js` (Asistente IA) y el helper `window.iaChat(systemPrompt, userText)` de `utils.js` (botones ✨ de riesgo/marketing). `verify_jwt:true`.
+## Edge Functions (5 desplegadas y verificadas end-to-end)
+- **`chat`** ✅ Proxy limpio a **Gemini 2.5 Flash** (secret `GEMINI_API_KEY`). Recibe `{contents, system_prompt}` → devuelve `{type:"text", text}`. La usan `js/chat.js` y el helper `window.iaChat(systemPrompt, userText)` de `utils.js` (todos los botones ✨). `verify_jwt:true`.
+- **`invite-user`** ✅ Usa `generateLink` (NO envía email → sin rate limit): crea el usuario y **devuelve el enlace** que la app muestra para copiar/compartir. `verify_jwt:false`, usa `SUPABASE_SERVICE_ROLE_KEY` autoinyectada.
+- **`send-comunicacion`** ✅ · **`notify-ausencia`** ✅ · **`recordar-impagos`** ✅ — email real a familias vía **Resend** (secrets `RESEND_API_KEY` + `MAIL_FROM="DidactIA Academias <no-reply@didactia.eu>"`, dominio `didactia.eu` verificado).
 - El resto de EFs heredadas viven en `supabase/functions/` pero **NO están desplegadas**.
 
 ## Convenciones críticas
@@ -62,9 +63,12 @@ Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_au
 - Textos de UI: "academia" (no "centro"). Producto: "DidactIA Academias".
 
 ## Estado IA / claves
-- **`GEMINI_API_KEY`** ✅ configurada + EF `chat` desplegada → **Asistente IA, planes de refuerzo (Riesgo) y marketing IA ACTIVOS**. (Tutor del alumno y generación avanzada de recursos: se pueden ampliar con el mismo `iaChat`.)
-- **`RESEND_API_KEY`** (SMTP en Supabase Auth) → pendiente: email real de invitaciones y comunicaciones a familias.
-- **VAPID** → push. **WhatsApp Business API / Meta** → asistente WhatsApp + IG/FB. **Stripe** (opcional) → pasarela de pago.
+- **`GEMINI_API_KEY`** ✅ + EF `chat` → **toda la capa IA activa**: Asistente, copiloto ⌘K, tutor del alumno, planes de refuerzo (Riesgo), resumen semanal "secretaría", informe de evolución, boletín y marketing.
+- **`RESEND_API_KEY` + `MAIL_FROM`** ✅ (dominio `didactia.eu` verificado) → **email real activo**: comunicaciones a familias, avisos de ausencia y recordatorios de impago.
+- Pendiente: **VAPID** → push. **WhatsApp Business API / Meta** → asistente WhatsApp + IG/FB. **Stripe** (opcional) → pasarela de pago.
+
+## Seguridad RLS (auditoría 2026-07-14)
+- Detectado y corregido en `sql/fix-rls-alumnos-registro.sql`: `alumnos_read` era `using (true)` (placeholder de Fase 0) → cualquier autenticado leía TODAS las fichas; y `centros_read` exponía los códigos de registro a la anon key. El fix crea RPCs `verificar_codigo_registro` / `alumnos_para_registro` (SECURITY DEFINER) para el registro pre-login, endurece `alumnos` (staff por centro + familia vía `_mis_alumnos()`) y oculta los códigos con grants por columna. `js/auth.js` ya usa los RPCs con fallback. **⚠ Verificar que el SQL está aplicado** (como familia, `alumnos` debe devolver solo sus hijos).
 
 ## Cómo aplicar SQL / desplegar EFs sin CLI (lo usado en este proyecto)
 - **DDL:** Management API → `POST https://api.supabase.com/v1/projects/izdqpsenrjcqtuhjhqxo/database/query` con `{"query":"..."}` y `Authorization: Bearer <PAT sbp_...>`. (O pegar el `.sql` en Supabase → SQL Editor.)

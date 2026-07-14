@@ -69,6 +69,20 @@ Rotar cuando puedas: la **service_role key**, la **secret key** y el **Personal 
 
 ## Registro de incrementos
 <!-- nuevo arriba -->
+- **AUDITORÍA RLS (2026-07-14) — fuga en `alumnos` y códigos de `centros`.** Detectado que
+  `alumnos_read` seguía siendo el placeholder de Fase 0 `using (true)` (cualquier autenticado
+  —una familia, u otro centro— leía TODAS las fichas con teléfono/email/NEE/RGPD) y que
+  `centros_read` exponía los códigos de registro a la anon key. Fix en
+  `sql/fix-rls-alumnos-registro.sql`: RPCs SECURITY DEFINER `verificar_codigo_registro` y
+  `alumnos_para_registro` para el registro pre-login y la tematización por código; política
+  `alumnos_read` endurecida (staff por centro) + `alumnos_fam_read` (`_mis_alumnos()`);
+  códigos de `centros` ocultos con grants por columna. `js/auth.js` migrado a los RPCs
+  **con fallback** a las consultas antiguas → seguro desplegar antes de aplicar el SQL.
+  **⚠ PENDIENTE: aplicar el SQL en Supabase → SQL Editor** (no había PAT en esta sesión) y
+  re-verificar con la cuenta familia (debe ver solo sus hijos, no 42). Además: asistencia
+  demo puesta al día (07→14 jul, +180 filas) con el nuevo
+  `scripts/refrescar-asistencia-demo.mjs` (idempotente, REST bajo RLS), y `CLAUDE.md`
+  sincronizado con la realidad (7 EFs, Resend activo, mensajes/planificador).
 - **EMAIL A FAMILIAS REALES ACTIVADO.** Dominio `didactia.eu` verificado en Resend; secret
   `MAIL_FROM="DidactIA Academias <no-reply@didactia.eu>"` configurado; EFs `send-comunicacion`,
   `notify-ausencia`, `recordar-impagos` redesplegadas para tomarlo. Verificado envío real a un
