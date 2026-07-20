@@ -2,26 +2,28 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231F2C4F'/><text x='50' y='58' text-anchor='middle' font-family='Geist,sans-serif' font-weight='700' font-size='62' fill='white' letter-spacing='-3'>D</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23F4A847'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23123F3A'/><text x='50' y='58' text-anchor='middle' font-family='Fraunces,serif' font-weight='600' font-size='62' fill='white' letter-spacing='-3'>a</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23E0654A'/></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DidactIA Academias — La inteligencia que hace hablar a tu academia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --navy:#0e2a4a;
-  --navy2:#0f2d52;
-  --blue:#1a56db;
-  --blue-l:#e8f0fe;
-  --amber:#e8a020;
-  --amber-l:#fef3dc;
+  /* Identidad DidactIA Academias: teal profundo + acento coral (cálido, comercial).
+     Nombres heredados del template; los valores son la paleta nueva. */
+  --navy:#123f3a;   /* teal profundo — tinta de marca */
+  --navy2:#0e4b43;  /* teal 2 (degradados) */
+  --blue:#e0654a;   /* CORAL — único acento vivo (CTA hover, énfasis, em) */
+  --blue-l:#fbe7e0; /* coral suave (fondos) */
+  --amber:#c98a3c;  /* ocre apagado — cálido secundario, sin gritar */
+  --amber-l:#f6ecda;
   --white:#ffffff;
-  --off:#f6f8fc;
-  --txt:#0e2a4a;
-  --txt2:#3d5166;
-  --txt3:#7a90a8;
-  --bdr:#d8e2f0;
+  --off:#f7f5f0;    /* off-white cálido (antes azulado) */
+  --txt:#16302c;    /* tinta teal oscura */
+  --txt2:#4a615b;   /* gris teal medio */
+  --txt3:#8a9d97;   /* gris teal claro */
+  --bdr:#e3e6df;    /* borde cálido (antes azul-gris) */
   --r:8px;
   --rl:14px;
 
@@ -34,7 +36,7 @@
 
 html{scroll-behavior:smooth}
 body{
-  font-family:'Geist',sans-serif;font-size:16px;line-height:1.65;
+  font-family:'Outfit',sans-serif;font-size:16px;line-height:1.65;
   color:var(--txt);background:var(--white);-webkit-font-smoothing:antialiased;
 }
 
@@ -69,11 +71,11 @@ nav.is-scrolled{
   width:32px;height:32px;border-radius:8px;
   background:var(--navy);
   display:flex;align-items:center;justify-content:center;
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:16px;color:var(--white);font-style:italic;
 }
 .nav-logo-text{
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:20px;color:var(--navy);letter-spacing:-0.01em;
 }
 .nav-links{
@@ -130,10 +132,17 @@ nav.is-scrolled{
 .hero::before{
   content:'';position:absolute;
   top:0;right:0;width:50%;height:100%;
-  background:var(--off);
+  background:linear-gradient(158deg,#f3ede2 0%,var(--off) 62%);
   clip-path:polygon(8% 0,100% 0,100% 100%,0% 100%);
   z-index:0;
   transition:opacity 0.5s var(--ease-std);
+}
+/* Halo cálido detrás del titular: da profundidad sin restar nitidez al texto */
+.hero::after{
+  content:'';position:absolute;pointer-events:none;
+  top:-12%;left:-12%;width:56%;height:78%;
+  background:radial-gradient(closest-side,rgba(224,101,74,0.11),rgba(224,101,74,0) 72%);
+  z-index:0;
 }
 .hero-left{position:relative;z-index:1;padding-right:6vw}
 .hero-right{position:relative;z-index:1}
@@ -160,7 +169,7 @@ nav.is-scrolled{
 .hero-eyebrow:hover::before{width:36px}
 
 h1{
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:clamp(40px,4.5vw,62px);
   line-height:1.08;
   color:var(--navy);
@@ -270,7 +279,7 @@ h1 em{font-style:italic;color:var(--blue)}
 }
 .mock-body{padding:24px}
 .mock-greeting{
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:20px;color:var(--navy);margin-bottom:4px;
 }
 .mock-date{font-size:12px;color:var(--txt3);margin-bottom:20px}
@@ -319,7 +328,7 @@ section{padding:100px 6vw}
 }
 .s-eyebrow::before{content:'';width:20px;height:2px;background:var(--blue)}
 h2{
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:clamp(30px,3.5vw,46px);
   line-height:1.12;color:var(--navy);
   letter-spacing:-0.02em;margin-bottom:16px;
@@ -333,7 +342,7 @@ h2 em{font-style:italic}
 
 /* ── DIFERENCIAL ── */
 .diferencial{
-  background:#0e2a4a;
+  background:#123f3a;
   padding:80px 6vw;
   display:grid;
   grid-template-columns:1.1fr 1fr;
@@ -341,7 +350,7 @@ h2 em{font-style:italic}
   align-items:center;
 }
 .diferencial-quote{
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:clamp(22px,3vw,38px);
   color:var(--white);
   line-height:1.2;
@@ -386,7 +395,7 @@ h2 em{font-style:italic}
 
 /* p-num: functional metadata label, not decorative giant */
 .p-num{
-  font-family:'Geist',sans-serif;
+  font-family:'Outfit',sans-serif;
   font-size:10px;
   font-weight:600;
   letter-spacing:0.14em;
@@ -471,7 +480,7 @@ h2 em{font-style:italic}
   to{opacity:1;transform:translateY(0)}
 }
 .mock-topbar{
-  background:#0e2a4a;padding:14px 20px;
+  background:#123f3a;padding:14px 20px;
   display:flex;align-items:center;justify-content:space-between;
 }
 .mock-topbar-title{font-size:13px;font-weight:500;color:rgba(255,255,255,0.7);letter-spacing:0.04em}
@@ -511,7 +520,7 @@ h2 em{font-style:italic}
   background:var(--white);border:1px solid var(--bdr);
   border-radius:var(--r);padding:14px;text-align:center;
 }
-.mock-stat-n{font-family:'Playfair Display',serif;font-size:28px;color:#0e2a4a;line-height:1}
+.mock-stat-n{font-family:'Fraunces',serif;font-size:28px;color:#123f3a;line-height:1}
 .mock-stat-l{font-size:11px;color:var(--txt3);margin-top:4px}
 .mock-role-row{
   display:flex;align-items:center;justify-content:space-between;
@@ -521,7 +530,7 @@ h2 em{font-style:italic}
 }
 .mock-role-row:hover{border-color:#b3c4d8}
 .mock-role-left{display:flex;align-items:center;gap:10px}
-.mock-role-name{font-size:14px;font-weight:500;color:#0e2a4a}
+.mock-role-name{font-size:14px;font-weight:500;color:#123f3a}
 .mock-role-email{font-size:12px;color:var(--txt3)}
 .mock-role-badge{
   padding:3px 10px;border-radius:100px;font-size:11px;font-weight:500;
@@ -539,7 +548,7 @@ h2 em{font-style:italic}
 }
 
 /* ── CÓMO FUNCIONA ── */
-.como{background:#0e2a4a}
+.como{background:#123f3a}
 .como .s-eyebrow{color:#6ea8fe}
 .como .s-eyebrow::before{background:#6ea8fe}
 .como h2{color:var(--white)}
@@ -560,7 +569,7 @@ h2 em{font-style:italic}
   width:44px;height:44px;border-radius:50%;
   border:1px solid rgba(255,255,255,0.2);
   display:flex;align-items:center;justify-content:center;
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:18px;color:var(--white);
   margin-bottom:24px;
   background:var(--navy);
@@ -608,8 +617,8 @@ h2 em{font-style:italic}
   border-color:#c0cedf;
 }
 .precio-card.featured{
-  border-color:#0e2a4a;border-width:2px;
-  background:#0e2a4a;
+  border-color:#123f3a;border-width:2px;
+  background:#123f3a;
 }
 .precio-card.featured:hover{
   box-shadow:0 16px 48px rgba(13,27,42,0.25);
@@ -629,7 +638,7 @@ h2 em{font-style:italic}
 }
 .precio-card.featured .precio-label{color:rgba(255,255,255,0.4)}
 .precio-amount{
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:48px;color:var(--navy);line-height:1;
   margin-bottom:6px;
 }
@@ -774,13 +783,13 @@ h2 em{font-style:italic}
 
 /* ── FOOTER ── */
 footer{
-  background:#0e2a4a;
+  background:#123f3a;
   padding:32px 6vw;
   display:flex;justify-content:space-between;align-items:center;
   flex-wrap:wrap;gap:16px;
 }
 .footer-logo{
-  font-family:'Playfair Display',serif;
+  font-family:'Fraunces',serif;
   font-size:18px;color:rgba(255,255,255,0.5);
   font-style:italic;
 }
@@ -949,7 +958,7 @@ footer{
 <nav id="main-nav">
   <a href="#" class="nav-logo" style="display:flex;align-items:center">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto">
-      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#0e2a4a;letter-spacing:-3px}.ti{fill:#1a56db}.sa{fill:#e8a020}</style></defs>
+      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#123f3a;letter-spacing:-3px}.ti{fill:#e0654a}.sa{fill:#c98a3c}</style></defs>
       <text x="10" y="230" class="td">Didact<tspan class="ti">IA</tspan></text>
       <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="sa"/>
     </svg>
@@ -970,7 +979,7 @@ footer{
 <!-- HERO -->
 <section class="hero">
   <div class="hero-left">
-    <div class="hero-eyebrow reveal">Plataforma educativa española</div>
+    <div class="hero-eyebrow reveal">Software para academias</div>
     <h1 class="reveal reveal-delay-1">
       La inteligencia<br>que hace <em>hablar</em><br>a tu academia
     </h1>
@@ -989,10 +998,12 @@ footer{
     </div>
     <div class="hero-trust reveal">
       <div>
-        <p>Activo en academias de</p>
+        <p>Pensado para academias de</p>
         <div class="trust-chips" style="margin-top:8px">
-          <span class="trust-chip">IES Buñol</span>
-          <span class="trust-chip">Agora Lledó International School</span>
+          <span class="trust-chip">Refuerzo escolar</span>
+          <span class="trust-chip">Idiomas</span>
+          <span class="trust-chip">Oposiciones</span>
+          <span class="trust-chip">Extraescolares</span>
         </div>
         <div class="trust-chips" style="margin-top:8px">
           <span class="trust-chip">🔒 Aislamiento por academia</span>
@@ -1011,7 +1022,7 @@ footer{
           <div class="mock-dot" style="background:#ffbd2e"></div>
           <div class="mock-dot" style="background:#28c840"></div>
         </div>
-        <span class="mock-bar-title">DidactIA · Agora Lledó</span>
+        <span class="mock-bar-title">DidactIA · Tu academia</span>
         <div style="width:50px"></div>
       </div>
       <div class="mock-body">
@@ -1027,9 +1038,9 @@ footer{
               <li>Ana Martínez</li>
             </ul>
           </div>
-          <div class="mock-msg-user">¿Cuándo tiene Matemáticas Marcos López?</div>
+          <div class="mock-msg-user">¿Cuándo tiene clase Marcos López?</div>
           <div class="mock-msg-bot">
-            <strong>Marcos López</strong> (2ºESO B) tiene Matemáticas los <strong>martes de 10:40 a 11:35</strong> con Ana Martínez, aula 104.
+            <strong>Marcos López</strong> (Inglés B2) tiene clase los <strong>martes de 18:00 a 19:30</strong> con Ana Martínez, aula 3.
           </div>
         </div>
         <div class="mock-input">
@@ -1114,17 +1125,17 @@ footer{
 <!-- PROBLEMA -->
 <section class="problema">
   <h2 class="reveal">Cada día, las mismas<br><em>interrupciones</em></h2>
-  <p class="s-sub reveal reveal-delay-1">Los equipos directivos pierden horas resolviendo consultas que un sistema inteligente podría gestionar solo.</p>
+  <p class="s-sub reveal reveal-delay-1">La dirección de la academia pierde horas resolviendo a mano consultas que un sistema inteligente podría gestionar solo.</p>
   <div class="problema-grid">
     <div class="problema-card reveal">
       <div class="p-num">01</div>
-      <h3>Guardias sin cubrir</h3>
-      <p>Saber quién está libre ahora mismo requiere consultar horarios manualmente y llamar a varios profesores.</p>
+      <h3>Faltas sin control</h3>
+      <p>Saber quién ha venido hoy a cada clase se lleva en papel o en un Excel que nadie mira a tiempo.</p>
     </div>
     <div class="problema-card reveal reveal-delay-1">
       <div class="p-num">02</div>
-      <h3>Comedor desorganizado</h3>
-      <p>El control de asistencia al comedor se hace a mano, con errores y sin datos históricos accesibles.</p>
+      <h3>Familias desinformadas</h3>
+      <p>Los padres preguntan por WhatsApp si su hijo ha ido a clase, cómo va o cuándo es la próxima sesión.</p>
     </div>
     <div class="problema-card reveal reveal-delay-2">
       <div class="p-num">03</div>
@@ -1134,7 +1145,7 @@ footer{
     <div class="problema-card reveal reveal-delay-3">
       <div class="p-num">04</div>
       <h3>Información dispersa</h3>
-      <p>Los datos de la academia están repartidos entre Excel, email y sistemas que no se hablan entre sí.</p>
+      <p>Los datos de la academia están repartidos entre Excel, WhatsApp y sistemas que no se hablan entre sí.</p>
     </div>
   </div>
 </section>
@@ -1147,7 +1158,7 @@ footer{
     <div>
       <div class="s-eyebrow reveal">Lo que incluye</div>
       <h2 class="reveal">Más de 25 módulos.<br><em>Un solo acceso.</em></h2>
-      <p class="s-sub reveal" style="margin-bottom:0">Desde la guardia de mañana hasta el boletín de fin de trimestre — todo en la misma plataforma, sin integraciones ni papel.</p>
+      <p class="s-sub reveal" style="margin-bottom:0">Desde el control de asistencia de hoy hasta el informe de progreso del alumno — todo en la misma plataforma, sin integraciones ni papel.</p>
     </div>
 
     <!-- Orbital visual -->
@@ -1155,23 +1166,23 @@ footer{
       <!-- Anillos + líneas en SVG -->
       <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
         <!-- Anillo exterior -->
-        <circle cx="50" cy="50" r="46" fill="none" stroke="#d8e2f0" stroke-width="0.7" stroke-dasharray="3,3"/>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="#e3e6df" stroke-width="0.7" stroke-dasharray="3,3"/>
         <!-- Anillo interior -->
-        <circle cx="50" cy="50" r="29" fill="none" stroke="#d8e2f0" stroke-width="0.7" stroke-dasharray="2,3"/>
+        <circle cx="50" cy="50" r="29" fill="none" stroke="#e3e6df" stroke-width="0.7" stroke-dasharray="2,3"/>
         <!-- Líneas desde centro a chips -->
-        <line x1="50" y1="50" x2="14" y2="13" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
-        <line x1="50" y1="50" x2="14" y2="87" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
-        <line x1="50" y1="50" x2="86" y2="13" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
-        <line x1="50" y1="50" x2="86" y2="87" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
-        <line x1="50" y1="50" x2="92" y2="50" stroke="#d8e2f0" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="14" y2="13" stroke="#e3e6df" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="14" y2="87" stroke="#e3e6df" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="86" y2="13" stroke="#e3e6df" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="86" y2="87" stroke="#e3e6df" stroke-width="0.6" stroke-dasharray="2,3"/>
+        <line x1="50" y1="50" x2="92" y2="50" stroke="#e3e6df" stroke-width="0.6" stroke-dasharray="2,3"/>
       </svg>
 
       <!-- Logo DidactIA en el centro (104×104) -->
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:104px;height:104px;z-index:2">
         <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
-          <rect width="100" height="100" rx="22" fill="#0e2a4a"/>
+          <rect width="100" height="100" rx="22" fill="#123f3a"/>
           <text x="50" y="58" text-anchor="middle" font-family="Geist,-apple-system,sans-serif" font-weight="700" font-size="62" fill="white" letter-spacing="-3">D</text>
-          <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#e8a020"/>
+          <path d="M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z" fill="#c98a3c"/>
         </svg>
       </div>
 
@@ -1183,7 +1194,7 @@ footer{
         <span class="lp-orbital__num">02</span>Guardias
       </div>
       <div class="lp-orbital__chip" style="top:7%;right:3%">
-        <span class="lp-orbital__num">03</span>Comedor
+        <span class="lp-orbital__num">03</span>Calificaciones
       </div>
       <div class="lp-orbital__chip" style="bottom:7%;right:3%">
         <span class="lp-orbital__num">04</span>Agentes IA
@@ -1210,7 +1221,7 @@ footer{
       </div>
       <div class="modulo-item reveal reveal-delay-2" onclick="selectModulo(2,this)">
         <div class="m-num">03</div>
-        <h3>Comedor escolar</h3>
+        <h3>Comedor</h3>
         <p>Control de asistencia diaria, filtros por grupo y exportación de datos.</p>
         <span class="modulo-tag">Sin papel</span>
       </div>
@@ -1284,19 +1295,19 @@ footer{
         </div>
         <div class="mock-content">
           <div style="display:flex;flex-direction:column;gap:10px">
-            <div style="align-self:flex-end;background:#0e2a4a;color:white;padding:9px 14px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:85%">¿Qué profesores están libres ahora?</div>
+            <div style="align-self:flex-end;background:#123f3a;color:white;padding:9px 14px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:85%">¿Qué profesores están libres ahora?</div>
             <div style="background:var(--white);border:1px solid var(--bdr);padding:12px 14px;border-radius:3px 12px 12px 12px;font-size:13px;max-width:90%;color:var(--txt2);line-height:1.6">
-              <span style="font-weight:500;color:#0e2a4a">Libres ahora (10:42):</span><br>
+              <span style="font-weight:500;color:#123f3a">Libres ahora (10:42):</span><br>
               · María González<br>· Carlos Serrano<br>· Ana Martínez
             </div>
-            <div style="align-self:flex-end;background:#0e2a4a;color:white;padding:9px 14px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:85%">¿Cuándo tiene Mates Marcos López?</div>
+            <div style="align-self:flex-end;background:#123f3a;color:white;padding:9px 14px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:85%">¿Cuándo tiene clase Marcos López?</div>
             <div style="background:var(--white);border:1px solid var(--bdr);padding:12px 14px;border-radius:3px 12px 12px 12px;font-size:13px;max-width:90%;color:var(--txt2);line-height:1.6">
-              <span style="font-weight:500;color:#0e2a4a">Marcos López</span> (2ºESO B) tiene Matemáticas los <span style="font-weight:500;color:#0e2a4a">martes 10:40-11:35</span> con Ana Martínez · Aula 104.
+              <span style="font-weight:500;color:#123f3a">Marcos López</span> (Inglés B2) tiene clase los <span style="font-weight:500;color:#123f3a">martes 18:00-19:30</span> con Ana Martínez · Aula 3.
             </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr)">
             <div style="flex:1;background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:9px 12px;font-size:12px;color:var(--txt3)">Escribe una pregunta...</div>
-            <div style="width:32px;height:32px;background:#0e2a4a;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <div style="width:32px;height:32px;background:#123f3a;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <svg width="14" height="14" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </div>
           </div>
@@ -1311,15 +1322,15 @@ footer{
         </div>
         <div class="mock-content">
           <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Profesores libres ahora · Tramo 3 (10:40-11:35)</div>
-          <div class="mock-row"><div class="mock-avatar" style="background:#dbeafe;color:#1e40af">MG</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">María González</div><div style="font-size:12px;color:var(--txt3)">Matemáticas · Sec.</div></div><span class="mock-pill libre">Libre</span></div>
-          <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">CS</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">Carlos Serrano</div><div style="font-size:12px;color:var(--txt3)">Lengua · Bach.</div></div><span class="mock-pill libre">Libre</span></div>
-          <div class="mock-row"><div class="mock-avatar" style="background:#fef9c3;color:#854d0e">AM</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#0e2a4a">Ana Martínez</div><div style="font-size:12px;color:var(--txt3)">Inglés · ESO</div></div><span class="mock-pill clase">Con clase</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dbeafe;color:#1e40af">MG</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#123f3a">María González</div><div style="font-size:12px;color:var(--txt3)">Matemáticas</div></div><span class="mock-pill libre">Libre</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">CS</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#123f3a">Carlos Serrano</div><div style="font-size:12px;color:var(--txt3)">Lengua</div></div><span class="mock-pill libre">Libre</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fef9c3;color:#854d0e">AM</div><div style="flex:1"><div style="font-size:14px;font-weight:500;color:#123f3a">Ana Martínez</div><div style="font-size:12px;color:var(--txt3)">Inglés</div></div><span class="mock-pill clase">Con clase</span></div>
           <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr)">
             <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">Historial de hoy</div>
             <table class="mock-table">
               <tr><th>Sustituto</th><th>Grupo</th><th>Tramo</th></tr>
-              <tr><td>C. Serrano</td><td>3ºESO A</td><td>1</td></tr>
-              <tr><td>M. González</td><td>1BAC B</td><td>2</td></tr>
+              <tr><td>C. Serrano</td><td>Refuerzo Mates</td><td>1</td></tr>
+              <tr><td>M. González</td><td>Física 2º Bach</td><td>2</td></tr>
             </table>
           </div>
         </div>
@@ -1339,13 +1350,13 @@ footer{
           </div>
           <div style="display:flex;gap:8px;margin-bottom:12px">
             <div style="flex:1;background:var(--white);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:12px;color:var(--txt3)">Filtrar por grupo...</div>
-            <div style="background:#0e2a4a;color:white;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer">Exportar</div>
+            <div style="background:#123f3a;color:white;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer">Exportar</div>
           </div>
           <table class="mock-table">
             <tr><th>Grupo</th><th>Alumnos</th><th>Estado</th></tr>
-            <tr><td>1ºESO A</td><td>22</td><td><span class="mock-pill ok">OK</span></td></tr>
-            <tr><td>1ºESO B</td><td>19</td><td><span class="mock-pill ok">OK</span></td></tr>
-            <tr><td>2ºESO A</td><td>24</td><td><span class="mock-pill ok">OK</span></td></tr>
+            <tr><td>Inglés A2</td><td>22</td><td><span class="mock-pill ok">OK</span></td></tr>
+            <tr><td>Refuerzo Lengua</td><td>19</td><td><span class="mock-pill ok">OK</span></td></tr>
+            <tr><td>Inglés B1</td><td>24</td><td><span class="mock-pill ok">OK</span></td></tr>
             <tr><td>1ºBAC A</td><td>18</td><td><span class="mock-pill pend">Pendiente</span></td></tr>
           </table>
         </div>
@@ -1360,19 +1371,19 @@ footer{
         <div class="mock-content">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase">Gestión de roles</div>
-            <div style="background:#0e2a4a;color:white;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500">+ Invitar</div>
+            <div style="background:#123f3a;color:white;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500">+ Invitar</div>
           </div>
           <div class="mock-role-row">
             <div class="mock-role-left">
               <div class="mock-avatar" style="background:#dbeafe;color:#1e40af;width:32px;height:32px;font-size:11px">JV</div>
-              <div><div class="mock-role-name">Javier V.</div><div class="mock-role-email">javier@agora.es</div></div>
+              <div><div class="mock-role-name">Javier V.</div><div class="mock-role-email">javier@academia.es</div></div>
             </div>
             <span class="mock-role-badge admin">Admin</span>
           </div>
           <div class="mock-role-row">
             <div class="mock-role-left">
               <div class="mock-avatar" style="background:#dcfce7;color:#166534;width:32px;height:32px;font-size:11px">MG</div>
-              <div><div class="mock-role-name">María G.</div><div class="mock-role-email">maria@agora.es</div></div>
+              <div><div class="mock-role-name">María G.</div><div class="mock-role-email">maria@academia.es</div></div>
             </div>
             <span class="mock-role-badge prof">Profesional</span>
           </div>
@@ -1402,32 +1413,32 @@ footer{
           <span class="mock-topbar-badge">iOS y Android</span>
         </div>
         <div class="mock-content" style="display:flex;justify-content:center;align-items:flex-start;gap:16px;padding-top:16px">
-          <div style="width:160px;flex-shrink:0;background:#0e2a4a;border-radius:28px;padding:8px;box-shadow:0 8px 32px rgba(14,42,74,0.25)">
-            <div style="background:#0e2a4a;border-radius:20px 20px 0 0;padding:6px 0;display:flex;justify-content:center">
+          <div style="width:160px;flex-shrink:0;background:#123f3a;border-radius:28px;padding:8px;box-shadow:0 8px 32px rgba(14,42,74,0.25)">
+            <div style="background:#123f3a;border-radius:20px 20px 0 0;padding:6px 0;display:flex;justify-content:center">
               <div style="width:40px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px"></div>
             </div>
             <div style="background:var(--off);border-radius:16px;overflow:hidden">
-              <div style="background:#0e2a4a;padding:10px 12px 8px">
+              <div style="background:#123f3a;padding:10px 12px 8px">
                 <div style="display:flex;align-items:center;justify-content:space-between">
-                  <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:white">DidactIA</div>
+                  <div style="font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:white">DidactIA</div>
                   <div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:500">JV</div>
                 </div>
-                <div style="font-size:9px;color:rgba(255,255,255,0.5);margin-top:2px">Agora Lledó · Admin</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.5);margin-top:2px">Tu academia · Admin</div>
               </div>
               <div style="display:flex;background:white;border-bottom:1px solid var(--bdr)">
-                <div style="flex:1;padding:6px 0;text-align:center;font-size:8px;color:#0e2a4a;font-weight:500;border-bottom:2px solid #0e2a4a">Chat</div>
+                <div style="flex:1;padding:6px 0;text-align:center;font-size:8px;color:#123f3a;font-weight:500;border-bottom:2px solid #123f3a">Chat</div>
                 <div style="flex:1;padding:6px 0;text-align:center;font-size:8px;color:var(--txt3)">Guardias</div>
                 <div style="flex:1;padding:6px 0;text-align:center;font-size:8px;color:var(--txt3)">Comedor</div>
               </div>
               <div style="padding:8px;display:flex;flex-direction:column;gap:6px">
-                <div style="background:#0e2a4a;color:white;padding:5px 9px;border-radius:7px 7px 2px 7px;font-size:9px;align-self:flex-end;max-width:85%">¿Libres en tramo 3?</div>
-                <div style="background:white;border:1px solid var(--bdr);padding:6px 9px;border-radius:2px 7px 7px 7px;font-size:9px;color:var(--txt2);line-height:1.5;max-width:92%"><span style="font-weight:500;color:#0e2a4a">3 libres:</span> M. González, C. Serrano, A. Martínez</div>
-                <div style="background:#0e2a4a;color:white;padding:5px 9px;border-radius:7px 7px 2px 7px;font-size:9px;align-self:flex-end;max-width:85%">Horario 2ºESO B hoy</div>
-                <div style="background:white;border:1px solid var(--bdr);padding:6px 9px;border-radius:2px 7px 7px 7px;font-size:9px;color:var(--txt2);line-height:1.5;max-width:92%"><span style="font-weight:500;color:#0e2a4a">2ºESO B · Hoy</span><br>09:45 Lengua<br>10:40 Mates<br>12:00 Inglés</div>
+                <div style="background:#123f3a;color:white;padding:5px 9px;border-radius:7px 7px 2px 7px;font-size:9px;align-self:flex-end;max-width:85%">¿Libres en tramo 3?</div>
+                <div style="background:white;border:1px solid var(--bdr);padding:6px 9px;border-radius:2px 7px 7px 7px;font-size:9px;color:var(--txt2);line-height:1.5;max-width:92%"><span style="font-weight:500;color:#123f3a">3 libres:</span> M. González, C. Serrano, A. Martínez</div>
+                <div style="background:#123f3a;color:white;padding:5px 9px;border-radius:7px 7px 2px 7px;font-size:9px;align-self:flex-end;max-width:85%">Horario Inglés B2 hoy</div>
+                <div style="background:white;border:1px solid var(--bdr);padding:6px 9px;border-radius:2px 7px 7px 7px;font-size:9px;color:var(--txt2);line-height:1.5;max-width:92%"><span style="font-weight:500;color:#123f3a">Inglés B2 · Hoy</span><br>09:45 Lengua<br>10:40 Mates<br>12:00 Inglés</div>
               </div>
               <div style="display:flex;gap:4px;padding:6px 8px;background:white;border-top:1px solid var(--bdr)">
                 <div style="flex:1;background:var(--off);border-radius:4px;padding:4px 7px;font-size:8px;color:var(--txt3)">Escribe...</div>
-                <div style="width:20px;height:20px;background:#0e2a4a;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <div style="width:20px;height:20px;background:#123f3a;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
                   <svg width="9" height="9" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </div>
               </div>
@@ -1437,7 +1448,7 @@ footer{
             </div>
           </div>
           <div style="flex:1">
-            <div style="font-size:13px;font-weight:500;color:#0e2a4a;margin-bottom:8px">Instalable en cualquier móvil</div>
+            <div style="font-size:13px;font-weight:500;color:#123f3a;margin-bottom:8px">Instalable en cualquier móvil</div>
             <div style="font-size:12px;color:var(--txt2);line-height:1.65;margin-bottom:14px">Sin App Store ni Google Play. Se instala desde el navegador en iOS y Android en segundos.</div>
             <div style="display:flex;flex-direction:column;gap:8px">
               <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2)"><span style="color:var(--blue);font-weight:500">→</span>Acceso directo desde la pantalla de inicio</div>
@@ -1457,9 +1468,9 @@ footer{
         </div>
         <div class="mock-content">
           <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Solicitudes de ausencia</div>
-          <div class="mock-row"><div class="mock-avatar" style="background:#fef3c7;color:#92400e">RG</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Rosa García</div><div style="font-size:11px;color:var(--txt3)">Baja médica · 12–16 jun</div></div><span class="mock-pill pend">Pendiente</span></div>
-          <div class="mock-row"><div class="mock-avatar" style="background:#dbeafe;color:#1e40af">JP</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Juan Pérez</div><div style="font-size:11px;color:var(--txt3)">Formación · 15 jun</div></div><span class="mock-pill pend">Pendiente</span></div>
-          <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">AM</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Ana Martínez</div><div style="font-size:11px;color:var(--txt3)">Asunto propio · 10 jun</div></div><span class="mock-pill ok">Aprobada</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fef3c7;color:#92400e">RG</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#123f3a">Rosa García</div><div style="font-size:11px;color:var(--txt3)">Baja médica · 12–16 jun</div></div><span class="mock-pill pend">Pendiente</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dbeafe;color:#1e40af">JP</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#123f3a">Juan Pérez</div><div style="font-size:11px;color:var(--txt3)">Formación · 15 jun</div></div><span class="mock-pill pend">Pendiente</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">AM</div><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#123f3a">Ana Martínez</div><div style="font-size:11px;color:var(--txt3)">Asunto propio · 10 jun</div></div><span class="mock-pill ok">Aprobada</span></div>
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bdr);font-size:11px;color:var(--txt3)">Al aprobar se generan sustituciones automáticamente para cada tramo afectado.</div>
         </div>
       </div>
@@ -1467,16 +1478,16 @@ footer{
       <!-- SCREEN 6: Incidencias -->
       <div class="mock-screen" id="screen-6">
         <div class="mock-topbar">
-          <span class="mock-topbar-title">Incidencias · Convivencia</span>
+          <span class="mock-topbar-title">Incidencias · Seguimiento</span>
           <span class="mock-topbar-badge">2 abiertas</span>
         </div>
         <div class="mock-content">
           <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Registro de incidencias</div>
-          <div class="mock-row" style="align-items:flex-start"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Conflicto verbal en pasillo</div><div style="font-size:11px;color:var(--txt3);margin-top:2px">2ºESO B · Jue 12 jun · Leve</div></div><span class="mock-pill pend">Abierta</span></div>
-          <div class="mock-row" style="align-items:flex-start"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#0e2a4a">Uso de móvil reiterado</div><div style="font-size:11px;color:var(--txt3);margin-top:2px">3ºESO A · Mié 11 jun · Leve</div></div><span class="mock-pill ok">Cerrada</span></div>
+          <div class="mock-row" style="align-items:flex-start"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#123f3a">Retraso reiterado a clase</div><div style="font-size:11px;color:var(--txt3);margin-top:2px">Inglés B2 · Jue 12 jun · Leve</div></div><span class="mock-pill pend">Abierta</span></div>
+          <div class="mock-row" style="align-items:flex-start"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:#123f3a">Falta sin justificar</div><div style="font-size:11px;color:var(--txt3);margin-top:2px">Refuerzo Mates · Mié 11 jun · Leve</div></div><span class="mock-pill ok">Cerrada</span></div>
           <div style="margin-top:12px;padding:10px;background:var(--off);border-radius:8px;border:1px solid var(--bdr)">
-            <div style="font-size:11px;font-weight:600;color:#0e2a4a;margin-bottom:4px">✨ Tipificación IA</div>
-            <div style="font-size:11px;color:var(--txt2);line-height:1.5">Decreto 39/2008 (Valenciana) · Art. 35 · Conducta contraria a normas · Medidas: amonestación verbal, comunicación a familia.</div>
+            <div style="font-size:11px;font-weight:600;color:#123f3a;margin-bottom:4px">✨ Sugerencia IA</div>
+            <div style="font-size:11px;color:var(--txt2);line-height:1.5">Aviso a la familia + registro en el historial del alumno. Seguimiento recomendado si el retraso se repite.</div>
           </div>
         </div>
       </div>
@@ -1490,12 +1501,12 @@ footer{
         <div class="mock-content">
           <div style="font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Enviar comunicado</div>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="background:var(--white);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:12px;color:#0e2a4a;font-weight:500">Convocatoria reunión inicio de curso</div>
-            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--txt3)">Destinatarios: Familias de 1ºESO A</div>
-            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--txt2);min-height:48px">Se convoca reunión de inicio de curso el martes 10 de septiembre a las 18:00h en el salón de actos...</div>
+            <div style="background:var(--white);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:12px;color:#123f3a;font-weight:500">Convocatoria reunión inicio de curso</div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--txt3)">Destinatarios: Familias de Inglés B2</div>
+            <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--txt2);min-height:48px">Se convoca reunión de inicio de curso el martes 10 de septiembre a las 18:00h en la academia...</div>
           </div>
           <div style="margin-top:12px;display:flex;justify-content:flex-end">
-            <div style="background:#0e2a4a;color:white;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:500">Enviar por email</div>
+            <div style="background:#123f3a;color:white;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:500">Enviar por email</div>
           </div>
         </div>
       </div>
@@ -1504,7 +1515,7 @@ footer{
       <div class="mock-screen" id="screen-8">
         <div class="mock-topbar">
           <span class="mock-topbar-title">Planner · Tablero</span>
-          <span class="mock-topbar-badge">2ºESO A</span>
+          <span class="mock-topbar-badge">Inglés B1</span>
         </div>
         <div class="mock-content">
           <table style="width:100%;border-collapse:collapse;font-size:10.5px">
@@ -1545,7 +1556,7 @@ footer{
               <td style="padding:2px"><div style="background:#ede9fe;border-radius:4px;padding:4px 5px;font-size:10px;color:#5b21b6;font-weight:500;text-align:center">Física</div></td>
             </tr>
           </table>
-          <div style="margin-top:10px;padding:8px 10px;background:var(--off);border-radius:6px;font-size:11px;color:var(--txt2)">✨ Generado con IA — sin conflictos de aula ni profesor · <span style="color:#0e2a4a;font-weight:500;cursor:pointer">Publicar horario →</span></div>
+          <div style="margin-top:10px;padding:8px 10px;background:var(--off);border-radius:6px;font-size:11px;color:var(--txt2)">✨ Generado con IA — sin conflictos de aula ni profesor · <span style="color:#123f3a;font-weight:500;cursor:pointer">Publicar horario →</span></div>
         </div>
       </div>
 
@@ -1568,7 +1579,7 @@ footer{
             <tr><td>David Puig</td><td><span style="color:#166534;font-weight:600">7.0</span></td><td style="font-size:10px;color:var(--txt3)">Mejora constante...</td></tr>
           </table>
           <div style="margin-top:10px;display:flex;gap:8px">
-            <div style="flex:1;background:#0e2a4a;color:white;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:500;text-align:center">Guardar notas</div>
+            <div style="flex:1;background:#123f3a;color:white;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:500;text-align:center">Guardar notas</div>
             <div style="background:var(--off);border:1px solid var(--bdr);border-radius:6px;padding:6px 12px;font-size:11px;color:var(--txt2);text-align:center;white-space:nowrap">⬇ Boletín PDF</div>
           </div>
         </div>
@@ -1578,7 +1589,7 @@ footer{
       <div class="mock-screen" id="screen-10">
         <div class="mock-topbar">
           <span class="mock-topbar-title">Salida · Museu de Ciències</span>
-          <span class="mock-topbar-badge">2ºESO · 28 may</span>
+          <span class="mock-topbar-badge">Inglés B2 · 28 may</span>
         </div>
         <div class="mock-content">
           <div class="mock-stat-row">
@@ -1605,17 +1616,17 @@ footer{
         <div class="mock-content">
           <div style="display:flex;flex-direction:column;gap:8px">
             <div style="background:var(--off);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px">
-              <div style="font-size:12px;font-weight:600;color:#0e2a4a;margin-bottom:3px">🛡 Agente de sustituciones</div>
+              <div style="font-size:12px;font-weight:600;color:#123f3a;margin-bottom:3px">🛡 Agente de sustituciones</div>
               <div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Propone quién cubre cada tramo — prioriza guardias por equidad.</div>
               <span style="background:#dbeafe;color:#1e40af;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:500">3 tramos sin cubrir hoy</span>
             </div>
             <div style="background:var(--off);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px">
-              <div style="font-size:12px;font-weight:600;color:#0e2a4a;margin-bottom:3px">📋 Agente de RRHH</div>
+              <div style="font-size:12px;font-weight:600;color:#123f3a;margin-bottom:3px">📋 Agente de RRHH</div>
               <div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Evalúa solicitudes de ausencia contra EBEP/convenio. Recomienda aprobar o denegar.</div>
               <span style="background:#fef3c7;color:#92400e;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:500">2 solicitudes pendientes</span>
             </div>
             <div style="background:var(--off);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px">
-              <div style="font-size:12px;font-weight:600;color:#0e2a4a;margin-bottom:3px">🧭 Agente de orientación</div>
+              <div style="font-size:12px;font-weight:600;color:#123f3a;margin-bottom:3px">🧭 Agente de orientación</div>
               <div style="font-size:11px;color:var(--txt2);margin-bottom:6px">Detecta alumnos en riesgo cruzando asistencia, notas e incidencias abiertas.</div>
               <span style="background:#fce7f3;color:#831843;border-radius:100px;padding:2px 9px;font-size:10px;font-weight:500">1 alerta activa</span>
             </div>
@@ -1828,7 +1839,7 @@ footer{
 <footer>
   <div class="footer-logo">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:28px;width:auto">
-      <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#e8a020}</style></defs>
+      <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#c98a3c}</style></defs>
       <text x="10" y="230" class="tdf">Didact<tspan class="tif">IA</tspan></text>
       <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="saf"/>
     </svg>
@@ -1846,7 +1857,7 @@ footer{
 const moduloData=[
   {icon:'💬',title:'Asistente IA conversacional',desc:'Cualquier miembro de la comunidad educativa puede preguntar en lenguaje natural. El sistema responde con datos reales de la academia, filtrados según el rol del usuario.',features:['Horarios de alumnos y profesores','Información de la academia por rol','Búsqueda directa de alumnos','Acceso para familias, profesores y dirección']},
   {icon:'🔄',title:'Guardias y sustituciones',desc:'Visualiza en tiempo real qué profesores están libres en cada tramo horario. Gestiona sustituciones, consulta el historial y expórtalo cuando necesites.',features:['Profesores libres ahora mismo','Asignación de guardias','Historial de sustituciones','Notificación automática por email']},
-  {icon:'🍽️',title:'Comedor escolar',desc:'Control de asistencia diaria sin papel. Filtra por grupo, ve los datos históricos y exporta informes para la cocina o la administración de la academia.',features:['Registro diario de asistencia','Alergias y dietas por alumno','Menú semanal editable','Informe contable mensual en PDF']},
+  {icon:'🍽️',title:'Comedor',desc:'Control de asistencia diaria sin papel. Filtra por grupo, ve los datos históricos y exporta informes para la cocina o la administración de la academia.',features:['Registro diario de asistencia','Alergias y dietas por alumno','Menú semanal editable','Informe contable mensual en PDF']},
   {icon:'⚙️',title:'Panel de administración',desc:'Gestiona usuarios, roles e invitaciones. Configura los módulos activos para cada academia y personaliza la identidad visual con los colores y logo propios.',features:['Gestión de roles e invitaciones','Identidad visual personalizada','Vista multicentro','Onboarding de nueva academia en minutos']},
   {icon:'📱',title:'App móvil (PWA)',desc:'Instalable en cualquier smartphone sin pasar por la App Store. Siempre actualizada, con notificaciones push para familias y profesores.',features:['Sin App Store ni Google Play','Notificaciones push en tiempo real','Funciona sin conexión','Compatible iOS y Android']},
   {icon:'👔',title:'RRHH y ausencias',desc:'Justificantes, aprobación de ausencias y generación automática de sustituciones cuando se aprueba una baja. Copiloto legal IA incluido.',features:['Solicitud de ausencias con justificante','Aprobación genera sustituciones automáticamente','Copiloto IA: EBEP y convenio colectivo','Notificación automática al solicitante']},
