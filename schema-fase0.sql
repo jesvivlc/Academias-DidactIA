@@ -300,12 +300,12 @@ grant execute on function public._caller_rol()   to authenticated, anon;
 grant execute on function public._caller_centro() to authenticated, anon;
 
 -- ────────────────────────────────────────────────────────────────────────────
--- 5. SEED — academia de prueba "EducaMentes"
+-- 5. SEED — academia de prueba "Academia Demo DidactIA"
 --    color_primario y logo_url a NULL (usa la marca DidactIA por defecto).
---    Código de registro general: EDUCA-2026 (rol profesional/general).
+--    Código de registro general: DEMO-2026 (rol profesional/general).
 -- ────────────────────────────────────────────────────────────────────────────
 insert into public.centros (nombre, slug, codigo_familia, codigo_profesional, codigo_acceso, modulos_activos, color_primario, logo_url)
-values ('EducaMentes', 'educamentes', 'EDUCA-FAM', 'EDUCA-PRO', 'EDUCA-2026', '{}', null, null)
+values ('Academia Demo DidactIA', 'demo', 'DEMO-FAM', 'DEMO-PRO', 'DEMO-2026', '{}', null, null)
 on conflict (slug) do nothing;
 
 -- ============================================================================
@@ -314,9 +314,9 @@ on conflict (slug) do nothing;
 --   → "Add user" (email + contraseña). Luego, en el SQL Editor, crea su perfil:
 --
 --     insert into public.profiles (id, user_id, full_name, email, rol, centro_id)
---     select u.id, u.id, 'Admin EducaMentes', u.email, 'admin', c.id
+--     select u.id, u.id, 'Admin Academia Demo DidactIA', u.email, 'admin', c.id
 --     from auth.users u, public.centros c
---     where u.email = 'TU_EMAIL_ADMIN' and c.slug = 'educamentes';
+--     where u.email = 'TU_EMAIL_ADMIN' and c.slug = 'demo';
 --
 --   (o usa rol 'superadmin' con centro_id NULL para acceso global).
 -- ============================================================================

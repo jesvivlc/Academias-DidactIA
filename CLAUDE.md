@@ -8,7 +8,7 @@
 - **App en producción:** https://didactia-academias.vercel.app · Landing en `/`, app en `/app.html`.
 - **Login demo (admin):** `jesvivlc@gmail.com` / `Academias2026!`
 - **Backend Supabase:** proyecto `izdqpsenrjcqtuhjhqxo` (URL + anon key en `js/config.js`; la anon key es pública por diseño).
-- **Academia demo:** "EducaMentes" (códigos registro: `EDUCA-FAM` / `EDUCA-PRO` / `EDUCA-2026`).
+- **Academia demo:** "Academia Demo DidactIA" (códigos registro: `DEMO-FAM` / `DEMO-PRO` / `DEMO-2026`).
 
 ## Stack
 | Capa | Tecnología |
@@ -42,14 +42,14 @@
 - `economia.js` (`initEconomia`, tab `economia`) — **Gastos, cuenta de resultados y control horario**: gastos por categoría, botón de repetir fijos del mes anterior, P&L de 12 meses (cobrado − gastos, margen, acumulado) y registro de jornada del profesorado exportable.
 - `boletin.js` — **Boletín mensual PDF** por alumno (`window.generarBoletin(alumnoId, btn)`, botón en la ficha de Alumnos): cabecera con marca/color del centro, asistencia del mes, notas recientes, **comentario de evolución con IA** (fallback determinista) y pie. jsPDF.
 
-**Datos demo:** `sql/demo-seed-academias.sql` (idempotente, scoped al centro EducaMentes) siembra ~42 alumnos ESO, 7 profesores, 12 grupos, sesiones, ~1300 asistencias (10 semanas), ~200 notas, ~156 pagos con impagos del mes, incidencias, eventos y **3 familias demo** (login `familia1@demo.educamentes.es` … `Familia2026!`). Re-ejecutable para "resetear demo".
+**Datos demo:** `sql/demo-seed-academias.sql` (idempotente, scoped al centro Academia Demo DidactIA) siembra ~42 alumnos ESO, 7 profesores, 12 grupos, sesiones, ~1300 asistencias (10 semanas), ~200 notas, ~156 pagos con impagos del mes, incidencias, eventos y **3 familias demo** (login `familia1@demo.didactia.eu` … `Familia2026!`). Re-ejecutable para "resetear demo".
 
 ## Tablas (Supabase). Migraciones en `sql/`
 Núcleo: `centros`, `profiles`, `alumnos` (ampliada: apellidos, nivel, NEE, estado, RGPD…), `familia_alumno`, `info_centro`, `horarios_grupo`, `horarios`, `tramos_centro`.
 Academia: `profesores`, `grupos`, `grupo_sesiones`, `matriculas`, `matricula_grupo`, `asistencia`, `incidencias`, `calificaciones`, `tareas`, `eventos`, `comunicaciones`, `pagos`, `mensajes`.
 Fases 8–13: `datos_fiscales`, `facturas` (inalterable por trigger), `mandatos_sepa`, `remesas_sepa`, `remesa_lineas`, `leads`, `documentos_plantilla`, `documentos_firma`, `checkins`, `pasarela_config` (⚠ RLS activa **sin políticas**: solo service_role), `recursos` (+ bucket `recursos`), `gastos`, `fichajes`. Columnas añadidas: `grupos.publicado/descripcion_web`, `alumnos.codigo_qr`, `pagos.remesa_id/factura_id/stripe_session_id/pagado_online`.
 Páginas públicas (sin login, solo RPCs SECURITY DEFINER): `inscripcion.html?a=<slug>` (captación) y `firmar.html?t=<token>` (firma). Ambas repiten SB_URL/SB_KEY: **si cambias `js/config.js`, cámbialas también ahí**.
-Seed demo: `sql/demo-seed-academias.sql` (no crea tablas; solo puebla EducaMentes de forma idempotente). Para poner al día la asistencia demo sin re-ejecutar el seed: `DEMO_PASS='...' node scripts/refrescar-asistencia-demo.mjs`.
+Seed demo: `sql/demo-seed-academias.sql` (no crea tablas; solo puebla Academia Demo DidactIA de forma idempotente). Para poner al día la asistencia demo sin re-ejecutar el seed: `DEMO_PASS='...' node scripts/refrescar-asistencia-demo.mjs`.
 Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_auth`), `sql/fase1-datos-maestros.sql`, `sql/fase2-asistencia.sql`, `sql/fase2-incidencias.sql`, `sql/fase2-calificaciones.sql`, `sql/fase2-eventos.sql`, `sql/fase3-rls-familia.sql`, `sql/fase3-comunicaciones.sql`, `sql/fase4-cobros.sql`, `sql/fase7-mensajes.sql`, `sql/fase7-portalfam-rls.sql`, `sql/planner-tables.sql`, `sql/fix-rls-alumnos-registro.sql` (⚠ ver "Seguridad RLS" abajo), `sql/fase8-facturacion-sepa.sql`, `sql/fase9-captacion.sql`, `sql/fase10-firmas.sql`, `sql/fase11-checkin.sql`, `sql/fase12-pasarela.sql`, `sql/fase13-campus-economia.sql`.
 
 ## Cómo añadir un módulo (patrón establecido)

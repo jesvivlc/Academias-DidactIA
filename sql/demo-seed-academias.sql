@@ -1,8 +1,8 @@
 -- ============================================================================
--- DidactIA Academias — SEED DEMO VIVO para EducaMentes (academia de repaso ESO)
+-- DidactIA Academias — SEED DEMO VIVO para Academia Demo DidactIA (academia de repaso ESO)
 -- Idempotente: borra y regenera los datos demo del centro (NO toca los admins).
 -- Ejecutar como postgres (Management API / PAT).
--- centro_id EducaMentes = 6a4837ac-85f7-4a79-811d-e31694e08e48
+-- centro_id Academia Demo DidactIA = 6a4837ac-85f7-4a79-811d-e31694e08e48
 -- ============================================================================
 
 -- ── 0. LIMPIEZA (scoped al centro demo) ─────────────────────────────────────
@@ -23,18 +23,18 @@ begin
   delete from grupos          where centro_id=cid;
   delete from profesores      where centro_id=cid;
   -- familias demo (auth) — cascada limpia profiles + familia_alumno
-  delete from auth.users      where email like '%@demo.educamentes.es';
+  delete from auth.users      where email like '%@demo.didactia.eu';
 end $$;
 
 -- ── 1. PROFESORES ───────────────────────────────────────────────────────────
 insert into public.profesores (centro_id, nombre, apellidos, email, telefono, especialidad, tarifa_hora, activo) values
-  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Laura','Giménez Roca','laura.gimenez@demo.educamentes.es','600100201','Matemáticas',18,true),
-  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Carlos','Ruiz Bernad','carlos.ruiz@demo.educamentes.es','600100202','Física y Química',18,true),
-  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Marta','Sánchez Vidal','marta.sanchez@demo.educamentes.es','600100203','Lengua y Literatura',17,true),
-  ('6a4837ac-85f7-4a79-811d-e31694e08e48','David','Torres Alcázar','david.torres@demo.educamentes.es','600100204','Inglés',17,true),
-  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Ana Belén','Ortega Ferrer','ana.ortega@demo.educamentes.es','600100205','Biología y Geología',17,true),
-  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Javier','Moreno Prats','javier.moreno@demo.educamentes.es','600100206','Geografía e Historia',16,true),
-  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Nuria','Campos Selma','nuria.campos@demo.educamentes.es','600100207','Técnicas de estudio',16,true);
+  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Laura','Giménez Roca','laura.gimenez@demo.didactia.eu','600100201','Matemáticas',18,true),
+  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Carlos','Ruiz Bernad','carlos.ruiz@demo.didactia.eu','600100202','Física y Química',18,true),
+  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Marta','Sánchez Vidal','marta.sanchez@demo.didactia.eu','600100203','Lengua y Literatura',17,true),
+  ('6a4837ac-85f7-4a79-811d-e31694e08e48','David','Torres Alcázar','david.torres@demo.didactia.eu','600100204','Inglés',17,true),
+  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Ana Belén','Ortega Ferrer','ana.ortega@demo.didactia.eu','600100205','Biología y Geología',17,true),
+  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Javier','Moreno Prats','javier.moreno@demo.didactia.eu','600100206','Geografía e Historia',16,true),
+  ('6a4837ac-85f7-4a79-811d-e31694e08e48','Nuria','Campos Selma','nuria.campos@demo.didactia.eu','600100207','Técnicas de estudio',16,true);
 
 -- ── 2. GRUPOS (clase = asignatura + nivel + profe) ──────────────────────────
 insert into public.grupos (centro_id, nombre, asignatura, nivel, profesor_id, aula, capacidad, cuota_mensual, color, curso_escolar, activo)
@@ -42,18 +42,18 @@ select '6a4837ac-85f7-4a79-811d-e31694e08e48', g.nombre, g.asignatura, g.nivel,
        (select id from profesores where centro_id='6a4837ac-85f7-4a79-811d-e31694e08e48' and email=g.prof_email),
        g.aula, g.cap, g.cuota, g.color, '2025-26', true
 from (values
-  ('Matemáticas 1º ESO','Matemáticas','1º ESO','laura.gimenez@demo.educamentes.es','Aula 1',8,55,'#4D6FA8'),
-  ('Matemáticas 2º ESO','Matemáticas','2º ESO','laura.gimenez@demo.educamentes.es','Aula 1',8,55,'#4D6FA8'),
-  ('Matemáticas 3º ESO','Matemáticas','3º ESO','laura.gimenez@demo.educamentes.es','Aula 2',8,60,'#4D6FA8'),
-  ('Matemáticas 4º ESO','Matemáticas','4º ESO','laura.gimenez@demo.educamentes.es','Aula 2',8,65,'#4D6FA8'),
-  ('Física y Química 3º ESO','Física y Química','3º ESO','carlos.ruiz@demo.educamentes.es','Aula 3',7,60,'#C76B3D'),
-  ('Física y Química 4º ESO','Física y Química','4º ESO','carlos.ruiz@demo.educamentes.es','Aula 3',7,65,'#C76B3D'),
-  ('Lengua 1º ESO','Lengua y Literatura','1º ESO','marta.sanchez@demo.educamentes.es','Aula 1',8,55,'#3F9367'),
-  ('Lengua 3º ESO','Lengua y Literatura','3º ESO','marta.sanchez@demo.educamentes.es','Aula 2',8,60,'#3F9367'),
-  ('Inglés 2º ESO','Inglés','2º ESO','david.torres@demo.educamentes.es','Aula 4',8,55,'#7A5C9E'),
-  ('Inglés 4º ESO','Inglés','4º ESO','david.torres@demo.educamentes.es','Aula 4',8,65,'#7A5C9E'),
-  ('Biología 4º ESO','Biología y Geología','4º ESO','ana.ortega@demo.educamentes.es','Aula 3',7,60,'#1F7A8C'),
-  ('Técnicas de estudio','Técnicas de estudio',null,'nuria.campos@demo.educamentes.es','Aula 5',10,45,'#D69540')
+  ('Matemáticas 1º ESO','Matemáticas','1º ESO','laura.gimenez@demo.didactia.eu','Aula 1',8,55,'#4D6FA8'),
+  ('Matemáticas 2º ESO','Matemáticas','2º ESO','laura.gimenez@demo.didactia.eu','Aula 1',8,55,'#4D6FA8'),
+  ('Matemáticas 3º ESO','Matemáticas','3º ESO','laura.gimenez@demo.didactia.eu','Aula 2',8,60,'#4D6FA8'),
+  ('Matemáticas 4º ESO','Matemáticas','4º ESO','laura.gimenez@demo.didactia.eu','Aula 2',8,65,'#4D6FA8'),
+  ('Física y Química 3º ESO','Física y Química','3º ESO','carlos.ruiz@demo.didactia.eu','Aula 3',7,60,'#C76B3D'),
+  ('Física y Química 4º ESO','Física y Química','4º ESO','carlos.ruiz@demo.didactia.eu','Aula 3',7,65,'#C76B3D'),
+  ('Lengua 1º ESO','Lengua y Literatura','1º ESO','marta.sanchez@demo.didactia.eu','Aula 1',8,55,'#3F9367'),
+  ('Lengua 3º ESO','Lengua y Literatura','3º ESO','marta.sanchez@demo.didactia.eu','Aula 2',8,60,'#3F9367'),
+  ('Inglés 2º ESO','Inglés','2º ESO','david.torres@demo.didactia.eu','Aula 4',8,55,'#7A5C9E'),
+  ('Inglés 4º ESO','Inglés','4º ESO','david.torres@demo.didactia.eu','Aula 4',8,65,'#7A5C9E'),
+  ('Biología 4º ESO','Biología y Geología','4º ESO','ana.ortega@demo.didactia.eu','Aula 3',7,60,'#1F7A8C'),
+  ('Técnicas de estudio','Técnicas de estudio',null,'nuria.campos@demo.didactia.eu','Aula 5',10,45,'#D69540')
 ) g(nombre, asignatura, nivel, prof_email, aula, cap, cuota, color);
 
 -- ── 3. SESIONES SEMANALES (2 por grupo: L-X o M-J; técnicas = Viernes) ──────
@@ -244,9 +244,9 @@ declare
 begin
   for fam in
     select * from (values
-      ('Familia González','familia1@demo.educamentes.es',2),
-      ('Familia López','familia2@demo.educamentes.es',1),
-      ('Familia Ferrer','familia3@demo.educamentes.es',1)
+      ('Familia González','familia1@demo.didactia.eu',2),
+      ('Familia López','familia2@demo.didactia.eu',1),
+      ('Familia Ferrer','familia3@demo.didactia.eu',1)
     ) as t(nombre, email, nchildren)
   loop
     uid := gen_random_uuid();

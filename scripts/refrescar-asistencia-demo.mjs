@@ -1,4 +1,4 @@
-// Rellena la asistencia demo de EducaMentes desde la última fecha registrada
+// Rellena la asistencia demo de Academia Demo DidactIA desde la última fecha registrada
 // hasta hoy, vía REST bajo RLS (login admin). Replica la lógica del seed
 // (sql/demo-seed-academias.sql §7): reparte presente/retraso/ausente/justificada
 // de forma determinista por alumno+fecha, con ~1 de cada 9 alumnos "en riesgo".
