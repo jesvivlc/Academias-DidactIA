@@ -6,7 +6,7 @@
 
 ## Producción y accesos
 - **App en producción:** https://didactia-academias.vercel.app · Landing en `/`, app en `/app.html`.
-- **Login demo (admin):** `jesvivlc@gmail.com` / `Academias2026!`
+- **Demo pública (admin de la academia de ejemplo):** `demo@didactia.eu` / `DemoAcademias2026!`. Familia: `familia1@demo.didactia.eu` / `Familia2026!`. La cuenta personal del dueño (`jesvivlc@gmail.com`, rol `superadmin`) ya **no** se usa para demos y su contraseña está rotada.
 - **Backend Supabase:** proyecto `izdqpsenrjcqtuhjhqxo` (URL + anon key en `js/config.js`; la anon key es pública por diseño).
 - **Academia demo:** "Academia Demo DidactIA" (códigos registro: `DEMO-FAM` / `DEMO-PRO` / `DEMO-2026`).
 
@@ -85,6 +85,26 @@ Ficheros SQL (idempotentes): `schema-fase0.sql` (base+RLS+RPC `get_users_with_au
 - **DDL:** Management API → `POST https://api.supabase.com/v1/projects/izdqpsenrjcqtuhjhqxo/database/query` con `{"query":"..."}` y `Authorization: Bearer <PAT sbp_...>`. (O pegar el `.sql` en Supabase → SQL Editor.)
 - **Deploy EF:** `POST .../v1/projects/<ref>/functions/deploy?slug=<slug>` multipart (`metadata` + `file` index.ts).
 - ⚠️ **Seguridad:** el PAT `sbp_…`, la service_role y la secret key se usaron en sesión y se compartieron en chat → **rotarlas**. Cambiar también la contraseña demo.
+
+## Mantenimiento de la documentación
+Protocolo heredado de la auditoría de 2026-06 (detalle en `CLAUDE-AUDITORIA.md`, del proyecto padre) y vigente aquí.
+
+**Qué se carga en cada sesión:** solo `CLAUDE.md` y, por el `@import` del final, `.taskmaster/CLAUDE.md`. Nada más. Los `CLAUDE-*.md` de la raíz son del proyecto padre (DidactIA Centros) y **no se cargan**; se conservan como consulta histórica.
+
+**Límites:** ≤35.000 caracteres por archivo cargado automáticamente; ≤20.000 (o ≤30 entradas) para un registro de cambios.
+
+**Reglas de rotación:**
+- `CLAUDE.md` describe el estado **actual**: arquitectura, módulos, convenciones y lo que está vivo. No es un diario.
+- La bitácora (`docs/ROADMAP-PROGRESO.md`) mantiene solo el estado actual y lo pendiente; los incrementos ya completados y verificados se mueven a `docs/ROADMAP-ARCHIVE.md`.
+- Al archivar se **mueve verbatim**, nunca se reescribe ni se resume el original, y en el activo queda una línea con el puntero.
+- Los archivos histórico (`docs/ROADMAP-ARCHIVE.md`, `CLAUDE-ARCHIVE.md`) **nunca se referencian con `@`** ni se pide leerlos al arrancar.
+- Si hay contenido duplicado entre dos archivos activos, se conserva donde haya más detalle y en el otro queda un puntero.
+
+**Comprobar tamaños:**
+```bash
+for f in CLAUDE.md .taskmaster/CLAUDE.md docs/ROADMAP-PROGRESO.md; do printf "%8d  %s\n" "$(wc -m < "$f")" "$f"; done
+```
+Última rotación: **2026-07-21** (bitácora 24,7k → 3,1k; histórico a `docs/ROADMAP-ARCHIVE.md`).
 
 ---
 _Instrucciones de Task Master (genéricas):_ @./.taskmaster/CLAUDE.md
