@@ -30,6 +30,8 @@ function _pfEnsureStyles(){
     .pf-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line,var(--bdr));font-size:13px}
     .pf-item:last-child{border-bottom:none}
     .pf-badge{font-size:10.5px;padding:2px 8px;border-radius:20px;margin-left:auto;white-space:nowrap}
+    .pf-pagar{margin-left:8px;padding:3px 12px;border-radius:20px;border:none;background:var(--ink);color:#fff;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap}
+    .pf-pagar:disabled{opacity:.55;cursor:default}
     .pf-b-ok{background:var(--success-soft,#e3f2ec);color:var(--success,#2e7d32)}
     .pf-b-warn{background:var(--warning-soft,#fbf0dc);color:var(--warning,#b8860b)}
     .pf-b-bad{background:var(--danger-soft,#fae6e0);color:var(--danger,#c0392b)}
@@ -72,7 +74,7 @@ async function _pfRender(){
     sb.from("asistencia").select("estado,fecha").eq("alumno_id",_pfHijo).gte("fecha",hace30).order("fecha",{ascending:false}),
     sb.from("incidencias").select("tipo,gravedad,estado,fecha,descripcion").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(10),
     sb.from("tareas").select("titulo,tipo,fecha_entrega").gte("fecha_entrega",hoy).lte("fecha_entrega",en7).order("fecha_entrega"),
-    sb.from("pagos").select("concepto,importe,fecha,estado,metodo").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(8),
+    sb.from("pagos").select("id,concepto,importe,fecha,estado,metodo").eq("alumno_id",_pfHijo).order("fecha",{ascending:false}).limit(8),
     sb.from("eventos").select("titulo,fecha,hora,tipo").gte("fecha",hoy).order("fecha").limit(8),
     sb.from("mensajes").select("*").eq("alumno_id",_pfHijo).order("created_at",{ascending:true}),
   ]);
@@ -92,8 +94,12 @@ async function _pfRender(){
   const bInc=(inc.data||[]).length?(inc.data).map(i=>`<div class="pf-item"><span>${_pfEsc(i.tipo)}${i.descripcion?" · "+_pfEsc(i.descripcion.slice(0,40)):""}</span>
     <span class="pf-badge ${i.gravedad==="grave"?"pf-b-bad":"pf-b-warn"}">${_pfEsc(i.gravedad)}</span></div>`).join(""):`<div class="pf-empty">Sin incidencias.</div>`;
   const _eur=n=>(Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+  // El botón de pagar solo aparece si la academia tiene el cobro con tarjeta activo
+  let _pfOnline=false;
+  try{ const {data:on}=await sb.rpc("pasarela_activa",{p_centro:ctrId}); _pfOnline=!!on; }catch(e){ _pfOnline=false; }
   const bPagos=(pagos.data||[]).length?(pagos.data).map(p=>`<div class="pf-item"><span>${_pfEsc(p.concepto||"Cuota")}</span><span class="pf-sub">${_pfEsc(p.fecha)}</span>
-    <span class="pf-badge ${p.estado==="pagado"?"pf-b-ok":"pf-b-warn"}">${_eur(p.importe)} · ${_pfEsc(p.estado)}</span></div>`).join(""):`<div class="pf-empty">Sin recibos registrados.</div>`;
+    <span class="pf-badge ${p.estado==="pagado"?"pf-b-ok":"pf-b-warn"}">${_eur(p.importe)} · ${_pfEsc(p.estado)}</span>
+    ${p.estado==="pendiente"&&_pfOnline?`<button class="pf-pagar" onclick="_pfPagar('${escArg(p.id)}',this)">Pagar</button>`:""}</div>`).join(""):`<div class="pf-empty">Sin recibos registrados.</div>`;
   const _EVI={reunion:"👥",pago:"💶",vacaciones:"🏖️",inicio_trimestre:"📚",renovacion:"🔁",recordatorio:"⏰",otro:"📌"};
   const bEventos=(eventos.data||[]).length?(eventos.data).map(e=>`<div class="pf-item"><span>${_EVI[e.tipo]||"📌"} ${_pfEsc(e.titulo)}</span>
     <span class="pf-badge pf-b-info">${_pfEsc(e.fecha)}${e.hora?" · "+_pfEsc(String(e.hora).slice(0,5)):""}</span></div>`).join(""):`<div class="pf-empty">Sin eventos próximos.</div>`;
@@ -165,5 +171,20 @@ async function _pfInforme(btn){
     if(typeof showToastGlobal==="function") showToastGlobal("Error IA: "+e.message,"error"); else alert("Error IA: "+e.message);
   }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
 }
+
+// Abre la pasarela de pago para un recibo pendiente del hijo.
+async function _pfPagar(pagoId, btn){
+  const orig=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Abriendo…"; }
+  try{
+    const { data, error } = await sb.functions.invoke("crear-pago-stripe",{ body:{ pago_id:pagoId, return_url:location.origin } });
+    if(error) throw error; if(data?.error) throw new Error(data.error);
+    if(!data?.url) throw new Error("No se ha podido iniciar el pago");
+    location.href = data.url;
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("No se ha podido abrir el pago: "+(e.message||e),"error");
+    if(btn){ btn.disabled=false; btn.textContent=orig; }
+  }
+}
+window._pfPagar=_pfPagar;
 
 window.initPortalFam=initPortalFam; window._pfSel=_pfSel; window._pfInforme=_pfInforme;

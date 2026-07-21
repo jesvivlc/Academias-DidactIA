@@ -8,7 +8,7 @@
 
 let _fcTab = "facturas";
 let _fcFiscal = null, _fcFacturas = [], _fcMandatos = [], _fcRemesas = [];
-let _fcAlumnos = [], _fcPagos = [], _fcNuevoMandato = false;
+let _fcAlumnos = [], _fcPagos = [], _fcNuevoMandato = false, _fcPasarela = null;
 
 const _fcQR_BASE = "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR";
 
@@ -136,18 +136,23 @@ async function initFacturacion() {
   _fcFiscal = df.data || null;
   _fcFacturas = fa.data || []; _fcMandatos = ma.data || []; _fcRemesas = re.data || [];
   _fcAlumnos = al.data || []; _fcPagos = pg.data || [];
+  // El estado de la pasarela va aparte: el RPC lanza si el rol no llega
+  try {
+    const { data: ps } = await sb.rpc("estado_pasarela", { p_centro: ctrId });
+    _fcPasarela = ps || null;
+  } catch (e) { _fcPasarela = null; }
   _fcRender();
 }
 
 function _fcRender() {
   const panel = document.getElementById("panel-facturacion"); if (!panel) return;
-  const tabs = [["facturas", "Facturas"], ["sepa", "Domiciliaciones SEPA"], ["fiscal", "Datos fiscales"]];
+  const tabs = [["facturas", "Facturas"], ["sepa", "Domiciliaciones SEPA"], ["online", "Pago online"], ["fiscal", "Datos fiscales"]];
   panel.innerHTML = `
     <div class="fc-wrap">
       <h1 class="fc-h">Facturación</h1>
       <div class="fc-sub">Facturas con registro encadenado y remesas de domiciliación bancaria</div>
       <div class="fc-tabs">${tabs.map(([k, l]) => `<button class="fc-tab ${_fcTab === k ? "on" : ""}" onclick="_fcGo('${k}')">${l}</button>`).join("")}</div>
-      <div id="fc-body">${_fcTab === "facturas" ? _fcFacturasHtml() : _fcTab === "sepa" ? _fcSepaHtml() : _fcFiscalHtml()}</div>
+      <div id="fc-body">${_fcTab === "facturas" ? _fcFacturasHtml() : _fcTab === "sepa" ? _fcSepaHtml() : _fcTab === "online" ? _fcOnlineHtml() : _fcFiscalHtml()}</div>
     </div>`;
 }
 function _fcGo(t) { _fcTab = t; _fcRender(); }
@@ -669,6 +674,71 @@ async function _fcMarcarCobrada(id) {
   await initFacturacion();
 }
 
+// ═══════════════════════ PAGO ONLINE (Stripe) ═══════════════════════
+function _fcOnlineHtml() {
+  const p = _fcPasarela || {};
+  const activo = !!p.activo;
+  const hook = `${SB_URL}/functions/v1/stripe-webhook`;
+  return `
+    <div class="fc-sec">Cobro con tarjeta
+      <span class="fc-pill ${activo ? "fc-pill-ok" : "fc-pill-wait"}">${activo ? "activo" : p.configurada ? "configurado, en pausa" : "sin configurar"}</span></div>
+
+    <div class="fc-note">El dinero entra <strong>directamente en tu cuenta de Stripe</strong>: DidactIA no es intermediario y no te cobra comisión por transacción (Stripe aplicará la suya). Las claves se guardan cifradas del lado del servidor y no vuelven a mostrarse: ni siquiera desde esta pantalla se pueden leer.</div>
+
+    <div class="fc-form">
+      <div class="fc-grid-2">
+        <div><label class="fc-lbl">Clave secreta (sk_live_… o sk_test_…)</label><input class="fc-in" id="fc-s-secret" type="password" autocomplete="new-password" placeholder="${p.secret_pista ? _fcEsc(p.secret_pista) + " · déjalo vacío para conservarla" : "sk_live_…"}"></div>
+        <div><label class="fc-lbl">Clave publicable (pk_…)</label><input class="fc-in" id="fc-s-public" placeholder="pk_live_…"></div>
+        <div style="grid-column:span 2"><label class="fc-lbl">Secreto del webhook (whsec_…)</label><input class="fc-in" id="fc-s-hook" type="password" autocomplete="new-password" placeholder="${p.webhook_configurado ? "configurado · déjalo vacío para conservarlo" : "whsec_…"}"></div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0 12px">
+        <input type="checkbox" id="fc-s-activo" ${activo ? "checked" : ""} style="width:auto;accent-color:var(--ink)">
+        Aceptar pagos con tarjeta
+      </label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="fc-btn fc-btn-p" onclick="_fcGuardarPasarela(this)">Guardar configuración</button>
+        <span class="fc-sub" id="fc-s-msg"></span>
+      </div>
+    </div>
+
+    <div class="fc-sec">Cómo conectarlo</div>
+    <div class="fc-form">
+      <ol style="font-size:13px;line-height:1.75;margin:0;padding-left:20px;color:var(--txt2,#555)">
+        <li>Entra en tu panel de Stripe → <strong>Desarrolladores → Claves de API</strong> y copia aquí la clave secreta y la publicable.</li>
+        <li>En <strong>Desarrolladores → Webhooks</strong>, añade un endpoint apuntando a:<div class="fc-mono" style="margin:5px 0 3px;user-select:all">${_fcEsc(hook)}</div></li>
+        <li>Suscríbelo a los eventos <span class="fc-mono">checkout.session.completed</span> y <span class="fc-mono">checkout.session.async_payment_succeeded</span>.</li>
+        <li>Copia el secreto de firma que te da Stripe (<span class="fc-mono">whsec_…</span>) en el campo de arriba.</li>
+      </ol>
+      <div class="fc-sub" style="margin-top:10px">Con esto, cada recibo pendiente tendrá un enlace de pago en <strong>Cobros</strong> y las familias verán el botón <strong>Pagar</strong> en su portal. Al completarse el pago, el recibo se marca como cobrado solo.</div>
+    </div>`;
+}
+
+async function _fcGuardarPasarela(btn) {
+  const msg = document.getElementById("fc-s-msg");
+  const val = (id) => (document.getElementById(id)?.value || "").trim();
+  const secret = val("fc-s-secret");
+  if (secret && !/^sk_(live|test)_/.test(secret)) {
+    if (msg) { msg.textContent = "La clave secreta de Stripe empieza por sk_live_ o sk_test_."; msg.style.color = "var(--danger)"; }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = "Guardando…"; }
+  try {
+    const { error } = await sb.rpc("guardar_pasarela", {
+      p_centro: ctrId,
+      p_secret: secret || null,
+      p_public: val("fc-s-public") || null,
+      p_webhook: val("fc-s-hook") || null,
+      p_activo: !!document.getElementById("fc-s-activo")?.checked,
+    });
+    if (error) throw new Error(error.message);
+    showToastGlobal("Configuración de cobro online guardada", "success");
+    await initFacturacion();
+  } catch (e) {
+    if (msg) { msg.textContent = "Error: " + (e.message || e); msg.style.color = "var(--danger)"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Guardar configuración"; }
+  }
+}
+
 // ═══════════════════════ DATOS FISCALES ═══════════════════════
 function _fcFiscalHtml() {
   const f = _fcFiscal || {};
@@ -756,4 +826,4 @@ window._fcEmitir = _fcEmitir; window._fcFacturarTodos = _fcFacturarTodos; window
 window._fcPdf = _fcPdf; window._fcExportarLibro = _fcExportarLibro;
 window._fcToggleMandato = _fcToggleMandato; window._fcCrearMandato = _fcCrearMandato; window._fcRevocarMandato = _fcRevocarMandato;
 window._fcGenerarRemesa = _fcGenerarRemesa; window._fcDescargarRemesa = _fcDescargarRemesa; window._fcMarcarCobrada = _fcMarcarCobrada;
-window._fcGuardarFiscal = _fcGuardarFiscal;
+window._fcGuardarFiscal = _fcGuardarFiscal; window._fcGuardarPasarela = _fcGuardarPasarela;

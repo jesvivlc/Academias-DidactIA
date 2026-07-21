@@ -2,7 +2,7 @@
 // Pagos, impagos, KPIs, factura PDF (jsPDF) y bloque económico. Filtra por ctrId; RLS.
 
 let _cbPagos = [], _cbMatriculas = [], _cbAlumnos = [], _cbNuevo = false;
-let _cbGrupos = [], _cbProfes = [], _cbMG = [], _cbPend = [];
+let _cbGrupos = [], _cbProfes = [], _cbMG = [], _cbPend = [], _cbOnline = false;
 function _cbEsc(s){ return escH(s); }
 function _cbHoy(){ return new Date().toISOString().slice(0,10); }
 function _cbPeriodo(){ return new Date().toISOString().slice(0,7); } // YYYY-MM
@@ -61,6 +61,9 @@ async function initCobros(){
   ]);
   _cbPagos=p.data||[]; _cbMatriculas=m.data||[]; _cbAlumnos=a.data||[];
   _cbGrupos=g.data||[]; _cbProfes=pr.data||[]; _cbMG=mg.data||[]; _cbPend=pd.data||[];
+  // ¿Está el cobro con tarjeta activado? Define si se ofrece enlace de pago.
+  try { const { data:on } = await sb.rpc("pasarela_activa",{ p_centro:ctrId }); _cbOnline = !!on; }
+  catch(e){ _cbOnline = false; }
   _cbRender();
 }
 
@@ -147,7 +150,7 @@ function _cbRender(){
       ${_cbPagos.length?`<table class="cb-tbl"><thead><tr><th>Fecha</th><th>Alumno</th><th>Concepto</th><th>Método</th><th>Importe</th><th>Estado</th><th></th></tr></thead><tbody>
         ${_cbPagos.slice(0,60).map(x=>`<tr><td>${_cbEsc(x.fecha)}</td><td>${_cbEsc(_cbNombre(x.alumnos))}</td><td>${_cbEsc(x.concepto||"—")}</td><td>${_cbEsc(x.metodo)}</td><td>${_cbEur(x.importe)}</td>
           <td><span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${x.estado==="pagado"?"var(--success-soft,#e3f2ec);color:var(--success,#2e7d32)":"var(--warning-soft,#fbf0dc);color:var(--warning,#b8860b)"}">${_cbEsc(x.estado)}</span></td>
-          <td>${x.estado==="pendiente"?`<button class="cb-btn cb-btn-sm" onclick="_cbMarcarPagado('${escArg(x.id)}')">Marcar pagado</button> `:""}<button class="cb-btn cb-btn-sm" onclick="_cbFactura('${escArg(x.id)}')">Factura PDF</button></td></tr>`).join("")}
+          <td>${x.estado==="pendiente"?`<button class="cb-btn cb-btn-sm" onclick="_cbMarcarPagado('${escArg(x.id)}')">Marcar pagado</button> `:""}${x.estado==="pendiente"&&_cbOnline?`<button class="cb-btn cb-btn-sm" onclick="_cbEnlacePago('${escArg(x.id)}',this)">💳 Enlace de pago</button> `:""}<button class="cb-btn cb-btn-sm" onclick="_cbFactura('${escArg(x.id)}')">Factura PDF</button></td></tr>`).join("")}
       </tbody></table>`:`<div class="cb-empty">Sin pagos registrados.</div>`}
     </div>`;
 }
@@ -276,6 +279,25 @@ async function _cbRecordarImpagos(btn){
   }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
 }
 
-window.initCobros=initCobros; window._cbToggle=_cbToggle; window._cbCrear=_cbCrear; window._cbRecordarImpagos=_cbRecordarImpagos;
+// Genera un enlace de pago con tarjeta para un recibo y lo copia al portapapeles,
+// listo para pegar en un WhatsApp a la familia.
+async function _cbEnlacePago(id, btn){
+  const orig = btn ? btn.textContent : ""; if(btn){ btn.disabled=true; btn.textContent="Generando…"; }
+  try{
+    const { data, error } = await sb.functions.invoke("crear-pago-stripe",{ body:{ pago_id:id, return_url:location.origin } });
+    if(error) throw error; if(data?.error) throw new Error(data.error);
+    if(!data?.url) throw new Error("Stripe no ha devuelto ningún enlace");
+    if(navigator.clipboard){
+      await navigator.clipboard.writeText(data.url).catch(()=>{});
+      if(typeof showToastGlobal==="function") showToastGlobal("Enlace de pago copiado · pégalo en el WhatsApp a la familia","success");
+    } else {
+      prompt("Enlace de pago:", data.url);
+    }
+  }catch(e){
+    if(typeof showToastGlobal==="function") showToastGlobal("Error: "+(e.message||e),"error");
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=orig; } }
+}
+
+window.initCobros=initCobros; window._cbToggle=_cbToggle; window._cbEnlacePago=_cbEnlacePago; window._cbCrear=_cbCrear; window._cbRecordarImpagos=_cbRecordarImpagos;
 window._cbCobrar=_cbCobrar; window._cbFactura=_cbFactura; window._cbGenerarRecibos=_cbGenerarRecibos; window._cbMarcarPagado=_cbMarcarPagado;
 window._cbCobrarDeuda=_cbCobrarDeuda;
