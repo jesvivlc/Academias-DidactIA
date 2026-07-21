@@ -83,7 +83,8 @@ async function _tuEnviar(){
       body: JSON.stringify({ system_prompt: sys, contents })
     });
     const d=await res.json();
-    const reply = d.text || (d.error ? ("Ups: "+d.error) : "No he podido responder, inténtalo de nuevo.");
+    // d.message cubre los rechazos del gateway (JWT caducado, 429), que no traen d.error
+    const reply = d.text || (d.error||d.message ? ("Ups: "+(d.error||d.message)) : "No he podido responder, inténtalo de nuevo.");
     _tuHist.push({role:"model",text:reply});
     document.getElementById("tu-typing")?.remove();
     msgs.insertAdjacentHTML("beforeend", _tuBubble({role:"model",text:reply}));

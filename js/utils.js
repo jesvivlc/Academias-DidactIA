@@ -89,9 +89,23 @@ window.iaChat = async function (systemPrompt, userText) {
     headers: { 'Content-Type': 'application/json', 'apikey': window.ANON_KEY, 'Authorization': `Bearer ${window.ANON_KEY}` },
     body: JSON.stringify({ system_prompt: systemPrompt, contents: [{ role: 'user', parts: [{ text: userText }] }] })
   });
-  const d = await res.json();
-  if (d.error) throw new Error(d.error);
-  return d.text || '';
+  // El gateway de Supabase devuelve {code, message} —no {error}— cuando rechaza
+  // la petición (JWT caducado, 429, 5xx). Comprobar solo `d.error` hacía que
+  // iaChat devolviera '' sin lanzar: el try/catch del módulo no se enteraba y
+  // el usuario veía un modal vacío, o peor, un "Generado con IA ✓" falso.
+  let d = null;
+  try { d = await res.json(); } catch (e) { d = null; }
+  if (!res.ok) {
+    throw new Error((d && (d.error || d.message)) || ('La IA no ha respondido (HTTP ' + res.status + ')'));
+  }
+  if (d && d.error) throw new Error(d.error);
+  const texto = (d && d.text) || '';
+  if (!texto.trim()) throw new Error('La IA ha devuelto una respuesta vacía.');
+  // La EF marca los cortes por longitud; avisamos en vez de entregar media frase.
+  if (d && d.truncada) {
+    showToastGlobal('La respuesta de la IA se ha cortado por longitud: puede quedar incompleta.', 'error');
+  }
+  return texto;
 };
 
 // Modal simple para mostrar resultado de IA (con copiar). Idempotente.

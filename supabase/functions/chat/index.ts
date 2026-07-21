@@ -24,9 +24,18 @@ serve(async (req) => {
         { headers: { ...CORS, "Content-Type": "application/json" }, status: 500 });
     }
 
+    // ⚠️ `thinkingBudget: 0` es imprescindible en gemini-2.5-flash: los tokens de
+    // razonamiento se descuentan del MISMO presupuesto que la respuesta visible,
+    // así que con 1024 y el razonamiento activado las salidas largas (resumen
+    // semanal, informe de evolución, planes de retención) llegaban cortadas a
+    // media frase. Además se pagaban tokens que no producían texto.
     const payload: Record<string, unknown> = {
       contents,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4096,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     };
     if (systemPrompt) payload.systemInstruction = { parts: [{ text: systemPrompt }] };
 
@@ -45,11 +54,19 @@ serve(async (req) => {
         { headers: { ...CORS, "Content-Type": "application/json" }, status: 200 });
     }
 
-    const text = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("")
+    const cand = d?.candidates?.[0];
+    const text = cand?.content?.parts?.map((p: { text?: string }) => p.text || "").join("")
       || "Lo siento, no he podido generar una respuesta.";
 
-    return new Response(JSON.stringify({ type: "text", text }),
-      { headers: { ...CORS, "Content-Type": "application/json" }, status: 200 });
+    // Se expone `finish_reason` para que un corte por longitud deje de ser
+    // invisible: antes el cliente recibía media respuesta sin forma de saberlo.
+    const finish = cand?.finishReason ?? null;
+    return new Response(JSON.stringify({
+      type: "text",
+      text,
+      finish_reason: finish,
+      truncada: finish === "MAX_TOKENS",
+    }), { headers: { ...CORS, "Content-Type": "application/json" }, status: 200 });
   } catch (err) {
     return new Response(JSON.stringify({ error: (err as Error).message }),
       { headers: { ...CORS, "Content-Type": "application/json" }, status: 200 });

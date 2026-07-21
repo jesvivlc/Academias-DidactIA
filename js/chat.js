@@ -651,8 +651,9 @@ ${ctx}${horarioGrupoCtx}`;
     const d = await res.json();
     document.getElementById("typing").classList.remove("show");
 
-    if (d.error) {
-      addMsg("bot", "<p>Error: " + d.error.replace(/</g,"&lt;") + "</p>");
+    // d.message cubre los rechazos del gateway (JWT caducado, 429), que no traen d.error
+    if (d.error || (!res.ok && d.message)) {
+      addMsg("bot", "<p>Error: " + String(d.error || d.message).replace(/</g,"&lt;") + "</p>");
     } else if (d.type === "tool_call") {
       _showToolCard(d.tool, d.args, d.pending_contents);
     } else {
