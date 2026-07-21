@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solicitar plaza</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="Solicita información y reserva tu plaza en la academia.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1F2C4F; --acc:#1F2C4F;
+    --txt:#22252b; --txt2:#5a6070; --txt3:#8b90a0;
+    --bg:#f6f4f0; --srf:#fff; --bdr:#e4e0d8;
+    --danger:#c0392b; --ok:#2E8B7A;
+    --font-d:'Fraunces',Georgia,serif; --font-b:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--font-b);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:680px;margin:0 auto;padding:34px 20px 70px}
+  header{display:flex;align-items:center;gap:13px;margin-bottom:26px}
+  header img{height:44px;width:auto;border-radius:8px}
+  .brand{font-family:var(--font-d);font-size:20px;font-weight:600;color:var(--acc);line-height:1.25}
+  h1{font-family:var(--font-d);font-size:clamp(27px,5.4vw,36px);font-weight:600;line-height:1.16;margin:0 0 10px;letter-spacing:-.01em}
+  .lead{color:var(--txt2);font-size:16px;margin:0 0 28px;max-width:52ch}
+  .card{background:var(--srf);border:1px solid var(--bdr);border-radius:16px;padding:22px 22px 24px;margin-bottom:18px}
+  .sec{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);margin:0 0 13px}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--txt2);margin-bottom:5px}
+  input,select,textarea{width:100%;padding:11px 13px;border:1px solid var(--bdr);border-radius:10px;font-size:15px;font-family:inherit;background:var(--srf);color:var(--txt);transition:border-color .12s,box-shadow .12s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 14%,transparent)}
+  textarea{resize:vertical;min-height:84px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:14px}
+  .fld{margin-bottom:14px}
+  .req{color:var(--danger)}
+  .clases{display:grid;gap:10px}
+  .clase{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--bdr);border-radius:12px;padding:13px 15px;cursor:pointer;transition:border-color .12s,background .12s}
+  .clase:hover{border-color:var(--acc)}
+  .clase.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 5%,transparent)}
+  .clase input{width:auto;margin:4px 0 0;flex-shrink:0;accent-color:var(--acc)}
+  .clase-n{font-weight:600;font-size:14.5px}
+  .clase-m{font-size:12.5px;color:var(--txt2);margin-top:2px}
+  .clase-p{margin-left:auto;text-align:right;font-size:13px;font-weight:600;white-space:nowrap;padding-left:10px}
+  .plazas{font-size:11.5px;color:var(--txt3);font-weight:400}
+  .chk{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--txt2);line-height:1.5}
+  .chk input{width:auto;margin:3px 0 0;flex-shrink:0;accent-color:var(--acc)}
+  button.send{width:100%;padding:14px;border:none;border-radius:11px;background:var(--acc);color:#fff;font-size:15.5px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .12s}
+  button.send:hover{opacity:.9}
+  button.send:disabled{opacity:.55;cursor:default}
+  .err{color:var(--danger);font-size:13.5px;margin-top:11px;display:none}
+  .ok{text-align:center;padding:46px 20px}
+  .ok-ic{width:60px;height:60px;border-radius:50%;background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 20px}
+  .ok h2{font-family:var(--font-d);font-size:26px;font-weight:600;margin:0 0 10px}
+  .ok p{color:var(--txt2);margin:0 auto;max-width:42ch}
+  footer{text-align:center;font-size:12px;color:var(--txt3);margin-top:30px}
+  footer a{color:inherit}
+  .skel{color:var(--txt3);font-size:14px;padding:40px 0;text-align:center}
+  @media(max-width:560px){.row{grid-template-columns:1fr;gap:0}.row .fld{margin-bottom:14px}.wrap{padding:24px 16px 56px}}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"><div class="skel">Cargando…</div></div>
+
+<script>
+// Página pública de captación. Solo habla con la base a través de RPCs
+// SECURITY DEFINER (academia_publica / catalogo_publico / crear_lead_publico):
+// la tabla `leads` no es accesible con la anon key.
+// ⚠ Estas dos constantes deben coincidir con js/config.js.
+const SB_URL = "https://izdqpsenrjcqtuhjhqxo.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6ZHFwc2VucmpjcXR1aGpocXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMTYxNjksImV4cCI6MjA5ODU5MjE2OX0.psyWEO9aX88ZR1ZqrKzXROP7gYXSU8s34bhwPkHKF8Q";
+
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+const slug = new URLSearchParams(location.search).get("a") || "";
+const root = document.getElementById("root");
+let academia = null, clases = [], grupoSel = "";
+
+function esc(s){
+  if (s == null) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function eur(n){
+  return (Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:0,maximumFractionDigits:2}) + " €";
+}
+
+async function arrancar(){
+  if (!slug){ root.innerHTML = `<div class="skel">Falta el identificador de la academia en el enlace.</div>`; return; }
+  const { data, error } = await sb.rpc("academia_publica", { p_slug: slug });
+  const a = Array.isArray(data) ? data[0] : data;
+  if (error || !a){ root.innerHTML = `<div class="skel">No hemos encontrado esta academia.</div>`; return; }
+  academia = a;
+  document.title = "Solicitar plaza · " + a.nombre;
+  if (a.color_primario) document.documentElement.style.setProperty("--acc", a.color_primario);
+
+  const { data: cat } = await sb.rpc("catalogo_publico", { p_slug: slug });
+  clases = cat || [];
+  pintar();
+}
+
+function pintar(){
+  root.innerHTML = `
+    <header>
+      ${academia.logo_url ? `<img src="${esc(academia.logo_url)}" alt="">` : ""}
+      <div class="brand">${esc(academia.nombre)}</div>
+    </header>
+
+    <h1>Reserva tu plaza</h1>
+    <p class="lead">Déjanos tus datos y te llamamos para resolver tus dudas y organizar una clase de prueba sin compromiso.</p>
+
+    ${clases.length ? `
+    <div class="card">
+      <div class="sec">Elige la clase que te interesa <span style="text-transform:none;letter-spacing:0;font-weight:400">(opcional)</span></div>
+      <div class="clases">
+        ${clases.map(c => `
+          <label class="clase" data-id="${esc(c.id)}">
+            <input type="radio" name="grupo" value="${esc(c.id)}">
+            <span style="flex:1">
+              <span class="clase-n">${esc(c.nombre)}</span>
+              <span class="clase-m">${[c.asignatura, c.nivel, c.horario].filter(Boolean).map(esc).join(" · ") || "Consultar horario"}</span>
+              ${c.descripcion ? `<span class="clase-m">${esc(c.descripcion)}</span>` : ""}
+            </span>
+            <span class="clase-p">
+              ${c.cuota_mensual ? eur(c.cuota_mensual) + "<span class='plazas'>/mes</span>" : ""}
+              ${c.plazas_libres != null ? `<div class="plazas">${c.plazas_libres > 0 ? c.plazas_libres + " plaza(s)" : "Lista de espera"}</div>` : ""}
+            </span>
+          </label>`).join("")}
+      </div>
+    </div>` : ""}
+
+    <div class="card">
+      <div class="sec">Tus datos</div>
+      <div class="fld">
+        <label for="f-nombre">Nombre y apellidos <span class="req">*</span></label>
+        <input id="f-nombre" autocomplete="name" required>
+      </div>
+      <div class="row">
+        <div class="fld">
+          <label for="f-tel">Teléfono <span class="req">*</span></label>
+          <input id="f-tel" type="tel" autocomplete="tel" inputmode="tel">
+        </div>
+        <div class="fld">
+          <label for="f-email">Email</label>
+          <input id="f-email" type="email" autocomplete="email" inputmode="email">
+        </div>
+      </div>
+      <div class="row">
+        <div class="fld">
+          <label for="f-nivel">Curso del alumno/a</label>
+          <input id="f-nivel" placeholder="3º ESO, 1º Bachillerato…">
+        </div>
+        <div class="fld">
+          <label for="f-interes">Qué necesitáis</label>
+          <input id="f-interes" placeholder="Refuerzo de matemáticas">
+        </div>
+      </div>
+      <div class="fld">
+        <label for="f-mensaje">Cuéntanos algo más</label>
+        <textarea id="f-mensaje" placeholder="Horarios que os vienen bien, dudas, objetivos…"></textarea>
+      </div>
+      <label class="chk">
+        <input type="checkbox" id="f-rgpd">
+        <span>Acepto que ${esc(academia.nombre)} trate mis datos para responder a esta solicitud. Puedo ejercer mis derechos de acceso, rectificación y supresión en cualquier momento.</span>
+      </label>
+      <div class="err" id="f-err"></div>
+      <div style="margin-top:18px"><button class="send" id="f-send">Solicitar información</button></div>
+    </div>
+
+    <footer>Gestionado con <a href="/" target="_blank" rel="noopener">DidactIA Academias</a></footer>`;
+
+  root.querySelectorAll(".clase").forEach(el => {
+    el.addEventListener("click", () => {
+      root.querySelectorAll(".clase").forEach(x => x.classList.remove("on"));
+      el.classList.add("on");
+      grupoSel = el.dataset.id;
+    });
+  });
+  document.getElementById("f-send").addEventListener("click", enviar);
+}
+
+async function enviar(){
+  const btn = document.getElementById("f-send");
+  const err = document.getElementById("f-err");
+  const val = (id) => (document.getElementById(id)?.value || "").trim();
+  const fallo = (t) => { err.textContent = t; err.style.display = "block"; };
+  err.style.display = "none";
+
+  if (!val("f-nombre")) return fallo("Dinos cómo te llamas.");
+  if (!val("f-tel") && !val("f-email")) return fallo("Necesitamos un teléfono o un email para poder responderte.");
+  if (!document.getElementById("f-rgpd").checked) return fallo("Necesitamos tu consentimiento para tratar los datos.");
+
+  btn.disabled = true; btn.textContent = "Enviando…";
+  try {
+    const { data, error } = await sb.rpc("crear_lead_publico", {
+      p_slug: slug,
+      p_nombre: val("f-nombre"),
+      p_email: val("f-email") || null,
+      p_telefono: val("f-tel") || null,
+      p_interes: val("f-interes") || null,
+      p_nivel: val("f-nivel") || null,
+      p_mensaje: val("f-mensaje") || null,
+      p_grupo: grupoSel || null,
+    });
+    if (error) throw new Error(error.message);
+    if (data && data.ok === false) throw new Error(data.error || "No se ha podido enviar");
+    exito();
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "Solicitar información";
+    fallo("No se ha podido enviar: " + (e.message || e) + ". Inténtalo de nuevo en un momento.");
+  }
+}
+
+function exito(){
+  root.innerHTML = `
+    <header>
+      ${academia.logo_url ? `<img src="${esc(academia.logo_url)}" alt="">` : ""}
+      <div class="brand">${esc(academia.nombre)}</div>
+    </header>
+    <div class="card ok">
+      <div class="ok-ic">✓</div>
+      <h2>¡Solicitud recibida!</h2>
+      <p>Nos pondremos en contacto contigo muy pronto para resolver tus dudas y organizar la clase de prueba.</p>
+    </div>
+    <footer>Gestionado con <a href="/" target="_blank" rel="noopener">DidactIA Academias</a></footer>`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+arrancar();
+</script>
+</body>
+</html>

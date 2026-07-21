@@ -138,6 +138,18 @@ async function _grpRenderFicha(g) {
       <div class="grp-fld"><label class="grp-lbl">Color</label><input class="grp-in" id="grp-color" type="color" value="${_grpEsc(g.color||"#2A7DA3")}"></div>
     </div>
 
+    <div class="grp-sec">Visibilidad en el formulario de inscripción</div>
+    <div class="grp-grid">
+      <div class="grp-fld" style="grid-column:span 2">
+        <label class="grp-lbl" style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:13px">
+          <input type="checkbox" id="grp-publicado" ${g.publicado ? "checked" : ""} style="width:auto;accent-color:var(--ink)">
+          Publicar esta clase en el catálogo público
+        </label>
+        <div class="grp-it-sub" style="margin-top:4px">Aparecerá en tu enlace de inscripción con su horario, cuota y plazas libres.</div>
+      </div>
+      <div class="grp-fld" style="grid-column:span 2"><label class="grp-lbl">Descripción para la web</label><input class="grp-in" id="grp-descripcion_web" value="${_grpEsc(g.descripcion_web||"")}" placeholder="Grupos reducidos, seguimiento personalizado…"></div>
+    </div>
+
     <div class="grp-sec">Sesiones semanales <button class="grp-btn grp-btn-sm" onclick="_grpAddSesion()">+ Añadir</button></div>
     <div id="grp-sesiones"></div>
 
@@ -229,6 +241,8 @@ async function _grpGuardar() {
     centro_id:ctrId, nombre, asignatura:_gv("asignatura")||null, nivel:_gv("nivel")||null,
     profesor_id:_gv("profesor_id")||null, aula:_gv("aula")||null, capacidad:_gnum("capacidad"),
     cuota_mensual:_gnum("cuota_mensual"), color:_gv("color")||null, curso_escolar:_grpCurso(),
+    publicado: !!document.getElementById("grp-publicado")?.checked,
+    descripcion_web: _gv("descripcion_web")||null,
   };
   if(msg){msg.textContent="Guardando…";msg.style.color="var(--muted,var(--txt3))";}
   try {
