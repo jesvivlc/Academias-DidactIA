@@ -477,6 +477,32 @@ async function loadUserProfile(user) {
     if (role === "familia" && typeof initInstallBanner === "function") initInstallBanner();
   }
 
+  // Corte comercial: si la academia está suspendida por impago, nadie de ella
+  // entra (el superadmin sí, para poder gestionarla). No se borra ningún dato:
+  // al reactivarla todo vuelve tal cual. Es una puerta de negocio, no una
+  // barrera de seguridad — los permisos reales siguen siendo los de RLS.
+  if (ctrId && role !== "superadmin") {
+    try {
+      const { data: suspendida } = await sb.rpc("centro_suspendido", { p_centro: ctrId });
+      if (suspendida) {
+        const err = document.getElementById("login-err");
+        if (err) {
+          err.textContent = "El acceso de esta academia está suspendido. Poneos en contacto con DidactIA para reactivarlo.";
+          err.style.display = "block";
+        }
+        await sb.auth.signOut();
+        currentUser = null; ctrId = null; ctrName = "";
+        const setup = document.getElementById("setup");
+        if (setup) setup.style.display = "flex";
+        ["app-hdr", "app-tabs", "app-main"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+        return;
+      }
+    } catch (e) { /* si el RPC no está aplicado todavía, no bloqueamos el acceso */ }
+  }
+
   // Load linked alumnos if familia
   if (role === "familia") {
     const { data: vinculos } = await sb
@@ -561,6 +587,9 @@ async function loadUserProfile(user) {
   if (usersTab) usersTab.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "block" : "none";
   const navUsers = document.getElementById("nav-users");
   if (navUsers) navUsers.style.display = (["admin","admin_institucional","superadmin"].includes(role)) ? "flex" : "none";
+  // Panel de operador: consola de la plataforma, solo para quien la explota
+  const navOperador = document.getElementById("nav-operador");
+  if (navOperador) navOperador.style.display = (role === "superadmin") ? "flex" : "none";
 
   // Show app
   document.getElementById("setup").style.display = "none";

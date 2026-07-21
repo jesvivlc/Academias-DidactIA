@@ -285,6 +285,9 @@
         <button class="nav-item" id="nav-users" data-tab="users" onclick="showTab('users')" style="display:none;--nav-color:#4a5568">
           <i class="ti ti-users"></i><span class="nav-item-label">Usuarios</span>
         </button>
+        <button class="nav-item" id="nav-operador" data-tab="operador" onclick="showTab('operador')" style="display:none;--nav-color:#C62828">
+          <i class="ti ti-building-store"></i><span class="nav-item-label">Panel de operador</span>
+        </button>
 
       </div><!-- /sb-nav -->
 
@@ -554,6 +557,8 @@
   <div class="panel" id="panel-comunicaciones" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-cobros" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
+
+  <div class="panel" id="panel-operador" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
   <div class="panel" id="panel-campus" style="flex-direction:column;overflow:hidden;background:var(--bg);"></div>
 
@@ -889,6 +894,7 @@
 <script src="js/checkin.js"></script>
 <script src="js/campus.js"></script>
 <script src="js/economia.js"></script>
+<script src="js/operador.js"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -904,7 +910,7 @@
 <script>
 (function () {
   var TITLES = {
-    chat:'Inicio', tutor:'Tutor IA', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', mensajes2:'Mensajes', calendario:'Calendario', comunicaciones:'Comunicaciones', cobros:'Cobros', facturacion:'Facturación', captacion:'Captación', firmas:'Documentos', checkin:'Check-in QR', campus:'Campus', economia:'Gastos y resultados', planificador:'Planificador', riesgo:'Detección de riesgo', marketing:'Marketing', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
+    chat:'Inicio', tutor:'Tutor IA', famportal:'Portal familiar', docencia:'Mi docencia', alumnos:'Alumnos', grupos:'Grupos', horario:'Horario semanal', asistencia:'Asistencia', incidencias2:'Incidencias', notas:'Calificaciones', mensajes2:'Mensajes', calendario:'Calendario', comunicaciones:'Comunicaciones', cobros:'Cobros', facturacion:'Facturación', captacion:'Captación', firmas:'Documentos', checkin:'Check-in QR', campus:'Campus', economia:'Gastos y resultados', operador:'Panel de operador', planificador:'Planificador', riesgo:'Detección de riesgo', marketing:'Marketing', pasarlista:'Pasar lista', tutorias:'Tutorías', mensajes:'Mensajes', agenda:'Agenda del Centro', encuestas:'Encuestas', recursos:'Recursos', comedor:'Comedor', admin:'Administración',
     sust:'Sustituciones', incidencias:'Incidencias', espacios:'Espacios',
     users:'Usuarios', rrhh:'RRHH', ib:'IB', comunicados:'Comunicados',
     planner:'Planner — Generador de horarios',
@@ -1060,6 +1066,7 @@
         if (t === 'checkin' && typeof initCheckin === 'function') initCheckin();
         if (t === 'campus' && typeof initCampus === 'function') initCampus();
         if (t === 'economia' && typeof initEconomia === 'function') initEconomia();
+        if (t === 'operador' && typeof initOperador === 'function') initOperador();
         if (t === 'planificador' && typeof initPlanificador === 'function') initPlanificador();
         if (t === 'riesgo' && typeof initRiesgo === 'function') initRiesgo();
         if (t === 'marketing' && typeof initMarketing === 'function') initMarketing();
