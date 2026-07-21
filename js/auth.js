@@ -527,6 +527,12 @@ async function loadUserProfile(user) {
   if (navComunic) navComunic.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   const navCobros = document.getElementById("nav-cobros");
   if (navCobros) navCobros.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
+  // Campus: dirección + profesorado (quien sube el material)
+  const navCampus = document.getElementById("nav-campus");
+  if (navCampus) navCampus.style.display = _staffAlm ? "flex" : "none";
+  // Gastos y resultados: solo dirección
+  const navEco = document.getElementById("nav-economia");
+  if (navEco) navEco.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   // Check-in QR: dirección + profesorado (quien esté en el mostrador)
   const navCheckin = document.getElementById("nav-checkin");
   if (navCheckin) navCheckin.style.display = (["admin","admin_institucional","director","jefatura","profesional","superadmin"].includes(role)) ? "flex" : "none";
