@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funcionalidades y demo en vivo | DidactIA Academias</title>
+<meta name="description" content="Todo lo que hace DidactIA Academias, módulo a módulo: matrícula, asistencia, cobros, facturación Verifactu, remesas SEPA, captación, firma digital, check-in QR e IA. Con acceso a una demo abierta, sin registro.">
+<link rel="canonical" href="https://didactia-academias.vercel.app/funcionalidades.html">
+<meta property="og:title" content="Funcionalidades y demo en vivo — DidactIA Academias">
+<meta property="og:description" content="Entra en la demo con datos reales de una academia de ejemplo y toca todo lo que quieras. Sin registro ni tarjeta.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23123F3A'/><text x='50' y='58' text-anchor='middle' font-family='Fraunces,serif' font-weight='600' font-size='62' fill='white' letter-spacing='-3'>a</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23E0654A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/landing.css">
+<style>
+  /* Componentes propios de esta página, sobre las mismas variables */
+  .demo-box{
+    background:var(--white);border:1px solid var(--bdr);border-radius:var(--rl);
+    padding:30px 32px;margin-top:40px;
+    box-shadow:0 1px 3px rgba(18,63,58,.05),0 12px 40px -18px rgba(18,63,58,.18);
+  }
+  .demo-head{display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+  .demo-live{
+    display:inline-flex;align-items:center;gap:7px;background:var(--blue-l);color:var(--blue);
+    padding:4px 12px;border-radius:100px;font-size:11.5px;font-weight:500;letter-spacing:.04em;
+  }
+  .demo-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);animation:demo-pulse 2s var(--ease-std) infinite}
+  @keyframes demo-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .cred-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+  .cred{border:1px solid var(--bdr);border-radius:var(--r);padding:16px 18px;background:var(--off)}
+  .cred h4{font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin:0 0 10px}
+  .cred-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13.5px;padding:3px 0}
+  .cred-row span{color:var(--txt3);flex-shrink:0}
+  .cred-row code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+    background:var(--white);border:1px solid var(--bdr);border-radius:5px;padding:3px 8px;
+    color:var(--txt);user-select:all;word-break:break-all;text-align:right;
+  }
+  .cred p{font-size:12.5px;color:var(--txt2);margin:12px 0 0;line-height:1.6}
+  .tour{counter-reset:paso;margin-top:44px;border-top:1px solid var(--bdr)}
+  .tour li{
+    counter-increment:paso;list-style:none;display:flex;gap:18px;
+    padding:20px 0;border-bottom:1px solid var(--bdr);align-items:flex-start;
+  }
+  .tour li::before{
+    content:counter(paso);flex-shrink:0;
+    width:30px;height:30px;border-radius:50%;background:var(--navy);color:var(--white);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-size:14px;font-weight:600;
+  }
+  .tour h4{font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:500;margin:4px 0 5px;color:var(--txt)}
+  .tour p{font-size:14px;color:var(--txt2);margin:0;line-height:1.66;font-weight:300}
+  .fx-block{margin-top:52px}
+  .fx-block-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding-bottom:14px;border-bottom:2px solid var(--navy)}
+  .fx-block-head h3{font-family:'Fraunces',serif;font-size:24px;font-weight:500;margin:0;color:var(--navy);letter-spacing:-.01em}
+  .fx-block-head p{font-size:14px;color:var(--txt2);margin:0;font-weight:300}
+  .fx-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1px;background:var(--bdr);border:1px solid var(--bdr);border-top:none}
+  .fx-card{background:var(--white);padding:24px 26px;transition:background .2s var(--ease-std)}
+  .fx-card:hover{background:var(--off)}
+  .fx-card h4{font-family:'Outfit',sans-serif;font-size:16px;font-weight:500;margin:0 0 8px;color:var(--txt);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .fx-new{background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:100px}
+  .fx-ia{background:var(--amber-l);color:var(--amber);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:100px}
+  .fx-card p{font-size:14px;color:var(--txt2);line-height:1.68;margin:0;font-weight:300}
+  .fx-try{
+    display:block;margin-top:13px;padding-top:11px;border-top:1px dashed var(--bdr);
+    font-size:12.5px;color:var(--txt3);line-height:1.6;
+  }
+  .fx-try strong{color:var(--navy);font-weight:500}
+  @media(max-width:640px){
+    .demo-box{padding:22px 20px}
+    .cred-row{flex-direction:column;align-items:flex-start;gap:3px}
+    .cred-row code{text-align:left}
+  }
+</style>
+</head>
+<body>
+
+<div id="scroll-sentinel" style="position:absolute;top:80px;left:0;width:1px;height:1px;pointer-events:none" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="index.html" class="nav-logo" aria-label="DidactIA Academias — inicio">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto" role="img" aria-label="DidactIA">
+      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#123f3a;letter-spacing:-3px}.ti{fill:#e0654a}.sa{fill:#c98a3c}</style></defs>
+      <text x="10" y="230" class="td">Didact<tspan class="ti">IA</tspan></text>
+      <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="sa"/>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="funcionalidades.html" class="is-current">Producto</a></li>
+    <li class="has-menu"><a href="#" onclick="return false">Sectores</a>
+      <div class="submenu"><div class="submenu-inner">
+        <a href="academias-refuerzo-escolar.html">Refuerzo escolar<small>Repaso, ESO y Bachillerato</small></a>
+        <a href="academias-idiomas.html">Idiomas<small>MCER y exámenes oficiales</small></a>
+        <a href="academias-oposiciones.html">Oposiciones<small>Ciclos largos y simulacros</small></a>
+        <a href="academias-musica-danza.html">Música y danza<small>Individuales, aulas y recitales</small></a>
+      </div></div>
+    </li>
+    <li><a href="index.html#seguridad">Seguridad</a></li>
+    <li><a href="precios.html">Precios</a></li>
+    <li><a href="index.html#contacto">Contacto</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="app.html" class="nav-login">Acceder</a>
+    <a href="#demo" class="nav-cta">Ver la demo</a>
+  </div>
+</nav>
+
+<!-- SUBHERO -->
+<header class="subhero">
+  <div class="subhero-inner">
+    <nav class="crumbs" aria-label="Migas de pan">
+      <a href="index.html">Inicio</a><span>/</span><span style="color:var(--txt2)">Funcionalidades</span>
+    </nav>
+    <div class="s-eyebrow reveal">Producto completo</div>
+    <h1 class="reveal">Todo lo que hace,<br><em>y cómo verlo funcionando</em></h1>
+    <p class="s-sub reveal reveal-delay-1">
+      Veintiséis módulos que cubren el ciclo entero de una academia: desde que alguien pide
+      información por la web hasta que emites su factura y detectas que está a punto de darse de baja.
+      Abajo tienes el acceso a una demo abierta para tocarlo todo tú mismo, sin registro ni tarjeta.
+    </p>
+    <div class="subhero-actions reveal reveal-delay-2">
+      <a href="#demo" class="btn-primary">Entrar en la demo <span class="btn-arrow">→</span></a>
+      <a href="#modulos" class="btn-outline">Ver los módulos</a>
+    </div>
+    <div class="trust-chips reveal reveal-delay-3" style="margin-top:26px">
+      <span class="trust-chip">Datos alojados en la UE</span>
+      <span class="trust-chip">IA incluida en todos los planes</span>
+      <span class="trust-chip">Sin módulos de pago aparte</span>
+    </div>
+  </div>
+</header>
+
+<!-- DEMO -->
+<section id="demo" style="padding-top:72px">
+  <div class="s-eyebrow reveal">Demo abierta</div>
+  <h2 class="reveal">Entra y rompe<br><em>lo que quieras</em></h2>
+  <p class="s-sub reveal reveal-delay-1">
+    «EducaMentes» es una academia de ejemplo con datos completamente ficticios: 42 alumnos de ESO,
+    7 profesores, 12 grupos, diez semanas de asistencia, notas, recibos e impagos. Nada de lo que veas
+    corresponde a personas reales. Toca lo que quieras: la restauramos periódicamente.
+  </p>
+
+  <div class="demo-box reveal reveal-delay-1">
+    <div class="demo-head">
+      <span class="demo-live"><span class="demo-dot"></span>Demo en vivo</span>
+      <span style="font-size:13px;color:var(--txt3)">Sin registro · sin tarjeta · acceso inmediato</span>
+    </div>
+
+    <div class="cred-grid">
+      <div class="cred">
+        <h4>Como dueño de la academia</h4>
+        <div class="cred-row"><span>Usuario</span><code>demo@didactia.eu</code></div>
+        <div class="cred-row"><span>Contraseña</span><code>DemoAcademias2026!</code></div>
+        <p>Es la vista de dirección: el panel del negocio, los cobros, la facturación y la IA. Por aquí se ve el 90 % del producto.</p>
+        <div style="margin-top:14px"><a href="app.html" class="btn-primary" style="padding:11px 22px;font-size:13.5px">Abrir la aplicación →</a></div>
+      </div>
+
+      <div class="cred">
+        <h4>Como familia de un alumno</h4>
+        <div class="cred-row"><span>Usuario</span><code>familia1@demo.educamentes.es</code></div>
+        <div class="cred-row"><span>Contraseña</span><code>Familia2026!</code></div>
+        <p>La otra cara: lo que ve un padre desde el móvil. Notas, asistencia, recibos, mensajes con la academia y el tutor con IA.</p>
+        <div style="margin-top:14px"><a href="app.html" class="btn-outline" style="padding:11px 22px;font-size:13.5px">Entrar como familia</a></div>
+      </div>
+
+      <div class="cred">
+        <h4>Sin ninguna cuenta</h4>
+        <div class="cred-row"><span>Inscripción</span><code>/inscripcion.html?a=educamentes</code></div>
+        <p>El formulario público que rellena un interesado desde tu web. Envíalo y esa solicitud aparece al instante en el embudo de captación de la demo.</p>
+        <div style="margin-top:14px"><a href="inscripcion.html?a=educamentes" class="btn-outline" style="padding:11px 22px;font-size:13.5px">Ver el formulario</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-eyebrow reveal" style="margin-top:64px">Recorrido sugerido</div>
+  <h3 style="font-family:'Fraunces',serif;font-size:26px;font-weight:500;margin:0;color:var(--navy)" class="reveal">Cinco minutos bien aprovechados</h3>
+  <ol class="tour reveal reveal-delay-1">
+    <li>
+      <div>
+        <h4>Empieza por la pantalla de inicio</h4>
+        <p>Al entrar como dirección verás el panel del negocio: cobrado frente a previsto, impagos del mes, ocupación de los grupos, alumnos en riesgo de baja y la evolución de ingresos. Es el resumen que un dueño mira cada mañana.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h4>Pulsa Ctrl+K (o ⌘+K en Mac)</h4>
+        <p>Se abre el copiloto de dirección. Pregúntale en tu idioma: «¿cuánto llevo cobrado este mes?», «¿qué alumnos están en riesgo?» o «recuerda los impagos». Responde con los datos reales de la academia y además ejecuta acciones.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h4>Manda una solicitud desde el formulario público</h4>
+        <p>Abre el enlace de inscripción en otra pestaña, rellénalo y vuelve a <strong>Captación</strong>. Tu solicitud estará en la columna «Nuevos». Arrástrala por el embudo hasta «Matriculado» y comprueba que se ha creado la ficha del alumno con su matrícula.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h4>Emite una factura en Facturación</h4>
+        <p>Verás los cobros pendientes de facturar. Emite uno y descarga el PDF: lleva el QR de cotejo de la Agencia Tributaria y su huella encadenada. Intenta luego cambiarle el importe: el sistema te lo impedirá, porque el registro es inalterable por ley.</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h4>Termina en Detección de riesgo</h4>
+        <p>Cruza asistencia, notas, impagos, conducta y antigüedad para señalar quién está a punto de irse. Pulsa el botón ✨ de cualquier alumno y la IA redacta un plan de retención concreto.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<!-- MÓDULOS -->
+<section id="modulos" style="background:var(--off);padding-top:76px;padding-bottom:80px">
+  <div class="s-eyebrow reveal">Módulos</div>
+  <h2 class="reveal">Ordenados por lo que<br><em>tienes que resolver</em></h2>
+  <p class="s-sub reveal reveal-delay-1">
+    No por menús, sino por trabajos: captar, organizar, dar clase, cobrar, comunicarte y dirigir.
+    Todo lo que sigue está incluido en los cuatro planes, sin excepciones ni módulos de pago.
+  </p>
+
+  <!-- 1 -->
+  <div class="fx-block reveal">
+    <div class="fx-block-head">
+      <h3>1 · Llenar las aulas</h3>
+      <p>Del desconocido que busca en Google al alumno matriculado</p>
+    </div>
+    <div class="fx-grid">
+      <div class="fx-card">
+        <h4>Inscripciones online <span class="fx-new">Nuevo</span></h4>
+        <p>Un formulario público con la marca de tu academia, con tu catálogo de clases, sus horarios, la cuota y las plazas libres. Lo pegas en tu web, en Google o en la biografía de Instagram y las solicitudes entran solas.</p>
+        <span class="fx-try">En la demo: <strong>/inscripcion.html?a=educamentes</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Captación y embudo <span class="fx-new">Nuevo</span> <span class="fx-ia">IA</span></h4>
+        <p>Un tablero donde cada interesado avanza de «nuevo» a «contactado», «clase de prueba» y «matriculado» o «perdido». Te dice cuántos días lleva cada uno esperando respuesta, cuánto vale tu embudo al mes y cuál es tu tasa real de conversión. El botón ✨ redacta el mensaje de seguimiento.</p>
+        <span class="fx-try">En la demo: <strong>Captación</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Matrícula en un clic <span class="fx-new">Nuevo</span></h4>
+        <p>Cuando el interesado dice que sí, se convierte en alumno, matrícula y asignación de grupo en una sola operación. Sin volver a teclear el nombre ni el teléfono.</p>
+        <span class="fx-try">En la demo: botón <strong>Matricular</strong> en cualquier tarjeta</span>
+      </div>
+      <div class="fx-card">
+        <h4>Marketing <span class="fx-ia">IA</span></h4>
+        <p>Publicaciones para redes sociales a partir de plantillas pensadas para academias: captación de septiembre, refuerzo de exámenes, campamentos. La IA las adapta a tu academia y a tu tono.</p>
+        <span class="fx-try">En la demo: <strong>Marketing</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="fx-block reveal">
+    <div class="fx-block-head">
+      <h3>2 · Organizar el curso</h3>
+      <p>Alumnos, grupos y horarios que encajen sin solapes</p>
+    </div>
+    <div class="fx-grid">
+      <div class="fx-card">
+        <h4>Alumnos y matrículas</h4>
+        <p>Ficha completa con datos de contacto, nivel, centro de procedencia, necesidades específicas, consentimientos de imagen y protección de datos, altas y bajas con su motivo. Es la base de todo lo demás.</p>
+        <span class="fx-try">En la demo: <strong>Alumnos</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Grupos y sesiones</h4>
+        <p>Cada grupo con su asignatura, nivel, profesor, aula, capacidad y cuota, además de sus sesiones semanales. Decides cuáles se publican en tu formulario de inscripción.</p>
+        <span class="fx-try">En la demo: <strong>Grupos</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Horario semanal</h4>
+        <p>La parrilla completa de la academia, con detección automática de solapes de aula y de profesor antes de que se conviertan en un problema el lunes por la tarde.</p>
+        <span class="fx-try">En la demo: <strong>Horario</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Planificador de grupos</h4>
+        <p>Propone cómo agrupar a los alumnos por nivel y necesidades, y te enseña los huecos libres de la parrilla donde cabrían. Útil en septiembre y en cada reajuste de trimestre.</p>
+        <span class="fx-try">En la demo: <strong>Planificador</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="fx-block reveal">
+    <div class="fx-block-head">
+      <h3>3 · El día a día de las clases</h3>
+      <p>Lo que pasa entre las cuatro y las nueve de la tarde</p>
+    </div>
+    <div class="fx-grid">
+      <div class="fx-card">
+        <h4>Asistencia</h4>
+        <p>Pasar lista en segundos, informe de porcentaje por alumno y grupo, y aviso automático por email a la familia cuando alguien falta. El email sale de verdad, no es una simulación.</p>
+        <span class="fx-try">En la demo: <strong>Asistencia</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Check-in por QR <span class="fx-new">Nuevo</span></h4>
+        <p>Cada alumno tiene su carnet con código QR, imprimible en hojas de diez. En recepción abres el modo mostrador y la tablet los lee con la cámara: registra la entrada, marca la asistencia de la clase que toca a esa hora y avisa en rojo si arrastra recibos pendientes.</p>
+        <span class="fx-try">En la demo: <strong>Check-in QR → Abrir modo mostrador</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Calificaciones y tareas</h4>
+        <p>Notas por evaluación, exámenes y tareas con su fecha de entrega. Alimenta el boletín mensual y la detección de riesgo.</p>
+        <span class="fx-try">En la demo: <strong>Calificaciones</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Incidencias</h4>
+        <p>Registro de conducta con tipo, gravedad y estado de resolución, para que nada quede en «me lo dijo alguien de pasada».</p>
+        <span class="fx-try">En la demo: <strong>Incidencias</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Portal del profesor</h4>
+        <p>Cada profesor entra y ve solo lo suyo: sus grupos, su horario del día y los alumnos a los que da clase. Sin ruido y sin acceso a lo que no le corresponde.</p>
+        <span class="fx-try">En la demo: <strong>Mi docencia</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Campus virtual <span class="fx-new">Nuevo</span></h4>
+        <p>Apuntes, exámenes resueltos, vídeos y enlaces, subidos arrastrando el archivo. Decides si son de un grupo o de toda la academia, y si las familias pueden verlos. Las descargas van por enlaces firmados que caducan al minuto.</p>
+        <span class="fx-try">En la demo: <strong>Campus</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="fx-block reveal">
+    <div class="fx-block-head">
+      <h3>4 · Cobrar sin perseguir a nadie</h3>
+      <p>La parte que decide si la academia es un negocio o un hobby</p>
+    </div>
+    <div class="fx-grid">
+      <div class="fx-card">
+        <h4>Cobros e impagos</h4>
+        <p>Genera los recibos del mes de golpe, ve la deuda acumulada por alumno sumando todos los meses pendientes y manda el recordatorio de impago por email con un botón.</p>
+        <span class="fx-try">En la demo: <strong>Cobros</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Facturación Verifactu <span class="fx-new">Nuevo</span></h4>
+        <p>Facturas con numeración correlativa, huella SHA-256 encadenada a la anterior y QR de cotejo de la Agencia Tributaria, conforme al reglamento de sistemas de facturación. El registro es inalterable: para corregir se emite una rectificativa, como manda la norma. Con libro de facturas exportable.</p>
+        <span class="fx-try">En la demo: <strong>Facturación → Facturas</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Domiciliación SEPA <span class="fx-new">Nuevo</span></h4>
+        <p>Mandatos con validación del IBAN y remesas de adeudo directo en formato XML pain.008, el fichero que subes tal cual a tu banca electrónica. El paso de primer adeudo a recurrente se gestiona solo.</p>
+        <span class="fx-try">En la demo: <strong>Facturación → Domiciliaciones SEPA</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Pago con tarjeta <span class="fx-new">Nuevo</span></h4>
+        <p>Enlace de pago que copias y pegas en un WhatsApp, y botón «Pagar» en el portal de las familias. El dinero entra directo en tu cuenta de Stripe: no somos intermediarios y no cobramos comisión por transacción.</p>
+        <span class="fx-try">En la demo: <strong>Facturación → Pago online</strong> (requiere tus claves)</span>
+      </div>
+      <div class="fx-card">
+        <h4>Gastos y resultados <span class="fx-new">Nuevo</span></h4>
+        <p>La otra mitad de la cuenta: alquiler, nóminas, suministros y material por categorías, con un botón para repetir los gastos fijos del mes anterior. Y la cuenta de resultados de doce meses con su margen.</p>
+        <span class="fx-try">En la demo: <strong>Gastos y resultados</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Control horario <span class="fx-new">Nuevo</span></h4>
+        <p>Registro diario de jornada del profesorado, con entrada, salida y horas acumuladas, exportable a Excel. Obligatorio para el personal por cuenta ajena y hasta ahora resuelto a mano en un cuaderno.</p>
+        <span class="fx-try">En la demo: <strong>Gastos y resultados → Control horario</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="fx-block reveal">
+    <div class="fx-block-head">
+      <h3>5 · Hablar con las familias</h3>
+      <p>Que se enteren de las cosas sin tener que llamarte</p>
+    </div>
+    <div class="fx-grid">
+      <div class="fx-card">
+        <h4>Portal de familias</h4>
+        <p>Los padres entran desde el móvil y ven las notas, la asistencia, las incidencias, los recibos y los próximos eventos de sus hijos. Solo de sus hijos: está garantizado por las reglas de acceso de la base de datos, no por la interfaz.</p>
+        <span class="fx-try">En la demo: entra con la cuenta de familia</span>
+      </div>
+      <div class="fx-card">
+        <h4>Comunicaciones</h4>
+        <p>Email real a todas las familias, a un grupo concreto o a un solo alumno. Cambios de horario, cierre por festivo, inicio de trimestre.</p>
+        <span class="fx-try">En la demo: <strong>Comunicaciones</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Mensajería</h4>
+        <p>Conversación de ida y vuelta entre la familia y la academia, ligada a la ficha del alumno. Se acabó buscar en el WhatsApp personal de quien atendió aquel día.</p>
+        <span class="fx-try">En la demo: <strong>Mensajes</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Documentos y firma digital <span class="fx-new">Nuevo</span></h4>
+        <p>Autorizaciones de imagen, consentimientos de protección de datos, normas y condiciones de baja. Mandas el enlace y la familia firma con el dedo desde el móvil. El enlace es de un solo uso, caduca, y el documento firmado se sella con su huella.</p>
+        <span class="fx-try">En la demo: <strong>Documentos</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Boletín mensual <span class="fx-ia">IA</span></h4>
+        <p>Un PDF por alumno con la marca de tu academia: asistencia del mes, notas recientes y un comentario de evolución redactado por la IA a partir de sus datos reales.</p>
+        <span class="fx-try">En la demo: <strong>Alumnos → ficha → 📄 Boletín</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Calendario</h4>
+        <p>Eventos de la academia, reuniones, festivos y fechas de pago, visibles también para las familias en su portal.</p>
+        <span class="fx-try">En la demo: <strong>Calendario</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="fx-block reveal">
+    <div class="fx-block-head">
+      <h3>6 · Dirigir con datos</h3>
+      <p>La parte que ningún otro software del sector tiene</p>
+    </div>
+    <div class="fx-grid">
+      <div class="fx-card">
+        <h4>Panel del negocio</h4>
+        <p>La pantalla de inicio del dueño: cobrado frente a previsto, impagos, ocupación de los grupos, alumnos activos, asistencia media, health score y evolución de ingresos de los últimos seis meses. Con acciones directas sobre los impagos.</p>
+        <span class="fx-try">En la demo: es lo primero que ves al entrar</span>
+      </div>
+      <div class="fx-card">
+        <h4>Copiloto de dirección <span class="fx-ia">IA</span></h4>
+        <p>Ctrl+K en cualquier pantalla. Preguntas en lenguaje corriente sobre los datos de tu academia y te responde; y si le pides que recuerde los impagos o que te lleve a una sección, lo hace.</p>
+        <span class="fx-try">En la demo: pulsa <strong>Ctrl+K</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Detección de riesgo de baja <span class="fx-ia">IA</span></h4>
+        <p>Cruza asistencia, notas, impagos, conducta y antigüedad para ordenar a los alumnos por probabilidad de irse. Perder un alumno cuesta mucho más que retenerlo, y suele avisar semanas antes. La IA propone el plan de refuerzo o retención.</p>
+        <span class="fx-try">En la demo: <strong>Detección de riesgo</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Tutor para el alumno <span class="fx-ia">IA</span></h4>
+        <p>Un tutor con el que el alumno o su familia conversan sobre la materia, con el contexto de su curso y sus notas. Explica, no da la respuesta hecha.</p>
+        <span class="fx-try">En la demo: <strong>Tutor IA</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Asistente de secretaría <span class="fx-ia">IA</span></h4>
+        <p>Resuelve las preguntas de siempre —horarios, aulas, a qué grupo va cada alumno— consultando los datos reales de la academia.</p>
+        <span class="fx-try">En la demo: <strong>Asistente IA</strong></span>
+      </div>
+      <div class="fx-card">
+        <h4>Usuarios y roles</h4>
+        <p>Ocho roles distintos, de familia a dirección, cada uno con lo que le toca ver. Invitaciones por enlace y varias academias sobre la misma plataforma, aisladas entre sí.</p>
+        <span class="fx-try">En la demo: <strong>Usuarios</strong></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SEGURIDAD -->
+<section style="padding-top:76px">
+  <div class="s-eyebrow reveal">Lo que hay debajo</div>
+  <h2 class="reveal">Los datos de tus alumnos<br><em>son datos de menores</em></h2>
+  <p class="s-sub reveal reveal-delay-1">
+    Por eso el aislamiento no se deja a la interfaz. Cada consulta se filtra en la propia base de datos
+    según quién la hace, de modo que ni un fallo de programación en una pantalla puede enseñar de más.
+  </p>
+  <div class="gar-grid">
+    <div class="gar-card reveal">
+      <div class="gar-ico"><span class="tick">✓</span></div>
+      <h4 style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:500;margin:0 0 8px">Aislamiento por academia</h4>
+      <p style="font-size:14px;color:var(--txt2);line-height:1.66;margin:0;font-weight:300">Ninguna academia puede ver los datos de otra, aunque compartan plataforma. La regla vive en la base, no en el navegador.</p>
+    </div>
+    <div class="gar-card reveal reveal-delay-1">
+      <div class="gar-ico"><span class="tick">✓</span></div>
+      <h4 style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:500;margin:0 0 8px">Cada familia, solo sus hijos</h4>
+      <p style="font-size:14px;color:var(--txt2);line-height:1.66;margin:0;font-weight:300">Una cuenta de familia solo alcanza las fichas de sus propios hijos, verificado con cuentas reales de prueba.</p>
+    </div>
+    <div class="gar-card reveal reveal-delay-2">
+      <div class="gar-ico"><span class="tick">✓</span></div>
+      <h4 style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:500;margin:0 0 8px">Alojamiento en la UE</h4>
+      <p style="font-size:14px;color:var(--txt2);line-height:1.66;margin:0;font-weight:300">Servidores en la Unión Europea y consentimientos de imagen y protección de datos recogidos en la propia ficha.</p>
+    </div>
+    <div class="gar-card reveal reveal-delay-3">
+      <div class="gar-ico"><span class="tick">✓</span></div>
+      <h4 style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:500;margin:0 0 8px">Registro inalterable</h4>
+      <p style="font-size:14px;color:var(--txt2);line-height:1.66;margin:0;font-weight:300">Las facturas no se pueden modificar ni borrar una vez emitidas, ni siquiera desde dentro. Se rectifican, como exige la ley.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section style="padding-top:76px;padding-bottom:20px">
+  <div class="s-eyebrow reveal">Sobre la demo</div>
+  <h2 class="reveal">Preguntas<br><em>razonables</em></h2>
+  <div class="faq-list reveal reveal-delay-1">
+    <details>
+      <summary>¿Puedo tocar y borrar cosas en la demo?</summary>
+      <p>Sí, para eso está. Los datos son inventados y la academia de ejemplo se restaura periódicamente a su estado original. No hay nada que puedas estropear que no se pueda deshacer.</p>
+      <p>La única cortesía que te pedimos: es una demo compartida, así que si borras medio curso, el siguiente que entre se lo encontrará así hasta la próxima restauración.</p>
+    </details>
+    <details>
+      <summary>Los datos de los alumnos que veo, ¿son de personas reales?</summary>
+      <p>No. Los 42 alumnos, sus familias, los profesores y todos los importes son ficticios, generados para la demostración. No hay ningún dato personal real en esa academia de ejemplo.</p>
+    </details>
+    <details>
+      <summary>¿Los emails de la demo se envían de verdad?</summary>
+      <p>El sistema de correo está activo y funcionando, pero las direcciones de las familias de ejemplo son ficticias, así que esos avisos no llegan a nadie. Cuando trabajes con tu academia real, sí salen.</p>
+    </details>
+    <details>
+      <summary>¿Y el cobro con tarjeta se puede probar?</summary>
+      <p>La pantalla de configuración sí, pero el cobro necesita las claves de tu propia cuenta de Stripe: cada academia cobra en la suya, nosotros no tocamos el dinero en ningún momento. En cuanto pegas tus claves, el enlace de pago y el botón del portal de familias se activan.</p>
+    </details>
+    <details>
+      <summary>¿Cuánto se tarda en tener mi academia funcionando?</summary>
+      <p>Lo que tardes en importar tus alumnos y montar tus grupos, normalmente una tarde. Si nos pasas lo que tengas ahora —una hoja de cálculo, la exportación de otro programa, incluso papel—, te ayudamos a subirlo.</p>
+    </details>
+    <details>
+      <summary>¿La IA está incluida o se paga aparte?</summary>
+      <p>Incluida en los cuatro planes, sin límite de uso razonable ni contador de créditos. El copiloto, el tutor, la detección de riesgo, los boletines y el marketing van dentro de la cuota.</p>
+    </details>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2 style="color:var(--white)">¿Lo has visto por dentro?<br><em>Ahora con tus datos</em></h2>
+  <p style="color:rgba(255,255,255,.72);max-width:560px;margin:18px auto 0;font-weight:300;line-height:1.7">
+    Catorce días con todo desbloqueado, sin tarjeta y sin permanencia. Si no te convence, no haces nada:
+    caduca solo.
+  </p>
+  <div class="cta-actions">
+    <a href="index.html#contacto" class="btn-primary" style="background:var(--white);color:var(--navy)">Empezar la prueba <span class="btn-arrow">→</span></a>
+    <a href="precios.html" class="btn-outline" style="color:var(--white);border-color:rgba(255,255,255,.28)">Ver los precios</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-cols">
+    <div class="footer-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:30px;width:auto" role="img" aria-label="DidactIA">
+        <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#c98a3c}</style></defs>
+        <text x="10" y="230" class="tdf">Didact<tspan class="tif">IA</tspan></text>
+        <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="saf"/>
+      </svg>
+      <p>Software de gestión con inteligencia artificial para academias. Todo incluido, sin módulos de pago y con los datos alojados en la Unión Europea.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <ul>
+        <li><a href="funcionalidades.html">Funcionalidades</a></li>
+        <li><a href="funcionalidades.html#demo">Demo en vivo</a></li>
+        <li><a href="index.html#seguridad">Seguridad</a></li>
+        <li><a href="precios.html">Precios</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Por sector</h4>
+      <ul>
+        <li><a href="academias-refuerzo-escolar.html">Academias de refuerzo escolar</a></li>
+        <li><a href="academias-idiomas.html">Academias de idiomas</a></li>
+        <li><a href="academias-oposiciones.html">Academias de oposiciones</a></li>
+        <li><a href="academias-musica-danza.html">Escuelas de música y danza</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li><a href="index.html#contacto">Solicitar demo</a></li>
+        <li><a href="mailto:hola@didactia.eu">hola@didactia.eu</a></li>
+        <li><a href="app.html">Acceder a la plataforma</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 DidactIA Academias · Precios sin IVA</div>
+    <div><a href="#">Aviso legal</a><a href="#">Privacidad</a></div>
+  </div>
+</footer>
+
+<script>
+var revealObs=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){e.target.classList.add('visible');revealObs.unobserve(e.target);}
+  });
+},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(function(el){revealObs.observe(el);});
+
+var sentinel=document.getElementById('scroll-sentinel'),navEl=document.getElementById('main-nav');
+if(sentinel&&navEl){
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){navEl.classList.toggle('is-scrolled',!e.isIntersecting);});
+  },{threshold:1}).observe(sentinel);
+}
+</script>
+</body>
+</html>
