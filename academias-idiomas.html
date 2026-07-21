@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Software para academias de idiomas | Programa de gestión con niveles MCER — DidactIA</title>
+<meta name="description" content="Programa de gestión para academias de idiomas: grupos por nivel MCER, pruebas de colocación, seguimiento por destrezas, preparación de exámenes oficiales y renovación de matrícula al nivel siguiente. Todo incluido desde 39 €/mes, prueba 14 días sin tarjeta.">
+<link rel="canonical" href="https://didactia-academias.vercel.app/academias-idiomas.html">
+<meta property="og:title" content="Software para academias de idiomas — DidactIA Academias">
+<meta property="og:description" content="Niveles MCER, destrezas, convocatorias oficiales y rotación de grupos. Gestión completa con IA incluida.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23123F3A'/><text x='50' y='58' text-anchor='middle' font-family='Fraunces,serif' font-weight='600' font-size='62' fill='white' letter-spacing='-3'>a</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23E0654A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+
+<div id="scroll-sentinel" style="position:absolute;top:80px;left:0;width:1px;height:1px;pointer-events:none" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="index.html" class="nav-logo" aria-label="DidactIA Academias — inicio">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto" role="img" aria-label="DidactIA">
+      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#123f3a;letter-spacing:-3px}.ti{fill:#e0654a}.sa{fill:#c98a3c}</style></defs>
+      <text x="10" y="230" class="td">Didact<tspan class="ti">IA</tspan></text>
+      <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="sa"/>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#modulos">Producto</a></li>
+    <li class="has-menu"><a href="#" onclick="return false" class="is-current">Sectores</a>
+      <div class="submenu"><div class="submenu-inner">
+        <a href="academias-refuerzo-escolar.html">Refuerzo escolar<small>Repaso, ESO y Bachillerato</small></a>
+        <a href="academias-idiomas.html">Idiomas<small>MCER y exámenes oficiales</small></a>
+        <a href="academias-oposiciones.html">Oposiciones<small>Ciclos largos y simulacros</small></a>
+        <a href="academias-musica-danza.html">Música y danza<small>Individuales, aulas y recitales</small></a>
+      </div></div>
+    </li>
+    <li><a href="index.html#seguridad">Seguridad</a></li>
+    <li><a href="precios.html">Precios</a></li>
+    <li><a href="index.html#contacto">Contacto</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="app.html" class="nav-login">Acceder</a>
+    <a href="index.html#contacto" class="nav-cta">Probar 14 días</a>
+  </div>
+</nav>
+
+<!-- SUBHERO -->
+<header class="subhero">
+  <div class="subhero-inner">
+    <nav class="crumbs" aria-label="Migas de pan">
+      <a href="index.html">Inicio</a><span>/</span><span style="color:var(--txt2)">Idiomas</span>
+    </nav>
+    <div class="subhero-grid">
+      <div>
+        <div class="s-eyebrow reveal">Academias de idiomas</div>
+        <h1 class="reveal reveal-delay-1">Del <em>A1</em> al <em>C1</em><br>sin perder a nadie<br>por el camino</h1>
+        <div class="hero-divider reveal reveal-delay-1"></div>
+        <p class="s-sub reveal reveal-delay-2">
+          Una academia de idiomas se gestiona por niveles, no por cursos escolares: pruebas de colocación en septiembre, grupos que rotan cada año, convocatorias oficiales que marcan el calendario y una renovación que se juega en mayo. DidactIA Academias está construido sobre esa lógica.
+        </p>
+        <div class="subhero-actions reveal reveal-delay-3">
+          <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+          <a href="precios.html" class="btn-outline">Ver precios</a>
+        </div>
+        <div class="trust-chips reveal reveal-delay-3">
+          <span class="trust-chip">Niveles MCER</span>
+          <span class="trust-chip">Seguimiento por destrezas</span>
+          <span class="trust-chip">Sin permanencia</span>
+        </div>
+      </div>
+
+      <div class="reveal reveal-delay-2">
+        <div class="mock">
+          <div class="mock-topbar">
+            <span class="mock-topbar-title">Ocupación por nivel · Curso actual</span>
+            <span class="mock-topbar-badge">6 idiomas</span>
+          </div>
+          <div class="mock-content">
+            <div class="mock-lbl">Inglés · plazas ocupadas por nivel</div>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:26px">A1</span><div class="mock-bar"><i style="width:100%"></i></div><span style="font-size:11px;color:var(--txt3);width:38px">10/10</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:26px">A2</span><div class="mock-bar"><i style="width:80%"></i></div><span style="font-size:11px;color:var(--txt3);width:38px">8/10</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:26px">B1</span><div class="mock-bar"><i style="width:90%"></i></div><span style="font-size:11px;color:var(--txt3);width:38px">9/10</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:26px">B2</span><div class="mock-bar"><i style="width:60%"></i></div><span style="font-size:11px;color:var(--txt3);width:38px">6/10</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:26px">C1</span><div class="mock-bar"><i style="width:40%"></i></div><span style="font-size:11px;color:var(--txt3);width:38px">4/10</span></div>
+            </div>
+            <div class="mock-ia">
+              <b>✨ Copiloto de dirección</b>
+              <span>Tienes 9 alumnos de B1 que terminan nivel en junio y solo 6 plazas ocupadas en B2. Prepara la renovación de ese grupo antes de la última evaluación.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- DOLORES -->
+<section>
+  <div class="s-eyebrow reveal">Lo que duele en idiomas</div>
+  <h2 class="reveal">El nivel manda,<br>y el nivel <em>cambia</em></h2>
+  <p class="s-sub reveal reveal-delay-1">Cinco problemas que no aparecen en un software genérico de gestión, porque están hechos pensando en un colegio y no en una escuela de idiomas.</p>
+
+  <div class="pain-grid">
+    <div class="pain-card reveal">
+      <div class="p-num">01</div>
+      <h3>Colocar mal en septiembre cuesta el alumno</h3>
+      <p>Un adulto en un grupo demasiado fácil se aburre en tres semanas; un adolescente en uno demasiado alto deja de venir. Y los cambios de grupo de octubre desordenan aulas y facturación.</p>
+      <div class="pain-sol">Cada alumno tiene su <strong>nivel</strong> en la ficha y los grupos se crean por nivel real. Un cambio de grupo se hace en dos clics y arrastra horario, profesor y cuota sin duplicar la matrícula.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-1">
+      <div class="p-num">02</div>
+      <h3>Las convocatorias marcan el curso</h3>
+      <p>Las fechas de los exámenes oficiales —Cambridge, DELE, Trinity, DELF— condicionan simulacros, clases extra y pagos de tasas. Se acaban gestionando en un calendario aparte que solo mira una persona.</p>
+      <div class="pain-sol">Las convocatorias, los simulacros y las sesiones de preparación viven en el <strong>calendario de la academia</strong>, visibles para profesorado y alumnado, con recordatorio automático por email.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-2">
+      <div class="p-num">03</div>
+      <h3>«Va bien» no es un informe de progreso</h3>
+      <p>Cuando una familia o un alumno adulto pregunta cómo va, la respuesta debería distinguir entre comprensión, expresión oral, escritura y uso de la lengua. En papel eso no se sostiene.</p>
+      <div class="pain-sol">Registras notas y tareas <strong>por destreza</strong> y el boletín mensual en PDF resume la evolución con un comentario redactado por IA a partir de esas notas y de la asistencia real.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-3">
+      <div class="p-num">04</div>
+      <h3>La renovación se decide en mayo</h3>
+      <p>El grupo de B1 termina en junio y hay que reconstruirlo entero como B2. Si no se trabaja con antelación, en septiembre falta media clase y el grupo no sale.</p>
+      <div class="pain-sol">La <strong>predicción de bajas</strong> señala en abril quién no va a renovar y por qué, y el módulo de marketing genera el mensaje de continuidad al nivel siguiente para ese grupo concreto.</div>
+    </div>
+    <div class="pain-card reveal">
+      <div class="p-num">05</div>
+      <h3>Menores y adultos no se comunican igual</h3>
+      <p>Con el alumnado infantil hablas con las familias; con el adulto, con él mismo — y es él quien paga. Mezclar ambos flujos en la misma lista de difusión genera errores y quejas.</p>
+      <div class="pain-sol">Los <strong>roles</strong> separan lo que ve cada uno: la familia accede solo a los datos de sus hijos y el alumno adulto a los suyos. Los envíos se segmentan por grupo, nivel o rol.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUCIONES -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Cómo lo resuelve</div>
+  <h2 class="reveal">Un sistema que habla<br>tu idioma: el del <em>MCER</em></h2>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>Grupos por nivel, con rotación anual</h3>
+      <p>El nivel es un campo de primera clase en la ficha del alumno, no una etiqueta escrita a mano en el nombre del grupo. Eso permite ver la pirámide completa de tu academia y saber, antes de junio, qué grupos del año que viene salen y cuáles no.</p>
+      <ul class="sol-feats">
+        <li>Grupos con nivel, idioma, profesor y sesiones semanales propias</li>
+        <li>Ocupación y plazas libres por nivel, en tiempo real</li>
+        <li>Cambios de grupo a mitad de curso sin rehacer la matrícula</li>
+        <li>Propuesta automática de nuevos grupos según los alumnos sin asignar</li>
+      </ul>
+      <span class="sol-tag">Grupos y planificador</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Grupos · Inglés</span><span class="mock-topbar-badge">12 grupos</span></div>
+        <div class="mock-content">
+          <table class="mock-table">
+            <tr><th>Grupo</th><th>Horario</th><th>Plazas</th></tr>
+            <tr><td>Inglés A2 · juvenil</td><td>L/X 17:00</td><td><span class="mock-pill ok">8/10</span></td></tr>
+            <tr><td>Inglés B1 · adultos</td><td>M/J 19:30</td><td><span class="mock-pill ok">9/10</span></td></tr>
+            <tr><td>Inglés B2 · preparación</td><td>M/J 18:00</td><td><span class="mock-pill pend">6/10</span></td></tr>
+            <tr><td>Inglés C1 · conversación</td><td>V 19:00</td><td><span class="mock-pill pend">4/10</span></td></tr>
+          </table>
+          <div class="mock-ia">
+            <b>✨ Planificador</b>
+            <span>Hay 7 alumnos de A2 sin grupo asignado para el próximo trimestre. Cabe un A2 nuevo los martes y jueves a las 17:00 en el aula 2, sin tocar el resto de la parrilla.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row rev">
+    <div class="sol-text reveal">
+      <h3>Preparación de exámenes oficiales, con datos</h3>
+      <p>Los simulacros son la mejor señal temprana de si un alumno llegará a la convocatoria. Registra cada prueba por destreza y verás quién está listo, quién necesita refuerzo de speaking y a quién conviene recomendar que espere a la siguiente fecha.</p>
+      <ul class="sol-feats">
+        <li>Notas y tareas por destreza: listening, reading, writing y speaking</li>
+        <li>Simulacros y convocatorias en el calendario compartido</li>
+        <li>Boletín en PDF con la evolución y comentario generado con IA</li>
+        <li>Tutor IA para que el alumno practique entre clase y clase</li>
+      </ul>
+      <span class="sol-tag">Calificaciones y tutor IA</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Simulacro · Inglés B2</span><span class="mock-topbar-badge">Convocatoria de junio</span></div>
+        <div class="mock-content">
+          <table class="mock-table">
+            <tr><th>Destreza</th><th>Resultado</th><th>Estado</th></tr>
+            <tr><td>Listening</td><td>78%</td><td><span class="mock-pill ok">Listo</span></td></tr>
+            <tr><td>Reading &amp; Use</td><td>71%</td><td><span class="mock-pill ok">Listo</span></td></tr>
+            <tr><td>Writing</td><td>64%</td><td><span class="mock-pill pend">Ajustado</span></td></tr>
+            <tr><td>Speaking</td><td>52%</td><td><span class="mock-pill bad">Refuerzo</span></td></tr>
+          </table>
+          <div class="mock-ia">
+            <b>✨ Recomendación</b>
+            <span>Con este perfil conviene reforzar speaking en las cuatro semanas previas: dos sesiones de conversación y práctica guiada con el tutor IA entre clases.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>La renovación empieza tres meses antes</h3>
+      <p>El momento de asegurar el B2 del curso que viene no es septiembre: es abril, cuando el alumno todavía está en clase. El sistema te dice a quién hay que hablarle y te escribe el mensaje.</p>
+      <ul class="sol-feats">
+        <li>Alumnos ordenados por riesgo de no continuar, con el motivo</li>
+        <li>Plan de retención concreto por alumno, redactado con IA</li>
+        <li>Comunicaciones por email segmentadas por grupo o nivel</li>
+        <li>Publicaciones para redes sociales generadas para tu campaña de matrícula</li>
+      </ul>
+      <span class="sol-tag">Retención y captación</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Campaña de renovación · B1 → B2</span><span class="mock-topbar-badge">Abril</span></div>
+        <div class="mock-content">
+          <div class="mock-lbl">Alumnos del grupo B1 · intención de continuar</div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#dcfce7;color:#166534">✓</div><div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">6 alumnos con señales positivas</div><div style="font-size:11.5px;color:var(--txt3)">Asistencia alta y notas al alza</div></div><span class="mock-pill ok">Continúan</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fef3c7;color:#92400e">?</div><div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">2 alumnos dudosos</div><div style="font-size:11.5px;color:var(--txt3)">Faltas los jueves · nota estancada</div></div><span class="mock-pill pend">Hablar</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fee2e2;color:#991b1b">!</div><div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">1 alumno en riesgo alto</div><div style="font-size:11.5px;color:var(--txt3)">Recibo pendiente · dos meses de baja asistencia</div></div><span class="mock-pill bad">Prioridad</span></div>
+          <div class="mock-ia">
+            <b>✨ Email de continuidad</b>
+            <span>«Has completado el B1 este curso. El grupo de B2 empieza en octubre los martes y jueves; te reservamos plaza hasta el 15 de junio.»</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CASOS -->
+<section>
+  <div class="s-eyebrow reveal">Casos de uso</div>
+  <h2 class="reveal">Situaciones que<br><em>reconocerás</em></h2>
+  <div class="quote-grid">
+    <div class="quote-card reveal">
+      <p>«Cada octubre teníamos veinte cambios de grupo y la facturación se quedaba apuntando al grupo antiguo.»</p>
+      <div class="quote-who">Academia de idiomas · 250 alumnos<span>El cambio de grupo arrastra horario y cuota; la facturación deja de ir por detrás.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-1">
+      <p>«Sabíamos quién se presentaba al examen oficial, pero no quién iba a aprobarlo hasta que salían las notas.»</p>
+      <div class="quote-who">Escuela de inglés con preparación de exámenes<span>Los simulacros por destreza dan la señal con dos meses de margen.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-2">
+      <p>«En junio se nos iba el grupo entero de B1 y en septiembre no había B2.»</p>
+      <div class="quote-who">Academia con seis niveles de inglés y dos de francés<span>La campaña de renovación arranca en abril, con la lista de quién duda y por qué.</span></div>
+    </div>
+  </div>
+  <p class="quote-disclaimer reveal">Situaciones ilustrativas construidas a partir de problemas habituales del sector. No corresponden a academias ni a personas concretas. Las denominaciones de exámenes oficiales se citan solo como referencia de uso; DidactIA no está vinculada a esas entidades.</p>
+</section>
+
+<!-- CROSS -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Otros sectores</div>
+  <h2 class="reveal">¿Tu academia es de<br><em>otro tipo?</em></h2>
+  <p class="s-sub reveal reveal-delay-1">La base es la misma; lo que cambia es cómo se organizan los grupos, la evaluación y la relación con el alumnado.</p>
+  <div class="cross-grid">
+    <a class="cross-card reveal" href="academias-refuerzo-escolar.html">
+      <div class="ck">Refuerzo escolar</div>
+      <h3>Academias de refuerzo</h3>
+      <p>Estacionalidad, grupos por nivel dentro del mismo curso y bajas justo después de aprobar.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-1" href="academias-oposiciones.html">
+      <div class="ck">Oposiciones</div>
+      <h3>Academias de oposiciones</h3>
+      <p>Ciclos de dos años, simulacros, temario y la motivación como principal causa de abandono.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-2" href="academias-musica-danza.html">
+      <div class="ck">Música y danza</div>
+      <h3>Escuelas de música y danza</h3>
+      <p>Clases individuales y colectivas, aulas y salas, recitales y alquiler de instrumentos.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-3" href="precios.html">
+      <div class="ck">Precios</div>
+      <h3>Todo incluido desde 39 €/mes</h3>
+      <p>Cuatro tramos por alumnos activos, sin módulos de pago y con la IA dentro del precio.</p>
+      <span class="cgo">Ver precios →</span>
+    </a>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2 class="reveal">Prepara el próximo curso<br>con la <em>pirámide</em> completa a la vista</h2>
+  <p class="reveal reveal-delay-1">Cargamos tus alumnos, niveles y grupos desde tu Excel y lo pruebas dos semanas con todo desbloqueado. Sin tarjeta y sin permanencia.</p>
+  <div class="cta-actions reveal reveal-delay-2">
+    <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+    <a href="precios.html" class="btn-outline">Ver precios</a>
+  </div>
+  <div class="trust-chips reveal reveal-delay-3">
+    <span class="trust-chip">60 días de garantía</span>
+    <span class="trust-chip">Sin cuota de alta</span>
+    <span class="trust-chip">Migración incluida</span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-cols">
+    <div class="footer-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:30px;width:auto" role="img" aria-label="DidactIA">
+        <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#c98a3c}</style></defs>
+        <text x="10" y="230" class="tdf">Didact<tspan class="tif">IA</tspan></text>
+        <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="saf"/>
+      </svg>
+      <p>Software de gestión con inteligencia artificial para academias. Todo incluido, sin módulos de pago y con los datos alojados en la Unión Europea.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <ul>
+        <li><a href="index.html#modulos">Módulos</a></li>
+        <li><a href="index.html#seguridad">Seguridad</a></li>
+        <li><a href="index.html#como">Implementación</a></li>
+        <li><a href="precios.html">Precios</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Por sector</h4>
+      <ul>
+        <li><a href="academias-refuerzo-escolar.html">Academias de refuerzo escolar</a></li>
+        <li><a href="academias-idiomas.html">Academias de idiomas</a></li>
+        <li><a href="academias-oposiciones.html">Academias de oposiciones</a></li>
+        <li><a href="academias-musica-danza.html">Escuelas de música y danza</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li><a href="index.html#contacto">Solicitar demo</a></li>
+        <li><a href="mailto:hola@didactia.eu">hola@didactia.eu</a></li>
+        <li><a href="app.html">Acceder a la plataforma</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 DidactIA Academias · Precios sin IVA</div>
+    <div><a href="#">Aviso legal</a><a href="#">Privacidad</a></div>
+  </div>
+</footer>
+
+<script>
+var revealObs=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){e.target.classList.add('visible');revealObs.unobserve(e.target);}
+  });
+},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(function(el){revealObs.observe(el);});
+
+var sentinel=document.getElementById('scroll-sentinel'),navEl=document.getElementById('main-nav');
+if(sentinel&&navEl){
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){navEl.classList.toggle('is-scrolled',!e.isIntersecting);});
+  },{threshold:1}).observe(sentinel);
+}
+</script>
+</body>
+</html>

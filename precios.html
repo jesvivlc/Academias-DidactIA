@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precios — DidactIA Academias | Software de gestión con IA incluida desde 39 €/mes</title>
+<meta name="description" content="Precios por tramos de alumnos activos: 39, 79 o 139 €/mes con TODO incluido — app móvil, check-in QR, evaluaciones, facturación Verifactu, remesas SEPA e inteligencia artificial. 14 días de prueba sin tarjeta, 60 días de garantía y sin permanencia.">
+<link rel="canonical" href="https://didactia-academias.vercel.app/precios.html">
+<meta property="og:title" content="Precios — DidactIA Academias">
+<meta property="og:description" content="Software de gestión para academias con IA incluida. Desde 39 €/mes, todo incluido, sin módulos de pago ni permanencia.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23123F3A'/><text x='50' y='58' text-anchor='middle' font-family='Fraunces,serif' font-weight='600' font-size='62' fill='white' letter-spacing='-3'>a</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23E0654A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+
+<div id="scroll-sentinel" style="position:absolute;top:80px;left:0;width:1px;height:1px;pointer-events:none" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="index.html" class="nav-logo" aria-label="DidactIA Academias — inicio">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto" role="img" aria-label="DidactIA">
+      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#123f3a;letter-spacing:-3px}.ti{fill:#e0654a}.sa{fill:#c98a3c}</style></defs>
+      <text x="10" y="230" class="td">Didact<tspan class="ti">IA</tspan></text>
+      <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="sa"/>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#modulos">Producto</a></li>
+    <li class="has-menu"><a href="#" onclick="return false">Sectores</a>
+      <div class="submenu"><div class="submenu-inner">
+        <a href="academias-refuerzo-escolar.html">Refuerzo escolar<small>Repaso, ESO y Bachillerato</small></a>
+        <a href="academias-idiomas.html">Idiomas<small>MCER y exámenes oficiales</small></a>
+        <a href="academias-oposiciones.html">Oposiciones<small>Ciclos largos y simulacros</small></a>
+        <a href="academias-musica-danza.html">Música y danza<small>Individuales, aulas y recitales</small></a>
+      </div></div>
+    </li>
+    <li><a href="index.html#seguridad">Seguridad</a></li>
+    <li><a href="precios.html" class="is-current">Precios</a></li>
+    <li><a href="index.html#contacto">Contacto</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="app.html" class="nav-login">Acceder</a>
+    <a href="index.html#contacto" class="nav-cta">Probar 14 días</a>
+  </div>
+</nav>
+
+<!-- SUBHERO -->
+<header class="subhero">
+  <div class="subhero-inner">
+    <nav class="crumbs" aria-label="Migas de pan">
+      <a href="index.html">Inicio</a><span>/</span><span style="color:var(--txt2)">Precios</span>
+    </nav>
+    <div style="max-width:760px">
+      <div class="s-eyebrow reveal">Precios</div>
+      <h1 class="reveal reveal-delay-1">Un precio por tramo.<br><em>Todo</em> incluido de verdad.</h1>
+      <div class="hero-divider reveal reveal-delay-1"></div>
+      <p class="s-sub reveal reveal-delay-2" style="margin-bottom:28px">
+        Pagas según los alumnos activos que tenga tu academia y ya está. Ni módulos de pago, ni app aparte, ni ampliaciones de almacenamiento, ni un extra por la inteligencia artificial: viene toda dentro.
+      </p>
+      <div class="trust-chips reveal reveal-delay-3">
+        <span class="trust-chip">14 días de prueba · sin tarjeta</span>
+        <span class="trust-chip">60 días de garantía</span>
+        <span class="trust-chip">Sin permanencia</span>
+        <span class="trust-chip">Sin cuota de alta</span>
+        <span class="trust-chip">🇪🇺 Datos en la UE</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- PLANES -->
+<section id="planes" style="padding-top:64px">
+  <div class="pricing-switch reveal">
+    <div class="seg" role="group" aria-label="Periodo de facturación">
+      <button type="button" id="btn-mes" class="on" onclick="setCiclo('mes')" aria-pressed="true">Mensual</button>
+      <button type="button" id="btn-anio" onclick="setCiclo('anio')" aria-pressed="false">Anual · 2 meses gratis</button>
+    </div>
+    <p class="switch-note" id="switch-note">Facturación mensual. Cambia a anual y <strong>pagas 10 meses en vez de 12</strong>.</p>
+  </div>
+
+  <div class="tier-grid">
+
+    <!-- ESENCIAL -->
+    <div class="tier-card reveal">
+      <div class="tier-label">Esencial</div>
+      <div class="tier-amount"><sup>€</sup><span class="amt" data-mes="39" data-anio="33">39</span><span class="per">/mes</span></div>
+      <div class="tier-period" data-mes="Sin IVA · facturación mensual" data-anio="390 €/año sin IVA · equivale a 32,50 €/mes">Sin IVA · facturación mensual</div>
+      <div class="tier-limit">Hasta 100 alumnos activos</div>
+      <div class="tier-sep"></div>
+      <ul class="tier-features">
+        <li><div class="tier-check"></div>Todos los módulos, sin excepción</li>
+        <li><div class="tier-check"></div>Usuarios y profesores ilimitados</li>
+        <li><div class="tier-check"></div>Portal de familias y app móvil</li>
+        <li><div class="tier-check"></div>Cobros, impagos y facturación</li>
+        <li><div class="tier-check"></div>Copiloto y tutor con IA incluidos</li>
+        <li><div class="tier-check"></div>Soporte por email</li>
+      </ul>
+      <a href="index.html#contacto" class="tier-cta">Empezar prueba de 14 días</a>
+    </div>
+
+    <!-- ACADEMIA (destacado) -->
+    <div class="tier-card featured reveal reveal-delay-1">
+      <div class="tier-badge">El más elegido</div>
+      <div class="tier-label">Academia</div>
+      <div class="tier-amount"><sup>€</sup><span class="amt" data-mes="79" data-anio="66">79</span><span class="per">/mes</span></div>
+      <div class="tier-period" data-mes="Sin IVA · facturación mensual" data-anio="790 €/año sin IVA · equivale a 65,83 €/mes">Sin IVA · facturación mensual</div>
+      <div class="tier-limit">Hasta 300 alumnos activos</div>
+      <div class="tier-sep"></div>
+      <ul class="tier-features">
+        <li><div class="tier-check"></div>Todo lo de Esencial</li>
+        <li><div class="tier-check"></div>Panel del negocio con health score</li>
+        <li><div class="tier-check"></div>Predicción de bajas y planes de retención</li>
+        <li><div class="tier-check"></div>Marketing y captación con IA</li>
+        <li><div class="tier-check"></div>Multi-sede dentro de la misma academia</li>
+        <li><div class="tier-check"></div>Soporte prioritario y migración guiada</li>
+      </ul>
+      <a href="index.html#contacto" class="tier-cta">Empezar prueba de 14 días</a>
+    </div>
+
+    <!-- PRO -->
+    <div class="tier-card reveal reveal-delay-2">
+      <div class="tier-label">Pro</div>
+      <div class="tier-amount"><sup>€</sup><span class="amt" data-mes="139" data-anio="116">139</span><span class="per">/mes</span></div>
+      <div class="tier-period" data-mes="Sin IVA · facturación mensual" data-anio="1.390 €/año sin IVA · equivale a 115,83 €/mes">Sin IVA · facturación mensual</div>
+      <div class="tier-limit">Hasta 600 alumnos activos</div>
+      <div class="tier-sep"></div>
+      <ul class="tier-features">
+        <li><div class="tier-check"></div>Todo lo de Academia</li>
+        <li><div class="tier-check"></div>Sedes ilimitadas con datos separados</li>
+        <li><div class="tier-check"></div>Informes de dirección y exportaciones avanzadas</li>
+        <li><div class="tier-check"></div>Personalización de marca en app y documentos</li>
+        <li><div class="tier-check"></div>Formación del equipo en remoto</li>
+        <li><div class="tier-check"></div>Gestor de cuenta asignado</li>
+      </ul>
+      <a href="index.html#contacto" class="tier-cta">Empezar prueba de 14 días</a>
+    </div>
+
+    <!-- A MEDIDA -->
+    <div class="tier-card reveal reveal-delay-3">
+      <div class="tier-label">A medida</div>
+      <div class="tier-amount" style="font-size:34px">Hablamos</div>
+      <div class="tier-period">Más de 600 alumnos activos, redes de academias o franquicias</div>
+      <div class="tier-limit">Alumnos sin límite</div>
+      <div class="tier-sep"></div>
+      <ul class="tier-features">
+        <li><div class="tier-check"></div>Todo lo de Pro</li>
+        <li><div class="tier-check"></div>Condiciones por volumen de alumnado</li>
+        <li><div class="tier-check"></div>Cuadro de mando de red multi-academia</li>
+        <li><div class="tier-check"></div>Integraciones con tus sistemas actuales</li>
+        <li><div class="tier-check"></div>Acuerdo de nivel de servicio a medida</li>
+        <li><div class="tier-check"></div>Acompañamiento en la migración</li>
+      </ul>
+      <a href="index.html#contacto" class="tier-cta">Pedir propuesta</a>
+    </div>
+
+  </div>
+
+  <p class="tier-foot reveal">
+    Todos los precios son <strong style="color:var(--navy);font-weight:500">sin IVA</strong> y por academia, no por usuario.
+    Profesores, administrativos y familias no cuentan: solo los alumnos con matrícula activa.
+  </p>
+</section>
+
+<!-- GARANTÍAS -->
+<section style="background:var(--off);padding-top:76px;padding-bottom:76px">
+  <div class="s-eyebrow reveal">Sin letra pequeña</div>
+  <h2 class="reveal">Probar no debería<br><em>costarte nada</em></h2>
+  <p class="s-sub reveal reveal-delay-1">Si una plataforma es buena, no necesita atarte. Estas cuatro condiciones son parte del contrato, no una promoción.</p>
+  <div class="gar-grid">
+    <div class="gar-card reveal">
+      <div class="gar-ico">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </div>
+      <h3>14 días con todo desbloqueado</h3>
+      <p>La prueba no es una versión recortada: entras con todos los módulos y toda la IA activa. Sin tarjeta de crédito y sin llamada comercial previa.</p>
+    </div>
+    <div class="gar-card reveal reveal-delay-1">
+      <div class="gar-ico">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.2 8.3 8 9 4.8-.7 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <h3>60 días de garantía</h3>
+      <p>Si en los dos primeros meses de pago decides que no es para tu academia, te devolvemos el importe íntegro. Sin justificar el motivo.</p>
+    </div>
+    <div class="gar-card reveal reveal-delay-2">
+      <div class="gar-ico">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </div>
+      <h3>Sin permanencia ni alta</h3>
+      <p>No hay contrato de doce meses ni cuota de activación. Cancelas cuando quieras desde el propio panel y dejas de facturar el mes siguiente.</p>
+    </div>
+    <div class="gar-card reveal reveal-delay-3">
+      <div class="gar-ico">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+      </div>
+      <h3>Tus datos son tuyos</h3>
+      <p>Migramos tus alumnos, grupos y horarios desde Excel sin coste. Y si te vas, exportas todo en Excel y PDF sin pedir permiso a nadie.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TODO INCLUIDO -->
+<section id="incluido">
+  <div class="s-eyebrow reveal">Comparativa</div>
+  <h2 class="reveal">Lo que otros cobran aparte,<br><em>aquí ya está dentro</em></h2>
+  <p class="s-sub reveal reveal-delay-1">
+    En el sector es habitual empezar en una cuota baja y acabar sumando módulos: la app con tu marca, el control de asistencia por QR, las evaluaciones, más almacenamiento… Nosotros lo metemos todo en el mismo precio, en los cuatro planes.
+  </p>
+
+  <div class="tbl-wrap reveal">
+    <table class="tbl-inc">
+      <thead>
+        <tr>
+          <th scope="col" style="width:26%">Funcionalidad</th>
+          <th scope="col" style="width:30%">Cómo se suele vender en el sector</th>
+          <th scope="col" class="plan-all">DidactIA</th>
+          <th scope="col" class="plan">Esencial</th>
+          <th scope="col" class="plan">Academia</th>
+          <th scope="col" class="plan">Pro</th>
+          <th scope="col" class="plan">A medida</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="feat">App móvil para familias y alumnado<small>Instalable en iOS y Android, con tu marca</small></td>
+          <td class="otros">Suele venderse como <em>app propia por unos 700 €/año</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Check-in de asistencia por QR<small>El alumno ficha al entrar a clase</small></td>
+          <td class="otros">Módulo aparte, <em>en torno a 35 €/mes</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Evaluaciones y boletines<small>Notas, tareas, exámenes y boletín en PDF</small></td>
+          <td class="otros">Módulo aparte, <em>en torno a 15 €/mes</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Almacenamiento de documentos<small>Justificantes, contratos, material de clase</small></td>
+          <td class="otros">Ampliaciones de espacio <em>facturadas por GB</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Inteligencia artificial<small>Copiloto de dirección, tutor del alumno, riesgo de baja, boletines y marketing</small></td>
+          <td class="otros"><em>Sencillamente, no existe</em> en la mayoría de plataformas de academias</td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Facturación electrónica Verifactu<small>Series, rectificativas y registro conforme</small></td>
+          <td class="otros">Suele ser <em>complemento de pago</em> o requerir otro programa</td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Remesas SEPA<small>Recibos domiciliados y control de devoluciones</small></td>
+          <td class="otros">Reservado a los <em>planes superiores</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Inscripciones online<small>Formulario de matrícula publicable en tu web</small></td>
+          <td class="otros">Habitual como <em>módulo adicional</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Firma digital de documentos<small>Matrículas, RGPD y autorizaciones de menores</small></td>
+          <td class="otros">Habitual como <em>módulo adicional</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+        <tr>
+          <td class="feat">Cobros y control de impagos<small>Deuda por alumno, recordatorios automáticos</small></td>
+          <td class="otros">Con frecuencia, <em>una comisión sobre cada cobro</em></td>
+          <td class="all"><span class="tick-all">✓ En todos los planes</span></td>
+          <td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td><td class="yes"><span class="tick">✓</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tbl-note reveal">
+    Los importes de la columna central son referencias orientativas de cómo se comercializan estas funciones en el mercado de software para academias; no corresponden a ninguna oferta concreta. DidactIA no aplica comisión propia sobre los cobros: las comisiones que cobre tu banco o tu pasarela de pago son ajenas a nosotros.
+  </p>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="background:var(--off)">
+  <div class="s-eyebrow reveal">Preguntas frecuentes</div>
+  <h2 class="reveal">Lo que preguntan<br><em>antes de decidir</em></h2>
+
+  <div class="faq-list reveal reveal-delay-1">
+    <details>
+      <summary>¿Qué cuenta exactamente como «alumno activo»?</summary>
+      <p>Un alumno con <strong>matrícula activa</strong> en tu academia dentro del mes facturado, independientemente de en cuántos grupos esté. No cuentan los alumnos dados de baja, los antiguos que conservas en el histórico, los que están en lista de espera ni los que solo han pedido información.</p>
+      <p>Tampoco cuentan las personas del equipo ni las familias: puedes dar de alta a todos los profesores, administrativos, tutores y padres que necesites sin que suba la factura.</p>
+    </details>
+    <details>
+      <summary>¿Puedo cambiar de plan durante el curso?</summary>
+      <p>Sí, en cualquier momento y desde el propio panel. Al subir de plan se prorratea lo que quede del periodo, así que solo pagas la diferencia. Al bajar, el cambio se aplica en la siguiente renovación y no pierdes ningún dato.</p>
+    </details>
+    <details>
+      <summary>¿Hay coste de alta, de implantación o de formación?</summary>
+      <p>No. Ni cuota de activación, ni de configuración, ni de formación. Es habitual que en el sector se cobre un alta de una sola vez; nosotros no lo hacemos porque una academia no debería pagar por empezar a usar algo que aún no sabe si le va a servir.</p>
+    </details>
+    <details>
+      <summary>¿Migráis los datos que ya tengo?</summary>
+      <p>Sí, y está incluido. Nos envías tus listados de alumnos, grupos, horarios y pagos en Excel o CSV —da igual el formato— y los dejamos cargados y revisados antes de que empieces. Si vienes de otra plataforma, trabajamos con la exportación que te dé.</p>
+    </details>
+    <details>
+      <summary>¿Qué pasa si me paso del tramo de alumnos?</summary>
+      <p>No se bloquea nada ni se corta el servicio. Si superas el límite de forma sostenida —no por un pico puntual de un curso intensivo—, te avisamos y pasas al tramo siguiente en la próxima renovación. Nunca vas a encontrarte una factura sorpresa por haber matriculado a tres alumnos de más en septiembre.</p>
+    </details>
+    <details>
+      <summary>¿Los precios llevan IVA?</summary>
+      <p>Los precios publicados son <strong>sin IVA</strong>. A la factura se le añade el 21 % de IVA aplicable en España. Si tu academia está en otro país de la UE y aportas un NIF-IVA intracomunitario válido, se factura sin IVA por inversión del sujeto pasivo.</p>
+    </details>
+    <details>
+      <summary>¿Cómo se paga y cada cuánto?</summary>
+      <p>Con tarjeta o domiciliación bancaria (SEPA), en el ciclo que elijas: mensual o anual. La <strong>modalidad anual equivale a pagar diez meses</strong> en lugar de doce, así que te ahorras dos. Recibirás siempre factura a nombre de tu academia con todos los datos fiscales.</p>
+    </details>
+    <details>
+      <summary>¿Cómo se cancela?</summary>
+      <p>Desde el panel, en dos clics, sin llamadas ni formularios de retención. No hay permanencia, así que la baja es efectiva al final del periodo que ya has pagado. Antes de irte puedes exportar todos tus datos en Excel y PDF.</p>
+    </details>
+    <details>
+      <summary>¿La facturación conforme a Verifactu está incluida?</summary>
+      <p>Sí, en los cuatro planes y sin coste adicional. Emites las facturas de las matrículas y mensualidades desde la propia plataforma, con series, rectificativas y el registro de facturación exigido. No necesitas un programa de facturación aparte para el día a día de la academia.</p>
+    </details>
+    <details>
+      <summary>¿La inteligencia artificial se paga aparte o por consumo?</summary>
+      <p>No. El copiloto de dirección, el tutor del alumno, la predicción de bajas, los boletines redactados con IA y los textos de marketing van incluidos en el precio del plan, sin contador de mensajes ni paquetes de créditos. Es la diferencia principal con el resto de programas de gestión para academias.</p>
+    </details>
+    <details>
+      <summary>¿Qué soporte incluye cada plan?</summary>
+      <p>Todos los planes tienen soporte por email en castellano con respuesta en horario laborable. Desde el plan Academia el soporte es prioritario e incluye acompañamiento en la puesta en marcha; en Pro y A medida se añade formación en remoto para tu equipo y un contacto asignado.</p>
+    </details>
+    <details>
+      <summary>¿Dónde están alojados los datos?</summary>
+      <p>En servidores dentro de la <strong>Unión Europea</strong>. Cada academia está aislada de las demás a nivel de base de datos y cada familia solo puede ver la información de sus propios hijos. La plataforma está diseñada conforme al RGPD y la LOPDGDD, con especial cuidado en los datos de menores.</p>
+    </details>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2 class="reveal">Empieza hoy.<br><em>Decide en dos semanas.</em></h2>
+  <p class="reveal reveal-delay-1">Catorce días con la plataforma entera, tus datos ya cargados y toda la IA funcionando. Si no te convence, no pagas nada.</p>
+  <div class="cta-actions reveal reveal-delay-2">
+    <a href="index.html#contacto" class="btn-primary">Empezar prueba gratuita <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+    <a href="index.html#modulos" class="btn-outline">Ver qué incluye</a>
+  </div>
+  <div class="trust-chips reveal reveal-delay-3">
+    <span class="trust-chip">Sin tarjeta</span>
+    <span class="trust-chip">Sin permanencia</span>
+    <span class="trust-chip">Migración incluida</span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-cols">
+    <div class="footer-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:30px;width:auto" role="img" aria-label="DidactIA">
+        <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#c98a3c}</style></defs>
+        <text x="10" y="230" class="tdf">Didact<tspan class="tif">IA</tspan></text>
+        <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="saf"/>
+      </svg>
+      <p>Software de gestión con inteligencia artificial para academias. Todo incluido, sin módulos de pago y con los datos alojados en la Unión Europea.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <ul>
+        <li><a href="index.html#modulos">Módulos</a></li>
+        <li><a href="index.html#seguridad">Seguridad</a></li>
+        <li><a href="index.html#como">Implementación</a></li>
+        <li><a href="precios.html">Precios</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Por sector</h4>
+      <ul>
+        <li><a href="academias-refuerzo-escolar.html">Academias de refuerzo escolar</a></li>
+        <li><a href="academias-idiomas.html">Academias de idiomas</a></li>
+        <li><a href="academias-oposiciones.html">Academias de oposiciones</a></li>
+        <li><a href="academias-musica-danza.html">Escuelas de música y danza</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li><a href="index.html#contacto">Solicitar demo</a></li>
+        <li><a href="mailto:hola@didactia.eu">hola@didactia.eu</a></li>
+        <li><a href="app.html">Acceder a la plataforma</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 DidactIA Academias · Precios sin IVA</div>
+    <div><a href="#">Aviso legal</a><a href="#">Privacidad</a></div>
+  </div>
+</footer>
+
+<script>
+/* ── Toggle mensual / anual ── */
+function setCiclo(c){
+  document.getElementById('btn-mes').classList.toggle('on',c==='mes');
+  document.getElementById('btn-anio').classList.toggle('on',c==='anio');
+  document.getElementById('btn-mes').setAttribute('aria-pressed',c==='mes');
+  document.getElementById('btn-anio').setAttribute('aria-pressed',c==='anio');
+  document.querySelectorAll('.amt').forEach(function(el){
+    var v=el.getAttribute('data-'+c);
+    if(v) el.textContent=v;
+  });
+  document.querySelectorAll('.tier-period').forEach(function(el){
+    var v=el.getAttribute('data-'+c);
+    if(v) el.textContent=v;
+  });
+  document.getElementById('switch-note').innerHTML = (c==='anio')
+    ? 'Precio equivalente por mes con facturación anual. <strong>Te ahorras 2 meses</strong> en cada plan.'
+    : 'Facturación mensual. Cambia a anual y <strong>pagas 10 meses en vez de 12</strong>.';
+}
+
+/* ── Scroll reveals ── */
+var revealObs=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){e.target.classList.add('visible');revealObs.unobserve(e.target);}
+  });
+},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(function(el){revealObs.observe(el);});
+
+/* ── Nav scroll state ── */
+var sentinel=document.getElementById('scroll-sentinel'),navEl=document.getElementById('main-nav');
+if(sentinel&&navEl){
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){navEl.classList.toggle('is-scrolled',!e.isIntersecting);});
+  },{threshold:1}).observe(sentinel);
+}
+</script>
+</body>
+</html>

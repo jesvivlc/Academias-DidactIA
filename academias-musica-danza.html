@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Software para escuelas de música y danza | Programa de gestión de academias — DidactIA</title>
+<meta name="description" content="Programa de gestión para escuelas de música y academias de danza: clases individuales y colectivas, ocupación de aulas y salas, audiciones y recitales, alquiler de instrumentos y cuotas por concepto. Todo incluido desde 39 €/mes, prueba 14 días sin tarjeta.">
+<link rel="canonical" href="https://didactia-academias.vercel.app/academias-musica-danza.html">
+<meta property="og:title" content="Software para escuelas de música y danza — DidactIA Academias">
+<meta property="og:description" content="Clases individuales y colectivas, salas siempre ocupadas, recitales y alquiler de instrumentos. Gestión completa con IA incluida.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23123F3A'/><text x='50' y='58' text-anchor='middle' font-family='Fraunces,serif' font-weight='600' font-size='62' fill='white' letter-spacing='-3'>a</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23E0654A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+
+<div id="scroll-sentinel" style="position:absolute;top:80px;left:0;width:1px;height:1px;pointer-events:none" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="index.html" class="nav-logo" aria-label="DidactIA Academias — inicio">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto" role="img" aria-label="DidactIA">
+      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#123f3a;letter-spacing:-3px}.ti{fill:#e0654a}.sa{fill:#c98a3c}</style></defs>
+      <text x="10" y="230" class="td">Didact<tspan class="ti">IA</tspan></text>
+      <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="sa"/>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#modulos">Producto</a></li>
+    <li class="has-menu"><a href="#" onclick="return false" class="is-current">Sectores</a>
+      <div class="submenu"><div class="submenu-inner">
+        <a href="academias-refuerzo-escolar.html">Refuerzo escolar<small>Repaso, ESO y Bachillerato</small></a>
+        <a href="academias-idiomas.html">Idiomas<small>MCER y exámenes oficiales</small></a>
+        <a href="academias-oposiciones.html">Oposiciones<small>Ciclos largos y simulacros</small></a>
+        <a href="academias-musica-danza.html">Música y danza<small>Individuales, aulas y recitales</small></a>
+      </div></div>
+    </li>
+    <li><a href="index.html#seguridad">Seguridad</a></li>
+    <li><a href="precios.html">Precios</a></li>
+    <li><a href="index.html#contacto">Contacto</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="app.html" class="nav-login">Acceder</a>
+    <a href="index.html#contacto" class="nav-cta">Probar 14 días</a>
+  </div>
+</nav>
+
+<!-- SUBHERO -->
+<header class="subhero">
+  <div class="subhero-inner">
+    <nav class="crumbs" aria-label="Migas de pan">
+      <a href="index.html">Inicio</a><span>/</span><span style="color:var(--txt2)">Música y danza</span>
+    </nav>
+    <div class="subhero-grid">
+      <div>
+        <div class="s-eyebrow reveal">Escuelas de música y academias de danza</div>
+        <h1 class="reveal reveal-delay-1">Treinta minutos de<br>guitarra, una sala con<br>espejo y un <em>recital</em> en mayo</h1>
+        <div class="hero-divider reveal reveal-delay-1"></div>
+        <p class="s-sub reveal reveal-delay-2">
+          Ninguna otra academia mezcla tanto: clases individuales de veinte minutos junto a colectivas de una hora, salas que son el recurso más escaso, instrumentos prestados y una audición de fin de curso que se organiza en paralelo a todo lo demás. DidactIA Academias lo sostiene todo en un mismo sitio.
+        </p>
+        <div class="subhero-actions reveal reveal-delay-3">
+          <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+          <a href="precios.html" class="btn-outline">Ver precios</a>
+        </div>
+        <div class="trust-chips reveal reveal-delay-3">
+          <span class="trust-chip">Individuales y colectivas</span>
+          <span class="trust-chip">Aulas y salas</span>
+          <span class="trust-chip">Sin permanencia</span>
+        </div>
+      </div>
+
+      <div class="reveal reveal-delay-2">
+        <div class="mock">
+          <div class="mock-topbar">
+            <span class="mock-topbar-title">Ocupación de espacios · Martes</span>
+            <span class="mock-topbar-badge">4 salas</span>
+          </div>
+          <div class="mock-content">
+            <div class="mock-lbl">Ocupación de la tarde · 16:00 – 21:00</div>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:82px">Sala de danza</span><div class="mock-bar"><i style="width:95%"></i></div><span style="font-size:11px;color:var(--txt3);width:34px">95%</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:82px">Aula piano</span><div class="mock-bar"><i style="width:88%"></i></div><span style="font-size:11px;color:var(--txt3);width:34px">88%</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:82px">Cabina 1</span><div class="mock-bar"><i style="width:52%"></i></div><span style="font-size:11px;color:var(--txt3);width:34px">52%</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:var(--txt2);width:82px">Aula grupal</span><div class="mock-bar"><i style="width:70%"></i></div><span style="font-size:11px;color:var(--txt3);width:34px">70%</span></div>
+            </div>
+            <div class="mock-ia">
+              <b>✨ Copiloto de dirección</b>
+              <span>La cabina 1 está libre los martes de 17:00 a 19:00. Es el hueco donde caben las cuatro clases individuales de guitarra que tienes en lista de espera.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- DOLORES -->
+<section>
+  <div class="s-eyebrow reveal">Lo que duele en música y danza</div>
+  <h2 class="reveal">Cinco piezas que<br>nunca <em>encajan</em> solas</h2>
+  <p class="s-sub reveal reveal-delay-1">Un software pensado para grupos fijos de veinte alumnos se rompe el primer día en una escuela de música. Estas son las grietas por donde se rompe.</p>
+
+  <div class="pain-grid">
+    <div class="pain-card reveal">
+      <div class="p-num">01</div>
+      <h3>Clases individuales y colectivas a la vez</h3>
+      <p>El mismo alumno tiene instrumento los martes a las 17:20 durante media hora, lenguaje musical en grupo los jueves y coro un viernes al mes. Tres lógicas distintas en una sola ficha.</p>
+      <div class="pain-sol">Cada alumno se matricula en <strong>tantos grupos como necesite</strong>, y cada grupo define sus propias sesiones semanales, su duración y su profesor. Lo individual es simplemente un grupo de un alumno.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-1">
+      <div class="p-num">02</div>
+      <h3>La sala es el recurso más escaso</h3>
+      <p>Hay una sola sala con barra y espejo, y un único aula con piano. Cualquier cambio de horario amenaza con dejar a dos profesores en el mismo espacio a la misma hora.</p>
+      <div class="pain-sol">La <strong>parrilla semanal</strong> muestra la ocupación de cada espacio y avisa del solape de aula o de profesor antes de que llegues a guardar el cambio.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-2">
+      <div class="p-num">03</div>
+      <h3>El recital de mayo se organiza en papel</h3>
+      <p>Autorizaciones de imagen, orden de actuación, ensayo general, vestuario, aforo y las tres familias que se enteran tarde. Cada año se rehace desde cero.</p>
+      <div class="pain-sol">Audiciones, ensayos y festivales viven en el <strong>calendario</strong> de la escuela; el aviso sale por email a las familias implicadas y el consentimiento de imagen queda registrado en la ficha de cada alumno.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-3">
+      <div class="p-num">04</div>
+      <h3>Instrumentos prestados que no vuelven</h3>
+      <p>Dos violines de media talla, un clarinete y las zapatillas de punta que se llevó alguien en marzo. Sin registro, el inventario se descubre en septiembre y siempre falta algo.</p>
+      <div class="pain-sol">El préstamo o alquiler se registra como un <strong>concepto de cobro más</strong> asociado al alumno: sabes quién tiene qué, desde cuándo y si la cuota está al día.</div>
+    </div>
+    <div class="pain-card reveal">
+      <div class="p-num">05</div>
+      <h3>Cada alumno paga una cosa distinta</h3>
+      <p>Matrícula, mensualidad de instrumento, lenguaje musical, alquiler y la cuota del festival. Con hermanos y descuentos, la facturación se convierte en artesanía mensual.</p>
+      <div class="pain-sol">Los <strong>cobros por concepto</strong>, con descuentos en euros y deuda acumulada por alumno, se emiten como factura en PDF con la marca de tu escuela y conforme a Verifactu.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUCIONES -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Cómo lo resuelve</div>
+  <h2 class="reveal">Horario, dinero y escenario<br>en el <em>mismo</em> sitio</h2>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>Una parrilla que respeta tus espacios</h3>
+      <p>La agenda de una escuela de música se construye alumno a alumno, no grupo a grupo. La parrilla semanal muestra a la vez profesores y salas, para que cada hueco de veinte minutos se aproveche sin colisiones.</p>
+      <ul class="sol-feats">
+        <li>Sesiones semanales por grupo, con duración libre</li>
+        <li>Detección automática de solapes de aula y de profesor</li>
+        <li>Vista de ocupación por espacio para encontrar huecos reales</li>
+        <li>Clases individuales tratadas como cualquier otro grupo</li>
+      </ul>
+      <span class="sol-tag">Horario y espacios</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Parrilla · Aula piano</span><span class="mock-topbar-badge">Martes</span></div>
+        <div class="mock-content">
+          <table class="mock-table">
+            <tr><th>Hora</th><th>Clase</th><th>Profesor</th></tr>
+            <tr><td>17:00</td><td>Piano · individual (30 min)</td><td>Profesora A</td></tr>
+            <tr><td>17:30</td><td>Piano · individual (30 min)</td><td>Profesora A</td></tr>
+            <tr><td>18:00</td><td>Lenguaje musical · iniciación</td><td>Profesor B</td></tr>
+            <tr><td>19:00</td><td><span style="color:var(--txt3)">Libre</span></td><td><span style="color:var(--txt3)">—</span></td></tr>
+          </table>
+          <div class="mock-ia">
+            <b>⚠ Aviso de solape</b>
+            <span>La clase de coro que intentas mover a las 18:00 usaría el aula piano, ya ocupada por Lenguaje musical. Hay hueco a las 19:00 en el mismo espacio.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row rev">
+    <div class="sol-text reveal">
+      <h3>Cobros por concepto, sin artesanía mensual</h3>
+      <p>Matrícula, mensualidad, alquiler de instrumento y cuota del festival conviven en la misma ficha. Ves de un vistazo lo cobrado frente a lo previsto y quién arrastra deuda antes de que sea un problema.</p>
+      <ul class="sol-feats">
+        <li>Conceptos de cobro independientes por alumno</li>
+        <li>Descuentos en euros, útiles para hermanos y familias numerosas</li>
+        <li>Deuda acumulada visible en la ficha, sin recalcular nada</li>
+        <li>Factura en PDF con tu marca y recordatorio de impago por email</li>
+      </ul>
+      <span class="sol-tag">Cobros y facturación</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Ficha económica · Alumna</span><span class="mock-topbar-badge">Mayo</span></div>
+        <div class="mock-content">
+          <table class="mock-table">
+            <tr><th>Concepto</th><th>Importe</th><th>Estado</th></tr>
+            <tr><td>Mensualidad · violín individual</td><td>72 €</td><td><span class="mock-pill ok">Cobrado</span></td></tr>
+            <tr><td>Lenguaje musical · grupo</td><td>28 €</td><td><span class="mock-pill ok">Cobrado</span></td></tr>
+            <tr><td>Alquiler de violín 3/4</td><td>12 €</td><td><span class="mock-pill pend">Pendiente</span></td></tr>
+            <tr><td>Cuota audición de junio</td><td>15 €</td><td><span class="mock-pill pend">Pendiente</span></td></tr>
+          </table>
+          <div class="mock-ia">
+            <b>Deuda acumulada</b>
+            <span>27 € en dos conceptos. Puedes enviar el recordatorio a esta familia o a todas las pendientes del mes desde el panel.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>El recital, montado sin hojas sueltas</h3>
+      <p>La audición de fin de curso es el escaparate de la escuela y la razón por la que muchas familias renuevan. Tenerla dentro del sistema evita que se gestione a base de mensajes y listas impresas.</p>
+      <ul class="sol-feats">
+        <li>Audiciones, ensayos y festivales en el calendario compartido</li>
+        <li>Aviso por email a las familias implicadas, segmentado por grupo</li>
+        <li>Consentimiento de imagen registrado en la ficha del alumno</li>
+        <li>Publicaciones para redes sociales generadas con IA para llenar el aforo</li>
+      </ul>
+      <span class="sol-tag">Eventos y difusión</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Audición de fin de curso</span><span class="mock-topbar-badge">14 de junio</span></div>
+        <div class="mock-content">
+          <div class="mock-stat-row">
+            <div class="mock-stat"><div class="mock-stat-n">46</div><div class="mock-stat-l">Participantes</div></div>
+            <div class="mock-stat"><div class="mock-stat-n">41</div><div class="mock-stat-l">Con consentimiento</div></div>
+            <div class="mock-stat"><div class="mock-stat-n">2</div><div class="mock-stat-l">Ensayos previstos</div></div>
+          </div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fbe7e0;color:#a4552f">1</div><div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Iniciación de danza</div><div style="font-size:11.5px;color:var(--txt3)">12 alumnas · 8 minutos</div></div><span class="mock-pill ok">Confirmado</span></div>
+          <div class="mock-row"><div class="mock-avatar" style="background:#fbe7e0;color:#a4552f">2</div><div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Piano · nivel medio</div><div style="font-size:11.5px;color:var(--txt3)">6 alumnos · 14 minutos</div></div><span class="mock-pill ok">Confirmado</span></div>
+          <div class="mock-ia">
+            <b>✨ Publicación para redes</b>
+            <span>«El 14 de junio nuestras alumnas y alumnos se suben al escenario. Cuarenta y seis motivos para venir a escucharlos. Entrada libre hasta completar aforo.»</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CASOS -->
+<section>
+  <div class="s-eyebrow reveal">Casos de uso</div>
+  <h2 class="reveal">Situaciones que<br><em>reconocerás</em></h2>
+  <div class="quote-grid">
+    <div class="quote-card reveal">
+      <p>«Movimos una clase de guitarra y dejamos a dos profesores en la misma sala. Nos enteramos cuando llegaron los alumnos.»</p>
+      <div class="quote-who">Escuela de música · 4 espacios<span>La parrilla avisa del solape de aula antes de guardar el cambio.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-1">
+      <p>«Cada mes había que revisar a mano quién tenía instrumento alquilado y quién había pagado la cuota del festival.»</p>
+      <div class="quote-who">Academia de danza y música · 210 alumnos<span>Cada concepto se cobra por separado y la deuda se ve en la ficha.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-2">
+      <p>«En la audición publicamos una foto de un grupo entero sin comprobar quién no tenía autorización de imagen.»</p>
+      <div class="quote-who">Escuela con alumnado mayoritariamente menor de edad<span>El consentimiento queda registrado en la ficha y se consulta antes de publicar.</span></div>
+    </div>
+  </div>
+  <p class="quote-disclaimer reveal">Situaciones ilustrativas construidas a partir de problemas habituales del sector. No corresponden a escuelas ni a personas concretas.</p>
+</section>
+
+<!-- CROSS -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Otros sectores</div>
+  <h2 class="reveal">¿Tu academia es de<br><em>otro tipo?</em></h2>
+  <p class="s-sub reveal reveal-delay-1">La base es la misma; lo que cambia es cómo se organizan los grupos, la evaluación y la relación con el alumnado.</p>
+  <div class="cross-grid">
+    <a class="cross-card reveal" href="academias-refuerzo-escolar.html">
+      <div class="ck">Refuerzo escolar</div>
+      <h3>Academias de refuerzo</h3>
+      <p>Estacionalidad, grupos por nivel dentro del mismo curso y bajas justo después de aprobar.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-1" href="academias-idiomas.html">
+      <div class="ck">Idiomas</div>
+      <h3>Academias de idiomas</h3>
+      <p>Niveles MCER, preparación de exámenes oficiales y grupos que rotan cada convocatoria.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-2" href="academias-oposiciones.html">
+      <div class="ck">Oposiciones</div>
+      <h3>Academias de oposiciones</h3>
+      <p>Ciclos largos, simulacros, temario que se actualiza y abandono por desgaste.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-3" href="precios.html">
+      <div class="ck">Precios</div>
+      <h3>Todo incluido desde 39 €/mes</h3>
+      <p>Cuatro tramos por alumnos activos, sin módulos de pago y con la IA dentro del precio.</p>
+      <span class="cgo">Ver precios →</span>
+    </a>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2 class="reveal">Que la escuela suene bien<br>también <em>fuera</em> del aula</h2>
+  <p class="reveal reveal-delay-1">Cargamos tus alumnos, clases y espacios desde tu Excel y lo pruebas dos semanas con todo desbloqueado. Sin tarjeta y sin permanencia.</p>
+  <div class="cta-actions reveal reveal-delay-2">
+    <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+    <a href="precios.html" class="btn-outline">Ver precios</a>
+  </div>
+  <div class="trust-chips reveal reveal-delay-3">
+    <span class="trust-chip">60 días de garantía</span>
+    <span class="trust-chip">Sin cuota de alta</span>
+    <span class="trust-chip">Migración incluida</span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-cols">
+    <div class="footer-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:30px;width:auto" role="img" aria-label="DidactIA">
+        <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#c98a3c}</style></defs>
+        <text x="10" y="230" class="tdf">Didact<tspan class="tif">IA</tspan></text>
+        <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="saf"/>
+      </svg>
+      <p>Software de gestión con inteligencia artificial para academias. Todo incluido, sin módulos de pago y con los datos alojados en la Unión Europea.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <ul>
+        <li><a href="index.html#modulos">Módulos</a></li>
+        <li><a href="index.html#seguridad">Seguridad</a></li>
+        <li><a href="index.html#como">Implementación</a></li>
+        <li><a href="precios.html">Precios</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Por sector</h4>
+      <ul>
+        <li><a href="academias-refuerzo-escolar.html">Academias de refuerzo escolar</a></li>
+        <li><a href="academias-idiomas.html">Academias de idiomas</a></li>
+        <li><a href="academias-oposiciones.html">Academias de oposiciones</a></li>
+        <li><a href="academias-musica-danza.html">Escuelas de música y danza</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li><a href="index.html#contacto">Solicitar demo</a></li>
+        <li><a href="mailto:hola@didactia.eu">hola@didactia.eu</a></li>
+        <li><a href="app.html">Acceder a la plataforma</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 DidactIA Academias · Precios sin IVA</div>
+    <div><a href="#">Aviso legal</a><a href="#">Privacidad</a></div>
+  </div>
+</footer>
+
+<script>
+var revealObs=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){e.target.classList.add('visible');revealObs.unobserve(e.target);}
+  });
+},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(function(el){revealObs.observe(el);});
+
+var sentinel=document.getElementById('scroll-sentinel'),navEl=document.getElementById('main-nav');
+if(sentinel&&navEl){
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){navEl.classList.toggle('is-scrolled',!e.isIntersecting);});
+  },{threshold:1}).observe(sentinel);
+}
+</script>
+</body>
+</html>

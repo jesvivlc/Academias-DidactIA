@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Software para academias de oposiciones | Programa de gestión de opositores — DidactIA</title>
+<meta name="description" content="Programa de gestión para academias de oposiciones: seguimiento de simulacros por bloques de temario, control del abandono en ciclos largos, entrega de material actualizado y cuotas mensuales sin impagos. Todo incluido desde 39 €/mes, prueba 14 días sin tarjeta.">
+<link rel="canonical" href="https://didactia-academias.vercel.app/academias-oposiciones.html">
+<meta property="og:title" content="Software para academias de oposiciones — DidactIA Academias">
+<meta property="og:description" content="Preparaciones de año y medio, simulacros, temario y motivación. Gestión completa con IA que detecta el abandono antes de que ocurra.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23123F3A'/><text x='50' y='58' text-anchor='middle' font-family='Fraunces,serif' font-weight='600' font-size='62' fill='white' letter-spacing='-3'>a</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23E0654A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+
+<div id="scroll-sentinel" style="position:absolute;top:80px;left:0;width:1px;height:1px;pointer-events:none" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="index.html" class="nav-logo" aria-label="DidactIA Academias — inicio">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto" role="img" aria-label="DidactIA">
+      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#123f3a;letter-spacing:-3px}.ti{fill:#e0654a}.sa{fill:#c98a3c}</style></defs>
+      <text x="10" y="230" class="td">Didact<tspan class="ti">IA</tspan></text>
+      <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="sa"/>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#modulos">Producto</a></li>
+    <li class="has-menu"><a href="#" onclick="return false" class="is-current">Sectores</a>
+      <div class="submenu"><div class="submenu-inner">
+        <a href="academias-refuerzo-escolar.html">Refuerzo escolar<small>Repaso, ESO y Bachillerato</small></a>
+        <a href="academias-idiomas.html">Idiomas<small>MCER y exámenes oficiales</small></a>
+        <a href="academias-oposiciones.html">Oposiciones<small>Ciclos largos y simulacros</small></a>
+        <a href="academias-musica-danza.html">Música y danza<small>Individuales, aulas y recitales</small></a>
+      </div></div>
+    </li>
+    <li><a href="index.html#seguridad">Seguridad</a></li>
+    <li><a href="precios.html">Precios</a></li>
+    <li><a href="index.html#contacto">Contacto</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="app.html" class="nav-login">Acceder</a>
+    <a href="index.html#contacto" class="nav-cta">Probar 14 días</a>
+  </div>
+</nav>
+
+<!-- SUBHERO -->
+<header class="subhero">
+  <div class="subhero-inner">
+    <nav class="crumbs" aria-label="Migas de pan">
+      <a href="index.html">Inicio</a><span>/</span><span style="color:var(--txt2)">Oposiciones</span>
+    </nav>
+    <div class="subhero-grid">
+      <div>
+        <div class="s-eyebrow reveal">Academias de oposiciones</div>
+        <h1 class="reveal reveal-delay-1">La preparación dura<br>dos años. La <em>motivación</em>,<br>si nadie la cuida, no</h1>
+        <div class="hero-divider reveal reveal-delay-1"></div>
+        <p class="s-sub reveal reveal-delay-2">
+          En una academia de oposiciones no pierdes alumnos por el precio: los pierdes por el desgaste de un ciclo largo. DidactIA Academias sigue simulacro a simulacro cómo va cada opositor, detecta al que se está descolgando y te da el plan para retenerlo antes de la baja.
+        </p>
+        <div class="subhero-actions reveal reveal-delay-3">
+          <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+          <a href="precios.html" class="btn-outline">Ver precios</a>
+        </div>
+        <div class="trust-chips reveal reveal-delay-3">
+          <span class="trust-chip">Seguimiento de simulacros</span>
+          <span class="trust-chip">Control de abandono</span>
+          <span class="trust-chip">Sin permanencia</span>
+        </div>
+      </div>
+
+      <div class="reveal reveal-delay-2">
+        <div class="mock">
+          <div class="mock-topbar">
+            <span class="mock-topbar-title">Preparación · Administrativo</span>
+            <span class="mock-topbar-badge">Mes 11 de 18</span>
+          </div>
+          <div class="mock-content">
+            <div class="mock-stat-row">
+              <div class="mock-stat"><div class="mock-stat-n">64</div><div class="mock-stat-l">Opositores</div></div>
+              <div class="mock-stat"><div class="mock-stat-n">9</div><div class="mock-stat-l">Simulacros hechos</div></div>
+              <div class="mock-stat"><div class="mock-stat-n">5</div><div class="mock-stat-l">Descolgándose</div></div>
+            </div>
+            <div class="mock-lbl">Temario cubierto</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div class="mock-bar"><i style="width:62%"></i></div>
+              <span style="font-size:12px;color:var(--txt2);white-space:nowrap">37 / 60 temas</span>
+            </div>
+            <div class="mock-ia">
+              <b>✨ Copiloto de dirección</b>
+              <span>Cinco opositores llevan dos simulacros sin presentarse y su asistencia ha caído por debajo del 60 %. Es el patrón que precede a la baja: convócalos a tutoría esta semana.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- DOLORES -->
+<section>
+  <div class="s-eyebrow reveal">Lo que duele en oposiciones</div>
+  <h2 class="reveal">El enemigo no es<br>la competencia: es el <em>abandono</em></h2>
+  <p class="s-sub reveal reveal-delay-1">Un opositor que se va en el mes catorce se lleva por delante toda la rentabilidad del ciclo. Estos son los cinco puntos donde se rompe.</p>
+
+  <div class="pain-grid">
+    <div class="pain-card reveal">
+      <div class="p-num">01</div>
+      <h3>Ciclos de año y medio, dos años o más</h3>
+      <p>Entre la matrícula y el examen pasan decenas de meses. Nadie recuerda de memoria quién entró en marzo del año pasado, cuánto temario lleva ni cuántas veces se ha presentado ya.</p>
+      <div class="pain-sol">Cada opositor tiene un <strong>historial completo</strong>: fecha de alta, grupos, asistencia, simulacros, pagos e incidencias. La antigüedad se calcula sola y pesa en el análisis de riesgo.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-1">
+      <div class="p-num">02</div>
+      <h3>El simulacro es el único termómetro fiable</h3>
+      <p>La sensación del preparador vale, pero no basta. Sin histórico por bloques de temario no sabes si el alumno ha mejorado en Derecho Administrativo o solo ha tenido suerte con el test.</p>
+      <div class="pain-sol">Registra cada <strong>simulacro y prueba</strong> con su nota y ve la evolución del opositor a lo largo del ciclo, no solo el resultado del último test.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-2">
+      <div class="p-num">03</div>
+      <h3>Temario que caduca a mitad del ciclo</h3>
+      <p>Cambia una ley, se actualizan cuatro temas y hay que asegurarse de que los sesenta alumnos tienen la versión nueva. Por email suelto, siempre se queda alguien fuera.</p>
+      <div class="pain-sol">Las <strong>comunicaciones segmentadas</strong> por grupo o preparación envían la actualización a todos los afectados por email real, con registro de qué se envió, a quién y cuándo.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-3">
+      <div class="p-num">04</div>
+      <h3>La convocatoria no depende de ti</h3>
+      <p>Se publican las bases, se mueve la fecha del examen o cambian las plazas, y hay que reorganizar el calendario de clases y simulacros de todo el grupo en cuestión de días.</p>
+      <div class="pain-sol">El <strong>calendario de la academia</strong> centraliza convocatorias, simulacros y sesiones; un cambio se comunica a todo el grupo afectado en un envío.</div>
+    </div>
+    <div class="pain-card reveal">
+      <div class="p-num">05</div>
+      <h3>Cuotas de veinte meses, impagos silenciosos</h3>
+      <p>En un ciclo largo, un recibo devuelto pasa desapercibido. Cuando se detecta, el alumno acumula tres mensualidades y la conversación ya es incómoda para las dos partes.</p>
+      <div class="pain-sol">La ficha muestra la <strong>deuda acumulada</strong> del opositor y el recordatorio de impago se envía por email a todos los pendientes desde el panel, en un clic.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUCIONES -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Cómo lo resuelve</div>
+  <h2 class="reveal">Todo el ciclo,<br>a la <em>vista</em></h2>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>Simulacros con evolución, no con anécdota</h3>
+      <p>Cada prueba queda registrada con su fecha y su nota, así que la conversación de tutoría deja de basarse en impresiones. Ves si el opositor sube, se estanca o entra en la caída típica del mes doce.</p>
+      <ul class="sol-feats">
+        <li>Registro de simulacros, tests y pruebas prácticas por opositor</li>
+        <li>Evolución a lo largo del ciclo, no solo el último resultado</li>
+        <li>Comparación con la media del grupo de preparación</li>
+        <li>Informe en PDF para la tutoría individual</li>
+      </ul>
+      <span class="sol-tag">Calificaciones y pruebas</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Simulacros · Opositor</span><span class="mock-topbar-badge">9 pruebas</span></div>
+        <div class="mock-content">
+          <table class="mock-table">
+            <tr><th>Simulacro</th><th>Nota</th><th>Grupo</th></tr>
+            <tr><td>Nº 6 · Temas 1–20</td><td>6,1</td><td>5,8</td></tr>
+            <tr><td>Nº 7 · Temas 21–35</td><td>6,8</td><td>5,9</td></tr>
+            <tr><td>Nº 8 · Repaso general</td><td>5,4</td><td>6,1</td></tr>
+            <tr><td>Nº 9 · Supuesto práctico</td><td>4,9</td><td>6,0</td></tr>
+          </table>
+          <div class="mock-ia">
+            <b>✨ Lectura del preparador</b>
+            <span>Sube en test puro y cae en supuesto práctico dos veces seguidas. Merece una tutoría centrada en la resolución de casos, no más horas de temario.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row rev">
+    <div class="sol-text reveal">
+      <h3>Detecta al que se está descolgando</h3>
+      <p>El abandono casi nunca es una decisión repentina: viene precedido de dos semanas de faltas, un simulacro no presentado y un recibo que se retrasa. El sistema junta esas señales y te las pone delante.</p>
+      <ul class="sol-feats">
+        <li>Riesgo calculado con asistencia, notas, impagos, conducta y antigüedad</li>
+        <li>Lista priorizada: a quién llamar primero y por qué motivo</li>
+        <li>Plan de retención concreto redactado con IA para cada caso</li>
+        <li>Acción directa desde el panel: escribir, citar o registrar la tutoría</li>
+      </ul>
+      <span class="sol-tag">Riesgo y retención</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Riesgo de abandono</span><span class="mock-topbar-badge">5 avisos</span></div>
+        <div class="mock-content">
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:#fee2e2;color:#991b1b">OP</div>
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Opositor · mes 14</div><div style="font-size:11.5px;color:var(--txt3)">2 simulacros sin presentar · asistencia 54 % · 1 recibo pendiente</div></div>
+            <span class="mock-pill bad">Alto</span>
+          </div>
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:#fef3c7;color:#92400e">OP</div>
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Opositora · mes 9</div><div style="font-size:11.5px;color:var(--txt3)">Notas estables · asistencia irregular desde enero</div></div>
+            <span class="mock-pill pend">Medio</span>
+          </div>
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:#dcfce7;color:#166534">OP</div>
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Opositor · mes 17</div><div style="font-size:11.5px;color:var(--txt3)">Progresión sostenida · al día en pagos</div></div>
+            <span class="mock-pill ok">Bajo</span>
+          </div>
+          <div class="mock-ia">
+            <b>✨ Plan de retención</b>
+            <span>Lleva catorce meses y ha bajado tras el último suspenso en supuesto práctico. Ofrece una tutoría individual y un calendario de repaso a ocho semanas: el objetivo es recuperar la sensación de avance.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>El opositor no estudia solo entre clase y clase</h3>
+      <p>La mayor parte del esfuerzo ocurre fuera del aula, y ahí es donde se abandona. El tutor con IA responde dudas de temario en cualquier momento y mantiene viva la sensación de acompañamiento.</p>
+      <ul class="sol-feats">
+        <li>Tutor con IA disponible para el alumnado, con conversación continua</li>
+        <li>Calendario con convocatorias, simulacros y sesiones de repaso</li>
+        <li>Avisos automáticos por email cuando falta a una sesión clave</li>
+        <li>Mensajería directa con la academia, sin números de teléfono personales</li>
+      </ul>
+      <span class="sol-tag">Tutor IA y calendario</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Tutor IA · Opositor</span><span class="mock-topbar-badge">Disponible</span></div>
+        <div class="mock-content">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="align-self:flex-end;background:var(--navy);color:#fff;padding:9px 13px;border-radius:12px 12px 3px 12px;font-size:12.5px;max-width:88%">No me queda claro el plazo de interposición del recurso de alzada</div>
+            <div style="background:var(--white);border:1px solid var(--bdr);padding:11px 13px;border-radius:3px 12px 12px 12px;font-size:12.5px;max-width:92%;color:var(--txt2);line-height:1.6">Vamos por partes. ¿Recuerdas contra qué actos cabe la alzada? Dime tu respuesta y seguimos con el plazo — así lo fijas mejor que si te lo doy hecho.</div>
+            <div style="align-self:flex-end;background:var(--navy);color:#fff;padding:9px 13px;border-radius:12px 12px 3px 12px;font-size:12.5px;max-width:88%">Contra los que no ponen fin a la vía administrativa</div>
+            <div style="background:var(--white);border:1px solid var(--bdr);padding:11px 13px;border-radius:3px 12px 12px 12px;font-size:12.5px;max-width:92%;color:var(--txt2);line-height:1.6">Exacto. Ahora el plazo: piensa en la diferencia entre acto expreso y presunto. Te dejo un mini-test de cinco preguntas del tema 12 para consolidarlo.</div>
+          </div>
+          <div class="mock-ia">
+            <b>✨ Para el preparador</b>
+            <span>Las dudas más repetidas de la semana en el grupo: recursos administrativos (11), plazos (7) y silencio administrativo (5).</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CASOS -->
+<section>
+  <div class="s-eyebrow reveal">Casos de uso</div>
+  <h2 class="reveal">Situaciones que<br><em>reconocerás</em></h2>
+  <div class="quote-grid">
+    <div class="quote-card reveal">
+      <p>«Nos enterábamos de que un alumno lo había dejado cuando devolvía el recibo, no cuando dejó de venir.»</p>
+      <div class="quote-who">Academia de oposiciones · administración local<span>El aviso de riesgo llega con semanas de margen, cuando todavía se puede hablar.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-1">
+      <p>«Teníamos las notas de nueve simulacros en nueve hojas de cálculo distintas.»</p>
+      <div class="quote-who">Preparación de auxiliar administrativo · 60 opositores<span>Todas las pruebas, en la ficha del alumno y con la evolución del ciclo completo.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-2">
+      <p>«Cambió la normativa de cuatro temas y tres alumnos se presentaron con la versión antigua.»</p>
+      <div class="quote-who">Academia con dos preparaciones simultáneas<span>El envío segmentado deja registro de qué se mandó, a quién y qué día.</span></div>
+    </div>
+  </div>
+  <p class="quote-disclaimer reveal">Situaciones ilustrativas construidas a partir de problemas habituales del sector. No corresponden a academias ni a personas concretas.</p>
+</section>
+
+<!-- CROSS -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Otros sectores</div>
+  <h2 class="reveal">¿Tu academia es de<br><em>otro tipo?</em></h2>
+  <p class="s-sub reveal reveal-delay-1">La base es la misma; lo que cambia es cómo se organizan los grupos, la evaluación y la relación con el alumnado.</p>
+  <div class="cross-grid">
+    <a class="cross-card reveal" href="academias-refuerzo-escolar.html">
+      <div class="ck">Refuerzo escolar</div>
+      <h3>Academias de refuerzo</h3>
+      <p>Estacionalidad, grupos por nivel dentro del mismo curso y bajas justo después de aprobar.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-1" href="academias-idiomas.html">
+      <div class="ck">Idiomas</div>
+      <h3>Academias de idiomas</h3>
+      <p>Niveles MCER, preparación de exámenes oficiales y grupos que rotan cada convocatoria.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-2" href="academias-musica-danza.html">
+      <div class="ck">Música y danza</div>
+      <h3>Escuelas de música y danza</h3>
+      <p>Clases individuales y colectivas, aulas y salas, recitales y alquiler de instrumentos.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-3" href="precios.html">
+      <div class="ck">Precios</div>
+      <h3>Todo incluido desde 39 €/mes</h3>
+      <p>Cuatro tramos por alumnos activos, sin módulos de pago y con la IA dentro del precio.</p>
+      <span class="cgo">Ver precios →</span>
+    </a>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2 class="reveal">Que ningún opositor<br>se descuelgue <em>en silencio</em></h2>
+  <p class="reveal reveal-delay-1">Cargamos tus alumnos, grupos y simulacros desde tu Excel y lo pruebas dos semanas con todo desbloqueado. Sin tarjeta y sin permanencia.</p>
+  <div class="cta-actions reveal reveal-delay-2">
+    <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+    <a href="precios.html" class="btn-outline">Ver precios</a>
+  </div>
+  <div class="trust-chips reveal reveal-delay-3">
+    <span class="trust-chip">60 días de garantía</span>
+    <span class="trust-chip">Sin cuota de alta</span>
+    <span class="trust-chip">Migración incluida</span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-cols">
+    <div class="footer-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:30px;width:auto" role="img" aria-label="DidactIA">
+        <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#c98a3c}</style></defs>
+        <text x="10" y="230" class="tdf">Didact<tspan class="tif">IA</tspan></text>
+        <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="saf"/>
+      </svg>
+      <p>Software de gestión con inteligencia artificial para academias. Todo incluido, sin módulos de pago y con los datos alojados en la Unión Europea.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <ul>
+        <li><a href="index.html#modulos">Módulos</a></li>
+        <li><a href="index.html#seguridad">Seguridad</a></li>
+        <li><a href="index.html#como">Implementación</a></li>
+        <li><a href="precios.html">Precios</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Por sector</h4>
+      <ul>
+        <li><a href="academias-refuerzo-escolar.html">Academias de refuerzo escolar</a></li>
+        <li><a href="academias-idiomas.html">Academias de idiomas</a></li>
+        <li><a href="academias-oposiciones.html">Academias de oposiciones</a></li>
+        <li><a href="academias-musica-danza.html">Escuelas de música y danza</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li><a href="index.html#contacto">Solicitar demo</a></li>
+        <li><a href="mailto:hola@didactia.eu">hola@didactia.eu</a></li>
+        <li><a href="app.html">Acceder a la plataforma</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 DidactIA Academias · Precios sin IVA</div>
+    <div><a href="#">Aviso legal</a><a href="#">Privacidad</a></div>
+  </div>
+</footer>
+
+<script>
+var revealObs=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){e.target.classList.add('visible');revealObs.unobserve(e.target);}
+  });
+},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(function(el){revealObs.observe(el);});
+
+var sentinel=document.getElementById('scroll-sentinel'),navEl=document.getElementById('main-nav');
+if(sentinel&&navEl){
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){navEl.classList.toggle('is-scrolled',!e.isIntersecting);});
+  },{threshold:1}).observe(sentinel);
+}
+</script>
+</body>
+</html>

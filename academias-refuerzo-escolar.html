@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Software para academias de refuerzo escolar | DidactIA Academias</title>
+<meta name="description" content="Programa de gestión para academias de refuerzo y repaso escolar: grupos por curso y nivel, control de asistencia, comunicación con las familias y aviso temprano de bajas tras los exámenes. Todo incluido desde 39 €/mes. Prueba 14 días sin tarjeta.">
+<link rel="canonical" href="https://didactia-academias.vercel.app/academias-refuerzo-escolar.html">
+<meta property="og:title" content="Software para academias de refuerzo escolar — DidactIA Academias">
+<meta property="og:description" content="Gestiona grupos por nivel, asistencia, cobros y la relación con las familias. Con IA que te avisa de qué alumno está a punto de darse de baja.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23123F3A'/><text x='50' y='58' text-anchor='middle' font-family='Fraunces,serif' font-weight='600' font-size='62' fill='white' letter-spacing='-3'>a</text><path d='M80 16 L83.6 28 L96 32 L83.6 36 L80 48 L76.4 36 L64 32 L76.4 28 Z' fill='%23E0654A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+
+<div id="scroll-sentinel" style="position:absolute;top:80px;left:0;width:1px;height:1px;pointer-events:none" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="index.html" class="nav-logo" aria-label="DidactIA Academias — inicio">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:58px;width:auto" role="img" aria-label="DidactIA">
+      <defs><style>.td{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:#123f3a;letter-spacing:-3px}.ti{fill:#e0654a}.sa{fill:#c98a3c}</style></defs>
+      <text x="10" y="230" class="td">Didact<tspan class="ti">IA</tspan></text>
+      <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="sa"/>
+    </svg>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#modulos">Producto</a></li>
+    <li class="has-menu"><a href="#" onclick="return false" class="is-current">Sectores</a>
+      <div class="submenu"><div class="submenu-inner">
+        <a href="academias-refuerzo-escolar.html">Refuerzo escolar<small>Repaso, ESO y Bachillerato</small></a>
+        <a href="academias-idiomas.html">Idiomas<small>MCER y exámenes oficiales</small></a>
+        <a href="academias-oposiciones.html">Oposiciones<small>Ciclos largos y simulacros</small></a>
+        <a href="academias-musica-danza.html">Música y danza<small>Individuales, aulas y recitales</small></a>
+      </div></div>
+    </li>
+    <li><a href="index.html#seguridad">Seguridad</a></li>
+    <li><a href="precios.html">Precios</a></li>
+    <li><a href="index.html#contacto">Contacto</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="app.html" class="nav-login">Acceder</a>
+    <a href="index.html#contacto" class="nav-cta">Probar 14 días</a>
+  </div>
+</nav>
+
+<!-- SUBHERO -->
+<header class="subhero">
+  <div class="subhero-inner">
+    <nav class="crumbs" aria-label="Migas de pan">
+      <a href="index.html">Inicio</a><span>/</span><span style="color:var(--txt2)">Refuerzo escolar</span>
+    </nav>
+    <div class="subhero-grid">
+      <div>
+        <div class="s-eyebrow reveal">Academias de refuerzo y repaso</div>
+        <h1 class="reveal reveal-delay-1">El software que entiende<br>tu curso: de <em>septiembre</em><br>a la última recuperación</h1>
+        <div class="hero-divider reveal reveal-delay-1"></div>
+        <p class="s-sub reveal reveal-delay-2">
+          Grupos que cambian cada trimestre, alumnos que llegan en enero, familias que preguntan por WhatsApp y bajas que aparecen justo después de las notas. DidactIA Academias organiza todo eso y, además, te avisa de qué alumno está a punto de irse antes de que lo diga.
+        </p>
+        <div class="subhero-actions reveal reveal-delay-3">
+          <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+          <a href="precios.html" class="btn-outline">Ver precios</a>
+        </div>
+        <div class="trust-chips reveal reveal-delay-3">
+          <span class="trust-chip">Sin tarjeta</span>
+          <span class="trust-chip">Sin permanencia</span>
+          <span class="trust-chip">Migración desde Excel incluida</span>
+        </div>
+      </div>
+
+      <div class="reveal reveal-delay-2">
+        <div class="mock">
+          <div class="mock-topbar">
+            <span class="mock-topbar-title">Panel del negocio · Tu academia</span>
+            <span class="mock-topbar-badge">Mayo</span>
+          </div>
+          <div class="mock-content">
+            <div class="mock-stat-row">
+              <div class="mock-stat"><div class="mock-stat-n">184</div><div class="mock-stat-l">Alumnos activos</div></div>
+              <div class="mock-stat"><div class="mock-stat-n">78%</div><div class="mock-stat-l">Ocupación de grupos</div></div>
+              <div class="mock-stat"><div class="mock-stat-n">7</div><div class="mock-stat-l">En riesgo de baja</div></div>
+            </div>
+            <div class="mock-lbl">Cobrado sobre previsto · mayo</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div class="mock-bar"><i style="width:86%"></i></div>
+              <span style="font-size:12px;color:var(--txt2);white-space:nowrap">6.240 € / 7.250 €</span>
+            </div>
+            <table class="mock-table">
+              <tr><th>Grupo</th><th>Nivel</th><th>Plazas</th></tr>
+              <tr><td>Mates 3º ESO — L/X 17:00</td><td>Intermedio</td><td><span class="mock-pill ok">8/8</span></td></tr>
+              <tr><td>Lengua 1º ESO — M/J 17:00</td><td>Inicial</td><td><span class="mock-pill pend">5/8</span></td></tr>
+              <tr><td>Física 1º Bach — V 18:30</td><td>Avanzado</td><td><span class="mock-pill ok">7/8</span></td></tr>
+            </table>
+            <div class="mock-ia">
+              <b>✨ Copiloto de dirección</b>
+              <span>El grupo de Lengua 1º ESO lleva 3 semanas por debajo de la mitad de ocupación. Puedes fusionarlo con el de M/J 18:30 y liberar el aula 2 los martes.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- DOLORES -->
+<section>
+  <div class="s-eyebrow reveal">Lo que duele en el repaso</div>
+  <h2 class="reveal">Cinco problemas que<br>no salen en <em>ningún</em> folleto</h2>
+  <p class="s-sub reveal reveal-delay-1">Una academia de refuerzo no se parece a un colegio ni a una escuela de idiomas. Su curso tiene picos, valles y una relación con las familias que se juega cada trimestre.</p>
+
+  <div class="pain-grid">
+    <div class="pain-card reveal">
+      <div class="p-num">01</div>
+      <h3>La estacionalidad se come la caja</h3>
+      <p>Septiembre y enero disparan las matrículas; después de junio se vacía. Sin previsión, se contrata de más en octubre y se pasa apuros en primavera.</p>
+      <div class="pain-sol">El <strong>panel del negocio</strong> muestra ingresos de los últimos seis meses, ocupación por grupo y previsión del mes, para que decidas con datos y no con la sensación de la semana.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-1">
+      <div class="p-num">02</div>
+      <h3>Aprueban en junio y se van</h3>
+      <p>El alumno recupera, la familia da por resuelto el problema y la baja llega por WhatsApp un domingo. Nadie vio venir la señal: dos faltas, una nota que subió y el pago que se retrasó.</p>
+      <div class="pain-sol">La <strong>predicción de bajas</strong> cruza asistencia, notas, impagos, conducta y antigüedad, ordena a los alumnos por riesgo y propone un plan de retención concreto para cada uno.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-2">
+      <div class="p-num">03</div>
+      <h3>Un alumno, tres grupos, tres niveles</h3>
+      <p>El mismo chaval de 3º de ESO va a Matemáticas los lunes, a Física los viernes y a un intensivo en Semana Santa. Cuadrar eso en una hoja de cálculo termina en solapes y aulas duplicadas.</p>
+      <div class="pain-sol">Cada alumno se matricula en <strong>tantos grupos como necesite</strong>, con sesiones semanales propias, y la parrilla avisa del solape de aula o profesor antes de guardarlo.</div>
+    </div>
+    <div class="pain-card reveal reveal-delay-3">
+      <div class="p-num">04</div>
+      <h3>La familia pregunta por WhatsApp</h3>
+      <p>«¿Ha ido hoy?», «¿cómo lleva el examen del jueves?», «¿cuándo paga?». Cada consulta interrumpe a quien esté en recepción y se responde de memoria.</p>
+      <div class="pain-sol">Las familias entran a su <strong>portal</strong> y ven asistencia, notas y recibos de sus hijos —solo de los suyos—. Si un alumno falta, reciben un email automático el mismo día.</div>
+    </div>
+    <div class="pain-card reveal">
+      <div class="p-num">05</div>
+      <h3>Mensualidades que se arrastran</h3>
+      <p>Un recibo devuelto en febrero que nadie reclama se convierte en tres meses de deuda en mayo, y reclamarlo entonces cuesta el cliente.</p>
+      <div class="pain-sol">La ficha del alumno muestra la <strong>deuda acumulada</strong> y desde el panel se envía el recordatorio de impago por email a todas las familias afectadas de una vez.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUCIONES -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Cómo lo resuelve</div>
+  <h2 class="reveal">Pensado para el <em>ritmo</em><br>de una academia de repaso</h2>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>Grupos por nivel, no por curso escolar</h3>
+      <p>En refuerzo, dos alumnos de 2º de ESO pueden necesitar cosas opuestas. El planificador agrupa por nivel real y por necesidades de apoyo, y propone en qué hueco de la parrilla cabe cada grupo nuevo.</p>
+      <ul class="sol-feats">
+        <li>Propuesta automática de grupos por nivel y necesidades educativas</li>
+        <li>Huecos libres de aula y profesor calculados sobre tu parrilla real</li>
+        <li>Aviso de solapes antes de publicar el horario</li>
+        <li>Altas a mitad de curso sin rehacer nada</li>
+      </ul>
+      <span class="sol-tag">Planificador de grupos</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Planificador · Propuesta de grupos</span><span class="mock-topbar-badge">2º trimestre</span></div>
+        <div class="mock-content">
+          <div class="mock-lbl">Alumnos sin grupo asignado · 11</div>
+          <table class="mock-table">
+            <tr><th>Grupo propuesto</th><th>Alumnos</th><th>Hueco libre</th></tr>
+            <tr><td>Mates 2º ESO · nivel inicial</td><td>6</td><td>L/X 16:00 · Aula 1</td></tr>
+            <tr><td>Mates 2º ESO · nivel medio</td><td>5</td><td>M/J 17:00 · Aula 3</td></tr>
+            <tr><td>Inglés 4º ESO · repaso</td><td>7</td><td>V 18:00 · Aula 2</td></tr>
+          </table>
+          <div class="mock-ia">
+            <b>✨ Sugerencia</b>
+            <span>Separar los dos niveles de Matemáticas evita que el grupo avance a dos velocidades. Ambos caben en la parrilla sin mover ninguna clase existente.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row rev">
+    <div class="sol-text reveal">
+      <h3>Te avisa de la baja antes de que ocurra</h3>
+      <p>El módulo de riesgo revisa cada semana la asistencia, la evolución de las notas, los pagos y las incidencias de cada alumno. No te da un número abstracto: te dice quién, por qué y qué hacer esta semana.</p>
+      <ul class="sol-feats">
+        <li>Alumnos ordenados por probabilidad de darse de baja</li>
+        <li>Motivo desglosado: faltas, notas, impagos, conducta o antigüedad</li>
+        <li>Plan de refuerzo y de retención redactado con IA</li>
+        <li>Acción directa: escribir a la familia o citar a tutoría</li>
+      </ul>
+      <span class="sol-tag">Retención con IA</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Riesgo de baja · Esta semana</span><span class="mock-topbar-badge">7 alumnos</span></div>
+        <div class="mock-content">
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:#fee2e2;color:#991b1b">AL</div>
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Alumno · Mates 3º ESO</div><div style="font-size:11.5px;color:var(--txt3)">3 faltas en 15 días · nota al alza · recibo de abril pendiente</div></div>
+            <span class="mock-pill bad">Alto</span>
+          </div>
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:#fef3c7;color:#92400e">AL</div>
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Alumna · Lengua 1º ESO</div><div style="font-size:11.5px;color:var(--txt3)">Asistencia irregular los viernes · sin incidencias</div></div>
+            <span class="mock-pill pend">Medio</span>
+          </div>
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:#dcfce7;color:#166534">AL</div>
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:500;color:var(--navy)">Alumno · Física 1º Bach</div><div style="font-size:11.5px;color:var(--txt3)">Todo al día</div></div>
+            <span class="mock-pill ok">Bajo</span>
+          </div>
+          <div class="mock-ia">
+            <b>✨ Plan de retención propuesto</b>
+            <span>Ha aprobado la evaluación: llama a la familia y ofrécele el intensivo de junio con continuidad en septiembre. Regulariza antes el recibo de abril para no mezclar conversaciones.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sol-row">
+    <div class="sol-text reveal">
+      <h3>Las familias dejan de preguntar</h3>
+      <p>Cuando la familia tiene su propio acceso, las interrupciones bajan solas. Y el boletín mensual convierte «va bien» en un documento con la asistencia del mes, las últimas notas y un comentario de evolución escrito con IA a partir de sus datos reales.</p>
+      <ul class="sol-feats">
+        <li>Portal de familias con asistencia, notas y recibos de sus hijos</li>
+        <li>Aviso de ausencia por email el mismo día de la falta</li>
+        <li>Boletín mensual en PDF con la marca de tu academia</li>
+        <li>Mensajería directa familia ↔ academia, sin números personales</li>
+      </ul>
+      <span class="sol-tag">Portal de familias</span>
+    </div>
+    <div class="sol-visual reveal reveal-delay-1">
+      <div class="mock">
+        <div class="mock-topbar"><span class="mock-topbar-title">Boletín mensual · Mayo</span><span class="mock-topbar-badge">PDF</span></div>
+        <div class="mock-content">
+          <div class="mock-stat-row">
+            <div class="mock-stat"><div class="mock-stat-n">92%</div><div class="mock-stat-l">Asistencia</div></div>
+            <div class="mock-stat"><div class="mock-stat-n">7,4</div><div class="mock-stat-l">Media del mes</div></div>
+            <div class="mock-stat"><div class="mock-stat-n">2</div><div class="mock-stat-l">Exámenes</div></div>
+          </div>
+          <table class="mock-table">
+            <tr><th>Materia</th><th>Última nota</th><th>Tendencia</th></tr>
+            <tr><td>Matemáticas</td><td>7,5</td><td><span class="mock-pill ok">Sube</span></td></tr>
+            <tr><td>Física</td><td>6,0</td><td><span class="mock-pill info">Estable</span></td></tr>
+          </table>
+          <div class="mock-ia">
+            <b>✨ Comentario de evolución</b>
+            <span>Ha mejorado en resolución de ecuaciones y mantiene el ritmo en Física. Conviene reforzar los problemas con enunciado largo antes de la evaluación final.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CASOS -->
+<section>
+  <div class="s-eyebrow reveal">Casos de uso</div>
+  <h2 class="reveal">Situaciones que<br><em>reconocerás</em></h2>
+  <div class="quote-grid">
+    <div class="quote-card reveal">
+      <p>«En febrero teníamos catorce alumnos con dos mensualidades sin pagar y no lo supimos hasta cerrar el trimestre.»</p>
+      <div class="quote-who">Academia de refuerzo · 150–200 alumnos<span>Con DidactIA, la deuda acumulada aparece en la ficha del alumno y el recordatorio sale en un clic.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-1">
+      <p>«Cada junio perdíamos un tercio de la academia y cada septiembre volvíamos a empezar de cero.»</p>
+      <div class="quote-who">Academia de repaso de ESO y Bachillerato<span>El módulo de riesgo señala las bajas probables en abril, cuando todavía se pueden evitar.</span></div>
+    </div>
+    <div class="quote-card reveal reveal-delay-2">
+      <p>«La hoja de cálculo de horarios la entendía solo una persona. Cuando se puso enferma, nadie sabía qué aula estaba libre.»</p>
+      <div class="quote-who">Academia con dos aulas y seis profesores<span>La parrilla semanal es compartida y detecta los solapes al momento.</span></div>
+    </div>
+  </div>
+  <p class="quote-disclaimer reveal">Situaciones ilustrativas construidas a partir de problemas habituales del sector. No corresponden a academias ni a personas concretas.</p>
+</section>
+
+<!-- CROSS -->
+<section style="background:var(--off)">
+  <div class="s-eyebrow reveal">Otros sectores</div>
+  <h2 class="reveal">¿Tu academia es de<br><em>otro tipo?</em></h2>
+  <p class="s-sub reveal reveal-delay-1">La base es la misma; lo que cambia es cómo se organizan los grupos, la evaluación y la relación con el alumnado.</p>
+  <div class="cross-grid">
+    <a class="cross-card reveal" href="academias-idiomas.html">
+      <div class="ck">Idiomas</div>
+      <h3>Academias de idiomas</h3>
+      <p>Niveles MCER, preparación de exámenes oficiales y grupos que rotan cada convocatoria.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-1" href="academias-oposiciones.html">
+      <div class="ck">Oposiciones</div>
+      <h3>Academias de oposiciones</h3>
+      <p>Ciclos de dos años, simulacros, temario y la motivación como principal causa de abandono.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-2" href="academias-musica-danza.html">
+      <div class="ck">Música y danza</div>
+      <h3>Escuelas de música y danza</h3>
+      <p>Clases individuales y colectivas, aulas y salas, recitales y alquiler de instrumentos.</p>
+      <span class="cgo">Ver solución →</span>
+    </a>
+    <a class="cross-card reveal reveal-delay-3" href="precios.html">
+      <div class="ck">Precios</div>
+      <h3>Todo incluido desde 39 €/mes</h3>
+      <p>Cuatro tramos por alumnos activos, sin módulos de pago y con la IA dentro del precio.</p>
+      <span class="cgo">Ver precios →</span>
+    </a>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2 class="reveal">Empieza el curso<br>con la academia <em>ordenada</em></h2>
+  <p class="reveal reveal-delay-1">Cargamos tus alumnos, grupos y horarios desde tu Excel y lo pruebas dos semanas con todo desbloqueado. Sin tarjeta y sin permanencia.</p>
+  <div class="cta-actions reveal reveal-delay-2">
+    <a href="index.html#contacto" class="btn-primary">Probar 14 días gratis <span class="btn-arrow"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span></a>
+    <a href="precios.html" class="btn-outline">Ver precios</a>
+  </div>
+  <div class="trust-chips reveal reveal-delay-3">
+    <span class="trust-chip">60 días de garantía</span>
+    <span class="trust-chip">Sin cuota de alta</span>
+    <span class="trust-chip">Migración incluida</span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-cols">
+    <div class="footer-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" style="height:30px;width:auto" role="img" aria-label="DidactIA">
+        <defs><style>.tdf{font-family:'Inter','Montserrat','Segoe UI',system-ui,sans-serif;font-weight:700;font-size:145px;fill:rgba(255,255,255,0.5);letter-spacing:-3px}.tif{fill:rgba(255,255,255,0.3)}.saf{fill:#c98a3c}</style></defs>
+        <text x="10" y="230" class="tdf">Didact<tspan class="tif">IA</tspan></text>
+        <path d="M 665 90 Q 665 120 689 120 Q 665 120 665 150 Q 665 120 641 120 Q 665 120 665 90 Z" class="saf"/>
+      </svg>
+      <p>Software de gestión con inteligencia artificial para academias. Todo incluido, sin módulos de pago y con los datos alojados en la Unión Europea.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Producto</h4>
+      <ul>
+        <li><a href="index.html#modulos">Módulos</a></li>
+        <li><a href="index.html#seguridad">Seguridad</a></li>
+        <li><a href="index.html#como">Implementación</a></li>
+        <li><a href="precios.html">Precios</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Por sector</h4>
+      <ul>
+        <li><a href="academias-refuerzo-escolar.html">Academias de refuerzo escolar</a></li>
+        <li><a href="academias-idiomas.html">Academias de idiomas</a></li>
+        <li><a href="academias-oposiciones.html">Academias de oposiciones</a></li>
+        <li><a href="academias-musica-danza.html">Escuelas de música y danza</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li><a href="index.html#contacto">Solicitar demo</a></li>
+        <li><a href="mailto:hola@didactia.eu">hola@didactia.eu</a></li>
+        <li><a href="app.html">Acceder a la plataforma</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div>© 2026 DidactIA Academias · Precios sin IVA</div>
+    <div><a href="#">Aviso legal</a><a href="#">Privacidad</a></div>
+  </div>
+</footer>
+
+<script>
+var revealObs=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){e.target.classList.add('visible');revealObs.unobserve(e.target);}
+  });
+},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(function(el){revealObs.observe(el);});
+
+var sentinel=document.getElementById('scroll-sentinel'),navEl=document.getElementById('main-nav');
+if(sentinel&&navEl){
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){navEl.classList.toggle('is-scrolled',!e.isIntersecting);});
+  },{threshold:1}).observe(sentinel);
+}
+</script>
+</body>
+</html>
