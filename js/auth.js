@@ -527,6 +527,9 @@ async function loadUserProfile(user) {
   if (navComunic) navComunic.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   const navCobros = document.getElementById("nav-cobros");
   if (navCobros) navCobros.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
+  // Check-in QR: dirección + profesorado (quien esté en el mostrador)
+  const navCheckin = document.getElementById("nav-checkin");
+  if (navCheckin) navCheckin.style.display = (["admin","admin_institucional","director","jefatura","profesional","superadmin"].includes(role)) ? "flex" : "none";
   // Documentos y firma digital: dirección
   const navFirmas = document.getElementById("nav-firmas");
   if (navFirmas) navFirmas.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
