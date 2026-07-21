@@ -37,14 +37,36 @@ window.fmtFecha = function (iso) {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-// Toast global (usa el del módulo activo si existe; si no, uno mínimo)
-window.showToastGlobal = function (msg, isErr) {
-  if (typeof showToast === 'function') { showToast(msg, isErr); return; }
-  const t = document.createElement('div');
-  t.className = 'toast' + (isErr ? ' toast-err' : '');
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+// Toast global. Segundo argumento: 'success' | 'error' | 'info' (o booleano
+// legado = error). Los módulos lo llaman con string, así que hay que
+// distinguirlo de un booleano o todo saldría pintado como error.
+window.showToastGlobal = function (msg, tipo) {
+  if (typeof showToast === 'function') { showToast(msg, tipo); return; }
+  const t = (tipo === true) ? 'error' : (tipo || 'info');
+  if (!document.getElementById('toast-styles')) {
+    const st = document.createElement('style');
+    st.id = 'toast-styles';
+    st.textContent = `
+      #toast-stack{position:fixed;right:18px;bottom:18px;z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:min(380px,calc(100vw - 36px))}
+      .toast{pointer-events:auto;background:var(--srf,#fff);color:var(--txt,#222);border:1px solid var(--bdr,#ddd);border-left:3px solid var(--info,#4D6FA8);border-radius:10px;padding:11px 15px;font-size:13.5px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.14);animation:toast-in .18s ease-out}
+      .toast-success{border-left-color:var(--success,#2e7d32)}
+      .toast-error{border-left-color:var(--danger,#c0392b)}
+      @keyframes toast-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+      @media(max-width:600px){#toast-stack{left:14px;right:14px;bottom:14px;max-width:none}}
+    `;
+    document.head.appendChild(st);
+  }
+  let stack = document.getElementById('toast-stack');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.id = 'toast-stack';
+    document.body.appendChild(stack);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + t;
+  el.textContent = msg;
+  stack.appendChild(el);
+  setTimeout(() => el.remove(), t === 'error' ? 6000 : 3500);
 };
 
 // Wrapper global de envío de push (fire-and-forget)

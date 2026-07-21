@@ -527,6 +527,9 @@ async function loadUserProfile(user) {
   if (navComunic) navComunic.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   const navCobros = document.getElementById("nav-cobros");
   if (navCobros) navCobros.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
+  // Facturación y remesas SEPA: solo dirección (datos fiscales y bancarios)
+  const navFact = document.getElementById("nav-facturacion");
+  if (navFact) navFact.style.display = (["admin","admin_institucional","director","superadmin"].includes(role)) ? "flex" : "none";
   const navPlan = document.getElementById("nav-planificador");
   if (navPlan) navPlan.style.display = (["admin","admin_institucional","director","jefatura","superadmin"].includes(role)) ? "flex" : "none";
   // Detección de riesgo: dirección + orientador + profesorado
