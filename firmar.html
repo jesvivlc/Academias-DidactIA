@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Firmar documento</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --acc:#1F2C4F; --txt:#22252b; --txt2:#5a6070; --txt3:#8b90a0;
+    --bg:#f6f4f0; --srf:#fff; --bdr:#e4e0d8; --danger:#c0392b; --ok:#2E8B7A;
+    --font-d:'Fraunces',Georgia,serif; --font-b:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--font-b);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:660px;margin:0 auto;padding:30px 18px 64px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  header img{height:40px;width:auto;border-radius:8px}
+  .brand{font-family:var(--font-d);font-size:19px;font-weight:600;color:var(--acc)}
+  h1{font-family:var(--font-d);font-size:clamp(24px,5vw,31px);font-weight:600;line-height:1.2;margin:0 0 6px}
+  .meta{color:var(--txt3);font-size:13px;margin-bottom:22px}
+  .card{background:var(--srf);border:1px solid var(--bdr);border-radius:16px;padding:22px;margin-bottom:16px}
+  .doc{white-space:pre-wrap;font-size:14.5px;line-height:1.7;color:var(--txt);max-height:46vh;overflow-y:auto;padding-right:6px}
+  .doc::-webkit-scrollbar{width:6px}
+  .doc::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:6px}
+  .sec{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--txt3);margin:0 0 13px}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--txt2);margin-bottom:5px}
+  input{width:100%;padding:11px 13px;border:1px solid var(--bdr);border-radius:10px;font-size:16px;font-family:inherit;background:var(--srf);color:var(--txt)}
+  input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 14%,transparent)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:15px}
+  .fld{margin-bottom:15px}
+  .padwrap{position:relative;border:1px dashed var(--bdr);border-radius:12px;background:#fcfcfb;touch-action:none}
+  canvas{display:block;width:100%;height:180px;border-radius:12px;cursor:crosshair;touch-action:none}
+  .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:14px;pointer-events:none}
+  .padbar{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12.5px;color:var(--txt3)}
+  .clear{border:1px solid var(--bdr);background:var(--srf);border-radius:8px;padding:5px 12px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;color:var(--txt2)}
+  button.send{width:100%;padding:15px;border:none;border-radius:11px;background:var(--acc);color:#fff;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:6px}
+  button.send:disabled{opacity:.55;cursor:default}
+  .err{color:var(--danger);font-size:13.5px;margin-top:11px;display:none}
+  .state{text-align:center;padding:44px 20px}
+  .state-ic{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:29px;margin:0 auto 18px;background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+  .state-ic.no{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)}
+  .state h2{font-family:var(--font-d);font-size:24px;font-weight:600;margin:0 0 8px}
+  .state p{color:var(--txt2);margin:0 auto;max-width:44ch;font-size:14.5px}
+  .hash{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--txt3);word-break:break-all;margin-top:16px}
+  footer{text-align:center;font-size:12px;color:var(--txt3);margin-top:26px}
+  footer a{color:inherit}
+  .skel{color:var(--txt3);text-align:center;padding:50px 0}
+  @media(max-width:520px){.row{grid-template-columns:1fr;gap:0}.row .fld{margin-bottom:15px}}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"><div class="skel">Cargando documento…</div></div>
+
+<script>
+// Página pública de firma. Solo habla con la base vía RPCs SECURITY DEFINER
+// (documento_para_firma / firmar_documento): las tablas de documentos no son
+// accesibles con la anon key.
+// ⚠ Estas dos constantes deben coincidir con js/config.js.
+const SB_URL = "https://izdqpsenrjcqtuhjhqxo.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6ZHFwc2VucmpjcXR1aGpocXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMTYxNjksImV4cCI6MjA5ODU5MjE2OX0.psyWEO9aX88ZR1ZqrKzXROP7gYXSU8s34bhwPkHKF8Q";
+
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+const token = new URLSearchParams(location.search).get("t") || "";
+const root = document.getElementById("root");
+let doc = null, pad = null;
+
+function esc(s){
+  if (s == null) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function cabecera(){
+  return `<header>${doc && doc.logo_url ? `<img src="${esc(doc.logo_url)}" alt="">` : ""}<div class="brand">${esc(doc ? doc.academia : "")}</div></header>`;
+}
+function pie(){ return `<footer>Firma electrónica gestionada con <a href="/" target="_blank" rel="noopener">DidactIA Academias</a></footer>`; }
+
+function estado(icono, titulo, texto, malo){
+  root.innerHTML = cabecera() + `<div class="card state">
+    <div class="state-ic ${malo ? "no" : ""}">${icono}</div>
+    <h2>${esc(titulo)}</h2><p>${esc(texto)}</p></div>` + pie();
+}
+
+async function arrancar(){
+  if (!token){ root.innerHTML = `<div class="skel">Falta el identificador del documento.</div>`; return; }
+  const { data, error } = await sb.rpc("documento_para_firma", { p_token: token });
+  const d = Array.isArray(data) ? data[0] : data;
+  if (error || !d){ root.innerHTML = `<div class="skel">No hemos encontrado este documento. Es posible que el enlace sea antiguo.</div>`; return; }
+  doc = d;
+  if (d.color_primario) document.documentElement.style.setProperty("--acc", d.color_primario);
+  document.title = d.titulo + " · " + d.academia;
+
+  if (d.estado === "firmado")
+    return estado("✓", "Este documento ya está firmado", `Lo firmó ${d.firmante_nombre || "el responsable"} el ${new Date(d.firmado_en).toLocaleDateString("es-ES")}. No hace falta que hagas nada más.`);
+  if (d.estado === "anulado")
+    return estado("!", "Documento anulado", "La academia ha anulado este documento. Ponte en contacto con ella si crees que es un error.", true);
+  if (d.caducado)
+    return estado("!", "El enlace ha caducado", "Pide a la academia que te envíe uno nuevo.", true);
+
+  pintar();
+}
+
+function pintar(){
+  root.innerHTML = cabecera() + `
+    <h1>${esc(doc.titulo)}</h1>
+    <div class="meta">${doc.alumno ? "Alumno/a: " + esc(doc.alumno) + " · " : ""}${esc(doc.academia)}</div>
+
+    <div class="card"><div class="doc">${esc(doc.cuerpo)}</div></div>
+
+    <div class="card">
+      <div class="sec">Firma del responsable legal</div>
+      <div class="row">
+        <div class="fld"><label for="f-nombre">Nombre y apellidos</label><input id="f-nombre" autocomplete="name"></div>
+        <div class="fld"><label for="f-nif">DNI / NIE</label><input id="f-nif" autocomplete="off"></div>
+      </div>
+      <label>Dibuja tu firma</label>
+      <div class="padwrap">
+        <canvas id="pad"></canvas>
+        <div class="ph" id="pad-ph">Firma aquí con el dedo o el ratón</div>
+      </div>
+      <div class="padbar"><span>Al firmar aceptas el contenido de este documento.</span><button class="clear" id="pad-clear" type="button">Borrar</button></div>
+      <div class="err" id="f-err"></div>
+      <button class="send" id="f-send">Firmar documento</button>
+    </div>` + pie();
+
+  iniciarPad();
+  document.getElementById("f-send").addEventListener("click", enviar);
+}
+
+// ── Lienzo de firma ────────────────────────────────────────────────────────
+function iniciarPad(){
+  const cv = document.getElementById("pad");
+  const ph = document.getElementById("pad-ph");
+  const ctx = cv.getContext("2d");
+  let dibujando = false, hayTrazo = false, ultimo = null;
+
+  function dimensionar(){
+    const r = cv.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    // Preservamos lo dibujado al redimensionar (p.ej. al girar el móvil)
+    const previo = hayTrazo ? cv.toDataURL() : null;
+    cv.width = Math.round(r.width * dpr);
+    cv.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#1a1a1a";
+    if (previo){ const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, r.width, r.height); img.src = previo; }
+  }
+  dimensionar();
+  window.addEventListener("resize", dimensionar);
+
+  const punto = (ev) => {
+    const r = cv.getBoundingClientRect();
+    const t = ev.touches ? ev.touches[0] : ev;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  };
+  const empezar = (ev) => { ev.preventDefault(); dibujando = true; ultimo = punto(ev); };
+  const mover = (ev) => {
+    if (!dibujando) return;
+    ev.preventDefault();
+    const p = punto(ev);
+    ctx.beginPath(); ctx.moveTo(ultimo.x, ultimo.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    ultimo = p;
+    if (!hayTrazo){ hayTrazo = true; ph.style.display = "none"; }
+  };
+  const parar = () => { dibujando = false; };
+
+  cv.addEventListener("mousedown", empezar); cv.addEventListener("mousemove", mover);
+  window.addEventListener("mouseup", parar);
+  cv.addEventListener("touchstart", empezar, { passive: false });
+  cv.addEventListener("touchmove", mover, { passive: false });
+  cv.addEventListener("touchend", parar);
+
+  document.getElementById("pad-clear").addEventListener("click", () => {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    hayTrazo = false; ph.style.display = "";
+  });
+
+  pad = { hayTrazo: () => hayTrazo, dataUrl: () => cv.toDataURL("image/png") };
+}
+
+async function enviar(){
+  const btn = document.getElementById("f-send");
+  const err = document.getElementById("f-err");
+  const val = (id) => (document.getElementById(id)?.value || "").trim();
+  const fallo = (t) => { err.textContent = t; err.style.display = "block"; };
+  err.style.display = "none";
+
+  if (!val("f-nombre")) return fallo("Escribe tu nombre y apellidos.");
+  if (!pad || !pad.hayTrazo()) return fallo("Dibuja tu firma en el recuadro.");
+
+  btn.disabled = true; btn.textContent = "Firmando…";
+  try {
+    const { data, error } = await sb.rpc("firmar_documento", {
+      p_token: token,
+      p_nombre: val("f-nombre"),
+      p_nif: val("f-nif") || null,
+      p_firma: pad.dataUrl(),
+      p_agente: navigator.userAgent,
+    });
+    if (error) throw new Error(error.message);
+    if (data && data.ok === false) throw new Error(data.error || "No se ha podido firmar");
+    root.innerHTML = cabecera() + `<div class="card state">
+      <div class="state-ic">✓</div>
+      <h2>Documento firmado</h2>
+      <p>Gracias. La academia ya tiene tu firma registrada; no hace falta que envíes nada más.</p>
+      <div class="hash">Huella del documento: ${esc((data && data.hash) || "")}</div>
+    </div>` + pie();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "Firmar documento";
+    fallo("No se ha podido firmar: " + (e.message || e));
+  }
+}
+
+arrancar();
+</script>
+</body>
+</html>
